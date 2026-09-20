@@ -9,8 +9,12 @@ disasm/*.exe
 disasm/*.json
 disasm/*.csv
 disasm/listing.txt
+disasm/normalized-listing.txt
 tools/ghidra
 tools/ghidra-proj/
+tools/ghidra-normalized-proj/
+tools/vendor/
+__pycache__/
 
 # Generated translator/build output.
 build/

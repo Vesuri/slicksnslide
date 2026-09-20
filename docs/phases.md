@@ -15,6 +15,8 @@ Exit: `make inspect` reproduces the recorded facts from the local source.
 - Capture the post-unpack memory image and complete entry state.
 - Reproduce the capture independently from the file and unpacker semantics.
 - Prove the selected executable reaches a named game state.
+- Run the primary trace with a 286 CPU identity and retain a 386 comparison run
+  for the optional Borland runtime paths.
 
 Exit: a repeatable command produces identical runtime bytes and state, and the
 reference loop has a positive completion signal from guest state.

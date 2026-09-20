@@ -1,0 +1,82 @@
+diff --git a/src/cpu/core_normal.cpp b/src/cpu/core_normal.cpp
+index dce2342..164dd1c 100644
+--- a/src/cpu/core_normal.cpp
++++ b/src/cpu/core_normal.cpp
+@@ -4,6 +4,7 @@
+ 
+ // Needed for std::isnan in simde
+ #include <cmath>
++#include <cstdio>
+ 
+ #include "cpu/callback.h"
+ #include "cpu/cpu.h"
+@@ -44,6 +45,61 @@
+ 
+ extern Bitu cycle_count;
+ 
++static void capture_slicks_compack_handoff() noexcept
++{
++	static bool entered_decoder = false;
++	static bool captured = false;
++	static uint16_t decoder_cs = 0;
++	const auto cs_value = SegValue(cs);
++	const auto ss_value = SegValue(ss);
++	const auto ip_value = static_cast<uint16_t>(reg_eip);
++
++	if (cs_value == ss_value && ip_value == 0x0642) {
++		entered_decoder = true;
++		decoder_cs = cs_value;
++	}
++	if (!entered_decoder || captured || cs_value != decoder_cs ||
++	    ip_value != 0x070b)
++		return;
++
++	const auto instruction = SegPhys(cs) + reg_eip;
++	if (mem_readb(instruction) != 0xea)
++		return;
++	const auto final_ip = mem_readw(instruction + 1);
++	const auto final_cs = mem_readw(instruction + 3);
++	if (ss_value < final_cs)
++		return;
++	const auto image_size =
++	        (static_cast<uint32_t>(ss_value - final_cs) << 4) + reg_sp;
++	const auto image_base = static_cast<uint32_t>(final_cs) << 4;
++
++	if (auto *image = fopen("slicks-handoff.bin", "wb")) {
++		for (uint32_t offset = 0; offset < image_size; ++offset)
++			fputc(mem_readb(image_base + offset), image);
++		fclose(image);
++	}
++	if (auto *state = fopen("slicks-handoff-state.json", "w")) {
++		fprintf(state,
++		        "{\n"
++		        "  \"image_size\": %u,\n"
++		        "  \"registers\": {\n"
++		        "    \"ax\": %u, \"bx\": %u, \"cx\": %u, \"dx\": %u,\n"
++		        "    \"si\": %u, \"di\": %u, \"bp\": %u, \"sp\": %u,\n"
++		        "    \"cs\": %u, \"ip\": %u, \"ds\": %u, \"es\": %u,\n"
++		        "    \"ss\": %u\n"
++		        "  }\n"
++		        "}\n",
++		        image_size,
++		        reg_ax, reg_bx, reg_cx, reg_dx,
++		        reg_si, reg_di, reg_bp, reg_sp,
++		        final_cs, final_ip, SegValue(ds), SegValue(es), ss_value);
++		fclose(state);
++	}
++	LOG_MSG("SLICKS: captured Compack handoff %04x:%04x, %u bytes",
++	        final_cs, final_ip, image_size);
++	captured = true;
++}
++
+ // Enable FPU escape instructions
+ #define CPU_FPU 1
+ 
+@@ -134,6 +190,7 @@ Bits CPU_Core_Normal_Run() noexcept
+ {
+ 	while (CPU_Cycles-->0) {
+ 		LOADIP;
++		capture_slicks_compack_handoff();
+ 		core.opcode_index=cpu.code.big*0x200;
+ 		core.prefixes=cpu.code.big;
+ 		core.ea_table=&EATable[cpu.code.big*256];

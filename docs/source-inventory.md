@@ -15,9 +15,11 @@ Static string evidence includes these required or potentially required files:
 - `*.SS` track files
 - bitmap/resource names including `loading.bmp` and `players.bmp`
 
-The executable alone is therefore enough for unpacking and static work, but not
-for a faithful gameplay reference loop. The complete local distribution belongs
-under ignored `ref/`; no original game material is committed.
+The complete local distribution is now present under ignored `ref/`; no
+original game material is committed. It contains the matching executable,
+`SLICKS.DAT`, `SLICKS.000`, the track editor and its data, and 195 `*.SS` track
+files. Reference runs use a disposable writable copy under `tmp/pc-root`, since
+the game attempts to create files such as `KEYB.OUT`.
 
 ## Statically visible machine interfaces
 

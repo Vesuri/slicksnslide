@@ -5,6 +5,8 @@ Host: macOS on Apple Silicon. Target: A1200, 68020, 2 MiB.
 ## Existing shared tools
 
 - Ghidra 12.1 under `~/.local/share/ghidra`
+- OpenJDK 21 under `/opt/homebrew/opt/openjdk@21` (exported by the Makefile for
+  headless Ghidra)
 - Amiga GCC/vasm/elf2hunk toolchain under `~/.local`
 - FS-UAE and M68k GDB under `~/.local/fs-uae`
 - The proven Amiga framework and diagnostic patterns in the three preceding
@@ -16,6 +18,7 @@ Host: macOS on Apple Silicon. Target: A1200, 68020, 2 MiB.
 - Intel XED: optional second decoder with explicit real-16 and chip controls
 - Bochs 3.1: primary instruction/memory/branch/I/O reference instrumentation
 - DOSBox Staging 0.83: interactive reference and independent subsystem behavior
+- DOSBox-X: selectable 286 CPU identity and primary 286 reference tracing
 - Unicorn 2.1.4: bounded Compack capture and isolated x86-16 versus M68k
   differential execution
 
@@ -28,8 +31,16 @@ toolchain.
 ```sh
 make inspect       # parse and fingerprint the local MZ executable
 make hash          # source identity
+make prepare-reference # make an ignored writable copy of the distribution
+make reference-286 # launch the primary DOSBox-X 286 reference
+make reference-staging # launch the independent 386 comparison
+make reference-frame-hash REFERENCE_VIDEO=tmp/pc-root/capture/slicks_001.avi \
+  # hash an RGB24 frame (8 seconds by default)
 make unpack        # execute only Compack and capture its handoff image/state
 make rebuild-mz    # reverse relocations and build a normalized local MZ
+make verify-runtime # compare the Unicorn and independent emulator captures
+make trace-summary # summarize the bounded DOSBox-X DOS/file trace
 make ghidra        # regenerate the local 16-bit Ghidra listing
+make ghidra-normalized # analyze the proved, relocation-normalized MZ
 make todo          # immediate step and tracked work markers
 ```

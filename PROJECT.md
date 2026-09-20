@@ -46,7 +46,8 @@ program.
 | Runtime image size | 214,048 bytes (`34420h`) |
 | Runtime SHA-256 | `d6717daa23f40f0e968e610ee901ce8075c0f92b58240361b5541eedc8b65f0e` |
 | Recovered relocation sites | 4,192 |
-| Reconstructed MZ SHA-256 | `bba3b44eee288d50de5c63871d9a7a6f56c7faa0f96eb0267ae3ad254fdbe130` |
+| Normalized runtime SHA-256 | `c4b8ecdc9e350d782de1cac0019a0a0ad8feb8290fa29f545ae5115b41c88408` |
+| Reconstructed MZ SHA-256 | `49ec0277299635a73c177465deef4f9eaeca38236b25ab6dce5b123b0395003f` |
 | Entry | `1010:0000` |
 | Stack | `4442:0100` |
 | Initial data segments | `DS = ES = 1000h` (PSP) |
@@ -58,6 +59,11 @@ imports them at physical address `10100h`; it may display the same address as
 `tools/rebuild_runtime_mz.py` reverses all captured relocation adjustments,
 checks a byte-exact round trip, and packages the normalized image as a local,
 ignored MZ executable.
+
+An instrumented DOSBox Staging run independently loaded the executable at
+`01A3:0000` and captured the same 214,048-byte handoff image. After reversing
+the relocation delta and five load-specific words in Compack's dead copied
+decoder, its normalized image is byte-identical to the Unicorn capture.
 
 The runtime is primarily 16-bit and contains a CPU-level probe. A reachable
 library routine has both an older-CPU implementation and an optional 386 path
@@ -104,7 +110,8 @@ amiga/                 build, run, debug, and diagnostic scripts
       architecture and source policy recorded.
 - [x] Phase 0b: install the PC reference tools and reproduce the Compack
       handoff and unpacked runtime image with a bounded host capture.
-- [ ] Phase 1: unattended reference loop and runtime-image proof.
+- [ ] Phase 1: runtime-image and stable title-frame proof complete; unattended
+      mouse input/state loop remains.
 - [ ] Phase 2: exhaustive entry-point and external-surface map.
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
@@ -114,7 +121,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Validate the host-produced runtime image against an independent Bochs or DOSBox
-run of the complete game distribution. Then establish an unattended reference
-milestone and collect its executed blocks, indirect targets, interrupts, ports,
-and executable-memory writes.
+Inject deterministic mouse input at the proved title screen, select a fixed
+bundled track, and define the first race-state completion signal. Then collect
+the path's executed blocks, indirect targets, interrupts, ports, and
+executable-memory writes on the DOSBox-X 286 reference personality.
