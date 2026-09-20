@@ -1,0 +1,22 @@
+.DS_Store
+
+# Original and derived game material stays local.
+SLICKS.EXE
+tmp/
+ref/
+disasm/*.bin
+disasm/*.exe
+disasm/*.json
+disasm/*.csv
+disasm/listing.txt
+tools/ghidra
+tools/ghidra-proj/
+
+# Generated translator/build output.
+build/
+src/gen/
+amiga/obj/
+amiga/out/
+*.o
+*.log
+*.trace
