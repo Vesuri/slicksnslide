@@ -23,18 +23,26 @@ is explicitly attributed to the CPU-dependent library implementation.
 | R0 | **Proved:** independent normalized handoff images match byte-for-byte |
 | R1 | **Proved on 286 and 386:** program requests VGA mode 13h |
 | R2a | **Proved on 286:** stable title framebuffer at video time 8 s |
-| R2b | Title accepts deterministic mouse input and reaches the menu |
-| R3 | A fixed bundled track is loaded and the pre-race screen is stable |
-| R4 | Race simulation advances for a fixed number of ticks |
+| R2b | **Proved on 286:** loading splash reaches the main menu unattended |
+| R3 | **Proved on 286:** delayed Enter selects the sole `BASIC.SS` track |
+| R4 | **Proved on 286:** the BASIC race framebuffer advances at three checkpoints |
 
 The R2a 640x400 RGB24 framebuffer hash is
 `a4910f29ea74c8b7a790d7b56ed5eac25b1b870cf642b2d1e0028aac6e37d9cc`.
-Two separate bounded DOSBox-X runs produced it. The trace records activation of
-the INT 33h mouse interface. Scheduled Space, Enter, and Escape keys did not
-dismiss the title, so R2b requires mouse injection rather than keyboard-only
-AUTOTYPE scripting.
+Two separate bounded DOSBox-X runs produced it. Later testing showed that this
+is a loading splash, not an input wait. At 12,000 cycles the program reaches the
+main menu unattended, and a delayed Enter starts a race. A disposable reference
+root with only `TRACKS/BASIC.SS` removes the program's random track selection.
 
-R2b onward need deterministic input scripting and frame/state capture.
+Two fixed-track runs matched these stable 640x400 RGB24 checks:
+
+- loading splash at 8 s: `ce0b18140fffbf11454f39bed9fc2a278f8ae7269373598932abd8b1f52b95cf`;
+- BASIC selected at 15 s: `cd4fe6bea3852d6a47e99165c8e417d096639234af976f5ab349630c007b3298`;
+- BASIC label crop during the race: `b2e5e678e8a49ef080739d38ea8470594cfa55925e7ad65eecece4a1b5e023d0`.
+
+Full race frames at 20, 25, and 30 seconds differ within each run, positively
+proving simulation advancement. Their complete hashes intentionally are not a
+cross-run gate because AI/timer state diverges slightly.
 
 ## Trace products
 

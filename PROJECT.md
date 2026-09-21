@@ -110,8 +110,8 @@ amiga/                 build, run, debug, and diagnostic scripts
       architecture and source policy recorded.
 - [x] Phase 0b: install the PC reference tools and reproduce the Compack
       handoff and unpacked runtime image with a bounded host capture.
-- [ ] Phase 1: runtime-image and stable title-frame proof complete; unattended
-      mouse input/state loop remains.
+- [x] Phase 1: independent runtime-image proof and repeatable BASIC.SS reference
+      race with stable-state and advancement gates.
 - [ ] Phase 2: exhaustive entry-point and external-surface map.
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
@@ -121,7 +121,6 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Inject deterministic mouse input at the proved title screen, select a fixed
-bundled track, and define the first race-state completion signal. Then collect
-the path's executed blocks, indirect targets, interrupts, ports, and
-executable-memory writes on the DOSBox-X 286 reference personality.
+Collect the proved BASIC.SS path's executed blocks, indirect targets,
+interrupts, ports, and executable-memory writes on the DOSBox-X 286 reference
+personality, then seed those live targets into the normalized Ghidra project.

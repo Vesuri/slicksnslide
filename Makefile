@@ -2,6 +2,8 @@ PYTHON ?= python3
 SOURCE ?= ref/SLICKS.EXE
 REFERENCE_ROOT ?= tmp/pc-root
 REFERENCE_CAPTURE ?= $(REFERENCE_ROOT)/slicks-handoff
+REFERENCE_FIXED_ROOT ?= tmp/pc-fixed
+REFERENCE_RACE_VIDEO ?=
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
@@ -16,8 +18,9 @@ REFERENCE_VIDEO ?=
 REFERENCE_FRAME_TIME ?= 8
 ABS_ROOT := $(abspath .)
 
-.PHONY: inspect hash prepare-reference reference-staging reference-286 \
-	reference-frame-hash unpack rebuild-mz verify-runtime trace-summary \
+.PHONY: inspect hash prepare-reference prepare-fixed-reference \
+	reference-staging reference-286 reference-race reference-frame-hash \
+	verify-reference-race unpack rebuild-mz verify-runtime trace-summary \
 	ghidra ghidra-normalized \
 	todo clean
 
@@ -31,6 +34,11 @@ prepare-reference:
 	@mkdir -p $(REFERENCE_ROOT)
 	rsync -a ref/ $(REFERENCE_ROOT)/
 
+prepare-fixed-reference:
+	@mkdir -p $(REFERENCE_FIXED_ROOT)/TRACKS
+	rsync -a --exclude TRACKS ref/ $(REFERENCE_FIXED_ROOT)/
+	cp ref/TRACKS/BASIC.SS $(REFERENCE_FIXED_ROOT)/TRACKS/
+
 reference-staging: prepare-reference
 	$(DOSBOX_STAGING) --noprimaryconf --nolocalconf \
 		--conf reference/dosbox-staging.conf \
@@ -41,11 +49,24 @@ reference-286: prepare-reference
 		-c "mount c $(abspath $(REFERENCE_ROOT))" -c "c:" \
 		-c "slicks.exe"
 
+reference-race: prepare-fixed-reference
+	env SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy $(DOSBOX_X) \
+		-conf reference/dosbox-x-286.conf -set "cpu cycles=12000" \
+		-nogui -nomenu -silent -fastlaunch -time-limit 36 \
+		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
+		-c "autotype -w 15 enter" \
+		-c "dx-capture /v /-a /-d slicks.exe"
+
 reference-frame-hash:
 	@test -n "$(REFERENCE_VIDEO)" || \
 		(echo "set REFERENCE_VIDEO to a DOSBox-X AVI capture" >&2; exit 2)
 	$(FFMPEG) -v error -ss $(REFERENCE_FRAME_TIME) -i $(REFERENCE_VIDEO) \
 		-frames:v 1 -f rawvideo -pix_fmt rgb24 - | shasum -a 256
+
+verify-reference-race:
+	@test -n "$(REFERENCE_RACE_VIDEO)" || \
+		(echo "set REFERENCE_RACE_VIDEO to the VGA AVI capture" >&2; exit 2)
+	$(PYTHON) tools/verify_reference_race.py $(REFERENCE_RACE_VIDEO)
 
 build/unpack_compack: tools/unpack_compack.c
 	@mkdir -p build

@@ -1,0 +1,57 @@
+diff --git a/src/ints/mouse.cpp b/src/ints/mouse.cpp
+index 835ecfc..a99a54f 100644
+--- a/src/ints/mouse.cpp
++++ b/src/ints/mouse.cpp
+@@ -23,6 +23,7 @@
+ 
+ #include <string.h>
+ #include <math.h>
++#include <cstdlib>
+ #include <vector>
+ 
+ #include "dosbox.h"
+@@ -1616,9 +1617,44 @@ void Mouse_Read_Motion_Data() {
+     Mouse_Used();
+ }
+ 
++static void Slicks_ScriptedMouseRelease(Bitu) {
++    Mouse_ButtonReleased(0);
++    LOG_MSG("SLICKS: scripted mouse release at %.3f ms, %d,%d",
++            PIC_FullIndex(), POS_X, POS_Y);
++}
++
++static void Slicks_ScriptedMousePress(Bitu) {
++    const char *x_text = std::getenv("SLICKS_MOUSE_CLICK_X");
++    const char *y_text = std::getenv("SLICKS_MOUSE_CLICK_Y");
++    const auto default_x = (mouse.min_x + mouse.max_x) / 2;
++    const auto default_y = (mouse.min_y + mouse.max_y) / 2;
++    mouse.x = static_cast<float>(x_text ? std::strtol(x_text, nullptr, 0)
++                                       : default_x);
++    mouse.y = static_cast<float>(y_text ? std::strtol(y_text, nullptr, 0)
++                                       : default_y);
++    Mouse_ButtonPressed(0);
++    LOG_MSG("SLICKS: scripted mouse press at %.3f ms, %d,%d",
++            PIC_FullIndex(), POS_X, POS_Y);
++    PIC_AddEvent(Slicks_ScriptedMouseRelease, 100.0);
++}
++
++static void Slicks_ArmMouseScript() {
++    static bool armed = false;
++    const char *delay_text = std::getenv("SLICKS_MOUSE_CLICK_MS");
++    if (armed || !delay_text || !*delay_text)
++        return;
++
++    const auto delay = static_cast<double>(std::strtoul(delay_text, nullptr, 0));
++    PIC_AddEvent(Slicks_ScriptedMousePress, delay);
++    LOG_MSG("SLICKS: mouse script armed at %.3f ms for +%.3f ms",
++            PIC_FullIndex(), delay);
++    armed = true;
++}
++
+ // Reference: http://www.ctyme.com/intr/int-33.htm
+ static Bitu INT33_Handler(void) {
+ //  LOG(LOG_MOUSE,LOG_NORMAL)("MOUSE: %04X %X %X %d %d",reg_ax,reg_bx,reg_cx,POS_X,POS_Y);
++    Slicks_ArmMouseScript();
+     switch (reg_ax) {
+     case 0x00:  /* MS MOUSE - RESET DRIVER AND READ STATUS */
+         Mouse_ResetHardware();

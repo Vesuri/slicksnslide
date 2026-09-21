@@ -34,8 +34,11 @@ make hash          # source identity
 make prepare-reference # make an ignored writable copy of the distribution
 make reference-286 # launch the primary DOSBox-X 286 reference
 make reference-staging # launch the independent 386 comparison
+make reference-race # run a bounded BASIC.SS race with scripted Enter
 make reference-frame-hash REFERENCE_VIDEO=tmp/pc-root/capture/slicks_001.avi \
   # hash an RGB24 frame (8 seconds by default)
+make verify-reference-race REFERENCE_RACE_VIDEO=tmp/pc-fixed/capture/slicks_001.avi \
+  # verify stable BASIC.SS states and live race advancement
 make unpack        # execute only Compack and capture its handoff image/state
 make rebuild-mz    # reverse relocations and build a normalized local MZ
 make verify-runtime # compare the Unicorn and independent emulator captures
