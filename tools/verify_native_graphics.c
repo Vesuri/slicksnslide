@@ -27,6 +27,8 @@ enum {
     x86_opaque_stop = 0x3aa67,
     x86_readback_start = 0x3aae5,
     x86_readback_stop = 0x3ab81,
+    x86_subrect_start = 0x3b8de,
+    x86_subrect_stop = 0x3b9b0,
     x86_plot_start = 0x3b45e,
     x86_plot_stop = 0x3b48d,
     x86_read_start = 0x3b48e,
@@ -219,7 +221,7 @@ static void prepare_x86_stack(uc_engine *uc, const uint16_t *arguments,
                               const size_t argument_count,
                               const uint16_t code_segment)
 {
-    uint8_t stack[4 + 14] = {0};
+    uint8_t stack[4 + 18] = {0};
     for (size_t i = 0; i < argument_count; ++i)
         write_le16(&stack[4 + i * 2], arguments[i]);
     const uint64_t address = x86_stack_base + x86_stack_offset;
@@ -587,12 +589,121 @@ static void run_readback_case(uc_engine *x86, uc_engine *m68k,
     }
 }
 
+static void prepare_m68k_subrect(uc_engine *uc, const uint16_t destination_x,
+                                 const uint16_t destination_y,
+                                 const uint16_t source_x,
+                                 const uint16_t source_y,
+                                 const uint16_t width, const uint8_t height,
+                                 const uint16_t screen_base)
+{
+    uint32_t value = m68k_plane_base;
+    check_uc("write subrect A0", uc_reg_write(uc, UC_M68K_REG_A0, &value));
+    value = m68k_source_base + x86_source_offset;
+    check_uc("write subrect A1", uc_reg_write(uc, UC_M68K_REG_A1, &value));
+    value = 0x11110000u | destination_x;
+    check_uc("write subrect D0", uc_reg_write(uc, UC_M68K_REG_D0, &value));
+    value = 0x22220000u | destination_y;
+    check_uc("write subrect D1", uc_reg_write(uc, UC_M68K_REG_D1, &value));
+    value = 0x33330000u | source_x;
+    check_uc("write subrect D2", uc_reg_write(uc, UC_M68K_REG_D2, &value));
+    value = 0x44440000u | source_y;
+    check_uc("write subrect D3", uc_reg_write(uc, UC_M68K_REG_D3, &value));
+    value = 0x55550064u;
+    check_uc("write subrect D4", uc_reg_write(uc, UC_M68K_REG_D4, &value));
+    value = 0x66660000u | width;
+    check_uc("write subrect D5", uc_reg_write(uc, UC_M68K_REG_D5, &value));
+    value = 0x77770000u | height;
+    check_uc("write subrect D6", uc_reg_write(uc, UC_M68K_REG_D6, &value));
+    value = 0x88880000u | screen_base;
+    check_uc("write subrect D7", uc_reg_write(uc, UC_M68K_REG_D7, &value));
+}
+
+static void run_subrect_case(
+    uc_engine *x86, uc_engine *m68k, const size_t m68k_code_size,
+    const uint16_t destination_x, const uint16_t destination_y,
+    const uint16_t source_x, const uint16_t source_y, const uint16_t width,
+    const uint8_t height, const uint8_t source_width,
+    const uint8_t source_height, const uint16_t screen_base,
+    const unsigned case_number, uint8_t *expected_planes,
+    uint8_t *actual_planes, uint8_t *sprite)
+{
+    const size_t payload_size = 4u * source_width * source_height;
+    const size_t sprite_size = 2u + payload_size;
+    sprite[0] = source_width;
+    sprite[1] = source_height;
+    for (size_t i = 0; i < payload_size; ++i)
+        sprite[2 + i] =
+            (uint8_t)(i * 67u + (i / (source_width * source_height)) * 31u +
+                      case_number * 23u + 11u);
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 43u + (i >> 16) * 53u + case_number * 17u);
+
+    check_uc("seed native subrect planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+    check_uc("write x86 subrect sprite",
+             uc_mem_write(x86, x86_source_base + x86_source_offset, sprite,
+                          sprite_size));
+    check_uc("write native subrect sprite",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset, sprite,
+                          sprite_size));
+
+    const uint16_t arguments[] = {
+        destination_x, destination_y, source_x, source_y, width, height,
+        x86_source_offset, x86_source_segment, screen_base,
+    };
+    prepare_x86_stack(x86, arguments, 9, 0x3b8d);
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add subrect VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 subrect",
+             uc_emu_start(x86, x86_subrect_start, x86_subrect_stop, 0, 0));
+    check_uc("delete subrect OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete subrect VGA hook", uc_hook_del(x86, memory_hook));
+
+    prepare_m68k_subrect(m68k, destination_x, destination_y, source_x,
+                         source_y, width, height, screen_base);
+    check_uc("run m68k subrect",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+    check_m68k_blit_preserved(m68k, "subrect", case_number);
+    check_uc("read native subrect planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value || memcmp(expected_planes, actual_planes,
+                                       m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "subrect case %u failed: dest=%04x,%04x source=%04x,%04x "
+                "size=%04xx%02x source-size=%02xx%02x base=%04x plane=%d",
+                case_number, destination_x, destination_y, source_x, source_y,
+                width, height, source_width, source_height, screen_base,
+                ports.plane);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 7) {
+    if (argc != 8) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
-                "transparent.bin readback.bin\n",
+                "transparent.bin readback.bin subrect.bin\n",
                 argv[0]);
         return 2;
     }
@@ -602,14 +713,17 @@ int main(int argc, char **argv)
     size_t opaque_bytes = 0;
     size_t transparent_bytes = 0;
     size_t readback_bytes = 0;
+    size_t subrect_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
     uint8_t *opaque = read_file(argv[4], &opaque_bytes);
     uint8_t *transparent = read_file(argv[5], &transparent_bytes);
     uint8_t *readback = read_file(argv[6], &readback_bytes);
+    uint8_t *subrect = read_file(argv[7], &subrect_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
-        opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4) {
+        opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
+        subrect_bytes < 4) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -624,6 +738,8 @@ int main(int argc, char **argv)
     uc_engine *m68k_transparent = open_m68k(transparent, transparent_bytes);
     uc_engine *x86_readback = open_x86(runtime);
     uc_engine *m68k_readback = open_m68k(readback, readback_bytes);
+    uc_engine *x86_subrect = open_x86(runtime);
+    uc_engine *m68k_subrect = open_m68k(subrect, subrect_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -727,6 +843,61 @@ int main(int argc, char **argv)
                           native_destination);
     }
 
+    static const struct {
+        uint16_t destination_x, destination_y, source_x, source_y;
+        uint16_t width, base;
+        uint8_t height, source_width, source_height;
+    } subrect_edges[] = {
+        {0, 0, 110, 77, 100, 0, 97, 80, 200},
+        {1, 2, 0, 0, 1, 32700, 1, 1, 1},
+        {2, 3, 5, 1, 7, 0, 3, 8, 7},
+        {3, 0xffff, 11, 4, 13, 0x0200, 5, 16, 12},
+        {0xffff, 0xffff, 17, 2, 9, 0x0100, 4, 12, 9},
+    };
+    unsigned subrect_cases = 0;
+    for (size_t i = 0;
+         i < sizeof(subrect_edges) / sizeof(subrect_edges[0]); ++i) {
+        run_subrect_case(
+            x86_subrect, m68k_subrect, subrect_bytes,
+            subrect_edges[i].destination_x, subrect_edges[i].destination_y,
+            subrect_edges[i].source_x, subrect_edges[i].source_y,
+            subrect_edges[i].width, subrect_edges[i].height,
+            subrect_edges[i].source_width, subrect_edges[i].source_height,
+            subrect_edges[i].base, subrect_cases++, expected_planes,
+            actual_planes, sprite);
+    }
+    for (unsigned i = 0; i < 251; ++i) {
+        const uint8_t source_width =
+            (uint8_t)(next_random() % 32u + 1u);
+        const uint8_t source_height =
+            (uint8_t)(next_random() % 24u + 1u);
+        const uint16_t source_byte_x =
+            (uint16_t)(next_random() % source_width);
+        const uint16_t available_bytes = source_width - source_byte_x;
+        const uint16_t copied_bytes =
+            (uint16_t)(next_random() % available_bytes + 1u);
+        const uint16_t width =
+            (uint16_t)(copied_bytes * 4u - next_random() % 4u);
+        const uint16_t source_x =
+            (uint16_t)(source_byte_x * 4u + next_random() % 4u);
+        const uint16_t source_y =
+            (uint16_t)(next_random() % source_height);
+        const uint8_t height =
+            (uint8_t)(next_random() % (source_height - source_y) + 1u);
+        const uint16_t destination_x = (uint16_t)next_random();
+        const uint16_t destination_y = (uint16_t)next_random();
+        const uint16_t without_base =
+            (uint16_t)((uint16_t)((destination_y + source_y) * 100u) +
+                       (destination_x >> 2) + source_byte_x);
+        const uint16_t target_offset = (uint16_t)(next_random() & 0x5fffu);
+        const uint16_t base = (uint16_t)(target_offset - without_base);
+        run_subrect_case(x86_subrect, m68k_subrect, subrect_bytes,
+                         destination_x, destination_y, source_x, source_y,
+                         width, height, source_width, source_height, base,
+                         subrect_cases++, expected_planes, actual_planes,
+                         sprite);
+    }
+
     uc_close(x86_plot);
     uc_close(x86_read);
     uc_close(m68k_plot);
@@ -737,19 +908,22 @@ int main(int argc, char **argv)
     uc_close(m68k_transparent);
     uc_close(x86_readback);
     uc_close(m68k_readback);
+    uc_close(x86_subrect);
+    uc_close(m68k_subrect);
     free(runtime);
     free(plot);
     free(read);
     free(opaque);
     free(transparent);
     free(readback);
+    free(subrect);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
     free(x86_destination);
     free(native_destination);
-    printf("native graphics differential: %u plot/read and %u each opaque/"
-           "transparent blit cases, plus %u readback cases passed\n",
-           cases, blit_cases, readback_cases);
+    printf("native graphics differential: %u plot/read, %u each opaque/"
+           "transparent blit, %u readback, and %u subrect cases passed\n",
+           cases, blit_cases, readback_cases, subrect_cases);
     return 0;
 }

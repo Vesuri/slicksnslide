@@ -47,6 +47,15 @@ Starting `x & 3` selects the first source plane and carries into the 16-bit
 source offset as the four planes rotate. The helper preserves `a0` and `d4`
 and otherwise uses the larger-helper clobber set above.
 
+`sgfx_planar_subrect_blit` uses `d0.w,d1.w` for destination x/y, `d2.w,d3.w`
+for source x/y, `d5.w` for pixel width, `d6.b` for height, and `d7.w` for the
+screen base; `a0`, `a1`, and `d4` keep their common meanings. Matching the
+original routine, source x is truncated to a byte offset and source x/y are
+also added to the destination address. Every row re-applies the source-x byte
+offset, while the end of each plane skips the uncopied source rows. Source
+bounds and nonzero dimensions remain caller contracts. The routine preserves
+`a0` and `d4` and clobbers `d0-d3/d5-d7` and `a1-a6`.
+
 The `verify-native-graphics` gate runs the original unpacked x86 helper bytes
 and these assembled 68020 routines in independent Unicorn engines. It compares
 the VGA plane selected by the original port write, the wrapped address, the
@@ -54,4 +63,5 @@ returned byte, and the write side effect over deterministic edge cases and
 random states. The pixel helpers pass 2,040 paired states; each sprite blitter
 passes 256 states with the complete four-plane 256 KiB destination compared
 after every call. Readback passes 256 states with its complete 64 KiB
-destination segment compared after every call.
+destination segment compared after every call. Sub-rectangle copy passes 256
+states with the complete four-plane destination compared after every call.

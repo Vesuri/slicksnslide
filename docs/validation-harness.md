@@ -24,7 +24,9 @@ transparent blitter compare the complete four-plane 256 KiB result, covering
 plane-phase rotation, odd and even widths, zero transparency, row stepping,
 and wrapped starting offsets. A further 256 readback states compare the full
 64 KiB output segment, including header, rotated payloads, right-edge padding,
-and untouched bytes surrounding the result.
+and untouched bytes surrounding the result. Another 256 sub-rectangle states
+compare all four destination planes across source cropping, independent source
+and destination row strides, phase rotation, and 16-bit destination wrap.
 
 ## Program behavior
 

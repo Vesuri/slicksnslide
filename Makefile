@@ -166,6 +166,10 @@ build/sgfx_readback.bin: native/sgfx_readback.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sgfx_planar_subrect_blit.bin: native/sgfx_planar_subrect_blit.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
 build/verify_native_graphics: tools/verify_native_graphics.c
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
@@ -175,11 +179,11 @@ build/verify_native_graphics: tools/verify_native_graphics.c
 verify-native-graphics: unpack build/sgfx_plot_plane.bin \
 		build/sgfx_read_pixel.bin build/sgfx_planar_blit.bin \
 		build/sgfx_transparent_blit.bin build/sgfx_readback.bin \
-		build/verify_native_graphics
+		build/sgfx_planar_subrect_blit.bin build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
 		build/sgfx_plot_plane.bin build/sgfx_read_pixel.bin \
 		build/sgfx_planar_blit.bin build/sgfx_transparent_blit.bin \
-		build/sgfx_readback.bin
+		build/sgfx_readback.bin build/sgfx_planar_subrect_blit.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

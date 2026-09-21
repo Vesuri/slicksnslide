@@ -216,7 +216,10 @@ run copied a `100 x 97` region at `(110,77)` from an `80-byte x 200-row` source
 to both screen bases. Recomputed source and 64 KiB plane bounds pass for every
 captured tuple. Other runs exercised this helper much more heavily, so call
 mix—not the contract—is path- and timing-dependent. These routines remain
-early direct-68020 replacement candidates.
+early direct-68020 replacement candidates. Byte-level differential execution
+also confirms the routine's unusual coordinate rule: source x is truncated to
+a byte offset, while source x and y are added to the destination origin as well
+as selecting the cropped source data.
 
 ## Still unmeasured
 
