@@ -15,6 +15,7 @@ struct IntuitionBase *IntuitionBase;
 
 volatile unsigned short g_slicks_diag_ready;
 volatile unsigned long g_slicks_diag_checksum;
+volatile unsigned long g_slicks_diag_display_checksum;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
@@ -30,6 +31,9 @@ __attribute__((constructor)) static void initialize_sysbase(void)
 
 extern void slicks_draw_title_pages(unsigned char *planes);
 extern unsigned short slicks_dispatch_title_key(unsigned short scan_code);
+extern void slicks_convert_to_amiga(const unsigned char *logical,
+                                    unsigned char *chunky,
+                                    struct BitMap *bitmap);
 extern const unsigned char slicks_basic_palette[];
 
 static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
@@ -45,42 +49,9 @@ static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
     }
 }
 
-static unsigned char logical_pixel(const unsigned char *planes,
-                                   unsigned short x, unsigned short y)
-{
-    unsigned long address = ((unsigned long)(x & 3u) << 16) +
-                            (unsigned long)y * 100u + (x >> 2);
-    return planes[address];
-}
-
 static void make_title_surface(unsigned char *planes)
 {
     slicks_draw_title_pages(planes);
-}
-
-static void convert_to_amiga(const unsigned char *logical,
-                             struct BitMap *bitmap)
-{
-    unsigned short plane;
-    unsigned short y;
-    unsigned short byte_x;
-    for (plane = 0; plane < 8; ++plane) {
-        unsigned char *destination = bitmap->Planes[plane];
-        for (y = 0; y < 200; ++y) {
-            for (byte_x = 0; byte_x < 40; ++byte_x) {
-                unsigned char packed = 0;
-                unsigned short bit;
-                for (bit = 0; bit < 8; ++bit) {
-                    unsigned short x = (unsigned short)(byte_x * 8u + bit);
-                    unsigned char color = logical_pixel(logical, x, y);
-                    packed |= (unsigned char)(((color >> plane) & 1u)
-                                              << (7u - bit));
-                }
-                destination[(unsigned long)y * bitmap->BytesPerRow + byte_x] =
-                    packed;
-            }
-        }
-    }
 }
 
 static unsigned long checksum_planes(const unsigned char *planes)
@@ -92,10 +63,31 @@ static unsigned long checksum_planes(const unsigned char *planes)
     return checksum;
 }
 
+static unsigned long checksum_bitmap(const struct BitMap *bitmap)
+{
+    unsigned long checksum = 0x43325038UL;
+    unsigned short plane;
+    unsigned short y;
+    unsigned short byte_x;
+
+    for (plane = 0; plane < 8; ++plane) {
+        const unsigned char *source = bitmap->Planes[plane];
+        for (y = 0; y < 200; ++y) {
+            for (byte_x = 0; byte_x < 40; ++byte_x) {
+                checksum = (checksum << 5) ^ (checksum >> 27) ^
+                           source[(unsigned long)y * bitmap->BytesPerRow +
+                                  byte_x];
+            }
+        }
+    }
+    return checksum;
+}
+
 int main(void)
 {
     static unsigned long palette[770];
     unsigned char *logical = 0;
+    unsigned char *chunky = 0;
     struct Screen *screen = 0;
     struct Window *window = 0;
     int result = 20;
@@ -110,6 +102,9 @@ int main(void)
 
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY | MEMF_CLEAR);
     if (!logical)
+        goto cleanup;
+    chunky = (unsigned char *)AllocMem(320UL * 200UL, MEMF_ANY);
+    if (!chunky)
         goto cleanup;
     make_title_surface(logical);
     g_slicks_diag_checksum = checksum_planes(logical);
@@ -138,7 +133,9 @@ int main(void)
     if (!window)
         goto cleanup;
 
-    convert_to_amiga(logical, screen->RastPort.BitMap);
+    slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
+    g_slicks_diag_display_checksum =
+        checksum_bitmap(screen->RastPort.BitMap);
     MakeScreen(screen);
     RethinkDisplay();
     ScreenToFront(screen);
@@ -171,6 +168,8 @@ cleanup:
         CloseWindow(window);
     if (screen)
         CloseScreen(screen);
+    if (chunky)
+        FreeMem(chunky, 320UL * 200UL);
     if (logical)
         FreeMem(logical, 0x40000UL);
     if (IntuitionBase)

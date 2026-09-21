@@ -13,7 +13,7 @@ CCFLAGS  = -g -MP -MMD -m68020 -msoft-float -O2 -nostdlib \
 	-ffunction-sections -fdata-sections -Wall -Wextra -Werror \
 	-Wno-volatile-register-var
 ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
-VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62
+VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)"
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
@@ -25,7 +25,8 @@ OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sui_title_menu.o obj/sui_title_status.o obj/sui_title_tail.o \
 	obj/sui_title_dispatch.o \
 	obj/basic_frame.o \
-	obj/status_assets.o obj/native_bridge.o
+	obj/status_assets.o obj/native_bridge.o obj/vga_to_chunky.o \
+	obj/c2p1x1_8_c5_bm.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
 FRAME_HASH = a4fc8a1cbea08a30
@@ -137,6 +138,13 @@ obj/status_assets.o: status_assets.s obj/status-negative.bin \
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/native_bridge.o: native_bridge.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/vga_to_chunky.o: $(REPO)/src/platform/amiga/vga_to_chunky.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/c2p1x1_8_c5_bm.o: \
+		$(REPO)/src/platform/amiga/c2p1x1_8_c5_bm.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 $(OUT).elf: $(OBJECTS) | out

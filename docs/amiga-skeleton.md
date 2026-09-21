@@ -14,8 +14,13 @@ title-page caller, which feeds a call-time capture of the BASIC.SS title frame
 through the native opaque blitter to both original VGA pages. The platform
 shell converts the visible page to eight Amiga bitplanes, installs the captured
 256-colour VGA palette, opens a 320 by 200 AGA screen, and displays the result.
-The target-side GDB check stops at a named post-display marker and verifies
-checksum `37048854` after the native title menu and status indicators are drawn.
+The conversion is native 68020 assembly: a small staging pass interleaves the
+visible pixels from the four VGA banks into a 64,000-byte chunky buffer, then
+Mikael Kalms' Public Domain `c2p1x1_8_c5_bm` CPU5 routine writes directly to
+the arbitrary plane pointers in the Intuition `BitMap`. The target-side GDB
+check stops at a named post-display marker and verifies logical checksum
+`37048854` and planar display checksum `bf5d0cbe` after the native title menu
+and status indicators are drawn.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -28,8 +33,9 @@ pixel  = vga_plane[plane][offset]       # one complete 8-bit colour index
 Those are four byte-interleaved VGA banks, not four Amiga bitplanes. An Amiga
 bitplane stores one bit of every pixel. The diagnostic makes that boundary
 explicit by converting the 8-bit indices in the logical VGA store to eight
-real AGA bitplanes once per displayed frame. A later renderer can optimize or
-replace this conversion without changing translated drawing semantics.
+real AGA bitplanes once per displayed frame. Keeping the conversion behind this
+boundary allows translated drawing code to preserve the DOS representation
+without paying for a C pixel-by-pixel conversion.
 
 ## Commands
 
