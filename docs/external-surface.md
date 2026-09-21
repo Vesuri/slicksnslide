@@ -140,6 +140,21 @@ three words, selects graphics-controller read plane `x & 3`, and returns the
 zero-extended byte in AX. Static callers clean eight and six argument bytes,
 respectively, confirming far cdecl.
 
+Three sprite-buffer routines also have stable far-cdecl layouts.
+`live_vga_planar_blit(x, y, source_far, screen_base)` and
+`live_vga_transparent_blit(x, y, source_far, screen_base)` each receive five
+16-bit words because the far pointer occupies two. Both parse the source as a
+byte-width, a height byte, then four consecutive planar payloads. The opaque
+form copies every byte; the transparent form advances over zero source bytes
+without touching the destination.
+
+`live_vga_readback(x, y, width, height, destination_far, screen_base)` receives
+seven words. It writes `ceil(width / 4)` and height as the destination header,
+copies the selected rectangle from all four VGA planes, and appends the
+starting-plane alignment `(4 - (x & 3)) & 3`. Call sites clean 14 bytes,
+confirming the layout. Dynamic value-range and allocation-bound checks remain
+to be added for these three routines.
+
 `live_vga_planar_subrect_blit(dest_x, dest_y, source_x, source_y, width,
 height, source_far, screen_base)` receives nine 16-bit stack words. The source
 starts with byte-width and height bytes, followed by four planes. One bounded
