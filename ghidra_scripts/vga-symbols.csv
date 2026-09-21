@@ -1,0 +1,12 @@
+offset,name,note
+00D9F,live_far_fill,Observed generic far-memory fill used on VGA memory
+24499,live_vga_remap_copy,Provisional VGA read-remap-write primitive
+29E35,live_vga_span_fill,Provisional plane-masked span fill
+2A97C,live_vga_transparent_blit,Provisional transparent planar blit
+2A9F2,live_vga_planar_blit,Provisional opaque planar blit
+2AAE5,live_vga_readback,Observed planar VGA readback primitive
+2AD92,live_vga_clear_full,Observed full-plane VGA clear
+2ADB7,live_vga_mode_setup,Observed VGA register setup and clear
+2B40A,live_vga_plot,Observed direct planar pixel write
+2B45E,live_vga_plot_plane,Observed plane-selected pixel write
+2B8DE,live_vga_clipped_blit,Provisional dominant clipped planar blit

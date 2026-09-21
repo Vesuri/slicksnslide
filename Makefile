@@ -10,6 +10,7 @@ REFERENCE_INTERRUPTS ?= $(REFERENCE_FIXED_ROOT)/slicks-interrupts.csv
 REFERENCE_PORTS ?= $(REFERENCE_FIXED_ROOT)/slicks-ports.csv
 REFERENCE_MEMORY ?= $(REFERENCE_FIXED_ROOT)/slicks-memory.csv
 LIVE_ENTRYPOINTS ?= disasm/live-entrypoints.csv
+LIVE_VGA_SITES ?= disasm/live-vga-sites.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
@@ -29,9 +30,9 @@ ABS_ROOT := $(abspath .)
 	reference-staging reference-286 reference-race reference-trace \
 	reference-frame-hash verify-reference-race verify-execution-trace \
 	verify-interrupt-trace verify-port-trace analyze-execution-trace \
-	verify-memory-trace unpack rebuild-mz \
+	verify-memory-trace analyze-vga-sites unpack rebuild-mz \
 	verify-runtime trace-summary \
-	ghidra ghidra-normalized \
+	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	todo clean
 
 inspect:
@@ -103,6 +104,11 @@ verify-memory-trace: unpack
 	$(PYTHON) tools/summarize_memory_trace.py $(REFERENCE_MEMORY) \
 		disasm/runtime.bin $(REFERENCE_TRACE_BITMAP)
 
+analyze-vga-sites: verify-memory-trace
+	$(PYTHON) tools/analyze_vga_sites.py disasm/runtime.bin \
+		$(REFERENCE_MEMORY) --listing disasm/listing.txt \
+		--output $(LIVE_VGA_SITES)
+
 analyze-execution-trace: verify-execution-trace verify-interrupt-trace unpack
 	$(PYTHON) tools/analyze_execution_trace.py disasm/runtime.bin \
 		$(REFERENCE_TRACE_BITMAP) $(REFERENCE_TRACE_EDGES) \
@@ -155,6 +161,28 @@ ghidra-normalized: rebuild-mz
 		-scriptPath ghidra_scripts \
 		-postScript ExportListing.java \
 		$(ABS_ROOT)/disasm/normalized-listing.txt
+
+ghidra-live: analyze-execution-trace analyze-vga-sites
+	@mkdir -p tools/ghidra-live-proj
+	$(GHIDRA)/support/analyzeHeadless tools/ghidra-live-proj SlicksLive \
+		-import disasm/runtime.bin -overwrite \
+		-processor "x86:LE:16:Real Mode" \
+		-loader BinaryLoader -loader-baseAddr 0x10100 \
+		-scriptPath ghidra_scripts \
+		-preScript MarkEntries.java \
+		-preScript SeedLiveMap.java $(ABS_ROOT)/$(LIVE_ENTRYPOINTS) \
+			0x10100 $(ABS_ROOT)/ghidra_scripts/vga-symbols.csv \
+		-postScript ExportListing.java $(ABS_ROOT)/disasm/live-listing.txt
+
+ghidra-live-normalized: analyze-execution-trace analyze-vga-sites rebuild-mz
+	@mkdir -p tools/ghidra-live-normalized-proj
+	$(GHIDRA)/support/analyzeHeadless tools/ghidra-live-normalized-proj \
+		SlicksLiveNormalized -import disasm/runtime.exe -overwrite \
+		-scriptPath ghidra_scripts \
+		-preScript SeedLiveMap.java $(ABS_ROOT)/$(LIVE_ENTRYPOINTS) \
+			0x10000 $(ABS_ROOT)/ghidra_scripts/vga-symbols.csv \
+		-postScript ExportListing.java \
+			$(ABS_ROOT)/disasm/live-normalized-listing.txt
 
 todo:
 	@sed -n '/^## Immediate next step/,$$p' PROJECT.md

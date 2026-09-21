@@ -118,6 +118,14 @@ drawing-replacement boundaries. A byte-level comparison of every runtime write
 against all dynamically decoded instruction extents finds no write to executed
 code on the BASIC path after the Compack handoff.
 
+The live-seeded Ghidra workflow now disassembles 3,012 conservative block
+entries without promoting them all to functions. It names 11 curated VGA
+primitive candidates in both the relocated raw image and normalized MZ. The
+auditable raw-image listing expands from 56,706 to 58,649 instructions (687 to
+689 discovered functions); the normalized live listing contains 58,383
+instructions and 688 functions. The dominant `live_vga_clipped_blit` and
+`live_vga_plot` routines are the first native 68020 replacement targets.
+
 ## Intended pipeline
 
 ```text
@@ -167,7 +175,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Decode the observed instruction-entry and transition sets into basic blocks,
-classify non-fall-through targets, and add interrupt, port, video-memory, and
-executable-write events on the DOSBox-X 286 reference personality. Then seed
-the live targets into the normalized Ghidra project.
+Recover the calling signatures and state contracts of the live-named VGA
+primitives, beginning with the clipped blitter and pixel writer, while
+expanding trace coverage beyond BASIC.SS to distinguish common engine code from
+track- and mode-specific paths.

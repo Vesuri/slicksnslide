@@ -1,8 +1,8 @@
 # Open work
 
-1. Materialize the 3,014 conservative live entry candidates as basic blocks
-   and seed them into the normalized Ghidra project.
-2. Turn the captured DOS/BIOS, port, and 14-site VGA-memory inventories into
+1. Recover calling signatures and semantic contracts for the 11 live-named VGA
+   functions, starting with `live_vga_clipped_blit` and `live_vga_plot`.
+2. Turn the captured DOS/BIOS, port, and 14-writer VGA-memory inventories into
    service and native drawing-replacement contracts. The BASIC path has no
    writes overlapping executed instruction bytes; extend that proof to other
    tracks and modes. Interrupt vectors `08h` and `09h` are proved to enter
@@ -12,4 +12,5 @@
    AI/timer differences can be compared semantically.
 5. Classify the optional 386 Borland-runtime path and prove it remains dormant
    under the selected CPU identity.
-6. Re-import the proved normalized MZ and seed the live-discovered entry set.
+6. Expand the normalized live-seeded Ghidra map with additional tracks and
+   modes, preserving common versus path-specific coverage provenance.

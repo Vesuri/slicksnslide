@@ -10,9 +10,13 @@ disasm/*.json
 disasm/*.csv
 disasm/listing.txt
 disasm/normalized-listing.txt
+disasm/live-listing.txt
+disasm/live-normalized-listing.txt
 tools/ghidra
 tools/ghidra-proj/
 tools/ghidra-normalized-proj/
+tools/ghidra-live-proj/
+tools/ghidra-live-normalized-proj/
 tools/vendor/
 __pycache__/
 

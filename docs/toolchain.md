@@ -56,5 +56,7 @@ make verify-runtime # compare the Unicorn and independent emulator captures
 make trace-summary # summarize the bounded DOSBox-X DOS/file trace
 make ghidra        # regenerate the local 16-bit Ghidra listing
 make ghidra-normalized # analyze the proved, relocation-normalized MZ
+make ghidra-live   # seed observed blocks and curated VGA symbols, export listing
+make ghidra-live-normalized # apply the same live map to the normalized MZ
 make todo          # immediate step and tracked work markers
 ```

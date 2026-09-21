@@ -106,6 +106,30 @@ self-modifying after the Compack handoff. This does not yet prove that every
 unvisited mode has the same property, but it removes self-modification from the
 known hot-path design.
 
+### Native graphics candidates
+
+The live map groups the 16 VGA access instructions into 11 functions. Names
+remain deliberately provisional until their argument layouts and callers are
+fully typed.
+
+| Runtime offset | Live symbol | Evidence |
+|---:|---|---|
+| `00D9Fh` | `live_far_fill` | Generic far fill observed against VGA memory |
+| `24499h` | `live_vga_remap_copy` | VGA read, lookup/remap, and write |
+| `29E35h` | `live_vga_span_fill` | Plane-masked repeated byte spans |
+| `2A97Ch` | `live_vga_transparent_blit` | Conditional planar writes |
+| `2A9F2h` | `live_vga_planar_blit` | Four-plane repeated copy |
+| `2AAE5h` | `live_vga_readback` | Four-plane VGA readback |
+| `2AD92h` | `live_vga_clear_full` | Full-plane 64 KiB clear |
+| `2ADB7h` | `live_vga_mode_setup` | CRTC/sequencer setup and clear |
+| `2B40Ah` | `live_vga_plot` | Direct pixel-byte write |
+| `2B45Eh` | `live_vga_plot_plane` | Plane-selected pixel write |
+| `2B8DEh` | `live_vga_clipped_blit` | Dominant clipped four-plane copy |
+
+`live_vga_clipped_blit` accounts for about 2.19 million writes in the measured
+run and `live_vga_plot` for about 1.18 million. These are the first two
+performance-critical candidates for direct 68020 implementations.
+
 ## Still unmeasured
 
 - Semantic grouping of the 14 VGA-writing sites into drawing primitives and
