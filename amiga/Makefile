@@ -16,7 +16,7 @@ ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
 VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)"
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
-OBJECTS = obj/slicks_diag.o obj/resource_archive.o \
+OBJECTS = obj/slicks_diag.o obj/resource_archive.o obj/track_scene.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
 	obj/sgfx_planar_blit.o obj/sgfx_transparent_blit.o \
@@ -41,6 +41,10 @@ obj/slicks_diag.o: $(REPO)/src/platform/amiga/slicks_diag.c | obj
 
 obj/resource_archive.o: $(REPO)/src/platform/amiga/resource_archive.c \
 		$(REPO)/src/platform/amiga/resource_archive.h | obj
+	$(CC) $(CCFLAGS) -c -o $@ $<
+
+obj/track_scene.o: $(REPO)/src/game/track_scene.c \
+		$(REPO)/src/game/track_scene.h | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/gcc8_c_support.o: $(SUPPORT)/gcc8_c_support.c | obj

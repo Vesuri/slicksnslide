@@ -179,14 +179,11 @@ post-display checksum of `86bdc061` across fresh FS-UAE boots. The target check
 also exposed and fixed the first platform ABI issue:
 callee-saved M68k registers must survive the temporary C/display boundary.
 
-Call-time primitive instrumentation now records caller offsets, exact planar
-sprite blobs, and the active VGA DAC palette. A bounded BASIC.SS trace captured
-the complete 320 by 200 title frame (`a4fc8a1cbea08a30`) and its palette
-(`9b17b223ef7f93e3`) at full-page calls `1960Dh`/`19632h` and the later
-sub-rectangle call `19711h`. The Amiga build extracts those ignored bytes by
-hash. A direct 68020 translation of the observed `195F0h..19639h` caller now
-sends the frame through the native opaque blitter to both original page bases
-(`7FBCh`, then `0000h`) and displays the recognizable original title screen.
+Call-time primitive instrumentation established the title callers and drawing
+contracts, but no captured framebuffer is runtime content. The target opens
+the original `SLICKS.000`, resolves `mainmenu.@I` and `partII`, decodes the
+indexed image at runtime, and sends it through the native opaque blitter to
+both original page bases (`7FBCh`, then `0000h`).
 The original relocated x86 caller and composed 68020 caller+callee agree in 33
 whole-framebuffer cases. A second direct translation covers the observed
 `196ECh..19718h` fixed `100 by 97` title redraw through the native sub-rectangle
@@ -207,15 +204,9 @@ that prefix on target: its exact bevel geometry is differentially proved, and
 a native 5x7 renderer places all six resolved English labels. Two fresh A1200
 boots produced the new post-menu checksum `c61a023d`. The compact font is an
 intermediate native subsystem replacement; original-font recovery remains.
-The following observed BASIC-path status cluster at `19828h..199F9h` is also
-native. Extended call tracing proves the four live indicator signs and exact
-sprite hashes, both decimal values (`1`), their positions and styles, and the
-absence of all three optional badges. The Amiga build extracts the two measured
-2-byte-by-8-row sprite blobs by hash and composes them with the transparent
-blitter. The target path now loads the pristine `mainmenu.@I` image and
-`partII` palette directly from `SLICKS.000`, converts the chunky asset to the
-four-bank layout in native 68020 code, and no longer links the captured title
-frame; its strict target checksum is `93c8bea6`.
+The target path converts that archive image to the four-bank layout in native
+68020 code and links neither a captured title frame nor captured status
+sprites. Its strict title checksum is `93c8bea6`.
 The shared wrapper suffix at `19E4Ah..19EFEh` now advances its 16-bit phase,
 reproduces the three-part red pulse, performs the original nearest-palette
 lookup, and mutates colour slot zero through the native helper. The BASIC path
@@ -252,6 +243,16 @@ The same trace exposed one screen-transition sub-rectangle call that exceeds
 its declared source height and relies on 16-bit source-offset wrap; it is
 tracked explicitly rather than admitted into the bounded helper ABI.
 
+The first genuine race scene now runs on the strict A1200 target. The native
+path decodes all 110 compressed course-object images directly from
+`SLICKS.DAT`, parses the version-2 `BASIC.SS` header and its 233 object records,
+applies the original quarter-turn variants, skips the five nonvisual control
+objects, and constructs the logical course store from game state. It then
+loads `peli.@p` from `SLICKS.000` and presents the result through the Kalms
+converter. No DOS screenshot or framebuffer is present in the executable.
+The target gate reports logical checksum `815c70ca` and displayed-planar
+checksum `024f572b` with exactly 2 MiB chip RAM and no fast RAM.
+
 ## Intended pipeline
 
 ```text
@@ -277,10 +278,9 @@ docs/                  design, evidence, gates, and work queue
 tools/                 MZ, reference, analysis, translator, and audit tools
 ghidra_scripts/        headless analysis scripts
 disasm/                generated local artifacts; curated maps may be tracked
-src/ir/                target-independent x86 semantics
-src/m68k/              register allocator and 68020 backend
-src/runtime/           dispatch, DOS/BIOS/device services, fallback boundary
+src/game/              direct game-state, asset, track, and race translations
 src/platform/amiga/    target integration
+native/                hand-written 68020 routines pending src/ consolidation
 amiga/                 build, run, debug, and diagnostic scripts
 ```
 
@@ -296,17 +296,15 @@ amiga/                 build, run, debug, and diagnostic scripts
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
 - [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation,
-      first translated application block, and full reference-derived title
-      frame are proved; original game-loop entry remains.
+      archive-driven title, post-title transition, and first asset-and-state
+      driven BASIC.SS race scene are proved; live car/update logic remains.
 - [ ] Phase 6: subsystem completion and measured optimization.
 - [ ] Phase 7: packaging.
 
 ## Immediate next step
 
-Follow the observed caller continuations at `1A1E3h` and `1A26Fh` now that the
-Use the corrected sustained-race trace to recover a vertical race setup and
-frame-update slice, beginning with the live clear/mode boundary and the callers
-of the already-native plot, readback, blit, and remap helpers. Resolve the
-screen-transition call that relies on 16-bit source wrap at caller level.
-Recover the original Slicks font resource to replace the compact title and
-numeric vocabulary renderer.
+Port the first live car/sprite update and HUD composition on top of the genuine
+`BASIC.SS` course scene, then replace the one-time C course rasterizer with the
+equivalent direct 68020 hot-path implementation if target timing requires it.
+Resolve the screen-transition call that relies on 16-bit source wrap at caller
+level and recover the original Slicks font resource.

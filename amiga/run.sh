@@ -19,6 +19,9 @@ printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$EXE" "$DH1/SlicksDiag"
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
+cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
+mkdir -p "$DH1/TRACKS"
+cp -f ../ref/TRACKS/BASIC.SS "$DH1/TRACKS/BASIC.SS"
 rm -f "$RUN"/state/*.uss
 
 fsuae_stop_previous

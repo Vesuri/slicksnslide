@@ -1,26 +1,13 @@
 # Open work
 
-1. Extend the observed BASIC-path translations beyond the proved title-page
-   initializer (`195F0h..19639h`) and fixed crop redraw
-   (`196ECh..19718h`) into their surrounding UI routine, then onward to an
-   interactive menu and game-loop entry. Keep the translated-to-native-helper
-   path free of a generated-C CPU layer. The palette matcher at `26EAEh` and
-   the complete `19653h..19718h` prefix, colour-slot helper at `1FD63h`, and
-   six-entry title-menu loop at `19719h..19825h` and observed BASIC title-status
-   slice at `19828h..199F9h` and shared wrapper suffix at `19E4Ah..19EFEh` now
-   run natively. Their common caller and its eight-key dispatch table at
-   `1A2B2h..1A2C8h` are recovered; the scan-code classifier now runs natively
-   and the BASIC Enter edge is proved to target `1A3CCh`. The original
-   one-key reference had no human player and returned to the menu; the corrected
-   script now adds a human player and reaches a sustained BASIC race. Regenerate
-   the trace on that path, then translate the newly observed activation and
-   game-entry blocks. The selected-zero path is proved to return zero to
-   `16252h`, and its following 4-by-13 player state initialization at
-   `16272h..162E4h` is native and differential-tested;
-   continue through the genuine race setup into the first game frame.
-   `199FAh` is the alternate, unreached renderer. Recover the original
-   font resource to replace the temporary compact 5x7 title and numeric
-   vocabulary.
+1. Continue from the genuine native `BASIC.SS` course frame into the first live
+   car/sprite update and HUD. The current target decodes 110 original
+   `SLICKS.DAT` images, parses and draws all 233 track records, loads the race
+   palette from `SLICKS.000`, and passes a strict 2 MiB A1200 gate without any
+   captured framebuffer. Port car-state initialization, sprite selection,
+   countdown, input, collision, and the repeating update/present loop. Keep the
+   translated path free of a generated-C CPU-context layer. Recover the
+   original font resource to replace the compact 5x7 title renderer.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;

@@ -50,6 +50,7 @@ make amiga          # build amiga/out/SlicksDiag.exe
 make amiga-run      # show the diagnostic; mouse button or Escape exits
 make amiga-debug    # open the target under the M68k GDB stub
 make amiga-check    # boot it and verify the displayed-frame marker/checksum
+make amiga-race-check # enter BASIC.SS and verify its asset-built race frame
 ```
 
 `amiga/env.sh` selects the shared toolchain, FS-UAE, and default Kickstart path,
@@ -74,7 +75,14 @@ animation-counter update. No decoded title framebuffer or call-time sprite is
 linked into the executable: the original archive remains on the mounted Amiga
 volume and is parsed at runtime.
 
-The diagnostic still does not enter the original game loop. The six-entry loop
+The native Return path now leaves the title and constructs the first genuine
+`BASIC.SS` course frame. It reads `SLICKS.DAT` and `TRACKS/BASIC.SS` from the
+mounted original files, decodes 110 compressed images, applies their four
+orientations to 233 track records, installs `peli.@p`, and presents the result.
+The strict race gate reports logical checksum `815c70ca` and display checksum
+`024f572b`. No captured DOS frame is linked or loaded.
+
+The diagnostic does not yet run the repeating car/update loop. The six-entry loop
 at `19719h..19825h` is represented by native bevel and text rendering. The
 observed BASIC-path status slice at `19828h..199F9h` now follows it: four exact
 call-time planar indicator sprites are drawn at their measured positions and

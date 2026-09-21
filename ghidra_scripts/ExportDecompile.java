@@ -4,6 +4,7 @@
 import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
+import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -24,9 +25,21 @@ public class ExportDecompile extends GhidraScript {
             for (int i = 1; i < args.length; ++i) {
                 final String functionName = args[i];
                 Function function = getGlobalFunctions(functionName).stream()
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(
-                        "function not found: " + functionName));
+                    .findFirst().orElse(null);
+                if (function == null && functionName.startsWith("0x")) {
+                    Address address = currentProgram.getAddressFactory()
+                        .getDefaultAddressSpace()
+                        .getAddress(Long.parseUnsignedLong(
+                            functionName.substring(2), 16));
+                    function = getFunctionAt(address);
+                    if (function == null) {
+                        disassemble(address);
+                        function = createFunction(address, null);
+                    }
+                }
+                if (function == null)
+                    throw new IllegalArgumentException(
+                        "function not found: " + functionName);
                 DecompileResults result = decompiler.decompileFunction(
                     function, 120, monitor);
                 if (!result.decompileCompleted())

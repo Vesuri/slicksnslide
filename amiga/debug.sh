@@ -14,10 +14,17 @@ SETPATCH="${SETPATCH:-../tmp/SetPatch}"
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+if [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"
+else
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+fi
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f out/SlicksDiag.exe "$DH1/SlicksDiag"
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
+cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
+mkdir -p "$DH1/TRACKS"
+cp -f ../ref/TRACKS/BASIC.SS "$DH1/TRACKS/BASIC.SS"
 
 fsuae_claim_port
 "$FSUAE" \

@@ -7,9 +7,11 @@
 #include <intuition/intuition.h>
 #include <intuition/screens.h>
 #include <proto/exec.h>
+#include <proto/dos.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
 
+#include "../../game/track_scene.h"
 #include "resource_archive.h"
 
 struct ExecBase *SysBase;
@@ -18,12 +20,21 @@ struct GfxBase *GfxBase;
 struct IntuitionBase *IntuitionBase;
 
 volatile unsigned short g_slicks_diag_ready;
+volatile unsigned short g_slicks_diag_ingame;
+volatile unsigned short g_slicks_diag_race_error;
+volatile unsigned short g_slicks_diag_race_stage;
 volatile unsigned long g_slicks_diag_checksum;
 volatile unsigned long g_slicks_diag_display_checksum;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
     __asm volatile("" ::: "memory");
+}
+
+static void race_checkpoint(unsigned short stage)
+{
+    g_slicks_diag_race_stage = stage;
+    slicks_diag_frame_ready();
 }
 
 __attribute__((constructor)) static void initialize_sysbase(void)
@@ -108,7 +119,94 @@ static void load_palette(struct Screen *screen, unsigned long *table,
     LoadRGB32(&screen->ViewPort, table);
 }
 
-int main(void)
+static long load_plain_file(const char *path, void *destination,
+                            unsigned long capacity)
+{
+    BPTR file = Open((CONST_STRPTR)path, MODE_OLDFILE);
+    LONG size;
+    if (!file)
+        return -1;
+    size = Read(file, destination, (LONG)capacity);
+    Close(file);
+    return size;
+}
+
+static int enter_basic_race(struct Screen *screen, unsigned long *palette,
+                            unsigned char *logical, unsigned char *chunky,
+                            unsigned short *mode_state)
+{
+    struct SlicksResourceArchive archive = {0, 0};
+    unsigned char *dat = 0;
+    unsigned char *track = 0;
+    unsigned char *arena = 0;
+    unsigned char race_palette[768];
+    long dat_size;
+    long track_size;
+    int result = -1;
+
+    dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
+    track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
+    arena = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
+    if (!dat || !track || !arena) {
+        g_slicks_diag_race_error = 1;
+        goto cleanup;
+    }
+    race_checkpoint(1);
+    dat_size = load_plain_file("SLICKS.DAT", dat, 65536UL);
+    track_size = load_plain_file("TRACKS/BASIC.SS", track, 8192UL);
+    if (dat_size <= 0 || track_size <= 0) {
+        g_slicks_diag_race_error = 2;
+        goto cleanup;
+    }
+    race_checkpoint(2);
+    if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0 ||
+        slicks_resource_archive_load(&archive, "peli.@p", race_palette,
+                                     sizeof(race_palette)) != 768L) {
+        g_slicks_diag_race_error = 3;
+        goto cleanup;
+    }
+    race_checkpoint(3);
+    if (slicks_setup_basic_mode(logical, mode_state) != 0) {
+        g_slicks_diag_race_error = 4;
+        goto cleanup;
+    }
+    race_checkpoint(4);
+    if (slicks_build_track_scene(logical, dat, (unsigned long)dat_size, track,
+                                 (unsigned long)track_size, arena, 65536UL) !=
+        233) {
+        g_slicks_diag_race_error = 5;
+        goto cleanup;
+    }
+    race_checkpoint(5);
+
+    load_palette(screen, palette, race_palette);
+    race_checkpoint(6);
+    slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
+    race_checkpoint(7);
+    g_slicks_diag_checksum = checksum_planes(logical);
+    g_slicks_diag_display_checksum =
+        checksum_bitmap(screen->RastPort.BitMap);
+    MakeScreen(screen);
+    RethinkDisplay();
+    ScreenToFront(screen);
+    g_slicks_diag_ingame = 1;
+    slicks_diag_frame_ready();
+    result = 0;
+
+cleanup:
+    slicks_resource_archive_close(&archive);
+    if (arena)
+        FreeMem(arena, 65536UL);
+    if (track)
+        FreeMem(track, 8192UL);
+    if (dat)
+        FreeMem(dat, 65536UL);
+    if (result != 0)
+        slicks_diag_frame_ready();
+    return result;
+}
+
+int main(int argc, char **argv)
 {
     static unsigned long palette[770];
     static unsigned char source_palette[768];
@@ -186,6 +284,11 @@ int main(void)
     g_slicks_diag_ready = 1;
     slicks_diag_frame_ready();
 
+    (void)argv;
+    if (argc > 1 &&
+        enter_basic_race(screen, palette, logical, chunky, mode_state) != 0)
+        goto cleanup;
+
     for (;;) {
         struct IntuiMessage *message;
         WaitPort(window->UserPort);
@@ -199,15 +302,20 @@ int main(void)
                     ? 0x1c
                     : amiga_raw_to_dos_scan(code);
             unsigned short action = slicks_dispatch_title_key(scan);
-            if (action == 1 || action == 2) {
+            if (action == 1) {
                 result = 0;
                 goto cleanup;
             }
+            if (action == 2 && !g_slicks_diag_ingame &&
+                enter_basic_race(screen, palette, logical, chunky,
+                                 mode_state) != 0)
+                goto cleanup;
         }
     }
 
 cleanup:
     g_slicks_diag_ready = 0;
+    g_slicks_diag_ingame = 0;
     slicks_resource_archive_close(&archive);
     if (window)
         CloseWindow(window);
