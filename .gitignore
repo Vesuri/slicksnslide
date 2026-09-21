@@ -25,6 +25,11 @@ build/
 src/gen/
 amiga/obj/
 amiga/out/
+amiga/.run/
 *.o
+*.d
+*.elf
+*.map
 *.log
 *.trace
+*.uaem

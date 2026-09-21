@@ -35,7 +35,7 @@ ABS_ROOT := $(abspath .)
 	verify-memory-trace verify-primitive-trace analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
-	todo clean
+	amiga amiga-run amiga-debug amiga-check todo clean
 
 inspect:
 	$(PYTHON) tools/mz_info.py $(SOURCE)
@@ -192,6 +192,18 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log
+
+amiga:
+	cd amiga && . ./env.sh && $(MAKE)
+
+amiga-run: amiga
+	cd amiga && . ./env.sh && ./run.sh
+
+amiga-debug: amiga
+	cd amiga && . ./env.sh && ./debug.sh
+
+amiga-check: amiga
+	cd amiga && . ./env.sh && ./diag_run.sh
 
 ghidra: unpack
 	@mkdir -p tools/ghidra-proj

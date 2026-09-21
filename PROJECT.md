@@ -157,6 +157,13 @@ observed `100 x 97` crop and randomized source/destination offsets and strides.
 The direct plot helper passes another 512 cases with its formerly implicit VGA
 write plane made explicit in the native register ABI.
 
+The first bootable Amiga HUNK now closes the build-to-display loop. It runs in
+FS-UAE as an A1200 with exactly 2 MiB of chip memory and no fast memory, invokes
+the proved native plane-selected plot routine, converts the logical VGA store
+to an Intuition screen, and reaches its displayed-frame marker with checksum
+`bb0e7f26`. The small C shell is platform/display glue only; no translated CPU
+execution passes through generated C. See `docs/amiga-skeleton.md`.
+
 ## Intended pipeline
 
 ```text
@@ -200,13 +207,14 @@ amiga/                 build, run, debug, and diagnostic scripts
 - [ ] Phase 2: exhaustive entry-point and external-surface map.
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
-- [ ] Phase 5: end-to-end Amiga skeleton.
+- [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation is
+      proved; a translated x86 block and original-game checkpoint remain.
 - [ ] Phase 6: subsystem completion and measured optimization.
 - [ ] Phase 7: packaging.
 
 ## Immediate next step
 
-Extend the proved native 68020 graphics ABI and differential corpus from the
-completed pixel and sprite-buffer helpers to the remap, fill, clear, and
-mode-setup boundaries. Continue expanding trace coverage beyond BASIC.SS to
-distinguish common engine code from track- and mode-specific paths.
+Build the first translated control-flow slice that calls the proved native
+graphics ABI and reaches a reference-derived visual checkpoint in the bootable
+Amiga target. In parallel, extend the native differential corpus to remap,
+fill, clear, and mode-setup boundaries and expand trace coverage beyond BASIC.SS.

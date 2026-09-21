@@ -58,6 +58,10 @@ make verify-runtime # compare the Unicorn and independent emulator captures
 make verify-native-graphics \
   # assemble native 68020 graphics cores and differentially run original x86
   # and new M68k bytes in independent Unicorn engines
+make amiga        # build the first bootable A1200 diagnostic HUNK
+make amiga-run    # display it in FS-UAE; mouse button or Escape exits
+make amiga-debug  # attach M68k GDB through FS-UAE's debugger stub
+make amiga-check  # boot the strict 2 MiB target and verify its frame checksum
 make trace-summary # summarize the bounded DOSBox-X DOS/file trace
 make ghidra        # regenerate the local 16-bit Ghidra listing
 make ghidra-normalized # analyze the proved, relocation-normalized MZ
