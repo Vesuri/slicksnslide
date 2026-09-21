@@ -102,6 +102,16 @@ sign-extended exactly like the original `CBW` instructions, while stored
 palette bytes are unsigned. This distinction is normally invisible for 6-bit
 VGA values but is covered by 512 randomized x86-versus-68020 cases.
 
+`sui_title_step` composes the palette matcher and crop into the observed
+application prefix at `19653h..19718h`. It performs all three original colour
+queries, advances the byte animation counter by four, reproduces the folded
+`counter / 4` ramp, stores the third colour word, and calls `sgfx_title_crop`.
+Its register ABI returns the two colour indices consumed by the following UI
+loop plus the stored third index. The differential executes the complete
+relocated x86 prefix and native caller/callees for every possible initial
+counter byte, comparing all live outputs, both memory results, register
+preservation, and all four logical VGA planes.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

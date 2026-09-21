@@ -20,6 +20,8 @@ enum {
     x86_source_size = 0x10000,
     x86_source_segment = 0x6000,
     x86_source_offset = 0x0100,
+    x86_palette_base = 0x70000,
+    x86_palette_segment = 0x7000,
     x86_stride_address = 0x3e86b,
     x86_transparent_start = 0x3a97c,
     x86_transparent_stop = 0x3a9f1,
@@ -44,6 +46,11 @@ enum {
     x86_title_source_address = 0x3d1a8,
     x86_palette_nearest_start = 0x36fae,
     x86_palette_nearest_stop = 0x37039,
+    x86_title_ui_start = 0x29753,
+    x86_title_ui_stop = 0x29819,
+    x86_title_palette_address = 0x43da8,
+    x86_title_counter_address = 0x4373e,
+    x86_title_third_color_address = 0x3e1f0,
     x86_relocated_stride_address = 0x3e96b,
     x86_screen_base_address = 0x3e977,
     m68k_code_base = 0x1000,
@@ -51,6 +58,7 @@ enum {
     m68k_plane_size = 0x40000,
     m68k_source_base = 0x200000,
     m68k_source_size = 0x10000,
+    m68k_palette_base = 0x400000,
     m68k_stack_base = 0x300000,
     m68k_stack_size = 0x10000,
 };
@@ -204,6 +212,8 @@ static uc_engine *open_x86(const uint8_t *runtime)
              uc_mem_map(uc, x86_stack_base, x86_stack_size, UC_PROT_ALL));
     check_uc("map x86 source",
              uc_mem_map(uc, x86_source_base, x86_source_size, UC_PROT_ALL));
+    check_uc("map x86 palette",
+             uc_mem_map(uc, x86_palette_base, x86_source_size, UC_PROT_ALL));
     check_uc("map x86 VGA", uc_mem_map(uc, x86_vga_base, x86_vga_size,
                                         UC_PROT_ALL));
     const uint8_t stride[2] = {100, 0};
@@ -224,6 +234,8 @@ static uc_engine *open_x86_relocated(const uint8_t *runtime)
              uc_mem_map(uc, x86_stack_base, x86_stack_size, UC_PROT_ALL));
     check_uc("map relocated x86 source",
              uc_mem_map(uc, x86_source_base, x86_source_size, UC_PROT_ALL));
+    check_uc("map relocated x86 palette",
+             uc_mem_map(uc, x86_palette_base, x86_source_size, UC_PROT_ALL));
     check_uc("map relocated x86 VGA",
              uc_mem_map(uc, x86_vga_base, x86_vga_size, UC_PROT_ALL));
     const uint8_t stride[2] = {100, 0};
@@ -244,6 +256,8 @@ static uc_engine *open_m68k(const uint8_t *code, const size_t code_size)
              uc_mem_map(uc, m68k_plane_base, m68k_plane_size, UC_PROT_ALL));
     check_uc("map m68k source",
              uc_mem_map(uc, m68k_source_base, m68k_source_size, UC_PROT_ALL));
+    check_uc("map m68k palette",
+             uc_mem_map(uc, m68k_palette_base, m68k_source_size, UC_PROT_ALL));
     check_uc("map m68k stack",
              uc_mem_map(uc, m68k_stack_base, m68k_stack_size, UC_PROT_ALL));
     return uc;
@@ -916,6 +930,194 @@ static void run_palette_nearest_case(
     }
 }
 
+static void run_title_ui_case(
+    uc_engine *x86, uc_engine *m68k, const size_t native_entry_offset,
+    const size_t native_code_size, const uint8_t initial_counter,
+    const uint16_t screen_base, const unsigned case_number,
+    uint8_t *expected_planes, uint8_t *actual_planes, uint8_t *sprite,
+    uint8_t palette[768])
+{
+    const size_t payload_size = 4u * 80u * 200u;
+    sprite[0] = 80;
+    sprite[1] = 200;
+    for (size_t i = 0; i < payload_size; ++i)
+        sprite[2 + i] =
+            (uint8_t)(i * 73u + case_number * 29u + (i >> 8) * 11u);
+    for (size_t i = 0; i < 768; ++i)
+        palette[i] =
+            (uint8_t)((i * 23u + case_number * 7u + (i >> 2)) & 63u);
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 31u + (i >> 16) * 53u + case_number * 19u);
+
+    check_uc("write x86 UI image",
+             uc_mem_write(x86, x86_source_base + x86_source_offset, sprite,
+                          payload_size + 2));
+    check_uc("write x86 UI palette",
+             uc_mem_write(x86, x86_palette_base + x86_source_offset, palette,
+                          768));
+    check_uc("write native UI image",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset, sprite,
+                          payload_size + 2));
+    check_uc("write native UI palette",
+             uc_mem_write(m68k, m68k_palette_base + x86_source_offset,
+                          palette, 768));
+    check_uc("seed native UI planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+
+    uint8_t far_pointer[4];
+    write_le16(far_pointer, x86_source_offset);
+    write_le16(far_pointer + 2, x86_source_segment);
+    check_uc("write x86 UI image pointer",
+             uc_mem_write(x86, x86_title_source_address, far_pointer,
+                          sizeof(far_pointer)));
+    write_le16(far_pointer, x86_source_offset);
+    write_le16(far_pointer + 2, x86_palette_segment);
+    check_uc("write x86 UI palette pointer",
+             uc_mem_write(x86, x86_title_palette_address, far_pointer,
+                          sizeof(far_pointer)));
+    uint8_t word[2];
+    write_le16(word, screen_base);
+    check_uc("write x86 UI page",
+             uc_mem_write(x86, x86_screen_base_address + 2, word,
+                          sizeof(word)));
+    check_uc("write x86 UI counter",
+             uc_mem_write(x86, x86_title_counter_address, &initial_counter,
+                          1));
+    write_le16(word, 0xa55a);
+    check_uc("seed x86 UI third colour",
+             uc_mem_write(x86, x86_title_third_color_address, word,
+                          sizeof(word)));
+
+    const uint16_t arguments[] = {0};
+    prepare_x86_stack(x86, arguments, 1, 0x2970);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write relocated UI DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add UI VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 title UI",
+             uc_emu_start(x86, x86_title_ui_start, x86_title_ui_stop, 0, 0));
+    check_uc("delete UI OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete UI VGA hook", uc_hook_del(x86, memory_hook));
+
+    uint16_t x86_bp = 0;
+    check_uc("read x86 UI BP", uc_reg_read(x86, UC_X86_REG_BP, &x86_bp));
+    uint8_t x86_first = 0;
+    uint8_t x86_animated = 0;
+    uint8_t x86_counter = 0;
+    uint8_t x86_third_bytes[2] = {0};
+    check_uc("read x86 first colour",
+             uc_mem_read(x86, x86_stack_base + (uint16_t)(x86_bp - 1),
+                         &x86_first, 1));
+    check_uc("read x86 animated colour",
+             uc_mem_read(x86, x86_stack_base + (uint16_t)(x86_bp - 5),
+                         &x86_animated, 1));
+    check_uc("read x86 UI counter",
+             uc_mem_read(x86, x86_title_counter_address, &x86_counter, 1));
+    check_uc("read x86 third colour",
+             uc_mem_read(x86, x86_title_third_color_address,
+                         x86_third_bytes, sizeof(x86_third_bytes)));
+    const uint16_t x86_third =
+        (uint16_t)(x86_third_bytes[0] | (x86_third_bytes[1] << 8));
+
+    const uint32_t native_counter_address =
+        m68k_source_base + m68k_source_size - 0x100;
+    const uint32_t native_third_address = native_counter_address + 2;
+    check_uc("write native UI counter",
+             uc_mem_write(m68k, native_counter_address, &initial_counter, 1));
+    const uint8_t native_third_seed[2] = {0xa5, 0x5a};
+    check_uc("seed native UI third colour",
+             uc_mem_write(m68k, native_third_address, native_third_seed, 2));
+    const uint32_t values[] = {
+        m68k_plane_base, m68k_source_base + x86_source_offset,
+        m68k_palette_base + x86_source_offset, native_counter_address,
+        native_third_address, 0x33333333u, 0x44440064u, 0x55555555u,
+        0x66666666u, 0x77770000u | screen_base, 0xababababu,
+        0xbcbcbcbcu,
+    };
+    const int registers[] = {
+        UC_M68K_REG_A0, UC_M68K_REG_A1, UC_M68K_REG_A2,
+        UC_M68K_REG_A3, UC_M68K_REG_A4, UC_M68K_REG_D3,
+        UC_M68K_REG_D4, UC_M68K_REG_D5, UC_M68K_REG_D6,
+        UC_M68K_REG_D7, UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write UI register",
+                 uc_reg_write(m68k, registers[i], &values[i]));
+    uint32_t native_stack = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write UI A7",
+             uc_reg_write(m68k, UC_M68K_REG_A7, &native_stack));
+    check_uc("run m68k title UI",
+             uc_emu_start(m68k, m68k_code_base + native_entry_offset,
+                          m68k_code_base + native_code_size - 2, 0, 0));
+
+    uint32_t native_outputs[3] = {0};
+    check_uc("read native UI D0",
+             uc_reg_read(m68k, UC_M68K_REG_D0, &native_outputs[0]));
+    check_uc("read native UI D1",
+             uc_reg_read(m68k, UC_M68K_REG_D1, &native_outputs[1]));
+    check_uc("read native UI D2",
+             uc_reg_read(m68k, UC_M68K_REG_D2, &native_outputs[2]));
+    uint8_t native_counter = 0;
+    uint8_t native_third_bytes[2] = {0};
+    check_uc("read native UI counter",
+             uc_mem_read(m68k, native_counter_address, &native_counter, 1));
+    check_uc("read native UI third colour",
+             uc_mem_read(m68k, native_third_address, native_third_bytes, 2));
+    const uint16_t native_third =
+        (uint16_t)((native_third_bytes[0] << 8) | native_third_bytes[1]);
+    check_uc("read native UI planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i) {
+        uint32_t value = 0;
+        check_uc("read UI preserved register",
+                 uc_reg_read(m68k, registers[i], &value));
+        if (value != values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = value;
+        }
+    }
+    if (ports.bad_port_value || bad_preserved_register >= 0 ||
+        x86_first != (uint8_t)native_outputs[0] ||
+        x86_animated != (uint8_t)native_outputs[1] ||
+        x86_third != (uint8_t)native_outputs[2] ||
+        x86_third != native_third || x86_counter != native_counter ||
+        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "title UI case %u failed: counter=%02x page=%04x "
+                "colors=%02x/%02x/%04x native=%02x/%02x/%02x/%04x "
+                "counters=%02x/%02x preserved=%d/%08x",
+                case_number, initial_counter, screen_base, x86_first,
+                x86_animated, x86_third, (uint8_t)native_outputs[0],
+                (uint8_t)native_outputs[1], (uint8_t)native_outputs[2],
+                native_third, x86_counter, native_counter,
+                bad_preserved_register, bad_register_value);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 static void prepare_m68k_readback(uc_engine *uc, const uint16_t x,
                                   const uint16_t y, const uint16_t width,
                                   const uint8_t height,
@@ -1277,12 +1479,12 @@ static void run_checker_case(
 
 int main(int argc, char **argv)
 {
-    if (argc != 13) {
+    if (argc != 14) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
                 "checker-fill.bin title-pages.bin title-crop.bin "
-                "palette-nearest.bin\n",
+                "palette-nearest.bin title-ui-step.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1298,6 +1500,7 @@ int main(int argc, char **argv)
     size_t title_bytes = 0;
     size_t crop_bytes = 0;
     size_t palette_nearest_bytes = 0;
+    size_t title_ui_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -1311,13 +1514,17 @@ int main(int argc, char **argv)
     uint8_t *crop = read_file(argv[11], &crop_bytes);
     uint8_t *palette_nearest =
         read_file(argv[12], &palette_nearest_bytes);
+    uint8_t *title_ui = read_file(argv[13], &title_ui_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
         checker_bytes <= plot_bytes || memcmp(checker, plot, plot_bytes) ||
         title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
         crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
-        palette_nearest_bytes < 4) {
+        palette_nearest_bytes < 4 ||
+        title_ui_bytes <= palette_nearest_bytes + crop_bytes ||
+        memcmp(title_ui, palette_nearest, palette_nearest_bytes) ||
+        memcmp(title_ui + palette_nearest_bytes, crop, crop_bytes)) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -1346,6 +1553,8 @@ int main(int argc, char **argv)
     uc_engine *x86_palette = open_x86_relocated(runtime);
     uc_engine *m68k_palette =
         open_m68k(palette_nearest, palette_nearest_bytes);
+    uc_engine *x86_title_ui = open_x86_relocated(runtime);
+    uc_engine *m68k_title_ui = open_m68k(title_ui, title_ui_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -1384,6 +1593,16 @@ int main(int argc, char **argv)
         run_palette_nearest_case(x86_palette, m68k_palette,
                                  palette_nearest_bytes, red, green, blue,
                                  palette_cases++, palette);
+    }
+
+    unsigned title_ui_cases = 0;
+    const size_t title_ui_entry = palette_nearest_bytes + crop_bytes;
+    for (unsigned i = 0; i < 256; ++i) {
+        const uint16_t page = (i & 1u) ? 0x7fbcu : 0;
+        run_title_ui_case(
+            x86_title_ui, m68k_title_ui, title_ui_entry, title_ui_bytes,
+            (uint8_t)i, page, title_ui_cases++, expected_planes,
+            actual_planes, sprite, palette);
     }
 
     static const struct {
@@ -1617,6 +1836,8 @@ int main(int argc, char **argv)
     uc_close(m68k_crop);
     uc_close(x86_palette);
     uc_close(m68k_palette);
+    uc_close(x86_title_ui);
+    uc_close(m68k_title_ui);
     free(runtime);
     free(plot);
     free(read);
@@ -1629,6 +1850,7 @@ int main(int argc, char **argv)
     free(title);
     free(crop);
     free(palette_nearest);
+    free(title_ui);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
@@ -1637,9 +1859,10 @@ int main(int argc, char **argv)
     printf("native graphics differential: %u plot/read, %u each opaque/"
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
            "%u checker-control-flow, %u title-page-control-flow, %u "
-           "title-crop-control-flow, and %u palette-nearest cases passed\n",
+           "title-crop-control-flow, %u palette-nearest, and %u "
+           "title-UI-control-flow cases passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
            direct_plot_cases, checker_cases, title_cases, crop_cases,
-           palette_cases);
+           palette_cases, title_ui_cases);
     return 0;
 }

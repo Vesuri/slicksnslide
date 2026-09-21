@@ -18,8 +18,8 @@ LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_planar_blit.o obj/sgfx_planar_subrect_blit.o \
-	obj/sgfx_title_pages.o obj/sgfx_title_crop.o obj/basic_frame.o \
-	obj/native_bridge.o
+	obj/sgfx_title_pages.o obj/sgfx_title_crop.o obj/sutil_palette_nearest.o \
+	obj/sui_title_step.o obj/basic_frame.o obj/native_bridge.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
 FRAME_HASH = a4fc8a1cbea08a30
@@ -58,6 +58,12 @@ obj/sgfx_title_pages.o: $(REPO)/native/sgfx_title_pages.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_title_crop.o: $(REPO)/native/sgfx_title_crop.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sutil_palette_nearest.o: $(REPO)/native/sutil_palette_nearest.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sui_title_step.o: $(REPO)/native/sui_title_step.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/basic-frame.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \

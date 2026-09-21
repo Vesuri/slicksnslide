@@ -1,8 +1,11 @@
 	section	code
 	xdef	slicks_draw_title_pages
 	xref	sgfx_title_pages
-	xref	sgfx_title_crop
+	xref	sui_title_step
 	xref	slicks_basic_frame
+	xref	slicks_basic_palette
+	xref	slicks_title_counter
+	xref	slicks_title_third_color
 
 ; Temporary C-platform bridge. The translated/native side uses the register
 ; ABI directly; this wrapper preserves the Amiga GCC callee-saved registers.
@@ -15,7 +18,10 @@ slicks_draw_title_pages:
 	moveq	#0,d6
 	jsr	sgfx_title_pages
 	lea	slicks_basic_frame,a1
+	lea	slicks_basic_palette,a2
+	lea	slicks_title_counter,a3
+	lea	slicks_title_third_color,a4
 	moveq	#0,d7
-	jsr	sgfx_title_crop
+	jsr	sui_title_step
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

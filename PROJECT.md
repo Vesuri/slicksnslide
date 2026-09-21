@@ -171,8 +171,8 @@ checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
-callers and the palette utility, the complete native differential gate now
-covers 4,667 cases. Linked into the A1200 diagnostic, the translated checker
+callers, palette utility, and composed UI prefix, the complete native
+differential gate now covers 4,923 cases. Linked into the A1200 diagnostic, the translated checker
 block produced a repeatable
 post-display checksum of `86bdc061` across fresh FS-UAE
 boots. The target check also exposed and fixed the first platform ABI issue:
@@ -195,6 +195,12 @@ The surrounding routine's helper at `26EAEh` is now identified as a
 nearest-colour palette search and translated directly to 68020. Its 512-case
 differential exposed and preserved the original's asymmetric component
 handling: requested bytes are sign-extended, while palette bytes are unsigned.
+The native `sui_title_step` now composes that helper with the animation-counter
+arithmetic and title crop for the complete observed `19653h..19718h` prefix.
+All 256 possible initial counter bytes agree with the original relocated x86
+caller across its live colour outputs, counter and stored-colour mutations,
+preserved registers, and four-plane framebuffer. This composed step executes
+in the strict A1200 diagnostic without changing its `87956515` frame checksum.
 
 ## Intended pipeline
 
@@ -247,7 +253,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Translate the surrounding BASIC-path UI update logic before and after the
-proved title-page and crop submissions. In parallel, extend the native
-differential corpus to remap, fill, clear, and mode-setup boundaries and expand
-trace coverage beyond BASIC.SS.
+Translate the four-entry text/object loop beginning at `19719h`, using the live
+colour outputs from `sui_title_step`. In parallel, extend the native differential
+corpus to remap, fill, clear, and mode-setup boundaries and expand trace coverage
+beyond BASIC.SS.
