@@ -73,6 +73,16 @@ states with the complete four-plane destination compared after every call.
 The direct plot helper passes 512 states spanning all four caller-selected
 planes.
 
+`sgfx_span_fill` translates the live half-open rectangle filler at `29E35h`.
+It receives signed `x0,y0,x1,y1` in `d0.w-d3.w`, the byte value in `d4.b`,
+the guest page base in `d5.w`, the stride in `d6.w`, and the four-plane store
+in `a0`. The native loop makes the VGA sequencer's boundary masks explicit by
+selecting plane `x & 3` for each logical pixel while retaining the original
+16-bit wrapped row address. Empty and reversed signed ranges perform no writes.
+It preserves `d0-d7/a0-a6` at the temporary platform boundary and passes 256
+whole-framebuffer differential cases against the original multi-plane VGA
+writes.
+
 `sgfx_title_pages` is the first translated caller from the observed BASIC.SS
 path. It corresponds to runtime offsets `195F0h..19639h` and invokes
 `sgfx_planar_blit` twice at `(0,0)`, preserving the source pointer between the

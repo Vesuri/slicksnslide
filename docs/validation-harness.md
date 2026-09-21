@@ -36,7 +36,10 @@ composed title UI prefix adds 256 cases covering every initial animation
 counter value and its complete caller/callee graph. The colour-slot helper adds
 512 cases spanning every signed low-byte slot twice, including in-range,
 out-of-range, and fallback mutations with endian-sensitive word results. The
-complete native differential corpus currently contains 5,435 cases.
+native span filler adds another 256 whole-framebuffer cases covering all
+four boundary phases, empty rectangles, both observed page bases, and the
+original multi-plane VGA write masks. The complete native differential corpus
+currently contains 5,691 cases.
 
 ## Program behavior
 

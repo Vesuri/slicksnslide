@@ -171,11 +171,11 @@ checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
-callers, palette utility, composed UI prefix, and UI colour-slot helper, the
-complete native differential gate now covers 5,435 cases. Linked into the A1200
-diagnostic, the translated checker block produced a repeatable post-display
-checksum of `86bdc061` across fresh FS-UAE boots. The target check also exposed
-and fixed the first platform ABI issue:
+callers, palette utility, composed UI prefix, UI colour-slot helper, and native
+span filler, the complete differential gate now covers 5,691 cases. Linked into
+the A1200 diagnostic, the translated checker block produced a repeatable
+post-display checksum of `86bdc061` across fresh FS-UAE boots. The target check
+also exposed and fixed the first platform ABI issue:
 callee-saved M68k registers must survive the temporary C/display boundary.
 
 Call-time primitive instrumentation now records caller offsets, exact planar

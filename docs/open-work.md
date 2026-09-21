@@ -14,7 +14,8 @@
    the opaque and transparent sprite blitters pass 256 whole-plane cases each.
    Readback passes another 256 whole-segment cases, and sub-rectangle copy
    passes 256 whole-plane cases. The direct plotter passes 512 cases across all
-   four caller-selected planes. Next are the remapper, fills, clear, and
+   four caller-selected planes, and the half-open span filler passes 256
+   whole-framebuffer cases. Next are the remapper, remaining fills, clear, and
    mode-setup boundaries. Dynamic range and buffer checks already cover those
    routines. The rectangular span-fill layout is statically recovered and
    traced, but the BASIC.SS fixture makes no calls; another mode must supply its

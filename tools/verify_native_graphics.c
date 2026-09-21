@@ -53,6 +53,8 @@ enum {
     x86_title_third_color_address = 0x3e1f0,
     x86_color_slot_start = 0x2fe63,
     x86_color_slot_stop = 0x2feae,
+    x86_span_fill_start = 0x39f35,
+    x86_span_fill_stop = 0x39fb7,
     x86_relocated_stride_address = 0x3e96b,
     x86_screen_base_address = 0x3e977,
     m68k_code_base = 0x1000,
@@ -71,6 +73,7 @@ typedef struct {
     int graphics_index;
     int bad_port_value;
     uint8_t *planes;
+    uint8_t write_mask;
 } VgaPortState;
 
 static void fail_uc(const char *operation, const uc_err error)
@@ -136,9 +139,10 @@ static void hook_x86_out(uc_engine *uc, uint32_t port, int size,
     }
     if (size == 1 && port == 0x3c5 && state->sequencer_index == 2) {
         const uint32_t plane = plane_from_mask((uint8_t)value);
-        if (plane == UINT32_MAX)
+        state->write_mask = (uint8_t)value & 0x0fu;
+        if (!state->write_mask)
             state->bad_port_value = 1;
-        else
+        else if (plane != UINT32_MAX)
             state->plane = (int)plane;
         return;
     }
@@ -170,9 +174,10 @@ static void hook_x86_out(uc_engine *uc, uint32_t port, int size,
     const uint8_t data = (uint8_t)(value >> 8);
     if (port == 0x3c4 && index == 2) {
         const uint32_t plane = plane_from_mask(data);
-        if (plane == UINT32_MAX)
+        state->write_mask = data & 0x0fu;
+        if (!state->write_mask)
             state->bad_port_value = 1;
-        else
+        else if (plane != UINT32_MAX)
             state->plane = (int)plane;
     } else if (port == 0x3ce && index == 4) {
         if (data > 3)
@@ -191,16 +196,20 @@ static void hook_x86_vga_write(uc_engine *uc, uc_mem_type type,
     (void)uc;
     (void)type;
     VgaPortState *state = user_data;
-    if (!state->planes || state->plane < 0 || state->plane > 3 ||
+    if (!state->planes || !state->write_mask ||
         (size != 1 && size != 2) || address < x86_vga_base ||
         address + (uint64_t)size > x86_vga_base + x86_vga_size) {
         state->bad_port_value = 1;
         return;
     }
     const size_t offset = (size_t)(address - x86_vga_base);
-    for (int i = 0; i < size; ++i)
-        state->planes[(size_t)state->plane * x86_vga_size + offset + (size_t)i] =
-            (uint8_t)((uint64_t)value >> (8 * i));
+    for (unsigned plane = 0; plane < 4; ++plane) {
+        if (!(state->write_mask & (1u << plane)))
+            continue;
+        for (int i = 0; i < size; ++i)
+            state->planes[plane * x86_vga_size + offset + (size_t)i] =
+                (uint8_t)((uint64_t)value >> (8 * i));
+    }
 }
 
 static uc_engine *open_x86(const uint8_t *runtime)
@@ -347,6 +356,7 @@ static void reset_x86_hook(uc_engine *uc, VgaPortState *state, uc_hook *hook)
     state->sequencer_index = -1;
     state->graphics_index = -1;
     state->bad_port_value = 0;
+    state->write_mask = 0;
     if (*hook)
         check_uc("delete OUT hook", uc_hook_del(uc, *hook));
     check_uc("add OUT hook",
@@ -366,7 +376,7 @@ static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
         m68k_plane_base + expected_plane * 0x10000u + offset;
     const uint64_t x86_address = x86_vga_base + offset;
     const uint8_t sentinel = (uint8_t)(pixel ^ 0xa5u);
-    VgaPortState ports = {-1, -1, -1, 0, NULL};
+    VgaPortState ports = {-1, -1, -1, 0, NULL, 0};
     uc_hook hook = 0;
 
     check_uc("seed x86 plot byte", uc_mem_write(x86_plot, x86_address,
@@ -513,7 +523,7 @@ static void run_blit_case(uc_engine *x86, uc_engine *m68k,
     const uint16_t arguments[] = {x, y, x86_source_offset,
                                   x86_source_segment, screen_base};
     prepare_x86_stack(x86, arguments, 5, 0x3a90);
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
     uc_hook out_hook = 0;
     uc_hook memory_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
@@ -630,7 +640,7 @@ static void run_title_pages_case(
     uint16_t relocated_data_segment = 0x3cbf;
     check_uc("write relocated title DS",
              uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
     uc_hook out_hook = 0;
     uc_hook memory_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
@@ -765,7 +775,7 @@ static void run_title_crop_case(
     uint16_t relocated_data_segment = 0x3cbf;
     check_uc("write relocated title crop DS",
              uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
     uc_hook out_hook = 0;
     uc_hook memory_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
@@ -997,7 +1007,7 @@ static void run_title_ui_case(
     uint16_t relocated_data_segment = 0x3cbf;
     check_uc("write relocated UI DS",
              uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
     uc_hook out_hook = 0;
     uc_hook memory_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
@@ -1291,7 +1301,7 @@ static void run_readback_case(uc_engine *x86, uc_engine *m68k,
     const uint16_t arguments[] = {x, y, width, height, x86_source_offset,
                                   x86_source_segment, screen_base};
     prepare_x86_stack(x86, arguments, 7, 0x3a90);
-    VgaPortState ports = {-1, -1, -1, 0, planes};
+    VgaPortState ports = {-1, -1, -1, 0, planes, 0};
     uc_hook out_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
     check_uc("run x86 readback",
@@ -1393,7 +1403,7 @@ static void run_subrect_case(
         x86_source_offset, x86_source_segment, screen_base,
     };
     prepare_x86_stack(x86, arguments, 9, 0x3b8d);
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
     uc_hook out_hook = 0;
     uc_hook memory_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
@@ -1536,7 +1546,7 @@ static void run_checker_case(
     uint16_t relocated_data_segment = 0x3cbf;
     check_uc("write relocated checker DS",
              uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
     uc_hook out_hook = 0;
     uc_hook memory_hook = 0;
     reset_x86_hook(x86, &ports, &out_hook);
@@ -1602,14 +1612,108 @@ static void run_checker_case(
     }
 }
 
+static void run_span_fill_case(
+    uc_engine *x86, uc_engine *m68k, const size_t m68k_code_size,
+    const uint16_t x0, const uint16_t y0, const uint16_t x1,
+    const uint16_t y1, const uint8_t value, const uint16_t screen_base,
+    const unsigned case_number, uint8_t *expected_planes,
+    uint8_t *actual_planes)
+{
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 29u + (i >> 16) * 61u + case_number * 17u);
+    check_uc("seed native span planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+
+    const uint16_t arguments[] = {x0, y0, x1, y1, value, screen_base};
+    prepare_x86_stack(x86, arguments, 6, 0x3000);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write relocated span DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add span VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 span fill",
+             uc_emu_start(x86, x86_span_fill_start, x86_span_fill_stop,
+                          0, 0));
+    check_uc("delete span OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete span VGA hook", uc_hook_del(x86, memory_hook));
+
+    const uint32_t values[] = {
+        0x11110000u | x0, 0x22220000u | y0, 0x33330000u | x1,
+        0x44440000u | y1, 0x55550000u | value,
+        0x66660000u | screen_base, 0x77770064u, 0x88888888u,
+        m68k_plane_base, 0x11111111u, 0x22222222u, 0x33333333u,
+        0x44444444u, 0x55555555u, 0x66666666u,
+    };
+    const int registers[] = {
+        UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0,
+        UC_M68K_REG_A1, UC_M68K_REG_A2, UC_M68K_REG_A3,
+        UC_M68K_REG_A4, UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write span register",
+                 uc_reg_write(m68k, registers[i], &values[i]));
+    uint32_t native_stack = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write span A7",
+             uc_reg_write(m68k, UC_M68K_REG_A7, &native_stack));
+    check_uc("run m68k span fill",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i) {
+        uint32_t actual = 0;
+        check_uc("read span preserved register",
+                 uc_reg_read(m68k, registers[i], &actual));
+        if (actual != values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = actual;
+        }
+    }
+    check_uc("read native span planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value || bad_preserved_register >= 0 ||
+        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "span case %u failed: (%04x,%04x)-(%04x,%04x) "
+                "value=%02x base=%04x mask=%02x preserved=%d/%08x",
+                case_number, x0, y0, x1, y1, value, screen_base,
+                ports.write_mask, bad_preserved_register,
+                bad_register_value);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 15) {
+    if (argc != 16) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
                 "checker-fill.bin title-pages.bin title-crop.bin "
-                "palette-nearest.bin title-ui-step.bin color-slot.bin\n",
+                "palette-nearest.bin title-ui-step.bin color-slot.bin "
+                "span-fill.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1627,6 +1731,7 @@ int main(int argc, char **argv)
     size_t palette_nearest_bytes = 0;
     size_t title_ui_bytes = 0;
     size_t color_slot_bytes = 0;
+    size_t span_fill_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -1642,6 +1747,7 @@ int main(int argc, char **argv)
         read_file(argv[12], &palette_nearest_bytes);
     uint8_t *title_ui = read_file(argv[13], &title_ui_bytes);
     uint8_t *color_slot = read_file(argv[14], &color_slot_bytes);
+    uint8_t *span_fill = read_file(argv[15], &span_fill_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
@@ -1649,6 +1755,7 @@ int main(int argc, char **argv)
         title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
         crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
         palette_nearest_bytes < 4 || color_slot_bytes < 4 ||
+        span_fill_bytes < 4 ||
         title_ui_bytes <= palette_nearest_bytes + crop_bytes ||
         memcmp(title_ui, palette_nearest, palette_nearest_bytes) ||
         memcmp(title_ui + palette_nearest_bytes, crop, crop_bytes)) {
@@ -1684,6 +1791,8 @@ int main(int argc, char **argv)
     uc_engine *m68k_title_ui = open_m68k(title_ui, title_ui_bytes);
     uc_engine *x86_color_slot = open_x86_relocated(runtime);
     uc_engine *m68k_color_slot = open_m68k(color_slot, color_slot_bytes);
+    uc_engine *x86_span_fill = open_x86_relocated(runtime);
+    uc_engine *m68k_span_fill = open_m68k(span_fill, span_fill_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -1747,6 +1856,34 @@ int main(int argc, char **argv)
             x86_color_slot, m68k_color_slot, color_slot_bytes,
             replacement, slot_word, count, fallback, color_slot_cases++,
             expected_color_state, actual_color_state);
+    }
+
+    static const struct {
+        uint16_t x0, y0, x1, y1;
+    } span_edges[] = {
+        {0, 0, 1, 1},       {1, 2, 8, 7},
+        {2, 3, 11, 9},      {3, 4, 16, 12},
+        {10, 10, 10, 20},   {20, 30, 10, 40},
+        {4, 6, 17, 6},      {319, 199, 320, 200},
+    };
+    unsigned span_fill_cases = 0;
+    for (unsigned i = 0; i < 256; ++i) {
+        uint16_t x0 = (uint16_t)(next_random() % 300u);
+        uint16_t y0 = (uint16_t)(next_random() % 180u);
+        uint16_t x1 = (uint16_t)(x0 + next_random() % (321u - x0));
+        uint16_t y1 = (uint16_t)(y0 + next_random() % (201u - y0));
+        if (i < sizeof(span_edges) / sizeof(span_edges[0])) {
+            x0 = span_edges[i].x0;
+            y0 = span_edges[i].y0;
+            x1 = span_edges[i].x1;
+            y1 = span_edges[i].y1;
+        }
+        const uint8_t value = (uint8_t)next_random();
+        const uint16_t page = (i & 1u) ? 0x7fbcu : 0;
+        run_span_fill_case(x86_span_fill, m68k_span_fill, span_fill_bytes,
+                           x0, y0, x1, y1, value, page,
+                           span_fill_cases++, expected_planes,
+                           actual_planes);
     }
 
     static const struct {
@@ -1984,6 +2121,8 @@ int main(int argc, char **argv)
     uc_close(m68k_title_ui);
     uc_close(x86_color_slot);
     uc_close(m68k_color_slot);
+    uc_close(x86_span_fill);
+    uc_close(m68k_span_fill);
     free(runtime);
     free(plot);
     free(read);
@@ -1998,6 +2137,7 @@ int main(int argc, char **argv)
     free(palette_nearest);
     free(title_ui);
     free(color_slot);
+    free(span_fill);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
@@ -2007,9 +2147,11 @@ int main(int argc, char **argv)
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
            "%u checker-control-flow, %u title-page-control-flow, %u "
            "title-crop-control-flow, %u palette-nearest, %u "
-           "title-UI-control-flow, and %u color-slot cases passed\n",
+           "title-UI-control-flow, %u color-slot, and %u span-fill cases "
+           "passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
            direct_plot_cases, checker_cases, title_cases, crop_cases,
-           palette_cases, title_ui_cases, color_slot_cases);
+           palette_cases, title_ui_cases, color_slot_cases,
+           span_fill_cases);
     return 0;
 }
