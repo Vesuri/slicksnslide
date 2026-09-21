@@ -85,6 +85,15 @@ width, including the traced width 400 that establishes stride 100. The native
 mode setup now runs in the A1200 diagnostic instead of relying on cleared
 allocation memory to stand in for VGA initialization.
 
+`sutil_fill_bytes` translates the portable semantics of the Borland far-memory
+fill helper at `00D9Fh`: a 16-bit byte count and the low byte of the value are
+written to a bounded destination. The 68020 implementation aligns once and
+uses repeated longword stores before its byte tail. It passes 256 complete
+64 KiB buffer comparisons, including zero count, odd destinations, all tail
+lengths, and the observed 65,535-byte maximum. Calls targeting VGA or text
+memory remain classified at their callers because those destinations have
+hardware semantics beyond an ordinary flat byte fill.
+
 The genuine race-entry trace adds one screen-transition call whose
 `source_y + height` exceeds the declared sprite height. That DOS call relies
 on 16-bit source-offset wrap and remains a separate compatibility case rather

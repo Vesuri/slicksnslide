@@ -240,6 +240,17 @@ build/verify_mode_setup: tools/verify_mode_setup.c
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
 
+build/sutil_fill_bytes.bin: tools/sutil_fill_bytes_test.s \
+		native/sutil_fill_bytes.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
+build/verify_fill_bytes: tools/verify_fill_bytes.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
+		$< -lunicorn -o $@
+
 build/sui_bevel.bin: tools/sui_bevel_test.s native/sui_bevel.s \
 		native/sutil_palette_nearest.s native/sgfx_span_fill.s
 	@mkdir -p build
@@ -285,6 +296,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_span_fill.bin build/sgfx_remap_copy.bin \
 		build/sgfx_clear_full.bin build/verify_clear_full \
 		build/sgfx_mode_setup.bin build/verify_mode_setup \
+		build/sutil_fill_bytes.bin build/verify_fill_bytes \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
@@ -303,6 +315,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 	build/verify_clear_full disasm/runtime.bin build/sgfx_clear_full.bin
 	build/verify_mode_setup disasm/runtime.bin build/sgfx_clear_full.bin \
 		build/sgfx_mode_setup.bin
+	build/verify_fill_bytes disasm/runtime.bin build/sutil_fill_bytes.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

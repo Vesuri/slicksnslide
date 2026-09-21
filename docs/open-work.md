@@ -31,8 +31,9 @@
    whole-framebuffer cases, and the composed title-wrapper tail passes 256
    state-and-palette cases. The remapper now passes 256 whole-framebuffer
    cases; the full-plane clear and observed mode-zero setup are native,
-   whole-framebuffer tested, and active in the A1200 path; next are the
-   remaining fill boundaries. The corrected race trace exposed one screen-transition
+   whole-framebuffer tested, and active in the A1200 path. The shared far-byte
+   fill's portable RAM semantics are native; its VGA and text-memory call sites
+   remain caller-level platform boundaries. The corrected race trace exposed one screen-transition
    sub-rectangle call (`source_y=105`, `height=150`, declared height `200`) that
    crosses the declared sprite and relies on 16-bit DOS offset wrap; either
    translate that caller at a higher level or add a circular 64-KiB source
