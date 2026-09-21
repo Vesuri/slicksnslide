@@ -30,7 +30,8 @@
    four caller-selected planes, and the half-open span filler passes 256
    whole-framebuffer cases, and the composed title-wrapper tail passes 256
    state-and-palette cases. The remapper now passes 256 whole-framebuffer
-   cases; next are the remaining fills, clear, and mode-setup boundaries. The corrected race trace exposed one screen-transition
+   cases; the full-plane clear is native and whole-framebuffer tested; next are
+   the remaining fills and mode-setup boundary. The corrected race trace exposed one screen-transition
    sub-rectangle call (`source_y=105`, `height=150`, declared height `200`) that
    crosses the declared sprite and relies on 16-bit DOS offset wrap; either
    translate that caller at a higher level or add a circular 64-KiB source

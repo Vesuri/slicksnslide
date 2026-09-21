@@ -218,6 +218,17 @@ build/sgfx_remap_copy.bin: native/sgfx_remap_copy.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sgfx_clear_full.bin: tools/sgfx_clear_full_test.s \
+		native/sgfx_clear_full.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
+build/verify_clear_full: tools/verify_clear_full.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
+		$< -lunicorn -o $@
+
 build/sui_bevel.bin: tools/sui_bevel_test.s native/sui_bevel.s \
 		native/sutil_palette_nearest.s native/sgfx_span_fill.s
 	@mkdir -p build
@@ -261,6 +272,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sui_title_dispatch.bin build/verify_title_dispatch \
 		build/sgame_post_title_init.bin build/verify_post_title_init \
 		build/sgfx_span_fill.bin build/sgfx_remap_copy.bin \
+		build/sgfx_clear_full.bin build/verify_clear_full \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
@@ -276,6 +288,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 	build/verify_title_dispatch build/sui_title_dispatch.bin
 	build/verify_post_title_init disasm/runtime.bin \
 		build/sgame_post_title_init.bin
+	build/verify_clear_full disasm/runtime.bin build/sgfx_clear_full.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

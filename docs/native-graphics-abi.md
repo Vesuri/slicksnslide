@@ -68,6 +68,13 @@ four-plane store while preserving all data and address registers. The native
 routine passes 256 complete four-plane comparisons against the relocated x86
 implementation.
 
+`sgfx_clear_full` replaces the VGA clear at `2AD92h`. The original enables all
+four write planes, waits across a vertical-retrace edge, and clears the 64 KiB
+VGA aperture. The native routine removes the hardware-only wait and clears the
+four consecutive 64 KiB logical banks directly. Four differential cases seed
+and compare the complete 256 KiB store while also checking the original port
+sequence, retrace polling, and native register preservation.
+
 The genuine race-entry trace adds one screen-transition call whose
 `source_y + height` exceeds the declared sprite height. That DOS call relies
 on 16-bit source-offset wrap and remains a separate compatibility case rather

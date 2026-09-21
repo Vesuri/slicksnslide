@@ -173,7 +173,9 @@ renderer state directly rather than reproduce VGA register programming.
 mode setup. It enables all four VGA planes, waits across a vertical-retrace
 edge, and zeroes the full 64 KiB aperture. The native equivalent is a page or
 buffer clear plus whatever presentation synchronization the Amiga renderer
-chooses; the polling loop is not part of the portable semantic contract.
+chooses; the polling loop is not part of the portable semantic contract. That
+native boundary is now implemented as a direct clear of the four-bank 256 KiB
+logical store and differential-tested against the original whole framebuffer.
 
 Three sprite-buffer routines also have stable far-cdecl layouts.
 `live_vga_planar_blit(x, y, source_far, screen_base)` and
