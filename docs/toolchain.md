@@ -55,6 +55,9 @@ make analyze-execution-trace \
 make unpack        # execute only Compack and capture its handoff image/state
 make rebuild-mz    # reverse relocations and build a normalized local MZ
 make verify-runtime # compare the Unicorn and independent emulator captures
+make verify-native-graphics \
+  # assemble native 68020 graphics cores and differentially run original x86
+  # and new M68k bytes in independent Unicorn engines
 make trace-summary # summarize the bounded DOSBox-X DOS/file trace
 make ghidra        # regenerate the local 16-bit Ghidra listing
 make ghidra-normalized # analyze the proved, relocation-normalized MZ

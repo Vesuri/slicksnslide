@@ -14,6 +14,7 @@ LIVE_ENTRYPOINTS ?= disasm/live-entrypoints.csv
 LIVE_VGA_SITES ?= disasm/live-vga-sites.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
+VASM ?= $(HOME)/.local/vasmm68k_mot
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export JAVA_HOME
 export PATH := $(JAVA_HOME)/bin:$(PATH)
@@ -32,7 +33,7 @@ ABS_ROOT := $(abspath .)
 	reference-frame-hash verify-reference-race verify-execution-trace \
 	verify-interrupt-trace verify-port-trace analyze-execution-trace \
 	verify-memory-trace verify-primitive-trace analyze-vga-sites unpack rebuild-mz \
-	verify-runtime trace-summary \
+	verify-runtime verify-native-graphics trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	todo clean
 
@@ -144,6 +145,25 @@ verify-runtime: rebuild-mz
 		disasm/runtime-relocations.csv $(REFERENCE_CAPTURE)-normalized.bin
 	cmp disasm/runtime-normalized.bin $(REFERENCE_CAPTURE)-normalized.bin
 	@echo "independent normalized runtime: byte-exact match"
+
+build/sgfx_plot_plane.bin: native/sgfx_plot_plane.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/sgfx_read_pixel.bin: native/sgfx_read_pixel.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_native_graphics: tools/verify_native_graphics.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
+		$< -lunicorn -o $@
+
+verify-native-graphics: unpack build/sgfx_plot_plane.bin \
+		build/sgfx_read_pixel.bin build/verify_native_graphics
+	build/verify_native_graphics disasm/runtime.bin \
+		build/sgfx_plot_plane.bin build/sgfx_read_pixel.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

@@ -143,6 +143,12 @@ than general instruction-level optimization. The two-word mode-setup call
 selects mode 0 with a 400-pixel virtual width, producing the observed
 100-byte stride and 32,700-byte page separation.
 
+The first production-language replacements now exist as Motorola-syntax 68020
+assembly with a register ABI and no CPU-context traffic. The native
+plane-selected plot and read routines pass 2,040 deterministic differential
+cases against the original unpacked x86 bodies in separate Unicorn x86-16 and
+68020 engines, including arbitrary 16-bit wrap cases and VGA plane selection.
+
 ## Intended pipeline
 
 ```text
@@ -192,7 +198,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Define the native 68020 graphics ABI from the recovered VGA contracts and
-implement the first assembly replacement corpus around the hot pixel,
-sprite-blit, and readback boundaries. Continue expanding trace coverage beyond
-BASIC.SS to distinguish common engine code from track- and mode-specific paths.
+Extend the proved native 68020 graphics ABI and differential corpus from the
+completed hot pixel helpers to the opaque/transparent sprite blits and
+readback boundaries. Continue expanding trace coverage beyond BASIC.SS to
+distinguish common engine code from track- and mode-specific paths.
