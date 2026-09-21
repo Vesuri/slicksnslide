@@ -68,4 +68,6 @@ so no original game bytes are committed.
 
 The diagnostic still does not enter the original game loop. The next vertical
 slice is the surrounding UI update logic before and after these proved native
-graphics submissions, beginning with the four-entry loop at `19719h`.
+graphics submissions, beginning with the six-entry loop at `19719h` (indices 0
+through 6, skipping 4). Its colour-slot mutation dependency at `1FD63h` is
+already translated and differentially proved.

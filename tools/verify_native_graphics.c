@@ -51,6 +51,8 @@ enum {
     x86_title_palette_address = 0x43da8,
     x86_title_counter_address = 0x4373e,
     x86_title_third_color_address = 0x3e1f0,
+    x86_color_slot_start = 0x2fe63,
+    x86_color_slot_stop = 0x2feae,
     x86_relocated_stride_address = 0x3e96b,
     x86_screen_base_address = 0x3e977,
     m68k_code_base = 0x1000,
@@ -1118,6 +1120,129 @@ static void run_title_ui_case(
     }
 }
 
+static void run_color_slot_case(
+    uc_engine *x86, uc_engine *m68k, const size_t m68k_code_size,
+    const uint8_t replacement, const uint16_t slot_word,
+    const uint8_t count, const uint16_t fallback,
+    const unsigned case_number, uint8_t expected_state[256],
+    uint8_t actual_state[256])
+{
+    for (size_t i = 0; i < 256; ++i)
+        expected_state[i] =
+            (uint8_t)(i * 47u + case_number * 31u + (i >> 2) * 7u);
+    expected_state[5] = count;
+    check_uc("write x86 colour state",
+             uc_mem_write(x86, x86_source_base + x86_source_offset,
+                          expected_state, 256));
+    check_uc("write native colour state",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset,
+                          expected_state, 256));
+    uint8_t word[2];
+    write_le16(word, fallback);
+    check_uc("write x86 fallback colour",
+             uc_mem_write(x86, x86_title_third_color_address, word, 2));
+
+    const uint16_t arguments[] = {replacement, x86_source_offset,
+                                  x86_source_segment, slot_word};
+    prepare_x86_stack(x86, arguments, 4, 0x2fe0);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write relocated colour-slot DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    check_uc("run x86 colour slot",
+             uc_emu_start(x86, x86_color_slot_start, x86_color_slot_stop,
+                          0, 0));
+    uint16_t x86_ax = 0;
+    check_uc("read x86 colour result",
+             uc_reg_read(x86, UC_X86_REG_AX, &x86_ax));
+    check_uc("read x86 colour state",
+             uc_mem_read(x86, x86_source_base + x86_source_offset,
+                         expected_state, 256));
+    uint8_t x86_fallback_bytes[2];
+    check_uc("read x86 fallback colour",
+             uc_mem_read(x86, x86_title_third_color_address,
+                         x86_fallback_bytes, 2));
+    const uint16_t x86_fallback =
+        (uint16_t)(x86_fallback_bytes[0] | (x86_fallback_bytes[1] << 8));
+
+    const uint32_t native_fallback_address =
+        m68k_source_base + m68k_source_size - 0x100;
+    const uint8_t native_fallback_seed[2] = {
+        (uint8_t)(fallback >> 8), (uint8_t)fallback,
+    };
+    check_uc("write native fallback colour",
+             uc_mem_write(m68k, native_fallback_address,
+                          native_fallback_seed, 2));
+    const uint32_t values[] = {
+        0x11110000u | replacement, 0x22220000u | slot_word,
+        0x33333333u, 0x44444444u, 0x55555555u, 0x66666666u,
+        0x77777777u, 0x12121212u, 0x23232323u,
+        m68k_source_base + x86_source_offset, native_fallback_address,
+        0x34343434u, 0x45454545u, 0x56565656u, 0x67676767u,
+    };
+    const int registers[] = {
+        UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0,
+        UC_M68K_REG_A1, UC_M68K_REG_A2, UC_M68K_REG_A3,
+        UC_M68K_REG_A4, UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write colour-slot register",
+                 uc_reg_write(m68k, registers[i], &values[i]));
+    uint32_t native_stack = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write colour-slot A7",
+             uc_reg_write(m68k, UC_M68K_REG_A7, &native_stack));
+    check_uc("run m68k colour slot",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+    uint32_t native_d0 = 0;
+    check_uc("read native colour result",
+             uc_reg_read(m68k, UC_M68K_REG_D0, &native_d0));
+    check_uc("read native colour state",
+             uc_mem_read(m68k, m68k_source_base + x86_source_offset,
+                         actual_state, 256));
+    uint8_t native_fallback_bytes[2];
+    check_uc("read native fallback colour",
+             uc_mem_read(m68k, native_fallback_address,
+                         native_fallback_bytes, 2));
+    const uint16_t native_fallback =
+        (uint16_t)((native_fallback_bytes[0] << 8) |
+                   native_fallback_bytes[1]);
+
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 1; i < sizeof(registers) / sizeof(registers[0]); ++i) {
+        uint32_t value = 0;
+        check_uc("read colour-slot preserved register",
+                 uc_reg_read(m68k, registers[i], &value));
+        if (value != values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = value;
+        }
+    }
+    if ((uint8_t)x86_ax != native_d0 || x86_fallback != native_fallback ||
+        bad_preserved_register >= 0 ||
+        memcmp(expected_state, actual_state, 256) != 0) {
+        size_t difference = 0;
+        while (difference < 256 &&
+               expected_state[difference] == actual_state[difference])
+            ++difference;
+        fprintf(stderr,
+                "colour slot case %u failed: replacement=%02x slot=%04x "
+                "count=%02x old=%02x/%08x fallback=%04x/%04x "
+                "preserved=%d/%08x",
+                case_number, replacement, slot_word, count, (uint8_t)x86_ax,
+                native_d0, x86_fallback, native_fallback,
+                bad_preserved_register, bad_register_value);
+        if (difference < 256)
+            fprintf(stderr, " difference offset=%02zx x86=%02x m68k=%02x",
+                    difference, expected_state[difference],
+                    actual_state[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 static void prepare_m68k_readback(uc_engine *uc, const uint16_t x,
                                   const uint16_t y, const uint16_t width,
                                   const uint8_t height,
@@ -1479,12 +1604,12 @@ static void run_checker_case(
 
 int main(int argc, char **argv)
 {
-    if (argc != 14) {
+    if (argc != 15) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
                 "checker-fill.bin title-pages.bin title-crop.bin "
-                "palette-nearest.bin title-ui-step.bin\n",
+                "palette-nearest.bin title-ui-step.bin color-slot.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1501,6 +1626,7 @@ int main(int argc, char **argv)
     size_t crop_bytes = 0;
     size_t palette_nearest_bytes = 0;
     size_t title_ui_bytes = 0;
+    size_t color_slot_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -1515,13 +1641,14 @@ int main(int argc, char **argv)
     uint8_t *palette_nearest =
         read_file(argv[12], &palette_nearest_bytes);
     uint8_t *title_ui = read_file(argv[13], &title_ui_bytes);
+    uint8_t *color_slot = read_file(argv[14], &color_slot_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
         checker_bytes <= plot_bytes || memcmp(checker, plot, plot_bytes) ||
         title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
         crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
-        palette_nearest_bytes < 4 ||
+        palette_nearest_bytes < 4 || color_slot_bytes < 4 ||
         title_ui_bytes <= palette_nearest_bytes + crop_bytes ||
         memcmp(title_ui, palette_nearest, palette_nearest_bytes) ||
         memcmp(title_ui + palette_nearest_bytes, crop, crop_bytes)) {
@@ -1555,6 +1682,8 @@ int main(int argc, char **argv)
         open_m68k(palette_nearest, palette_nearest_bytes);
     uc_engine *x86_title_ui = open_x86_relocated(runtime);
     uc_engine *m68k_title_ui = open_m68k(title_ui, title_ui_bytes);
+    uc_engine *x86_color_slot = open_x86_relocated(runtime);
+    uc_engine *m68k_color_slot = open_m68k(color_slot, color_slot_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -1603,6 +1732,21 @@ int main(int argc, char **argv)
             x86_title_ui, m68k_title_ui, title_ui_entry, title_ui_bytes,
             (uint8_t)i, page, title_ui_cases++, expected_planes,
             actual_planes, sprite, palette);
+    }
+
+    uint8_t expected_color_state[256];
+    uint8_t actual_color_state[256];
+    unsigned color_slot_cases = 0;
+    for (unsigned i = 0; i < 512; ++i) {
+        const uint8_t replacement = (uint8_t)next_random();
+        const uint16_t slot_word =
+            (uint16_t)((next_random() & 0xff00u) | (uint8_t)i);
+        const uint8_t count = (uint8_t)next_random();
+        const uint16_t fallback = (uint16_t)next_random();
+        run_color_slot_case(
+            x86_color_slot, m68k_color_slot, color_slot_bytes,
+            replacement, slot_word, count, fallback, color_slot_cases++,
+            expected_color_state, actual_color_state);
     }
 
     static const struct {
@@ -1838,6 +1982,8 @@ int main(int argc, char **argv)
     uc_close(m68k_palette);
     uc_close(x86_title_ui);
     uc_close(m68k_title_ui);
+    uc_close(x86_color_slot);
+    uc_close(m68k_color_slot);
     free(runtime);
     free(plot);
     free(read);
@@ -1851,6 +1997,7 @@ int main(int argc, char **argv)
     free(crop);
     free(palette_nearest);
     free(title_ui);
+    free(color_slot);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
@@ -1859,10 +2006,10 @@ int main(int argc, char **argv)
     printf("native graphics differential: %u plot/read, %u each opaque/"
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
            "%u checker-control-flow, %u title-page-control-flow, %u "
-           "title-crop-control-flow, %u palette-nearest, and %u "
-           "title-UI-control-flow cases passed\n",
+           "title-crop-control-flow, %u palette-nearest, %u "
+           "title-UI-control-flow, and %u color-slot cases passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
            direct_plot_cases, checker_cases, title_cases, crop_cases,
-           palette_cases, title_ui_cases);
+           palette_cases, title_ui_cases, color_slot_cases);
     return 0;
 }

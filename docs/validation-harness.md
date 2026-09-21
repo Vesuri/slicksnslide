@@ -33,8 +33,10 @@ Composed caller/callee tests add 33 title-page and 34 title-crop cases. The
 palette nearest-colour utility adds 512 cases, including high requested bytes
 that expose the original's asymmetric signed/unsigned component handling. The
 composed title UI prefix adds 256 cases covering every initial animation
-counter value and its complete caller/callee graph. The complete native
-differential corpus currently contains 4,923 cases.
+counter value and its complete caller/callee graph. The colour-slot helper adds
+512 cases spanning every signed low-byte slot twice, including in-range,
+out-of-range, and fallback mutations with endian-sensitive word results. The
+complete native differential corpus currently contains 5,435 cases.
 
 ## Program behavior
 

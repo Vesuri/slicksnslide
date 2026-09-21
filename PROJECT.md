@@ -171,11 +171,11 @@ checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
-callers, palette utility, and composed UI prefix, the complete native
-differential gate now covers 4,923 cases. Linked into the A1200 diagnostic, the translated checker
-block produced a repeatable
-post-display checksum of `86bdc061` across fresh FS-UAE
-boots. The target check also exposed and fixed the first platform ABI issue:
+callers, palette utility, composed UI prefix, and UI colour-slot helper, the
+complete native differential gate now covers 5,435 cases. Linked into the A1200
+diagnostic, the translated checker block produced a repeatable post-display
+checksum of `86bdc061` across fresh FS-UAE boots. The target check also exposed
+and fixed the first platform ABI issue:
 callee-saved M68k registers must survive the temporary C/display boundary.
 
 Call-time primitive instrumentation now records caller offsets, exact planar
@@ -253,7 +253,8 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Translate the four-entry text/object loop beginning at `19719h`, using the live
-colour outputs from `sui_title_step`. In parallel, extend the native differential
+Translate the six-entry text/object loop beginning at `19719h` (indices 0
+through 6, skipping 4), using the live colour outputs from `sui_title_step` and
+the proved `sui_color_slot` helper. In parallel, extend the native differential
 corpus to remap, fill, clear, and mode-setup boundaries and expand trace coverage
 beyond BASIC.SS.

@@ -112,6 +112,18 @@ relocated x86 prefix and native caller/callees for every possible initial
 counter byte, comparing all live outputs, both memory results, register
 preservation, and all four logical VGA planes.
 
+`sui_color_slot` translates the compact state mutation helper at `1FD63h`.
+It receives the render/font state in `a1`, the fallback colour word in `a2`,
+the replacement byte in `d0.b`, and the signed low byte of the slot argument in
+`d1.b`. Nonnegative slots return the previous byte at state offset `6 + slot`
+and replace it only when the slot is below the unsigned count at offset 5.
+Negative slots instead return the low byte of the fallback word and store the
+replacement sign-extended to 16 bits. The native implementation accounts for
+that low byte residing at `1(a2)` on the big-endian 68020 and preserves
+`d1-d7/a0-a6`. All 256 possible low-byte slot values are exercised twice in
+512 differential cases, including out-of-range slots and both replacement
+signs.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this
