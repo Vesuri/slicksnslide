@@ -27,6 +27,8 @@ and wrapped starting offsets. A further 256 readback states compare the full
 and untouched bytes surrounding the result. Another 256 sub-rectangle states
 compare all four destination planes across source cropping, independent source
 and destination row strides, phase rotation, and 16-bit destination wrap.
+The direct plot boundary adds 512 states across all four explicit native write
+planes, checking the original byte effect and native live-register contract.
 
 ## Program behavior
 

@@ -26,6 +26,11 @@ Common register contract:
 `sgfx_plot_plane` writes `d2.b` to plane `d0.w & 3` at the low 16 bits
 of `d3.w + d1.w * d4.w + (d0.w >> 2)`.
 
+`sgfx_plot` implements the adjacent helper whose VGA write plane was selected
+by its caller. The native ABI makes that implicit hardware state explicit in
+`d5.w`; all other inputs and the wrapped address calculation match
+`sgfx_plot_plane`. It preserves `d0-d5` and `a0`, clobbering only `d6-d7`.
+
 `sgfx_read_pixel` reads the same location and returns a zero-extended byte in
 `d0.l`. Both routines deliberately preserve the 286's unsigned logical shift
 and 16-bit address wrap. They do not load or store an emulated CPU structure.
@@ -65,3 +70,5 @@ passes 256 states with the complete four-plane 256 KiB destination compared
 after every call. Readback passes 256 states with its complete 64 KiB
 destination segment compared after every call. Sub-rectangle copy passes 256
 states with the complete four-plane destination compared after every call.
+The direct plot helper passes 512 states spanning all four caller-selected
+planes.

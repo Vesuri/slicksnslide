@@ -154,6 +154,8 @@ comparison. Native readback passes 256 more whole-segment cases covering its
 header, rotated payloads, right-edge padding, and untouched destination bytes.
 The sub-rectangle sprite copy passes 256 whole-plane cases, including the
 observed `100 x 97` crop and randomized source/destination offsets and strides.
+The direct plot helper passes another 512 cases with its formerly implicit VGA
+write plane made explicit in the native register ABI.
 
 ## Intended pipeline
 
@@ -205,6 +207,6 @@ amiga/                 build, run, debug, and diagnostic scripts
 ## Immediate next step
 
 Extend the proved native 68020 graphics ABI and differential corpus from the
-completed hot pixel and sprite-buffer helpers to the direct plot, remap, fill,
-clear, and mode-setup boundaries. Continue expanding trace coverage beyond
-BASIC.SS to distinguish common engine code from track- and mode-specific paths.
+completed pixel and sprite-buffer helpers to the remap, fill, clear, and
+mode-setup boundaries. Continue expanding trace coverage beyond BASIC.SS to
+distinguish common engine code from track- and mode-specific paths.

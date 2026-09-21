@@ -5,11 +5,12 @@
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;
    the opaque and transparent sprite blitters pass 256 whole-plane cases each.
    Readback passes another 256 whole-segment cases, and sub-rectangle copy
-   passes 256 whole-plane cases. Next are the direct plotter, remapper, fills,
-   clear, and mode-setup boundaries. Dynamic range and buffer checks already
-   cover those routines. The rectangular span-fill layout is statically
-   recovered and traced, but the BASIC.SS fixture makes no calls; another mode
-   must supply its dynamic range checks.
+   passes 256 whole-plane cases. The direct plotter passes 512 cases across all
+   four caller-selected planes. Next are the remapper, fills, clear, and
+   mode-setup boundaries. Dynamic range and buffer checks already cover those
+   routines. The rectangular span-fill layout is statically recovered and
+   traced, but the BASIC.SS fixture makes no calls; another mode must supply its
+   dynamic range checks.
 2. Turn the captured DOS/BIOS, port, and 16-writer VGA-memory inventories into
    service and native drawing-replacement contracts. The BASIC path has no
    writes overlapping executed instruction bytes; extend that proof to other

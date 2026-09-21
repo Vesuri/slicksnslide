@@ -29,6 +29,8 @@ enum {
     x86_readback_stop = 0x3ab81,
     x86_subrect_start = 0x3b8de,
     x86_subrect_stop = 0x3b9b0,
+    x86_direct_plot_start = 0x3b40a,
+    x86_direct_plot_stop = 0x3b42a,
     x86_plot_start = 0x3b45e,
     x86_plot_stop = 0x3b48d,
     x86_read_start = 0x3b48e,
@@ -698,12 +700,62 @@ static void run_subrect_case(
     }
 }
 
+static void run_direct_plot_case(uc_engine *x86, uc_engine *m68k,
+                                 const size_t m68k_code_size,
+                                 const uint16_t x, const uint16_t y,
+                                 const uint8_t pixel,
+                                 const uint16_t screen_base,
+                                 const uint16_t plane,
+                                 const unsigned case_number)
+{
+    const uint16_t offset = guest_offset(x, y, screen_base);
+    const uint64_t x86_address = x86_vga_base + offset;
+    const uint64_t native_address =
+        m68k_plane_base + (plane & 3u) * x86_vga_size + offset;
+    const uint8_t sentinel = (uint8_t)(pixel ^ 0x5au);
+    check_uc("seed x86 direct plot", uc_mem_write(x86, x86_address,
+                                                   &sentinel, 1));
+    check_uc("seed native direct plot", uc_mem_write(m68k, native_address,
+                                                       &sentinel, 1));
+    const uint16_t arguments[] = {x, y, pixel, screen_base};
+    prepare_x86_stack(x86, arguments, 4, 0x3b3f);
+    check_uc("run x86 direct plot",
+             uc_emu_start(x86, x86_direct_plot_start, x86_direct_plot_stop,
+                          0, 0));
+
+    prepare_m68k(m68k, x, y, pixel, screen_base);
+    uint32_t native_plane = 0x66660000u | plane;
+    check_uc("write direct plot D5",
+             uc_reg_write(m68k, UC_M68K_REG_D5, &native_plane));
+    check_uc("run m68k direct plot",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+    uint8_t x86_result = 0;
+    uint8_t native_result = 0;
+    check_uc("read x86 direct plot",
+             uc_mem_read(x86, x86_address, &x86_result, 1));
+    check_uc("read native direct plot",
+             uc_mem_read(m68k, native_address, &native_result, 1));
+    check_m68k_live_out(m68k, x, y, pixel, screen_base, 0, case_number);
+    check_uc("read direct plot D5",
+             uc_reg_read(m68k, UC_M68K_REG_D5, &native_plane));
+    if (x86_result != pixel || native_result != x86_result ||
+        native_plane != (0x66660000u | plane)) {
+        fprintf(stderr,
+                "direct plot case %u failed: x=%04x y=%04x base=%04x "
+                "plane=%u x86=%02x m68k=%02x D5=%08x\n",
+                case_number, x, y, screen_base, plane, x86_result,
+                native_result, native_plane);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 8) {
+    if (argc != 9) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
-                "transparent.bin readback.bin subrect.bin\n",
+                "transparent.bin readback.bin subrect.bin direct-plot.bin\n",
                 argv[0]);
         return 2;
     }
@@ -714,6 +766,7 @@ int main(int argc, char **argv)
     size_t transparent_bytes = 0;
     size_t readback_bytes = 0;
     size_t subrect_bytes = 0;
+    size_t direct_plot_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -721,9 +774,10 @@ int main(int argc, char **argv)
     uint8_t *transparent = read_file(argv[5], &transparent_bytes);
     uint8_t *readback = read_file(argv[6], &readback_bytes);
     uint8_t *subrect = read_file(argv[7], &subrect_bytes);
+    uint8_t *direct_plot = read_file(argv[8], &direct_plot_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
-        subrect_bytes < 4) {
+        subrect_bytes < 4 || direct_plot_bytes < 4) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -740,6 +794,9 @@ int main(int argc, char **argv)
     uc_engine *m68k_readback = open_m68k(readback, readback_bytes);
     uc_engine *x86_subrect = open_x86(runtime);
     uc_engine *m68k_subrect = open_m68k(subrect, subrect_bytes);
+    uc_engine *x86_direct_plot = open_x86(runtime);
+    uc_engine *m68k_direct_plot =
+        open_m68k(direct_plot, direct_plot_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -898,6 +955,18 @@ int main(int argc, char **argv)
                          sprite);
     }
 
+    unsigned direct_plot_cases = 0;
+    for (unsigned i = 0; i < 512; ++i) {
+        const uint16_t x = i < 8 ? edge_x[i] : (uint16_t)next_random();
+        const uint16_t y = i < 5 ? edge_y[i] : (uint16_t)next_random();
+        const uint8_t pixel = (uint8_t)next_random();
+        const uint16_t base = (uint16_t)next_random();
+        const uint16_t plane = (uint16_t)(i & 3u);
+        run_direct_plot_case(x86_direct_plot, m68k_direct_plot,
+                             direct_plot_bytes, x, y, pixel, base, plane,
+                             direct_plot_cases++);
+    }
+
     uc_close(x86_plot);
     uc_close(x86_read);
     uc_close(m68k_plot);
@@ -910,6 +979,8 @@ int main(int argc, char **argv)
     uc_close(m68k_readback);
     uc_close(x86_subrect);
     uc_close(m68k_subrect);
+    uc_close(x86_direct_plot);
+    uc_close(m68k_direct_plot);
     free(runtime);
     free(plot);
     free(read);
@@ -917,13 +988,16 @@ int main(int argc, char **argv)
     free(transparent);
     free(readback);
     free(subrect);
+    free(direct_plot);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
     free(x86_destination);
     free(native_destination);
     printf("native graphics differential: %u plot/read, %u each opaque/"
-           "transparent blit, %u readback, and %u subrect cases passed\n",
-           cases, blit_cases, readback_cases, subrect_cases);
+           "transparent blit, %u readback, %u subrect, and %u direct-plot "
+           "cases passed\n",
+           cases, blit_cases, readback_cases, subrect_cases,
+           direct_plot_cases);
     return 0;
 }
