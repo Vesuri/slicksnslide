@@ -39,11 +39,13 @@ out-of-range, and fallback mutations with endian-sensitive word results. The
 native span filler adds another 256 whole-framebuffer cases covering all
 four boundary phases, empty rectangles, both observed page bases, and the
 original multi-plane VGA write masks. The complete native differential corpus
-also includes 64 composed bevel cases spanning the observed title-menu control
+adds 256 whole-framebuffer colour-remap cases covering empty and nonempty
+rectangles, every plane phase, both page-style and wrapped starting offsets,
+and randomized translation tables. It also includes 64 composed bevel cases spanning the observed title-menu control
 and randomized legal geometry, colour, and page states. The shared title tail
 adds 256 composed phase, palette, and render-state cases. The corpus currently
-contains 6,267 x86-versus-68020 cases after adding 256 complete post-title
-four-player state-initialization cases. The adjacent title-loop scan-code
+contains 6,523 x86-versus-68020 cases after adding 256 complete post-title
+four-player state-initialization cases and 256 remap cases. The adjacent title-loop scan-code
 classifier has a separate exhaustive native contract check over all 65,536
 word values; only the eight captured keys may select a nonzero semantic case.
 

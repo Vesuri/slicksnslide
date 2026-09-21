@@ -67,7 +67,7 @@ reference-race: prepare-fixed-reference
 		-conf reference/dosbox-x-286.conf -set "cpu cycles=12000" \
 		-nogui -nomenu -silent -fastlaunch -time-limit 36 \
 		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
-		-c "autotype -w 15 enter" \
+		-c "autotype -w 15 -p 0.2 down enter , enter , enter , esc , up enter" \
 		-c "dx-capture /v /-a /-d slicks.exe"
 
 reference-trace: prepare-fixed-reference
@@ -78,7 +78,7 @@ reference-trace: prepare-fixed-reference
 		-set "cpu cycles=12000" -set "log logfile=basic-trace.log" \
 		-nogui -nomenu -silent -fastlaunch -time-limit 36 \
 		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
-		-c "autotype -w 15 enter" \
+		-c "autotype -w 15 -p 0.2 down enter , enter , enter , esc , up enter" \
 		-c "dx-capture /v /-a /-d slicks.exe"
 
 reference-frame-hash:
@@ -214,6 +214,10 @@ build/sgfx_span_fill.bin: native/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sgfx_remap_copy.bin: native/sgfx_remap_copy.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
 build/sui_bevel.bin: tools/sui_bevel_test.s native/sui_bevel.s \
 		native/sutil_palette_nearest.s native/sgfx_span_fill.s
 	@mkdir -p build
@@ -256,7 +260,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sui_title_tail.bin \
 		build/sui_title_dispatch.bin build/verify_title_dispatch \
 		build/sgame_post_title_init.bin build/verify_post_title_init \
-		build/sgfx_span_fill.bin \
+		build/sgfx_span_fill.bin build/sgfx_remap_copy.bin \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
@@ -267,7 +271,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
 		build/sutil_palette_nearest.bin build/sui_title_step.bin \
 		build/sui_color_slot.bin build/sui_title_tail.bin \
-		build/sgfx_span_fill.bin \
+		build/sgfx_span_fill.bin build/sgfx_remap_copy.bin \
 		build/sui_bevel.bin
 	build/verify_title_dispatch build/sui_title_dispatch.bin
 	build/verify_post_title_init disasm/runtime.bin \

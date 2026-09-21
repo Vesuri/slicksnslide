@@ -34,7 +34,7 @@ make hash          # source identity
 make prepare-reference # make an ignored writable copy of the distribution
 make reference-286 # launch the primary DOSBox-X 286 reference
 make reference-staging # launch the independent 386 comparison
-make reference-race # run a bounded BASIC.SS race with scripted Enter
+make reference-race # add a human player and run a bounded BASIC.SS race
 make reference-trace # same path through the locally built instrumented DOSBox-X
 make reference-frame-hash REFERENCE_VIDEO=tmp/pc-root/capture/slicks_001.avi \
   # hash an RGB24 frame (8 seconds by default)

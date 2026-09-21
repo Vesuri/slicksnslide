@@ -92,13 +92,13 @@ flat 320x200 framebuffer would be insufficient for faithful translation.
 
 ## VGA and runtime memory
 
-The memory tracer aggregates 2,958,705 accesses into 25,193 rows. The observed
-run contains 1,134,378 VGA writes from only 16 instruction sites and 811,478
-VGA reads from five instruction sites. Writes touch 307 distinct 256-byte
-VGA-window buckets; reads touch 193. This small set of source routines is the
+The corrected human-player race trace aggregates 3,442,578 accesses into
+25,419 rows. The observed run contains 1,361,220 VGA writes from only 16
+instruction sites and 842,667 VGA reads from five instruction sites. Writes
+touch 307 distinct 256-byte VGA-window buckets; reads touch all 256. This small set of source routines is the
 natural boundary for native Amiga drawing replacements.
 
-The program also performs 1,012,849 writes to mutable storage within its loaded
+The program also performs 1,238,691 writes to mutable storage within its loaded
 runtime allocation, covering 97 distinct 256-byte pages. A byte-level check
 against every dynamically decoded instruction finds zero writes overlapping
 executed instruction bytes. Thus the measured BASIC path is not

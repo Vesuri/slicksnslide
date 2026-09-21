@@ -10,11 +10,14 @@
    slice at `19828h..199F9h` and shared wrapper suffix at `19E4Ah..19EFEh` now
    run natively. Their common caller and its eight-key dispatch table at
    `1A2B2h..1A2C8h` are recovered; the scan-code classifier now runs natively
-   and the BASIC Enter edge is proved to target `1A3CCh`. Translate the
-   activation case and its six-way menu selection next. The selected-zero
-   path is proved to return zero to `16252h`, and its following 4-by-13 player
-   state initialization at `16272h..162E4h` is native and differential-tested;
-   continue through the remaining post-title setup into the first game frame.
+   and the BASIC Enter edge is proved to target `1A3CCh`. The original
+   one-key reference had no human player and returned to the menu; the corrected
+   script now adds a human player and reaches a sustained BASIC race. Regenerate
+   the trace on that path, then translate the newly observed activation and
+   game-entry blocks. The selected-zero path is proved to return zero to
+   `16252h`, and its following 4-by-13 player state initialization at
+   `16272h..162E4h` is native and differential-tested;
+   continue through the genuine race setup into the first game frame.
    `199FAh` is the alternate, unreached renderer. Recover the original
    font resource to replace the temporary compact 5x7 title and numeric
    vocabulary.
@@ -26,9 +29,13 @@
    passes 256 whole-plane cases. The direct plotter passes 512 cases across all
    four caller-selected planes, and the half-open span filler passes 256
    whole-framebuffer cases, and the composed title-wrapper tail passes 256
-   state-and-palette cases. Next are the remapper, remaining fills, clear, and
-   mode-setup boundaries. Dynamic range and buffer checks already cover those
-   routines. The rectangular span-fill layout is statically recovered and
+   state-and-palette cases. The remapper now passes 256 whole-framebuffer
+   cases; next are the remaining fills, clear, and mode-setup boundaries. The corrected race trace exposed one screen-transition
+   sub-rectangle call (`source_y=105`, `height=150`, declared height `200`) that
+   crosses the declared sprite and relies on 16-bit DOS offset wrap; either
+   translate that caller at a higher level or add a circular 64-KiB source
+   arena before claiming complete sub-rectangle coverage. The remaining
+   dynamic range and buffer checks cover the bounded calls. The rectangular span-fill layout is statically recovered and
    traced, but the BASIC.SS fixture makes no calls; another mode must supply its
    dynamic range checks.
 3. Turn the captured DOS/BIOS, port, and 16-writer VGA-memory inventories into

@@ -267,7 +267,7 @@ def main() -> None:
                 if (source_x >> 2) + width_bytes > source_width:
                     reject("blit source x range outside sprite")
                 if source_y + height > source_height:
-                    reject("blit source y range outside sprite")
+                    note_wrap("subrect source extends past declared sprite height")
                 if (
                     arguments[6] + 2 + 4 * source_width * source_height
                     > 0x10000

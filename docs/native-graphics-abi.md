@@ -61,6 +61,18 @@ offset, while the end of each plane skips the uncopied source rows. Source
 bounds and nonzero dimensions remain caller contracts. The routine preserves
 `a0` and `d4` and clobbers `d0-d3/d5-d7` and `a1-a6`.
 
+`sgfx_remap_copy` translates runtime `24499h..24553h`. It receives a 256-byte
+translation table in `a1`, half-open rectangle coordinates in `d0-d3`, stride
+in `d4`, and page base in `d5`. It replaces every logical pixel through the
+four-plane store while preserving all data and address registers. The native
+routine passes 256 complete four-plane comparisons against the relocated x86
+implementation.
+
+The genuine race-entry trace adds one screen-transition call whose
+`source_y + height` exceeds the declared sprite height. That DOS call relies
+on 16-bit source-offset wrap and remains a separate compatibility case rather
+than part of this helper's bounded-source ABI.
+
 The `verify-native-graphics` gate runs the original unpacked x86 helper bytes
 and these assembled 68020 routines in independent Unicorn engines. It compares
 the VGA plane selected by the original port write, the wrapped address, the
@@ -71,7 +83,7 @@ after every call. Readback passes 256 states with its complete 64 KiB
 destination segment compared after every call. Sub-rectangle copy passes 256
 states with the complete four-plane destination compared after every call.
 The direct plot helper passes 512 states spanning all four caller-selected
-planes.
+planes, and the colour remapper passes 256 whole-framebuffer states.
 
 `sgfx_span_fill` translates the live half-open rectangle filler at `29E35h`.
 It receives signed `x0,y0,x1,y1` in `d0.w-d3.w`, the byte value in `d4.b`,

@@ -55,6 +55,8 @@ enum {
     x86_color_slot_stop = 0x2feae,
     x86_title_tail_start = 0x29f4a,
     x86_title_tail_stop = 0x29fef,
+    x86_remap_start = 0x34599,
+    x86_remap_stop = 0x34653,
     x86_title_phase_address = 0x3dd34,
     x86_title_state_pointer_address = 0x3d270,
     x86_title_optional_text_address = 0x3d21f,
@@ -190,8 +192,14 @@ static void hook_x86_out(uc_engine *uc, uint32_t port, int size,
     } else if (port == 0x3ce && index == 4) {
         if (data > 3)
             state->bad_port_value = 1;
-        else
+        else {
             state->plane = data;
+            if (state->planes &&
+                uc_mem_write(uc, x86_vga_base,
+                             state->planes + data * x86_vga_size,
+                             x86_vga_size) != UC_ERR_OK)
+                state->bad_port_value = 1;
+        }
     } else {
         state->bad_port_value = 1;
     }
@@ -1956,15 +1964,107 @@ static void run_bevel_case(
     }
 }
 
+static void prepare_m68k_remap(
+    uc_engine *uc, const uint16_t x0, const uint16_t y0,
+    const uint16_t x1, const uint16_t y1, const uint16_t screen_base)
+{
+    static const int registers[] = {
+        UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0,
+        UC_M68K_REG_A1,
+    };
+    const uint32_t values[] = {
+        0x11110000u | x0, 0x22220000u | y0,
+        0x33330000u | x1, 0x44440000u | y1,
+        0x55550064u, 0x66660000u | screen_base,
+        0x77777777u, 0x88888888u, m68k_plane_base,
+        m68k_source_base + x86_source_offset,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write remap register",
+                 uc_reg_write(uc, registers[i], &values[i]));
+    uint32_t stack_pointer = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write remap A7",
+             uc_reg_write(uc, UC_M68K_REG_A7, &stack_pointer));
+}
+
+static void run_remap_case(
+    uc_engine *x86, uc_engine *m68k, const size_t m68k_code_size,
+    const uint16_t x0, const uint16_t y0, const uint16_t x1,
+    const uint16_t y1, const uint16_t screen_base,
+    const unsigned case_number, uint8_t *expected_planes,
+    uint8_t *actual_planes)
+{
+    uint8_t table[256];
+    for (size_t i = 0; i < sizeof(table); ++i)
+        table[i] = (uint8_t)(i * 197u + case_number * 29u + 17u);
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 43u + (i >> 16) * 53u + case_number * 17u);
+
+    check_uc("write x86 remap table",
+             uc_mem_write(x86, x86_source_base + x86_source_offset,
+                          table, sizeof(table)));
+    check_uc("write native remap table",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset,
+                          table, sizeof(table)));
+    check_uc("seed native remap planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+
+    const uint16_t arguments[] = {
+        x0, y0, x1, y1, x86_source_offset, x86_source_segment, screen_base,
+    };
+    prepare_x86_stack(x86, arguments, 7, 0x3449);
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add remap VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 remap",
+             uc_emu_start(x86, x86_remap_start, x86_remap_stop, 0, 0));
+    check_uc("delete remap OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete remap VGA hook", uc_hook_del(x86, memory_hook));
+
+    prepare_m68k_remap(m68k, x0, y0, x1, y1, screen_base);
+    check_uc("run m68k remap",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+    check_uc("read native remap planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value ||
+        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "remap case %u failed: rect=%u,%u..%u,%u base=%04x",
+                case_number, x0, y0, x1, y1, screen_base);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 18) {
+    if (argc != 19) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
                 "checker-fill.bin title-pages.bin title-crop.bin "
                 "palette-nearest.bin title-ui-step.bin color-slot.bin "
-                "title-tail.bin span-fill.bin bevel.bin\n",
+                "title-tail.bin span-fill.bin remap.bin bevel.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1984,6 +2084,7 @@ int main(int argc, char **argv)
     size_t color_slot_bytes = 0;
     size_t title_tail_bytes = 0;
     size_t span_fill_bytes = 0;
+    size_t remap_bytes = 0;
     size_t bevel_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
@@ -2002,7 +2103,8 @@ int main(int argc, char **argv)
     uint8_t *color_slot = read_file(argv[14], &color_slot_bytes);
     uint8_t *title_tail = read_file(argv[15], &title_tail_bytes);
     uint8_t *span_fill = read_file(argv[16], &span_fill_bytes);
-    uint8_t *bevel = read_file(argv[17], &bevel_bytes);
+    uint8_t *remap = read_file(argv[17], &remap_bytes);
+    uint8_t *bevel = read_file(argv[18], &bevel_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
@@ -2014,7 +2116,7 @@ int main(int argc, char **argv)
         memcmp(title_tail, palette_nearest, palette_nearest_bytes) ||
         memcmp(title_tail + palette_nearest_bytes,
                color_slot, color_slot_bytes) ||
-        span_fill_bytes < 4 ||
+        span_fill_bytes < 4 || remap_bytes < 4 ||
         bevel_bytes <= palette_nearest_bytes + span_fill_bytes ||
         memcmp(bevel, palette_nearest, palette_nearest_bytes) ||
         memcmp(bevel + palette_nearest_bytes, span_fill, span_fill_bytes) ||
@@ -2040,6 +2142,8 @@ int main(int argc, char **argv)
     uc_engine *x86_direct_plot = open_x86(runtime);
     uc_engine *m68k_direct_plot =
         open_m68k(direct_plot, direct_plot_bytes);
+    uc_engine *x86_remap = open_x86_relocated(runtime);
+    uc_engine *m68k_remap = open_m68k(remap, remap_bytes);
     uc_engine *x86_checker = open_x86_relocated(runtime);
     uc_engine *m68k_checker = open_m68k(checker, checker_bytes);
     uc_engine *x86_title = open_x86_relocated(runtime);
@@ -2405,6 +2509,34 @@ int main(int argc, char **argv)
                              direct_plot_cases++);
     }
 
+    static const struct {
+        uint16_t x0, y0, x1, y1, base;
+    } remap_edges[] = {
+        {0, 0, 320, 9, 0},
+        {0, 191, 320, 200, 0},
+        {118, 89, 295, 100, 0},
+        {7, 12, 8, 13, 0x7fbc},
+        {3, 1, 79, 20, 0xffff},
+    };
+    unsigned remap_cases = 0;
+    for (size_t i = 0; i < sizeof(remap_edges) / sizeof(remap_edges[0]); ++i)
+        run_remap_case(
+            x86_remap, m68k_remap, remap_bytes,
+            remap_edges[i].x0, remap_edges[i].y0,
+            remap_edges[i].x1, remap_edges[i].y1,
+            remap_edges[i].base, remap_cases++, expected_planes,
+            actual_planes);
+    for (unsigned i = 0; i < 251; ++i) {
+        const uint16_t x0 = (uint16_t)(next_random() % 320u);
+        const uint16_t y0 = (uint16_t)(next_random() % 200u);
+        const uint16_t x1 = (uint16_t)(x0 + next_random() % (321u - x0));
+        const uint16_t y1 = (uint16_t)(y0 + next_random() % (201u - y0));
+        const uint16_t base = (uint16_t)next_random();
+        run_remap_case(x86_remap, m68k_remap, remap_bytes,
+                       x0, y0, x1, y1, base, remap_cases++,
+                       expected_planes, actual_planes);
+    }
+
     uc_close(x86_plot);
     uc_close(x86_read);
     uc_close(m68k_plot);
@@ -2419,6 +2551,8 @@ int main(int argc, char **argv)
     uc_close(m68k_subrect);
     uc_close(x86_direct_plot);
     uc_close(m68k_direct_plot);
+    uc_close(x86_remap);
+    uc_close(m68k_remap);
     uc_close(x86_checker);
     uc_close(m68k_checker);
     uc_close(x86_title);
@@ -2453,6 +2587,7 @@ int main(int argc, char **argv)
     free(color_slot);
     free(title_tail);
     free(span_fill);
+    free(remap);
     free(bevel);
     free(expected_planes);
     free(actual_planes);
@@ -2464,11 +2599,11 @@ int main(int argc, char **argv)
            "%u checker-control-flow, %u title-page-control-flow, %u "
            "title-crop-control-flow, %u palette-nearest, %u "
            "title-UI-control-flow, %u color-slot, %u title-tail, %u span-fill, "
-           "and %u bevel cases "
+           "%u remap, and %u bevel cases "
            "passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
            direct_plot_cases, checker_cases, title_cases, crop_cases,
            palette_cases, title_ui_cases, color_slot_cases, title_tail_cases,
-           span_fill_cases, bevel_cases);
+           span_fill_cases, remap_cases, bevel_cases);
     return 0;
 }

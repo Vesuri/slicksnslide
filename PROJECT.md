@@ -172,8 +172,8 @@ trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
 callers, palette utility, composed UI prefix, UI colour-slot helper, native
-span filler, composed bevel, and shared title tail, the complete differential
-gate now covers 6,011 cases. Linked into
+span filler, composed bevel, shared title tail, post-title state block, and
+native remapper, the complete differential gate now covers 6,523 cases. Linked into
 the A1200 diagnostic, the translated checker block produced a repeatable
 post-display checksum of `86bdc061` across fresh FS-UAE boots. The target check
 also exposed and fixed the first platform ABI issue:
@@ -235,7 +235,19 @@ outer caller at `16252h`. The first following state transition is now native:
 region, seeding four player words and rebuilding their 4-by-13 state grid from
 the shared flag vector. Another 256 relocated-x86-versus-68020 cases compare
 all 52 grid words and four seed words, bringing the differential corpus to
-6,267 cases.
+6,267 cases. The original one-key reference was then disproved as a sustained
+race: the distribution starts with three computer opponents and no human
+driver. The corrected deterministic script adds a player before selecting
+`GO !!!`, producing a live BASIC race at three video checkpoints. Its refreshed
+trace covers 23,400 instruction starts and 26,581 transitions with no
+unexplained control-flow edges or writes into executed bytes.
+
+The first graphics boundary added from that corrected trace is now native:
+`sgfx_remap_copy` translates `24499h..24553h` and passes 256 complete
+four-plane x86-versus-68020 comparisons, bringing the corpus to 6,523 cases.
+The same trace exposed one screen-transition sub-rectangle call that exceeds
+its declared source height and relies on 16-bit source-offset wrap; it is
+tracked explicitly rather than admitted into the bounded helper ABI.
 
 ## Intended pipeline
 
@@ -289,9 +301,9 @@ amiga/                 build, run, debug, and diagnostic scripts
 ## Immediate next step
 
 Follow the observed caller continuations at `1A1E3h` and `1A26Fh` now that the
-shared title wrapper is native through its return at `19EFEh`. The renderer at
-`199FAh` remains the alternate, unreached wrapper branch. Recover the original
-Slicks font resource to replace the compact title and numeric vocabulary
-renderer. In parallel, extend the native differential corpus to remap,
-remaining fill, clear, and mode-setup boundaries and expand trace coverage
-beyond BASIC.SS.
+Use the corrected sustained-race trace to recover a vertical race setup and
+frame-update slice, beginning with the live clear/mode boundary and the callers
+of the already-native plot, readback, blit, and remap helpers. Resolve the
+screen-transition call that relies on 16-bit source wrap at caller level.
+Recover the original Slicks font resource to replace the compact title and
+numeric vocabulary renderer.

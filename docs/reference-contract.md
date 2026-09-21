@@ -24,23 +24,27 @@ is explicitly attributed to the CPU-dependent library implementation.
 | R1 | **Proved on 286 and 386:** program requests VGA mode 13h |
 | R2a | **Proved on 286:** stable title framebuffer at video time 8 s |
 | R2b | **Proved on 286:** loading splash reaches the main menu unattended |
-| R3 | **Proved on 286:** delayed Enter selects the sole `BASIC.SS` track |
+| R3 | **Proved on 286:** scripted menu input adds one human player and selects the sole `BASIC.SS` track |
 | R4 | **Proved on 286:** the BASIC race framebuffer advances at three checkpoints |
 
 The R2a 640x400 RGB24 framebuffer hash is
 `a4910f29ea74c8b7a790d7b56ed5eac25b1b870cf642b2d1e0028aac6e37d9cc`.
 Two separate bounded DOSBox-X runs produced it. Later testing showed that this
 is a loading splash, not an input wait. At 12,000 cycles the program reaches the
-main menu unattended, and a delayed Enter starts a race. A disposable reference
-root with only `TRACKS/BASIC.SS` removes the program's random track selection.
+main menu unattended. The distribution defaults to three computer opponents
+and no human player, so pressing Enter on `GO !!!` only performs setup and
+returns to the menu. The deterministic race script opens `PLAYERS`, adds the
+already-highlighted `PLAYER` entry, returns to `GO !!!`, and then starts the
+race. A disposable reference root with only `TRACKS/BASIC.SS` removes the
+program's random track selection.
 
 Two fixed-track runs matched these stable 640x400 RGB24 checks:
 
 - loading splash at 8 s: `ce0b18140fffbf11454f39bed9fc2a278f8ae7269373598932abd8b1f52b95cf`;
-- BASIC selected at 15 s: `cd4fe6bea3852d6a47e99165c8e417d096639234af976f5ab349630c007b3298`;
+- human-player status crop with BASIC ready at 20 s: `00ddb29b4e525e1b3f4194a80e1738b1143ef029bf12ce08210aaf99cd5da8a2`;
 - BASIC label crop during the race: `b2e5e678e8a49ef080739d38ea8470594cfa55925e7ad65eecece4a1b5e023d0`.
 
-Full race frames at 20, 25, and 30 seconds differ within each run, positively
+Full race frames at 25, 28, and 32 seconds differ within each run, positively
 proving simulation advancement. Their complete hashes intentionally are not a
 cross-run gate because AI/timer state diverges slightly.
 

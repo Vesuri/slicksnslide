@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 EXPECTED_SPLASH = "ce0b18140fffbf11454f39bed9fc2a278f8ae7269373598932abd8b1f52b95cf"
-EXPECTED_SELECTED = "cd4fe6bea3852d6a47e99165c8e417d096639234af976f5ab349630c007b3298"
+EXPECTED_PLAYER_READY = "00ddb29b4e525e1b3f4194a80e1738b1143ef029bf12ce08210aaf99cd5da8a2"
 EXPECTED_TRACK_CROP = "b2e5e678e8a49ef080739d38ea8470594cfa55925e7ad65eecece4a1b5e023d0"
 
 
@@ -42,10 +42,14 @@ def main() -> None:
     args = parser.parse_args()
 
     expect("splash", digest(frame(args.video, 8)), EXPECTED_SPLASH)
-    expect("BASIC selected", digest(frame(args.video, 15)), EXPECTED_SELECTED)
+    expect(
+        "human player ready",
+        digest(frame(args.video, 20, "100:30:400:185")),
+        EXPECTED_PLAYER_READY,
+    )
 
     live_hashes = []
-    for seconds in (20, 25, 30):
+    for seconds in (25, 28, 32):
         expect(
             f"BASIC label at {seconds}s",
             digest(frame(args.video, seconds, "80:20:0:380")),
@@ -54,7 +58,7 @@ def main() -> None:
         live_hashes.append(digest(frame(args.video, seconds)))
     if len(set(live_hashes)) != len(live_hashes):
         raise SystemExit("race framebuffer did not advance at every checkpoint")
-    print("race framebuffer advances at 20s, 25s, and 30s")
+    print("race framebuffer advances at 25s, 28s, and 32s")
 
 
 if __name__ == "__main__":
