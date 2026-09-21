@@ -23,14 +23,6 @@ check stops at a named post-display marker and verifies logical checksum
 `37048854` and planar display checksum `bf5d0cbe` after the native title menu
 and status indicators are drawn.
 
-The same executable now crosses the BASIC activation boundary, runs the native
-4-by-13 player-state initializer, and installs the sustained race checkpoint
-captured from the corrected DOS reference. Its indexed frame is regenerated
-from the reference AVI rather than committed as original game data. The frame
-travels through the native VGA-layout blitter, captured race palette, and Kalms
-conversion before the target-side marker verifies logical checksum `625354a5`
-and planar display checksum `32409ea5` on the strict A1200 configuration.
-
 The VGA representation is the unchained 256-colour layout used by the game:
 
 ```text
@@ -55,7 +47,6 @@ make amiga          # build amiga/out/SlicksDiag.exe
 make amiga-run      # show the diagnostic; mouse button or Escape exits
 make amiga-debug    # open the target under the M68k GDB stub
 make amiga-check    # boot it and verify the displayed-frame marker/checksum
-make amiga-ingame-check # verify the title-to-race frame on the target
 ```
 
 `amiga/env.sh` selects the shared toolchain, FS-UAE, and default Kickstart path,
@@ -82,9 +73,7 @@ FNV-1a hash
 `9b17b223ef7f93e3`. The ignored capture bundle is extracted during the build,
 so no original game bytes are committed.
 
-The diagnostic now enters an exact captured race-frame checkpoint, but it does
-not yet execute the original race loop; the displayed cars are not interactive.
-The six-entry loop
+The diagnostic still does not enter the original game loop. The six-entry loop
 at `19719h..19825h` is represented by native bevel and text rendering. The
 observed BASIC-path status slice at `19828h..199F9h` now follows it: four exact
 call-time planar indicator sprites are drawn at their measured positions and
@@ -96,9 +85,6 @@ start-address update to an Amiga no-op. The renderer at `199FAh` is the
 wrapper's alternate, unreached branch. The current 5x7 title and numeric font
 is intentionally compact; replacing it with the recovered original font
 remains a visual-fidelity task.
-
-The next translation boundary is the race setup and its first live update,
-replacing the static checkpoint one subsystem at a time.
 
 The title screen's host input boundary now feeds Amiga raw keys through the
 native eight-key DOS scan-code classifier. Escape/F10 and

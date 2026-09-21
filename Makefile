@@ -35,7 +35,7 @@ ABS_ROOT := $(abspath .)
 	verify-memory-trace verify-primitive-trace analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
-	amiga amiga-run amiga-debug amiga-check amiga-ingame-check todo clean
+	amiga amiga-run amiga-debug amiga-check todo clean
 
 inspect:
 	$(PYTHON) tools/mz_info.py $(SOURCE)
@@ -331,9 +331,6 @@ amiga-debug: amiga
 
 amiga-check: amiga
 	cd amiga && . ./env.sh && ./diag_run.sh
-
-amiga-ingame-check: amiga
-	cd amiga && . ./env.sh && ./diag_ingame_run.sh
 
 ghidra: unpack
 	@mkdir -p tools/ghidra-proj

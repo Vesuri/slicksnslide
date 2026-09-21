@@ -17,10 +17,7 @@
    game-entry blocks. The selected-zero path is proved to return zero to
    `16252h`, and its following 4-by-13 player state initialization at
    `16272h..162E4h` is native and differential-tested;
-   The A1200 build now crosses that activation boundary and displays an exact
-   sustained-race checkpoint through the native VGA blitter, captured palette,
-   and Kalms conversion. Continue through the genuine race setup and first live
-   update so the checkpoint becomes an executing, interactive race loop.
+   continue through the genuine race setup into the first game frame.
    `199FAh` is the alternate, unreached renderer. Recover the original
    font resource to replace the temporary compact 5x7 title and numeric
    vocabulary.
