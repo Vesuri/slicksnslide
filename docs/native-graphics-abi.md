@@ -148,6 +148,15 @@ is currently a compact native 5x7 renderer for that vocabulary. It deliberately
 avoids a guest CPU or C rendering layer, but it is not yet the original Slicks
 font; recovering and using that font resource remains a visual-fidelity item.
 
+`sui_title_status` covers the observed BASIC-path continuation at
+`19828h..199F9h`. Trace arguments prove four active indicator slots with signs
+`-,+,+,+`, at `(205,99)`, `(213,100)`, `(221,99)`, and `(229,100)`. The two
+FNV-identified 2-byte-by-8-row planar sprites are copied by the already proved
+transparent blitter. Direct instrumentation of the decimal renderer proves
+that both overlaid counters have value `1`, at `(219,112)` with centred style 6
+and `(222,114)` with left style 4. Execution edges prove all three optional
+badge branches are inactive for the bounded BASIC path.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

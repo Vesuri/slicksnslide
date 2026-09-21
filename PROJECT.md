@@ -207,6 +207,12 @@ that prefix on target: its exact bevel geometry is differentially proved, and
 a native 5x7 renderer places all six resolved English labels. Two fresh A1200
 boots produced the new post-menu checksum `c61a023d`. The compact font is an
 intermediate native subsystem replacement; original-font recovery remains.
+The following observed BASIC-path status cluster at `19828h..199F9h` is also
+native. Extended call tracing proves the four live indicator signs and exact
+sprite hashes, both decimal values (`1`), their positions and styles, and the
+absence of all three optional badges. The Amiga build extracts the two measured
+2-byte-by-8-row sprite blobs by hash and composes them with the transparent
+blitter; the strict target checksum is now `37048854`.
 
 ## Intended pipeline
 
@@ -259,8 +265,8 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Continue the observed UI routine at `19828h`, after the now-native six-entry
-title-menu loop. Recover the original Slicks font resource to replace the
-compact title vocabulary renderer. In parallel, extend the native differential
-corpus to remap, remaining fill, clear, and mode-setup boundaries and expand
-trace coverage beyond BASIC.SS.
+Continue the observed UI routine at `19AFAh`, after the now-native title menu
+and BASIC-path status cluster. Recover the original Slicks font resource to
+replace the compact title and numeric vocabulary renderer. In parallel, extend
+the native differential corpus to remap, remaining fill, clear, and mode-setup
+boundaries and expand trace coverage beyond BASIC.SS.

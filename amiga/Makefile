@@ -18,14 +18,18 @@ LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
-	obj/sgfx_planar_blit.o obj/sgfx_planar_subrect_blit.o \
+	obj/sgfx_planar_blit.o obj/sgfx_transparent_blit.o \
+	obj/sgfx_planar_subrect_blit.o \
 	obj/sgfx_title_pages.o obj/sgfx_title_crop.o obj/sutil_palette_nearest.o \
 	obj/sui_title_step.o obj/sui_bevel.o obj/sui_text.o \
-	obj/sui_title_menu.o obj/basic_frame.o obj/native_bridge.o
+	obj/sui_title_menu.o obj/sui_title_status.o obj/basic_frame.o \
+	obj/status_assets.o obj/native_bridge.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
 FRAME_HASH = a4fc8a1cbea08a30
 PALETTE_HASH = 9b17b223ef7f93e3
+STATUS_NEGATIVE_HASH = e53a541be078bfa2
+STATUS_POSITIVE_HASH = fa4dd06703f903a8
 
 .PHONY: all clean
 
@@ -50,6 +54,9 @@ obj/sgfx_checker_fill.o: $(REPO)/native/sgfx_checker_fill.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_planar_blit.o: $(REPO)/native/sgfx_planar_blit.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgfx_transparent_blit.o: $(REPO)/native/sgfx_transparent_blit.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_planar_subrect_blit.o: \
@@ -80,6 +87,9 @@ obj/sui_text.o: $(REPO)/native/sui_text.s | obj
 obj/sui_title_menu.o: $(REPO)/native/sui_title_menu.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
+obj/sui_title_status.o: $(REPO)/native/sui_title_status.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
 obj/basic-frame.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \
 		$(CAPTURE_DIR)/slicks-sprite-blobs.bin \
 		$(REPO)/tools/extract_capture_blob.py | obj
@@ -94,7 +104,25 @@ obj/basic-palette.bin: $(CAPTURE_DIR)/slicks-palettes.csv \
 		$(CAPTURE_DIR)/slicks-palettes.csv \
 		$(CAPTURE_DIR)/slicks-palettes.bin $(PALETTE_HASH) $@
 
+obj/status-negative.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.bin \
+		$(REPO)/tools/extract_capture_blob.py | obj
+	$(PYTHON) $(REPO)/tools/extract_capture_blob.py \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.csv \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.bin $(STATUS_NEGATIVE_HASH) $@
+
+obj/status-positive.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.bin \
+		$(REPO)/tools/extract_capture_blob.py | obj
+	$(PYTHON) $(REPO)/tools/extract_capture_blob.py \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.csv \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.bin $(STATUS_POSITIVE_HASH) $@
+
 obj/basic_frame.o: basic_frame.s obj/basic-frame.bin obj/basic-palette.bin | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/status_assets.o: status_assets.s obj/status-negative.bin \
+		obj/status-positive.bin | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/native_bridge.o: native_bridge.s | obj

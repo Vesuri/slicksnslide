@@ -12,6 +12,13 @@ TARGETS = {
         "far_fill",
         ("destination_offset", "destination_segment", "count", "value_word"),
     ),
+    0x201B6: (
+        "draw_number",
+        (
+            "x", "y", "value", "state_offset", "state_segment", "style",
+            "screen_base",
+        ),
+    ),
     0x24499: (
         "vga_remap_copy",
         (
@@ -64,7 +71,7 @@ TARGETS = {
 # This exported primitive is not reached by the bounded BASIC.SS race, but it
 # remains instrumented so other modes can add coverage without rebuilding.
 OPTIONAL_TARGETS = {0x29E35}
-STRIDE_FREE_TARGETS = {0x00D9F, 0x2AD92, 0x2ADB7}
+STRIDE_FREE_TARGETS = {0x00D9F, 0x201B6, 0x2AD92, 0x2ADB7}
 
 
 def number(value: str) -> int:
@@ -95,18 +102,21 @@ def main() -> None:
     violation_calls: Counter[str] = Counter()
     wraps: Counter[str] = Counter()
     wrap_calls: Counter[str] = Counter()
+    title_number_calls: set[tuple[int, ...]] = set()
+    title_status_sprites: set[tuple[int, int, int]] = set()
 
     with args.trace.open(newline="") as source:
         reader = csv.DictReader(source)
         required = {
-            "target", "name", *(f"arg{i}" for i in range(9)), "count",
-            "stride", "source_width", "source_height",
+            "target", "caller", "name", *(f"arg{i}" for i in range(9)),
+            "count", "stride", "source_width", "source_height", "source_hash",
         }
         missing = required.difference(reader.fieldnames or ())
         if missing:
             raise SystemExit(f"missing columns: {', '.join(sorted(missing))}")
         for row in reader:
             target = number(row["target"])
+            caller = number(row["caller"])
             if target not in TARGETS:
                 raise SystemExit(f"unknown primitive target 0x{target:05x}")
             expected_name, arg_names = TARGETS[target]
@@ -131,6 +141,13 @@ def main() -> None:
                 strides[target] = Counter()
             for seen, value in zip(values[target], arguments):
                 seen.add(value)
+
+            if target == 0x201B6 and caller in (0x19922, 0x19954):
+                title_number_calls.add((caller, *arguments))
+            if target == 0x2A97C and caller == 0x1E400:
+                title_status_sprites.add(
+                    (arguments[0], arguments[1], int(row["source_hash"], 16))
+                )
 
             stride = number(row["stride"])
             if target not in STRIDE_FREE_TARGETS:
@@ -270,6 +287,23 @@ def main() -> None:
     if missing_targets:
         rendered = ", ".join(f"0x{target:05x}" for target in sorted(missing_targets))
         raise SystemExit(f"missing primitive targets: {rendered}")
+
+    expected_title_numbers = {
+        (0x19922, 219, 112, 1, 4, 0x3EA4, 6, 0),
+        (0x19922, 219, 112, 1, 4, 0x3EA4, 6, 0x7FBC),
+        (0x19954, 222, 114, 1, 4, 0x3EA4, 4, 0),
+        (0x19954, 222, 114, 1, 4, 0x3EA4, 4, 0x7FBC),
+    }
+    if not expected_title_numbers.issubset(title_number_calls):
+        raise SystemExit("missing observed BASIC title numeric calls")
+    expected_title_sprites = {
+        (205, 99, 0xE53A541BE078BFA2),
+        (213, 100, 0xFA4DD06703F903A8),
+        (221, 99, 0xFA4DD06703F903A8),
+        (229, 100, 0xFA4DD06703F903A8),
+    }
+    if not expected_title_sprites.issubset(title_status_sprites):
+        raise SystemExit("missing observed BASIC title status sprites")
 
     for target in sorted(OPTIONAL_TARGETS.difference(rows_by_target)):
         print(f"0x{target:05x} {TARGETS[target][0]}: not observed")

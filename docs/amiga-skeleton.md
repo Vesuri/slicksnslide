@@ -15,7 +15,7 @@ through the native opaque blitter to both original VGA pages. The platform
 shell converts the visible page to eight Amiga bitplanes, installs the captured
 256-colour VGA palette, opens a 320 by 200 AGA screen, and displays the result.
 The target-side GDB check stops at a named post-display marker and verifies
-checksum `c61a023d` after the native title menu is drawn.
+checksum `37048854` after the native title menu and status indicators are drawn.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -66,9 +66,11 @@ FNV-1a hash
 `9b17b223ef7f93e3`. The ignored capture bundle is extracted during the build,
 so no original game bytes are committed.
 
-The diagnostic still does not enter the original game loop. The next vertical
-slice begins with the post-menu state and drawing logic at `19828h`. The
-six-entry loop at `19719h..19825h` is now represented by native bevel and text
-rendering and runs on the strict A1200/2 MiB target. Its current 5x7 title font
-is intentionally compact; replacing it with the recovered original font is a
-remaining visual-fidelity task.
+The diagnostic still does not enter the original game loop. The six-entry loop
+at `19719h..19825h` is represented by native bevel and text rendering. The
+observed BASIC-path status slice at `19828h..199F9h` now follows it: four exact
+call-time planar indicator sprites are drawn at their measured positions and
+the two measured counters both show `1`; the three conditional badge branches
+are proved inactive on this path. The next vertical slice begins at `19AFAh`.
+The current 5x7 title and numeric font is intentionally compact; replacing it
+with the recovered original font remains a visual-fidelity task.
