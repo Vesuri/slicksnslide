@@ -1,8 +1,9 @@
 # Open work
 
 1. Recover calling signatures and semantic contracts for the remaining
-   live-named VGA functions. `live_vga_planar_subrect_blit` and `live_vga_plot`
-   now have stack layouts, measured ranges, and bounds checks.
+   live-named VGA functions. The sub-rectangle blitter and three pixel helpers
+   now have stack layouts; the first two also have measured ranges and bounds
+   checks.
 2. Turn the captured DOS/BIOS, port, and 15-writer VGA-memory inventories into
    service and native drawing-replacement contracts. The BASIC path has no
    writes overlapping executed instruction bytes; extend that proof to other

@@ -133,6 +133,13 @@ caller. `live_vga_plot(x, y, value, screen_base)` computes
 this helper. A measured run made 144,812 calls with stride 100, x `5..313`, y
 `49..198`, 42 byte values, and screen bases 0 and 32,700.
 
+The adjacent helpers have equally direct contracts. `live_vga_plot_plane(x,
+y, value, screen_base)` takes the same four words, selects sequencer plane
+`x & 3`, and writes the byte. `live_vga_read_pixel(x, y, screen_base)` takes
+three words, selects graphics-controller read plane `x & 3`, and returns the
+zero-extended byte in AX. Static callers clean eight and six argument bytes,
+respectively, confirming far cdecl.
+
 `live_vga_planar_subrect_blit(dest_x, dest_y, source_x, source_y, width,
 height, source_far, screen_base)` receives nine 16-bit stack words. The source
 starts with byte-width and height bytes, followed by four planes. One bounded
