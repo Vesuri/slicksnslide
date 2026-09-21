@@ -1,8 +1,9 @@
 # Open work
 
-1. Decode the captured BASIC.SS instruction starts/transitions into blocks and
-   classify fall-through, direct, and indirect edges.
-2. Extend the DOSBox-X trace with DOS/BIOS calls, ports, video memory, and
+1. Materialize the 3,014 conservative live entry candidates as basic blocks
+   and seed them into the normalized Ghidra project.
+2. Extend the DOSBox-X trace with interrupt vectors (including proof of the
+   `27A24h` and `26D29h` entries), DOS/BIOS calls, ports, video memory, and
    executable writes on the 286-class reference CPU.
 3. Replace wall/video-time input with a guest-state-triggered Enter event.
 4. Define a compact application-state signature for race checkpoints so dynamic

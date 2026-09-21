@@ -87,6 +87,15 @@ observed 22,671 starts and 25,742 transitions. Of the shorter run's starts,
 overlapped. Live race timing changes total coverage, so these files are
 validated coverage evidence rather than fixed-hash golden outputs.
 
+Capstone decodes every one of the shorter trace's 15,099 executed starts. Its
+16,753 transitions comprise 13,346 fall-throughs, 37 repeat iterations, 801
+call edges (16 indirect), 1,049 jump edges (2 indirect), 1,189 returns, and
+331 unexplained non-sequential transfers. Of the latter, 329 converge on
+offset `27A24h` and two on `26D29h`; the many unrelated source instructions
+make these strong asynchronous-interrupt-entry candidates. Explicit interrupt
+instrumentation must prove that interpretation. The current conservative live
+seed set contains 3,014 possible basic-block entries.
+
 ## Intended pipeline
 
 ```text

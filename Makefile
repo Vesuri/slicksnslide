@@ -6,6 +6,7 @@ REFERENCE_FIXED_ROOT ?= tmp/pc-fixed
 REFERENCE_RACE_VIDEO ?=
 REFERENCE_TRACE_BITMAP ?= $(REFERENCE_FIXED_ROOT)/slicks-executed.bin
 REFERENCE_TRACE_EDGES ?= $(REFERENCE_FIXED_ROOT)/slicks-edges.csv
+LIVE_ENTRYPOINTS ?= disasm/live-entrypoints.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
@@ -24,7 +25,7 @@ ABS_ROOT := $(abspath .)
 .PHONY: inspect hash prepare-reference prepare-fixed-reference \
 	reference-staging reference-286 reference-race reference-trace \
 	reference-frame-hash verify-reference-race verify-execution-trace \
-	unpack rebuild-mz verify-runtime trace-summary \
+	analyze-execution-trace unpack rebuild-mz verify-runtime trace-summary \
 	ghidra ghidra-normalized \
 	todo clean
 
@@ -86,6 +87,11 @@ verify-reference-race:
 verify-execution-trace:
 	$(PYTHON) tools/summarize_execution_trace.py \
 		$(REFERENCE_TRACE_BITMAP) $(REFERENCE_TRACE_EDGES)
+
+analyze-execution-trace: verify-execution-trace unpack
+	$(PYTHON) tools/analyze_execution_trace.py disasm/runtime.bin \
+		$(REFERENCE_TRACE_BITMAP) $(REFERENCE_TRACE_EDGES) \
+		--entries $(LIVE_ENTRYPOINTS)
 
 build/unpack_compack: tools/unpack_compack.c
 	@mkdir -p build
