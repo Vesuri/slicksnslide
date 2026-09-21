@@ -71,6 +71,8 @@ at `19719h..19825h` is represented by native bevel and text rendering. The
 observed BASIC-path status slice at `19828h..199F9h` now follows it: four exact
 call-time planar indicator sprites are drawn at their measured positions and
 the two measured counters both show `1`; the three conditional badge branches
-are proved inactive on this path. The next vertical slice begins at `19AFAh`.
-The current 5x7 title and numeric font is intentionally compact; replacing it
-with the recovered original font remains a visual-fidelity task.
+are proved inactive on this path. Control returns to the observed shared update
+suffix at `19E4Ah`; the renderer at `199FAh` is the wrapper's alternate,
+unreached branch. The current 5x7 title and numeric font is intentionally
+compact; replacing it with the recovered original font remains a
+visual-fidelity task.

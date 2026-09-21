@@ -265,8 +265,9 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Continue the observed UI routine at `19AFAh`, after the now-native title menu
-and BASIC-path status cluster. Recover the original Slicks font resource to
-replace the compact title and numeric vocabulary renderer. In parallel, extend
-the native differential corpus to remap, remaining fill, clear, and mode-setup
-boundaries and expand trace coverage beyond BASIC.SS.
+Continue the observed shared UI suffix at `19E4Ah`, after the now-native title
+menu and BASIC-path status cluster. The renderer at `199FAh` is the alternate,
+unreached branch selected by the same wrapper. Recover the original Slicks font
+resource to replace the compact title and numeric vocabulary renderer. In
+parallel, extend the native differential corpus to remap, remaining fill,
+clear, and mode-setup boundaries and expand trace coverage beyond BASIC.SS.
