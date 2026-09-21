@@ -1,0 +1,236 @@
+diff --git a/src/cpu/core_normal.cpp b/src/cpu/core_normal.cpp
+index 26d9f49..88c1a06 100644
+--- a/src/cpu/core_normal.cpp
++++ b/src/cpu/core_normal.cpp
+@@ -24,6 +24,12 @@
+ #include "paging.h"
+ #include "mmx.h"
+ 
++#include <algorithm>
++#include <cstdio>
++#include <cstdlib>
++#include <unordered_set>
++#include <vector>
++
+ extern bool do_lds_wraparound;
+ 
+ bool CPU_RDMSR();
+@@ -96,6 +102,88 @@ Bitu cycle_count;
+ 
+ static uint8_t last_prefix;
+ 
++namespace {
++
++bool slicks_entered_decoder = false;
++bool slicks_trace_active = false;
++bool slicks_trace_registered = false;
++uint16_t slicks_decoder_cs = 0;
++PhysPt slicks_runtime_base = 0;
++uint32_t slicks_runtime_size = 0;
++uint32_t slicks_previous_offset = 0;
++bool slicks_previous_valid = false;
++std::vector<uint8_t> slicks_executed;
++std::unordered_set<uint64_t> slicks_edges;
++
++void Slicks_WriteTrace()
++{
++	if (!slicks_trace_active)
++		return;
++	if (auto *output = fopen("slicks-executed.bin", "wb")) {
++		fwrite(slicks_executed.data(), 1, slicks_executed.size(), output);
++		fclose(output);
++	}
++	if (auto *output = fopen("slicks-edges.csv", "w")) {
++		fputs("from_offset,to_offset\n", output);
++		std::vector<uint64_t> sorted_edges(slicks_edges.begin(), slicks_edges.end());
++		std::sort(sorted_edges.begin(), sorted_edges.end());
++		for (const auto edge : sorted_edges)
++			fprintf(output, "0x%05x,0x%05x\n",
++			        static_cast<uint32_t>(edge >> 32),
++			        static_cast<uint32_t>(edge));
++		fclose(output);
++	}
++	LOG_MSG("SLICKS: wrote execution bitmap and %zu unique transitions",
++	        slicks_edges.size());
++}
++
++void Slicks_TraceInstruction(const PhysPt address)
++{
++	const auto cs_value = SegValue(cs);
++	const auto ss_value = SegValue(ss);
++	const auto ip_value = static_cast<uint16_t>(reg_eip);
++
++	if (!slicks_entered_decoder && cs_value == ss_value && ip_value == 0x0642) {
++		slicks_entered_decoder = true;
++		slicks_decoder_cs = cs_value;
++	}
++	if (!slicks_trace_active && slicks_entered_decoder &&
++	    cs_value == slicks_decoder_cs && ip_value == 0x070b &&
++	    mem_readb(address) == 0xea) {
++		const auto final_cs = mem_readw(address + 3);
++		slicks_runtime_base = static_cast<PhysPt>(final_cs) << 4;
++		slicks_runtime_size =
++		        (static_cast<uint32_t>(ss_value - final_cs) << 4) + reg_sp;
++		slicks_executed.assign(slicks_runtime_size, 0);
++		slicks_edges.reserve(262144);
++		slicks_trace_active = true;
++		if (!slicks_trace_registered) {
++			std::atexit(Slicks_WriteTrace);
++			slicks_trace_registered = true;
++		}
++		LOG_MSG("SLICKS: tracing runtime base %05x, %u bytes",
++		        slicks_runtime_base, slicks_runtime_size);
++		return;
++	}
++	if (!slicks_trace_active || address < slicks_runtime_base ||
++	    address >= slicks_runtime_base + slicks_runtime_size) {
++		slicks_previous_valid = false;
++		return;
++	}
++
++	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	slicks_executed[offset] = 1;
++	if (slicks_previous_valid) {
++		const auto edge = (static_cast<uint64_t>(slicks_previous_offset) << 32) |
++		                  offset;
++		slicks_edges.insert(edge);
++	}
++	slicks_previous_offset = offset;
++	slicks_previous_valid = true;
++}
++
++} // namespace
++
+ typedef PhysPt (*GetEAHandler)(void);
+ 
+ static const uint32_t AddrMaskTable[2]={0x0000ffffu,0xffffffffu};
+@@ -163,6 +251,7 @@ Bits CPU_Core_Normal_Run(void) {
+ 
+ 	while (CPU_Cycles-->0) {
+ 		LOADIP;
++		Slicks_TraceInstruction(core.cseip);
+ 		last_prefix=MP_NONE;
+ 		core.opcode_index=cpu.code.big*(Bitu)0x200u;
+ 		core.prefixes=cpu.code.big;
+@@ -240,4 +329,3 @@ Bits CPU_Core_Normal_Trap_Run(void) {
+ void CPU_Core_Normal_Init(void) {
+ 
+ }
+-
+diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
+index 3dad080..348167a 100644
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -17,6 +17,10 @@
+  */
+ 
+ #include <stdio.h>
++#include <algorithm>
++#include <cstdlib>
++#include <unordered_set>
++#include <vector>
+ 
+ #include "cpu.h"
+ #include "lazyflags.h"
+@@ -49,6 +53,88 @@ static inline bool _seg_limit_check(void) {
+ 
+ static uint16_t last_ea86_offset;
+ 
++namespace {
++
++bool slicks_entered_decoder = false;
++bool slicks_trace_active = false;
++bool slicks_trace_registered = false;
++uint16_t slicks_decoder_cs = 0;
++PhysPt slicks_runtime_base = 0;
++uint32_t slicks_runtime_size = 0;
++uint32_t slicks_previous_offset = 0;
++bool slicks_previous_valid = false;
++std::vector<uint8_t> slicks_executed;
++std::unordered_set<uint64_t> slicks_edges;
++
++void Slicks_WriteTrace()
++{
++	if (!slicks_trace_active)
++		return;
++	if (auto *output = fopen("slicks-executed.bin", "wb")) {
++		fwrite(slicks_executed.data(), 1, slicks_executed.size(), output);
++		fclose(output);
++	}
++	if (auto *output = fopen("slicks-edges.csv", "w")) {
++		fputs("from_offset,to_offset\n", output);
++		std::vector<uint64_t> sorted_edges(slicks_edges.begin(), slicks_edges.end());
++		std::sort(sorted_edges.begin(), sorted_edges.end());
++		for (const auto edge : sorted_edges)
++			fprintf(output, "0x%05x,0x%05x\n",
++			        static_cast<uint32_t>(edge >> 32),
++			        static_cast<uint32_t>(edge));
++		fclose(output);
++	}
++	LOG_MSG("SLICKS: wrote execution bitmap and %zu unique transitions",
++	        slicks_edges.size());
++}
++
++void Slicks_TraceInstruction(const PhysPt address)
++{
++	const auto cs_value = SegValue(cs);
++	const auto ss_value = SegValue(ss);
++	const auto ip_value = static_cast<uint16_t>(reg_eip);
++
++	if (!slicks_entered_decoder && cs_value == ss_value && ip_value == 0x0642) {
++		slicks_entered_decoder = true;
++		slicks_decoder_cs = cs_value;
++	}
++	if (!slicks_trace_active && slicks_entered_decoder &&
++	    cs_value == slicks_decoder_cs && ip_value == 0x070b &&
++	    mem_readb(address) == 0xea) {
++		const auto final_cs = mem_readw(address + 3);
++		slicks_runtime_base = static_cast<PhysPt>(final_cs) << 4;
++		slicks_runtime_size =
++		        (static_cast<uint32_t>(ss_value - final_cs) << 4) + reg_sp;
++		slicks_executed.assign(slicks_runtime_size, 0);
++		slicks_edges.reserve(262144);
++		slicks_trace_active = true;
++		if (!slicks_trace_registered) {
++			std::atexit(Slicks_WriteTrace);
++			slicks_trace_registered = true;
++		}
++		LOG_MSG("SLICKS: tracing runtime base %05x, %u bytes",
++		        slicks_runtime_base, slicks_runtime_size);
++		return;
++	}
++	if (!slicks_trace_active || address < slicks_runtime_base ||
++	    address >= slicks_runtime_base + slicks_runtime_size) {
++		slicks_previous_valid = false;
++		return;
++	}
++
++	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	slicks_executed[offset] = 1;
++	if (slicks_previous_valid) {
++		const auto edge = (static_cast<uint64_t>(slicks_previous_offset) << 32) |
++		                  offset;
++		slicks_edges.insert(edge);
++	}
++	slicks_previous_offset = offset;
++	slicks_previous_valid = true;
++}
++
++} // namespace
++
+ extern bool ignore_opcode_63;
+ 
+ #if C_DEBUG
+@@ -181,6 +267,7 @@ Bits CPU_Core286_Normal_Run(void) {
+ 
+ 	while (CPU_Cycles-->0) {
+ 		LOADIP;
++		Slicks_TraceInstruction(core.cseip);
+ 		core.prefixes=0;
+ 		core.opcode_index=0;
+ 		last_ea86_offset=0;
+@@ -261,4 +348,3 @@ Bits CPU_Core286_Normal_Trap_Run(void) {
+ void CPU_Core286_Normal_Init(void) {
+ 
+ }
+-

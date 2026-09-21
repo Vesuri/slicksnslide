@@ -4,6 +4,8 @@ REFERENCE_ROOT ?= tmp/pc-root
 REFERENCE_CAPTURE ?= $(REFERENCE_ROOT)/slicks-handoff
 REFERENCE_FIXED_ROOT ?= tmp/pc-fixed
 REFERENCE_RACE_VIDEO ?=
+REFERENCE_TRACE_BITMAP ?= $(REFERENCE_FIXED_ROOT)/slicks-executed.bin
+REFERENCE_TRACE_EDGES ?= $(REFERENCE_FIXED_ROOT)/slicks-edges.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
@@ -13,14 +15,16 @@ export PATH := $(JAVA_HOME)/bin:$(PATH)
 GHIDRA ?= tools/ghidra/ghidra_12.1_PUBLIC
 DOSBOX_STAGING ?= dosbox-staging
 DOSBOX_X ?= dosbox-x
+DOSBOX_X_TRACE ?= tools/vendor/dosbox-x/src/dosbox-x
 FFMPEG ?= ffmpeg
 REFERENCE_VIDEO ?=
 REFERENCE_FRAME_TIME ?= 8
 ABS_ROOT := $(abspath .)
 
 .PHONY: inspect hash prepare-reference prepare-fixed-reference \
-	reference-staging reference-286 reference-race reference-frame-hash \
-	verify-reference-race unpack rebuild-mz verify-runtime trace-summary \
+	reference-staging reference-286 reference-race reference-trace \
+	reference-frame-hash verify-reference-race verify-execution-trace \
+	unpack rebuild-mz verify-runtime trace-summary \
 	ghidra ghidra-normalized \
 	todo clean
 
@@ -57,6 +61,17 @@ reference-race: prepare-fixed-reference
 		-c "autotype -w 15 enter" \
 		-c "dx-capture /v /-a /-d slicks.exe"
 
+reference-trace: prepare-fixed-reference
+	cd $(REFERENCE_FIXED_ROOT) && \
+		env SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+		$(abspath $(DOSBOX_X_TRACE)) \
+		-conf $(ABS_ROOT)/reference/dosbox-x-286.conf \
+		-set "cpu cycles=12000" -set "log logfile=basic-trace.log" \
+		-nogui -nomenu -silent -fastlaunch -time-limit 36 \
+		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
+		-c "autotype -w 15 enter" \
+		-c "dx-capture /v /-a /-d slicks.exe"
+
 reference-frame-hash:
 	@test -n "$(REFERENCE_VIDEO)" || \
 		(echo "set REFERENCE_VIDEO to a DOSBox-X AVI capture" >&2; exit 2)
@@ -67,6 +82,10 @@ verify-reference-race:
 	@test -n "$(REFERENCE_RACE_VIDEO)" || \
 		(echo "set REFERENCE_RACE_VIDEO to the VGA AVI capture" >&2; exit 2)
 	$(PYTHON) tools/verify_reference_race.py $(REFERENCE_RACE_VIDEO)
+
+verify-execution-trace:
+	$(PYTHON) tools/summarize_execution_trace.py \
+		$(REFERENCE_TRACE_BITMAP) $(REFERENCE_TRACE_EDGES)
 
 build/unpack_compack: tools/unpack_compack.c
 	@mkdir -p build

@@ -72,6 +72,21 @@ identity is consequently part of the compatibility contract. The first target
 policy is a 286-class guest; live traces must prove that no 386-only branch is
 then exercised.
 
+## First live execution surface
+
+The official DOSBox-X `dosbox-x-v2026.08.31` 286 interpreter is patched to
+recognize the Compack handoff and record instruction-entry offsets relative to
+the relocated runtime base. It also records unique consecutive transitions
+while both endpoints remain inside the runtime image. Thus traces from
+different DOS load addresses use the same normalized offsets.
+
+Two bounded BASIC.SS race runs reached the same `00000h..2C724h` span. The
+shorter observed 15,099 instruction starts and 16,753 transitions; the longer
+observed 22,671 starts and 25,742 transitions. Of the shorter run's starts,
+14,989 (99.27%) also occurred in the longer run; 16,415 transitions (97.98%)
+overlapped. Live race timing changes total coverage, so these files are
+validated coverage evidence rather than fixed-hash golden outputs.
+
 ## Intended pipeline
 
 ```text
@@ -121,6 +136,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Collect the proved BASIC.SS path's executed blocks, indirect targets,
-interrupts, ports, and executable-memory writes on the DOSBox-X 286 reference
-personality, then seed those live targets into the normalized Ghidra project.
+Decode the observed instruction-entry and transition sets into basic blocks,
+classify non-fall-through targets, and add interrupt, port, video-memory, and
+executable-write events on the DOSBox-X 286 reference personality. Then seed
+the live targets into the normalized Ghidra project.
