@@ -26,7 +26,7 @@ OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sui_title_dispatch.o \
 	obj/basic_frame.o \
 	obj/status_assets.o obj/native_bridge.o obj/vga_to_chunky.o \
-	obj/c2p1x1_8_c5_bm.o
+	obj/c2p1x1_8_c5_bm.o obj/sgfx_clear_full.o obj/sgfx_mode_setup.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
 FRAME_HASH = a4fc8a1cbea08a30
@@ -145,6 +145,12 @@ obj/vga_to_chunky.o: $(REPO)/src/platform/amiga/vga_to_chunky.s | obj
 
 obj/c2p1x1_8_c5_bm.o: \
 		$(REPO)/src/platform/amiga/c2p1x1_8_c5_bm.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgfx_clear_full.o: $(REPO)/native/sgfx_clear_full.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgfx_mode_setup.o: $(REPO)/native/sgfx_mode_setup.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 $(OUT).elf: $(OBJECTS) | out

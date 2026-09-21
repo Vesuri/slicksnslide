@@ -168,6 +168,8 @@ logical stride and page geometry. Mode 0 with virtual width 400 establishes
 the measured 100-byte stride and 32,700-byte page separation used by every
 traced drawing primitive. On Amiga this routine should initialize equivalent
 renderer state directly rather than reproduce VGA register programming.
+That observed mode-zero contract is now native: it records the equivalent
+geometry, composes the native four-bank clear, and runs during A1200 startup.
 
 `live_vga_clear_full()` takes no arguments. The fixture calls it once from
 mode setup. It enables all four VGA planes, waits across a vertical-retrace

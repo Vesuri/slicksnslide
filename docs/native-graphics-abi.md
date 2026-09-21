@@ -75,6 +75,16 @@ four consecutive 64 KiB logical banks directly. Four differential cases seed
 and compare the complete 256 KiB store while also checking the original port
 sequence, retrace polling, and native register preservation.
 
+`sgfx_mode_setup` replaces the observed mode-zero path through `2ADB7h`. It
+retains the renderer-visible geometry while discarding BIOS mode entry, mouse
+probing, VGA register programming, and retrace waits: physical size 320 by 200,
+requested virtual width, byte stride, page size, maximum and bottom start rows,
+and row padding. It composes `sgfx_clear_full` for framebuffer initialization.
+Nine differentials cover virtual widths below, at, and above the physical
+width, including the traced width 400 that establishes stride 100. The native
+mode setup now runs in the A1200 diagnostic instead of relying on cleared
+allocation memory to stand in for VGA initialization.
+
 The genuine race-entry trace adds one screen-transition call whose
 `source_y + height` exceeds the declared sprite height. That DOS call relies
 on 16-bit source-offset wrap and remains a separate compatibility case rather

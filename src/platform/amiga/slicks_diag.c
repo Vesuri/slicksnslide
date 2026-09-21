@@ -31,6 +31,8 @@ __attribute__((constructor)) static void initialize_sysbase(void)
 
 extern void slicks_draw_title_pages(unsigned char *planes);
 extern unsigned short slicks_dispatch_title_key(unsigned short scan_code);
+extern int slicks_setup_basic_mode(unsigned char *logical,
+                                   unsigned short *mode_state);
 extern void slicks_convert_to_amiga(const unsigned char *logical,
                                     unsigned char *chunky,
                                     struct BitMap *bitmap);
@@ -86,6 +88,7 @@ static unsigned long checksum_bitmap(const struct BitMap *bitmap)
 int main(void)
 {
     static unsigned long palette[770];
+    static unsigned short mode_state[11];
     unsigned char *logical = 0;
     unsigned char *chunky = 0;
     struct Screen *screen = 0;
@@ -100,11 +103,13 @@ int main(void)
     if (!GfxBase || !IntuitionBase)
         goto cleanup;
 
-    logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY | MEMF_CLEAR);
+    logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);
     if (!logical)
         goto cleanup;
     chunky = (unsigned char *)AllocMem(320UL * 200UL, MEMF_ANY);
     if (!chunky)
+        goto cleanup;
+    if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
     make_title_surface(logical);
     g_slicks_diag_checksum = checksum_planes(logical);

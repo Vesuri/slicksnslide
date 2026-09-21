@@ -1,12 +1,14 @@
 	section	code
 	xdef	slicks_draw_title_pages
 	xdef	slicks_dispatch_title_key
+	xdef	slicks_setup_basic_mode
 	xref	sgfx_title_pages
 	xref	sui_title_step
 	xref	sui_title_menu
 	xref	sui_title_status
 	xref	sui_title_tail
 	xref	sui_title_dispatch
+	xref	sgfx_mode_setup
 	xref	slicks_basic_frame
 	xref	slicks_basic_palette
 	xref	slicks_title_counter
@@ -48,4 +50,17 @@ slicks_draw_title_pages:
 slicks_dispatch_title_key:
 	move.w	4(sp),d0
 	jsr	sui_title_dispatch
+	rts
+
+; C-platform bridge for the one observed video setup: mode 0 with a
+; 400-pixel virtual width.  The native routine records its renderer geometry
+; and clears the complete four-bank logical VGA store.
+slicks_setup_basic_mode:
+	movem.l	d2-d7/a2-a6,-(sp)
+	movea.l	48(sp),a0
+	movea.l	52(sp),a1
+	moveq	#0,d0
+	move.w	#400,d1
+	jsr	sgfx_mode_setup
+	movem.l	(sp)+,d2-d7/a2-a6
 	rts

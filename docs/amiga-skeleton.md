@@ -9,8 +9,9 @@ the x86-versus-M68k differential suite.
 
 ## What the diagnostic proves
 
-`SlicksDiag` allocates the 256 KiB logical VGA store and invokes the translated
-title-page caller, which feeds a call-time capture of the BASIC.SS title frame
+`SlicksDiag` allocates the 256 KiB logical VGA store, runs the native equivalent
+of the observed mode-zero setup with its 400-pixel virtual width, and invokes
+the translated title-page caller, which feeds a call-time capture of the BASIC.SS title frame
 through the native opaque blitter to both original VGA pages. The platform
 shell converts the visible page to eight Amiga bitplanes, installs the captured
 256-colour VGA palette, opens a 320 by 200 AGA screen, and displays the result.
