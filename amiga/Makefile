@@ -4,6 +4,7 @@ AS       = m68k-amiga-elf-as
 VASM     = vasmm68k_mot
 OBJDUMP  = m68k-amiga-elf-objdump
 PYTHON   = python3
+FFMPEG   = ffmpeg
 SDKDIR   = $(abspath $(dir $(shell which $(CC)))../m68k-amiga-elf/sys-include)
 SUPPORT  = $(abspath $(dir $(shell which $(CC)))../../support)
 REPO     = ..
@@ -24,15 +25,18 @@ OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sui_title_step.o obj/sui_color_slot.o obj/sui_bevel.o obj/sui_text.o \
 	obj/sui_title_menu.o obj/sui_title_status.o obj/sui_title_tail.o \
 	obj/sui_title_dispatch.o \
-	obj/basic_frame.o \
+	obj/basic_frame.o obj/race_frame.o \
 	obj/status_assets.o obj/native_bridge.o obj/vga_to_chunky.o \
-	obj/c2p1x1_8_c5_bm.o obj/sgfx_clear_full.o obj/sgfx_mode_setup.o
+	obj/c2p1x1_8_c5_bm.o obj/sgfx_clear_full.o obj/sgfx_mode_setup.o \
+	obj/sgame_post_title_init.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
 FRAME_HASH = a4fc8a1cbea08a30
 PALETTE_HASH = 9b17b223ef7f93e3
 STATUS_NEGATIVE_HASH = e53a541be078bfa2
 STATUS_POSITIVE_HASH = fa4dd06703f903a8
+RACE_PALETTE_HASH = fb477e62e86ca9ed
+RACE_VIDEO = $(CAPTURE_DIR)/capture/slicks_045.avi
 
 .PHONY: all clean
 
@@ -116,6 +120,23 @@ obj/basic-palette.bin: $(CAPTURE_DIR)/slicks-palettes.csv \
 		$(CAPTURE_DIR)/slicks-palettes.csv \
 		$(CAPTURE_DIR)/slicks-palettes.bin $(PALETTE_HASH) $@
 
+obj/basic-race-palette.bin: $(CAPTURE_DIR)/slicks-palettes.csv \
+		$(CAPTURE_DIR)/slicks-palettes.bin \
+		$(REPO)/tools/extract_capture_blob.py | obj
+	$(PYTHON) $(REPO)/tools/extract_capture_blob.py \
+		$(CAPTURE_DIR)/slicks-palettes.csv \
+		$(CAPTURE_DIR)/slicks-palettes.bin $(RACE_PALETTE_HASH) $@
+
+obj/basic-race-frame.rgb: $(RACE_VIDEO) | obj
+	$(FFMPEG) -v error -y -ss 30 -i $< -frames:v 1 \
+		-vf scale=320:200:flags=neighbor -f rawvideo -pix_fmt rgb24 $@
+
+obj/basic-race-frame.bin: obj/basic-race-frame.rgb \
+		obj/basic-race-palette.bin $(REPO)/tools/build_indexed_frame.py | obj
+	$(PYTHON) $(REPO)/tools/build_indexed_frame.py \
+		obj/basic-race-frame.rgb \
+		obj/basic-race-palette.bin $@
+
 obj/status-negative.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \
 		$(CAPTURE_DIR)/slicks-sprite-blobs.bin \
 		$(REPO)/tools/extract_capture_blob.py | obj
@@ -131,6 +152,10 @@ obj/status-positive.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \
 		$(CAPTURE_DIR)/slicks-sprite-blobs.bin $(STATUS_POSITIVE_HASH) $@
 
 obj/basic_frame.o: basic_frame.s obj/basic-frame.bin obj/basic-palette.bin | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/race_frame.o: race_frame.s obj/basic-race-frame.bin \
+		obj/basic-race-palette.bin | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/status_assets.o: status_assets.s obj/status-negative.bin \
@@ -151,6 +176,9 @@ obj/sgfx_clear_full.o: $(REPO)/native/sgfx_clear_full.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_mode_setup.o: $(REPO)/native/sgfx_mode_setup.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgame_post_title_init.o: $(REPO)/native/sgame_post_title_init.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 $(OUT).elf: $(OBJECTS) | out
