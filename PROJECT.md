@@ -159,10 +159,20 @@ write plane made explicit in the native register ABI.
 
 The first bootable Amiga HUNK now closes the build-to-display loop. It runs in
 FS-UAE as an A1200 with exactly 2 MiB of chip memory and no fast memory, invokes
-the proved native plane-selected plot routine, converts the logical VGA store
-to an Intuition screen, and reaches its displayed-frame marker with checksum
-`bb0e7f26`. The small C shell is platform/display glue only; no translated CPU
+the proved native plane-selected plot and translated checker routines, converts
+the logical VGA store to an Intuition screen, and reaches its displayed-frame
+marker. The small C shell is platform/display glue only; no translated CPU
 execution passes through generated C. See `docs/amiga-skeleton.md`.
+
+The first application-level control-flow translation now replaces the recovered
+checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
+trace has not reached this caller, but its callee is the heavily exercised live
+plane-selected plot primitive. Its signed nested loops pass 256
+whole-framebuffer x86-versus-68020 cases. The complete native differential gate
+now covers 4,088 cases. Linked into the A1200 diagnostic, the translated block
+produces a repeatable post-display checksum of `86bdc061` across fresh FS-UAE
+boots. The target check also exposed and fixed the first platform ABI issue:
+callee-saved M68k registers must survive the temporary C/display boundary.
 
 ## Intended pipeline
 
@@ -207,14 +217,16 @@ amiga/                 build, run, debug, and diagnostic scripts
 - [ ] Phase 2: exhaustive entry-point and external-surface map.
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
-- [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation is
-      proved; a translated x86 block and original-game checkpoint remain.
+- [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation and
+      first translated application block are proved; original game-loop entry
+      and a full reference-derived frame remain.
 - [ ] Phase 6: subsystem completion and measured optimization.
 - [ ] Phase 7: packaging.
 
 ## Immediate next step
 
-Build the first translated control-flow slice that calls the proved native
-graphics ABI and reaches a reference-derived visual checkpoint in the bootable
-Amiga target. In parallel, extend the native differential corpus to remap,
-fill, clear, and mode-setup boundaries and expand trace coverage beyond BASIC.SS.
+Extend the bootable vertical slice from the proved checker-pattern caller to an
+observed BASIC-path routine that consumes original game data and produces a
+recognizable reference-derived frame region. In parallel, extend the native
+differential corpus to remap, fill, clear, and mode-setup boundaries and expand
+trace coverage beyond BASIC.SS.

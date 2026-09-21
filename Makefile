@@ -154,6 +154,11 @@ build/sgfx_plot.bin: native/sgfx_plot.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sgfx_checker_fill.bin: tools/sgfx_checker_fill_test.s \
+		native/sgfx_checker_fill.s native/sgfx_plot_plane.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
 build/sgfx_read_pixel.bin: native/sgfx_read_pixel.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
@@ -183,12 +188,13 @@ build/verify_native_graphics: tools/verify_native_graphics.c
 verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_read_pixel.bin build/sgfx_planar_blit.bin \
 		build/sgfx_transparent_blit.bin build/sgfx_readback.bin \
-		build/sgfx_planar_subrect_blit.bin build/verify_native_graphics
+		build/sgfx_planar_subrect_blit.bin build/sgfx_checker_fill.bin \
+		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
 		build/sgfx_plot_plane.bin build/sgfx_read_pixel.bin \
 		build/sgfx_planar_blit.bin build/sgfx_transparent_blit.bin \
 		build/sgfx_readback.bin build/sgfx_planar_subrect_blit.bin \
-		build/sgfx_plot.bin
+		build/sgfx_plot.bin build/sgfx_checker_fill.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

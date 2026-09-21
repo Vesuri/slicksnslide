@@ -10,9 +10,10 @@ the x86-versus-M68k differential suite.
 ## What the diagnostic proves
 
 `SlicksDiag` allocates the 256 KiB logical VGA store, draws a deterministic
-pattern through the native plot helper, converts it to four Amiga bitplanes,
-opens a 320 by 200 screen, and displays the result. The target-side GDB check
-stops after the screen is ready and verifies the checksum `bb0e7f26`.
+pattern through the native plot helper and the first translated Slicks caller,
+converts it to four Amiga bitplanes, opens a 320 by 200 screen, and displays the
+result. The target-side GDB check stops at a named post-display marker and
+verifies the checksum `86bdc061`.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -45,8 +46,12 @@ state, mounted scratch disks, maps, and debugger files remain ignored.
 
 ## Current boundary
 
-This milestone proves the complete host-build-to-target-display path and the
-native graphics ABI on the actual emulated target configuration. It does not
-yet execute a statically translated x86 basic block or display an original
-Slicks frame. The next useful vertical slice is a translated control block that
-calls the native graphics ABI and reaches a reference-derived visual checkpoint.
+This milestone proves the complete host-build-to-target-display path, the
+native graphics ABI, and one application-level control-flow translation on the
+actual emulated target configuration. The block is Slicks' recovered
+checker-pattern rectangle routine at runtime offset `A498h`; it calls the
+native pixel helper and passes 256 whole-framebuffer comparisons against the
+original x86 code. The current BASIC trace has not reached this particular
+caller, so the next slice must come from the observed game path.
+The diagnostic still does not enter the original game loop or display a full
+original Slicks frame. That is the next vertical-slice boundary.

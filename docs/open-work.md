@@ -1,8 +1,10 @@
 # Open work
 
-1. Put the first statically translated control-flow slice into the proved
-   bootable Amiga shell. It should call the native graphics ABI and reach a
-   reference-derived visual checkpoint without a generated-C CPU layer.
+1. Extend the first proved application-level translation from the recovered
+   checker rectangle at runtime offset `A498h` to an observed BASIC-path routine
+   that consumes original game data and produces a recognizable
+   reference-derived frame region. Keep the translated-to-native-helper path
+   free of a generated-C CPU layer.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;

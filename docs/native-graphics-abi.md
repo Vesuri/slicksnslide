@@ -72,3 +72,21 @@ destination segment compared after every call. Sub-rectangle copy passes 256
 states with the complete four-plane destination compared after every call.
 The direct plot helper passes 512 states spanning all four caller-selected
 planes.
+
+`sgfx_checker_fill` is the first translated application-level caller rather
+than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
+runtime-image offset `A498h`; the bounded BASIC trace has not reached this
+caller, although it calls the heavily exercised live plot primitive. Its signed
+half-open nested loops toggle a byte at every visited coordinate and call
+`sgfx_plot_plane` on alternating pixels. The
+native entry receives `x0,y0,x1,y1` in `d0.w-d3.w`, the colour in `d4.b`, the
+screen base in `d5.w`, the stride in `d6.w`, and the plane store in `a0`.
+
+The checker routine passes 256 additional whole-framebuffer differentials,
+including empty and reversed signed ranges and both observed VGA pages. Unlike
+the earlier leaf tests, its original x86 side runs the captured image at the
+real DOS load address so its relocated far call reaches the original pixel
+helper. The M68k side uses a mapped stack and executes the native caller and
+callee together. At the temporary C platform boundary the routine preserves
+`d2-d7/a0-a6`; future translated-to-translated calls can adopt a narrower
+preservation contract once the block register allocator owns both sides.

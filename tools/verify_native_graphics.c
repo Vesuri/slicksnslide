@@ -35,11 +35,17 @@ enum {
     x86_plot_stop = 0x3b48d,
     x86_read_start = 0x3b48e,
     x86_read_stop = 0x3b4ba,
+    x86_checker_start = 0x1a598,
+    x86_checker_stop = 0x1a5f6,
+    x86_relocated_stride_address = 0x3e96b,
+    x86_screen_base_address = 0x3e977,
     m68k_code_base = 0x1000,
     m68k_plane_base = 0x100000,
     m68k_plane_size = 0x40000,
     m68k_source_base = 0x200000,
     m68k_source_size = 0x10000,
+    m68k_stack_base = 0x300000,
+    m68k_stack_size = 0x10000,
 };
 
 typedef struct {
@@ -199,6 +205,27 @@ static uc_engine *open_x86(const uint8_t *runtime)
     return uc;
 }
 
+static uc_engine *open_x86_relocated(const uint8_t *runtime)
+{
+    uc_engine *uc = NULL;
+    check_uc("open relocated x86", uc_open(UC_ARCH_X86, UC_MODE_16, &uc));
+    check_uc("map relocated x86 runtime",
+             uc_mem_map(uc, runtime_base, 0x40000, UC_PROT_ALL));
+    check_uc("write relocated x86 runtime",
+             uc_mem_write(uc, runtime_base + 0x100, runtime, runtime_size));
+    check_uc("map relocated x86 stack",
+             uc_mem_map(uc, x86_stack_base, x86_stack_size, UC_PROT_ALL));
+    check_uc("map relocated x86 source",
+             uc_mem_map(uc, x86_source_base, x86_source_size, UC_PROT_ALL));
+    check_uc("map relocated x86 VGA",
+             uc_mem_map(uc, x86_vga_base, x86_vga_size, UC_PROT_ALL));
+    const uint8_t stride[2] = {100, 0};
+    check_uc("write relocated x86 stride",
+             uc_mem_write(uc, x86_relocated_stride_address, stride,
+                          sizeof(stride)));
+    return uc;
+}
+
 static uc_engine *open_m68k(const uint8_t *code, const size_t code_size)
 {
     uc_engine *uc = NULL;
@@ -210,6 +237,8 @@ static uc_engine *open_m68k(const uint8_t *code, const size_t code_size)
              uc_mem_map(uc, m68k_plane_base, m68k_plane_size, UC_PROT_ALL));
     check_uc("map m68k source",
              uc_mem_map(uc, m68k_source_base, m68k_source_size, UC_PROT_ALL));
+    check_uc("map m68k stack",
+             uc_mem_map(uc, m68k_stack_base, m68k_stack_size, UC_PROT_ALL));
     return uc;
 }
 
@@ -750,12 +779,128 @@ static void run_direct_plot_case(uc_engine *x86, uc_engine *m68k,
     }
 }
 
+static void prepare_m68k_checker(uc_engine *uc, const uint16_t x0,
+                                 const uint16_t y0, const uint16_t x1,
+                                 const uint16_t y1, const uint8_t pixel,
+                                 const uint16_t screen_base)
+{
+    const uint32_t values[] = {
+        m68k_plane_base, 0x11110000u | x0, 0x22220000u | y0,
+        0x33330000u | x1, 0x44440000u | y1, 0x55550000u | pixel,
+        0x66660000u | screen_base, 0x77770064u, 0x88888888u,
+        0x11111111u, 0x22222222u, 0x33333333u,
+        0x44444444u, 0x55555555u, 0x66666666u,
+    };
+    const int registers[] = {
+        UC_M68K_REG_A0, UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5, UC_M68K_REG_D6,
+        UC_M68K_REG_D7, UC_M68K_REG_A1, UC_M68K_REG_A2, UC_M68K_REG_A3,
+        UC_M68K_REG_A4, UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write checker register",
+                 uc_reg_write(uc, registers[i], &values[i]));
+    uint32_t stack_pointer = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write checker A7",
+             uc_reg_write(uc, UC_M68K_REG_A7, &stack_pointer));
+}
+
+static void run_checker_case(
+    uc_engine *x86, uc_engine *m68k, const size_t plot_code_size,
+    const size_t checker_code_size, const uint16_t x0, const uint16_t y0,
+    const uint16_t x1, const uint16_t y1, const uint8_t pixel,
+    const uint16_t screen_base, const unsigned case_number,
+    uint8_t *expected_planes, uint8_t *actual_planes)
+{
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 31u + (i >> 16) * 59u + case_number * 7u);
+    check_uc("seed native checker planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+
+    uint8_t page[2];
+    write_le16(page, screen_base);
+    check_uc("write x86 checker page",
+             uc_mem_write(x86, x86_screen_base_address, page, sizeof(page)));
+    const uint16_t arguments[] = {x0, y0, x1, y1, pixel};
+    prepare_x86_stack(x86, arguments, 5, 0x1987);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write relocated checker DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add checker VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 checker",
+             uc_emu_start(x86, x86_checker_start, x86_checker_stop, 0, 0));
+    check_uc("delete checker OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete checker VGA hook", uc_hook_del(x86, memory_hook));
+
+    prepare_m68k_checker(m68k, x0, y0, x1, y1, pixel, screen_base);
+    check_uc("run m68k checker",
+             uc_emu_start(m68k, m68k_code_base + plot_code_size,
+                          m68k_code_base + checker_code_size - 2, 0, 0));
+    const int preserved_registers[] = {
+        UC_M68K_REG_D2, UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0, UC_M68K_REG_A1,
+        UC_M68K_REG_A2, UC_M68K_REG_A3, UC_M68K_REG_A4, UC_M68K_REG_A5,
+        UC_M68K_REG_A6,
+    };
+    const uint32_t preserved_values[] = {
+        0x33330000u | x1, 0x44440000u | y1, 0x55550000u | pixel,
+        0x66660000u | screen_base, 0x77770064u, 0x88888888u,
+        m68k_plane_base, 0x11111111u, 0x22222222u, 0x33333333u,
+        0x44444444u, 0x55555555u, 0x66666666u,
+    };
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 0;
+         i < sizeof(preserved_registers) / sizeof(preserved_registers[0]);
+         ++i) {
+        uint32_t value = 0;
+        check_uc("read checker preserved register",
+                 uc_reg_read(m68k, preserved_registers[i], &value));
+        if (value != preserved_values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = value;
+        }
+    }
+    check_uc("read native checker planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value || bad_preserved_register >= 0 ||
+        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "checker case %u failed: (%04x,%04x)-(%04x,%04x) "
+                "pixel=%02x base=%04x plane=%d preserved=%d/%08x",
+                case_number, x0, y0, x1, y1, pixel, screen_base,
+                ports.plane, bad_preserved_register, bad_register_value);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 9) {
+    if (argc != 10) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
-                "transparent.bin readback.bin subrect.bin direct-plot.bin\n",
+                "transparent.bin readback.bin subrect.bin direct-plot.bin "
+                "checker-fill.bin\n",
                 argv[0]);
         return 2;
     }
@@ -767,6 +912,7 @@ int main(int argc, char **argv)
     size_t readback_bytes = 0;
     size_t subrect_bytes = 0;
     size_t direct_plot_bytes = 0;
+    size_t checker_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -775,9 +921,11 @@ int main(int argc, char **argv)
     uint8_t *readback = read_file(argv[6], &readback_bytes);
     uint8_t *subrect = read_file(argv[7], &subrect_bytes);
     uint8_t *direct_plot = read_file(argv[8], &direct_plot_bytes);
+    uint8_t *checker = read_file(argv[9], &checker_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
-        subrect_bytes < 4 || direct_plot_bytes < 4) {
+        subrect_bytes < 4 || direct_plot_bytes < 4 ||
+        checker_bytes <= plot_bytes || memcmp(checker, plot, plot_bytes)) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -797,6 +945,8 @@ int main(int argc, char **argv)
     uc_engine *x86_direct_plot = open_x86(runtime);
     uc_engine *m68k_direct_plot =
         open_m68k(direct_plot, direct_plot_bytes);
+    uc_engine *x86_checker = open_x86_relocated(runtime);
+    uc_engine *m68k_checker = open_m68k(checker, checker_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -824,6 +974,40 @@ int main(int argc, char **argv)
     if (!expected_planes || !actual_planes || !sprite) {
         fprintf(stderr, "cannot allocate blit test buffers\n");
         return 1;
+    }
+
+    static const struct {
+        uint16_t x0, y0, x1, y1, base;
+        uint8_t pixel;
+    } checker_edges[] = {
+        {0, 0, 1, 1, 0, 15},       {1, 2, 8, 7, 32700, 6},
+        {12, 9, 12, 20, 0, 3},     {20, 30, 10, 40, 0, 11},
+        {4, 6, 17, 6, 32700, 9},   {0xffff, 4, 3, 8, 0, 12},
+    };
+    unsigned checker_cases = 0;
+    for (size_t i = 0;
+         i < sizeof(checker_edges) / sizeof(checker_edges[0]); ++i) {
+        run_checker_case(
+            x86_checker, m68k_checker, plot_bytes, checker_bytes,
+            checker_edges[i].x0, checker_edges[i].y0, checker_edges[i].x1,
+            checker_edges[i].y1, checker_edges[i].pixel,
+            checker_edges[i].base, checker_cases++, expected_planes,
+            actual_planes);
+    }
+    for (unsigned i = 0; i < 250; ++i) {
+        const uint32_t sample = i * 2654435761u + 0x0a498u;
+        const uint16_t x0 = (uint16_t)(sample % 300u);
+        const uint16_t y0 = (uint16_t)((sample >> 8) % 170u);
+        const uint16_t width = (uint16_t)((sample >> 16) % 13u);
+        const uint16_t height = (uint16_t)((sample >> 24) % 9u);
+        const uint16_t x1 = (i % 17u == 0) ? (uint16_t)(x0 - 1u)
+                                           : (uint16_t)(x0 + width);
+        const uint16_t y1 = (i % 19u == 0) ? (uint16_t)(y0 - 1u)
+                                           : (uint16_t)(y0 + height);
+        run_checker_case(x86_checker, m68k_checker, plot_bytes,
+                         checker_bytes, x0, y0, x1, y1,
+                         (uint8_t)(sample >> 11), (i & 1u) ? 32700 : 0,
+                         checker_cases++, expected_planes, actual_planes);
     }
     static const struct {
         uint16_t x, y, base;
@@ -981,6 +1165,8 @@ int main(int argc, char **argv)
     uc_close(m68k_subrect);
     uc_close(x86_direct_plot);
     uc_close(m68k_direct_plot);
+    uc_close(x86_checker);
+    uc_close(m68k_checker);
     free(runtime);
     free(plot);
     free(read);
@@ -989,15 +1175,16 @@ int main(int argc, char **argv)
     free(readback);
     free(subrect);
     free(direct_plot);
+    free(checker);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
     free(x86_destination);
     free(native_destination);
     printf("native graphics differential: %u plot/read, %u each opaque/"
-           "transparent blit, %u readback, %u subrect, and %u direct-plot "
-           "cases passed\n",
+           "transparent blit, %u readback, %u subrect, %u direct-plot, and "
+           "%u checker-control-flow cases passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
-           direct_plot_cases);
+           direct_plot_cases, checker_cases);
     return 0;
 }

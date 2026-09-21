@@ -16,7 +16,7 @@ VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
-	obj/sgfx_plot_plane.o
+	obj/sgfx_plot_plane.o obj/sgfx_checker_fill.o
 
 .PHONY: all clean
 
@@ -35,6 +35,9 @@ obj/gcc8_a_support.o: $(SUPPORT)/gcc8_a_support.s | obj
 	$(AS) $(ASFLAGS) -o $@ $<
 
 obj/sgfx_plot_plane.o: $(REPO)/native/sgfx_plot_plane.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgfx_checker_fill.o: $(REPO)/native/sgfx_checker_fill.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 $(OUT).elf: $(OBJECTS) | out

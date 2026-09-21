@@ -16,6 +16,11 @@ struct IntuitionBase *IntuitionBase;
 volatile unsigned short g_slicks_diag_ready;
 volatile unsigned long g_slicks_diag_checksum;
 
+__attribute__((noinline)) void slicks_diag_frame_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
 __attribute__((constructor)) static void initialize_sysbase(void)
 {
     struct ExecBase *base;
@@ -24,6 +29,7 @@ __attribute__((constructor)) static void initialize_sysbase(void)
 }
 
 extern void sgfx_plot_plane(void);
+extern void sgfx_checker_fill(void);
 
 static void plot_native(unsigned char *planes, unsigned short x,
                         unsigned short y, unsigned char color)
@@ -39,6 +45,25 @@ static void plot_native(unsigned char *planes, unsigned short x,
                      "+d"(r_d3), "+d"(r_d4)
                    :
                    : "d5", "d6", "cc", "memory");
+}
+
+static void checker_fill_native(unsigned char *planes, unsigned short x0,
+                                unsigned short y0, unsigned short x1,
+                                unsigned short y1, unsigned char color)
+{
+    register unsigned char *r_a0 __asm("a0") = planes;
+    register unsigned long r_d0 __asm("d0") = x0;
+    register unsigned long r_d1 __asm("d1") = y0;
+    register unsigned long r_d2 __asm("d2") = x1;
+    register unsigned long r_d3 __asm("d3") = y1;
+    register unsigned long r_d4 __asm("d4") = color;
+    register unsigned long r_d5 __asm("d5") = 0;
+    register unsigned long r_d6 __asm("d6") = 100;
+    __asm volatile("jsr sgfx_checker_fill"
+                   : "+a"(r_a0), "+d"(r_d0), "+d"(r_d1), "+d"(r_d2),
+                     "+d"(r_d3), "+d"(r_d4), "+d"(r_d5), "+d"(r_d6)
+                   :
+                   : "cc", "memory");
 }
 
 static unsigned char logical_pixel(const unsigned char *planes,
@@ -74,6 +99,8 @@ static void make_test_surface(unsigned char *planes)
         plot_native(planes, diagonal, y, 0);
         plot_native(planes, (unsigned short)(319 - diagonal), y, 0);
     }
+
+    checker_fill_native(planes, 48, 32, 272, 168, 15);
 }
 
 static void convert_to_amiga(const unsigned char *logical,
@@ -156,6 +183,7 @@ int main(void)
     RethinkDisplay();
     ScreenToFront(screen);
     g_slicks_diag_ready = 1;
+    slicks_diag_frame_ready();
 
     for (;;) {
         struct IntuiMessage *message;
