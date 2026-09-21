@@ -63,9 +63,35 @@ and interrupt timing vary between runs.
 - `INT 33h AX=0000h`, `0003h`, `0008h`, and `0009h`: mouse reset/status,
   position/buttons, vertical bounds, and graphics-cursor definition.
 
+## Direct port I/O
+
+The aggregate tracer reduced 10,290,225 observed operations to 885 unique
+`(direction, width, port, value, resume offset)` rows. The volume is dominated
+by polling and inner-loop VGA programming; reproducing those operations one by
+one on the Amiga would defeat the purpose of ahead-of-time translation.
+
+| Ports | Observed role |
+|---|---|
+| `20h`, `21h` | PIC acknowledgement and interrupt mask |
+| `40h`, `43h` | PIT channel 0 reads and control writes |
+| `60h`, `61h` | Keyboard data and PC speaker/PPI control |
+| `00h`-`0Fh`, `83h` | DMA channel 1 programming for digital audio |
+| `201h` | Joystick polling |
+| `226h`, `22Ch` | Sound Blaster DSP reset, command, and status |
+| `3C0h`, `3C4h`-`3C5h`, `3CEh`-`3CFh` | VGA attribute, sequencer, and graphics-controller programming |
+| `3C8h`-`3C9h` | VGA palette index and data |
+| `3D4h`-`3D5h` | VGA CRTC programming |
+| `3DAh` | VGA status/retrace polling |
+
+The BASIC race alone performs millions of PIT and VGA-status reads and
+hundreds of thousands of graphics-controller writes. The native design should
+recognize and replace the surrounding timing, palette, and drawing routines;
+it should not implement these as generic per-port calls. The sequencer and
+graphics-controller traffic also proves that treating mode `13h` as only a
+flat 320x200 framebuffer would be insufficient for faithful translation.
+
 ## Still unmeasured
 
-- Direct I/O port reads and writes.
 - VGA memory reads/writes and dirty-region behavior.
 - Writes into the runtime code image.
 - Additional paths reached by other tracks, menus, multiplayer modes, and

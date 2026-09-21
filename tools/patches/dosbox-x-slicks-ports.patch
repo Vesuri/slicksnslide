@@ -1,0 +1,139 @@
+diff --git a/src/hardware/iohandler.cpp b/src/hardware/iohandler.cpp
+index 34222c4..ea796b6 100644
+--- a/src/hardware/iohandler.cpp
++++ b/src/hardware/iohandler.cpp
+@@ -17,6 +17,8 @@
+  */
+ 
+ #include <assert.h>
++#include <cstdio>
++#include <cstdlib>
+ #include <string.h>
+ #include "control.h"
+ #include "dosbox.h"
+@@ -31,9 +33,77 @@
+ 
+ #include <math.h> /* floor */
+ 
++#include <map>
++#include <tuple>
+ #include <vector>
+ 
+ extern bool pcibus_enable;
++extern bool slicks_trace_active;
++extern PhysPt slicks_runtime_base;
++extern uint32_t slicks_runtime_size;
++
++namespace {
++
++struct SlicksPortKey {
++	bool write;
++	uint8_t width;
++	uint16_t port;
++	uint32_t value;
++	uint32_t resume_offset;
++
++	bool operator<(const SlicksPortKey &other) const
++	{
++		return std::tie(write, width, port, value, resume_offset) <
++		       std::tie(other.write, other.width, other.port, other.value,
++		                other.resume_offset);
++	}
++};
++
++std::map<SlicksPortKey, uint64_t> slicks_port_events;
++uint64_t slicks_port_event_count = 0;
++bool slicks_port_writer_registered = false;
++
++void Slicks_WritePortEvents()
++{
++	if (slicks_port_events.empty())
++		return;
++	if (auto *output = fopen("slicks-ports.csv", "w")) {
++		fputs("direction,width,port,value,resume_offset,count\n", output);
++		for (const auto &item : slicks_port_events) {
++			const auto &event = item.first;
++			fprintf(output, "%s,%u,0x%04x,0x%08x,0x%05x,%llu\n",
++			        event.write ? "write" : "read", event.width, event.port,
++			        event.value, event.resume_offset,
++			        static_cast<unsigned long long>(item.second));
++		}
++		fclose(output);
++	}
++	LOG_MSG("SLICKS: wrote %zu port aggregates covering %llu events",
++	        slicks_port_events.size(),
++	        static_cast<unsigned long long>(slicks_port_event_count));
++}
++
++void Slicks_RecordPortEvent(const bool write, const uint8_t width,
++	                        const Bitu port, const uint32_t value)
++{
++	if (!slicks_trace_active)
++		return;
++	const auto address = SegPhys(cs) + static_cast<uint16_t>(reg_eip);
++	if (address < slicks_runtime_base ||
++	    address >= slicks_runtime_base + slicks_runtime_size)
++		return;
++	if (!slicks_port_writer_registered) {
++		std::atexit(Slicks_WritePortEvents);
++		slicks_port_writer_registered = true;
++	}
++	const SlicksPortKey key = {
++	        write, width, static_cast<uint16_t>(port), value,
++	        static_cast<uint32_t>(address - slicks_runtime_base)};
++	++slicks_port_events[key];
++	++slicks_port_event_count;
++}
++
++} // namespace
+ 
+ #define IO_callouts_max (IO_TYPE_MAX - IO_TYPE_MIN)
+ #define IO_callouts_index(t) (t - IO_TYPE_MIN)
+@@ -491,6 +561,7 @@ void log_io(Bitu width, bool write, Bitu port, Bitu val) {
+ 
+ 
+ void IO_WriteB(Bitu port,uint8_t val) {
++	Slicks_RecordPortEvent(true, 1, port, val);
+ 	log_io(0, true, port, val);
+ 	if (GCC_UNLIKELY(GETFLAG(VM) && (CPU_IO_Exception(port,1)))) {
+ 		CPU_ForceV86FakeIO_Out(port,val,1);
+@@ -502,6 +573,7 @@ void IO_WriteB(Bitu port,uint8_t val) {
+ }
+ 
+ void IO_WriteW(Bitu port,uint16_t val) {
++	Slicks_RecordPortEvent(true, 2, port, val);
+ 	log_io(1, true, port, val);
+ 	if (GCC_UNLIKELY(GETFLAG(VM) && (CPU_IO_Exception(port,2)))) {
+ 		CPU_ForceV86FakeIO_Out(port,val,2);
+@@ -513,6 +585,7 @@ void IO_WriteW(Bitu port,uint16_t val) {
+ }
+ 
+ void IO_WriteD(Bitu port,uint32_t val) {
++	Slicks_RecordPortEvent(true, 4, port, val);
+ 	log_io(2, true, port, val);
+ 	if (GCC_UNLIKELY(GETFLAG(VM) && (CPU_IO_Exception(port,4)))) {
+ 		CPU_ForceV86FakeIO_Out(port,val,4);
+@@ -533,6 +606,7 @@ uint8_t IO_ReadB(Bitu port) {
+ 		retval = (uint8_t)io_readhandlers[0][port](port,1);
+ 	}
+ 	log_io(0, false, port, retval);
++	Slicks_RecordPortEvent(false, 1, port, retval);
+ 	return retval;
+ }
+ 
+@@ -546,6 +620,7 @@ uint16_t IO_ReadW(Bitu port) {
+ 		retval = (uint16_t)io_readhandlers[1][port](port,2);
+ 	}
+ 	log_io(1, false, port, retval);
++	Slicks_RecordPortEvent(false, 2, port, retval);
+ 	return retval;
+ }
+ 
+@@ -559,6 +634,7 @@ uint32_t IO_ReadD(Bitu port) {
+ 		retval = (uint32_t)io_readhandlers[2][port](port,4);
+ 	}
+ 	log_io(2, false, port, retval);
++	Slicks_RecordPortEvent(false, 4, port, retval);
+ 	return retval;
+ }
+ 

@@ -7,6 +7,7 @@ REFERENCE_RACE_VIDEO ?=
 REFERENCE_TRACE_BITMAP ?= $(REFERENCE_FIXED_ROOT)/slicks-executed.bin
 REFERENCE_TRACE_EDGES ?= $(REFERENCE_FIXED_ROOT)/slicks-edges.csv
 REFERENCE_INTERRUPTS ?= $(REFERENCE_FIXED_ROOT)/slicks-interrupts.csv
+REFERENCE_PORTS ?= $(REFERENCE_FIXED_ROOT)/slicks-ports.csv
 LIVE_ENTRYPOINTS ?= disasm/live-entrypoints.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
@@ -26,7 +27,8 @@ ABS_ROOT := $(abspath .)
 .PHONY: inspect hash prepare-reference prepare-fixed-reference \
 	reference-staging reference-286 reference-race reference-trace \
 	reference-frame-hash verify-reference-race verify-execution-trace \
-	verify-interrupt-trace analyze-execution-trace unpack rebuild-mz \
+	verify-interrupt-trace verify-port-trace analyze-execution-trace \
+	unpack rebuild-mz \
 	verify-runtime trace-summary \
 	ghidra ghidra-normalized \
 	todo clean
@@ -92,6 +94,9 @@ verify-execution-trace:
 
 verify-interrupt-trace:
 	$(PYTHON) tools/summarize_interrupt_trace.py $(REFERENCE_INTERRUPTS)
+
+verify-port-trace:
+	$(PYTHON) tools/summarize_port_trace.py $(REFERENCE_PORTS)
 
 analyze-execution-trace: verify-execution-trace verify-interrupt-trace unpack
 	$(PYTHON) tools/analyze_execution_trace.py disasm/runtime.bin \

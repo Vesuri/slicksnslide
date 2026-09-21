@@ -106,6 +106,12 @@ Its larger coverage produces 22,725 decoded instruction starts, 25,820 edges,
 and 4,702 conservative block-entry candidates. Register snapshots at each
 software interrupt provide the first measured DOS/BIOS service inventory.
 
+Direct I/O tracing captures 10,290,225 BASIC-race operations as 885 compact
+aggregates. The surface includes PIT/PIC/keyboard, joystick, Sound Blaster DSP
+and DMA, and VGA attribute/sequencer/graphics/palette/CRTC/status ports. Its
+millions of timer/retrace polls and dense VGA register traffic identify native
+routine replacement—not generic port emulation—as a performance requirement.
+
 ## Intended pipeline
 
 ```text
