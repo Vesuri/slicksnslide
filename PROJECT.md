@@ -280,7 +280,9 @@ ghidra_scripts/        headless analysis scripts
 disasm/                generated local artifacts; curated maps may be tracked
 src/game/              direct game-state, asset, track, and race translations
 src/platform/amiga/    target integration
-native/                hand-written 68020 routines pending src/ consolidation
+src/graphics/          graphics primitives and conversion
+src/ui/                title and user-interface routines
+src/util/              shared low-level utilities
 amiga/                 build, run, debug, and diagnostic scripts
 ```
 

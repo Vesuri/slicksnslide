@@ -53,76 +53,76 @@ obj/gcc8_c_support.o: $(SUPPORT)/gcc8_c_support.c | obj
 obj/gcc8_a_support.o: $(SUPPORT)/gcc8_a_support.s | obj
 	$(AS) $(ASFLAGS) -o $@ $<
 
-obj/sgfx_plot_plane.o: $(REPO)/native/sgfx_plot_plane.s | obj
+obj/sgfx_plot_plane.o: $(REPO)/src/graphics/sgfx_plot_plane.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_checker_fill.o: $(REPO)/native/sgfx_checker_fill.s | obj
+obj/sgfx_checker_fill.o: $(REPO)/src/graphics/sgfx_checker_fill.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_planar_blit.o: $(REPO)/native/sgfx_planar_blit.s | obj
+obj/sgfx_planar_blit.o: $(REPO)/src/graphics/sgfx_planar_blit.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_transparent_blit.o: $(REPO)/native/sgfx_transparent_blit.s | obj
+obj/sgfx_transparent_blit.o: $(REPO)/src/graphics/sgfx_transparent_blit.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_planar_subrect_blit.o: \
-		$(REPO)/native/sgfx_planar_subrect_blit.s | obj
+		$(REPO)/src/graphics/sgfx_planar_subrect_blit.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_title_pages.o: $(REPO)/native/sgfx_title_pages.s | obj
+obj/sgfx_title_pages.o: $(REPO)/src/graphics/sgfx_title_pages.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_title_crop.o: $(REPO)/native/sgfx_title_crop.s | obj
+obj/sgfx_title_crop.o: $(REPO)/src/graphics/sgfx_title_crop.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sutil_palette_nearest.o: $(REPO)/native/sutil_palette_nearest.s | obj
+obj/sutil_palette_nearest.o: $(REPO)/src/util/sutil_palette_nearest.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_title_step.o: $(REPO)/native/sui_title_step.s | obj
+obj/sui_title_step.o: $(REPO)/src/ui/sui_title_step.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_color_slot.o: $(REPO)/native/sui_color_slot.s | obj
+obj/sui_color_slot.o: $(REPO)/src/ui/sui_color_slot.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_span_fill.o: $(REPO)/native/sgfx_span_fill.s | obj
+obj/sgfx_span_fill.o: $(REPO)/src/graphics/sgfx_span_fill.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_bevel.o: $(REPO)/native/sui_bevel.s | obj
+obj/sui_bevel.o: $(REPO)/src/ui/sui_bevel.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_text.o: $(REPO)/native/sui_text.s | obj
+obj/sui_text.o: $(REPO)/src/ui/sui_text.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_title_menu.o: $(REPO)/native/sui_title_menu.s | obj
+obj/sui_title_menu.o: $(REPO)/src/ui/sui_title_menu.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_title_tail.o: $(REPO)/native/sui_title_tail.s | obj
+obj/sui_title_tail.o: $(REPO)/src/ui/sui_title_tail.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sui_title_dispatch.o: $(REPO)/native/sui_title_dispatch.s | obj
+obj/sui_title_dispatch.o: $(REPO)/src/ui/sui_title_dispatch.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/title_state.o: title_state.s | obj
+obj/title_state.o: $(REPO)/src/platform/amiga/title_state.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/native_bridge.o: native_bridge.s | obj
+obj/native_bridge.o: $(REPO)/src/platform/amiga/native_bridge.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/vga_to_chunky.o: $(REPO)/src/platform/amiga/vga_to_chunky.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_chunky_asset_to_planar.o: \
-		$(REPO)/native/sgfx_chunky_asset_to_planar.s | obj
+		$(REPO)/src/graphics/sgfx_chunky_asset_to_planar.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/c2p1x1_8_c5_bm.o: \
 		$(REPO)/src/platform/amiga/c2p1x1_8_c5_bm.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_clear_full.o: $(REPO)/native/sgfx_clear_full.s | obj
+obj/sgfx_clear_full.o: $(REPO)/src/graphics/sgfx_clear_full.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_mode_setup.o: $(REPO)/native/sgfx_mode_setup.s | obj
+obj/sgfx_mode_setup.o: $(REPO)/src/graphics/sgfx_mode_setup.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 $(OUT).elf: $(OBJECTS) | out

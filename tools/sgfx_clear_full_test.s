@@ -1,1 +1,1 @@
-	include	"native/sgfx_clear_full.s"
+	include	"src/graphics/sgfx_clear_full.s"

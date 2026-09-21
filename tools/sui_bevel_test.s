@@ -1,3 +1,3 @@
-	include	"native/sutil_palette_nearest.s"
-	include	"native/sgfx_span_fill.s"
-	include	"native/sui_bevel.s"
+	include	"src/util/sutil_palette_nearest.s"
+	include	"src/graphics/sgfx_span_fill.s"
+	include	"src/ui/sui_bevel.s"

@@ -146,50 +146,50 @@ verify-runtime: rebuild-mz
 	cmp disasm/runtime-normalized.bin $(REFERENCE_CAPTURE)-normalized.bin
 	@echo "independent normalized runtime: byte-exact match"
 
-build/sgfx_plot_plane.bin: native/sgfx_plot_plane.s
+build/sgfx_plot_plane.bin: src/graphics/sgfx_plot_plane.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_plot.bin: native/sgfx_plot.s
+build/sgfx_plot.bin: src/graphics/sgfx_plot.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/sgfx_checker_fill.bin: tools/sgfx_checker_fill_test.s \
-		native/sgfx_checker_fill.s native/sgfx_plot_plane.s
+		src/graphics/sgfx_checker_fill.s src/graphics/sgfx_plot_plane.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
 build/sgfx_title_pages.bin: tools/sgfx_title_pages_test.s \
-		native/sgfx_title_pages.s native/sgfx_planar_blit.s
+		src/graphics/sgfx_title_pages.s src/graphics/sgfx_planar_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
 build/sgfx_title_crop.bin: tools/sgfx_title_crop_test.s \
-		native/sgfx_title_crop.s native/sgfx_planar_subrect_blit.s
+		src/graphics/sgfx_title_crop.s src/graphics/sgfx_planar_subrect_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
-build/sutil_palette_nearest.bin: native/sutil_palette_nearest.s
+build/sutil_palette_nearest.bin: src/util/sutil_palette_nearest.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/sui_title_step.bin: tools/sui_title_step_test.s \
-		native/sui_title_step.s native/sutil_palette_nearest.s \
-		native/sgfx_title_crop.s native/sgfx_planar_subrect_blit.s
+		src/ui/sui_title_step.s src/util/sutil_palette_nearest.s \
+		src/graphics/sgfx_title_crop.s src/graphics/sgfx_planar_subrect_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
-build/sui_color_slot.bin: native/sui_color_slot.s
+build/sui_color_slot.bin: src/ui/sui_color_slot.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/sui_title_tail.bin: tools/sui_title_tail_test.s \
-		native/sui_title_tail.s native/sutil_palette_nearest.s \
-		native/sui_color_slot.s
+		src/ui/sui_title_tail.s src/util/sutil_palette_nearest.s \
+		src/ui/sui_color_slot.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
-build/sui_title_dispatch.bin: native/sui_title_dispatch.s
+build/sui_title_dispatch.bin: src/ui/sui_title_dispatch.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
@@ -200,7 +200,7 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 		$< -lunicorn -o $@
 
 build/sgame_post_title_init.bin: tools/sgame_post_title_init_test.s \
-		native/sgame_post_title_init.s
+		src/game/sgame_post_title_init.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
@@ -210,16 +210,16 @@ build/verify_post_title_init: tools/verify_post_title_init.c
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
 
-build/sgfx_span_fill.bin: native/sgfx_span_fill.s
+build/sgfx_span_fill.bin: src/graphics/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_remap_copy.bin: native/sgfx_remap_copy.s
+build/sgfx_remap_copy.bin: src/graphics/sgfx_remap_copy.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/sgfx_clear_full.bin: tools/sgfx_clear_full_test.s \
-		native/sgfx_clear_full.s
+		src/graphics/sgfx_clear_full.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
@@ -230,7 +230,7 @@ build/verify_clear_full: tools/verify_clear_full.c
 		$< -lunicorn -o $@
 
 build/sgfx_mode_setup.bin: tools/sgfx_mode_setup_test.s \
-		native/sgfx_clear_full.s native/sgfx_mode_setup.s
+		src/graphics/sgfx_clear_full.s src/graphics/sgfx_mode_setup.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
@@ -241,7 +241,7 @@ build/verify_mode_setup: tools/verify_mode_setup.c
 		$< -lunicorn -o $@
 
 build/sutil_fill_bytes.bin: tools/sutil_fill_bytes_test.s \
-		native/sutil_fill_bytes.s
+		src/util/sutil_fill_bytes.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
@@ -251,28 +251,28 @@ build/verify_fill_bytes: tools/verify_fill_bytes.c
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
 
-build/sui_bevel.bin: tools/sui_bevel_test.s native/sui_bevel.s \
-		native/sutil_palette_nearest.s native/sgfx_span_fill.s
+build/sui_bevel.bin: tools/sui_bevel_test.s src/ui/sui_bevel.s \
+		src/util/sutil_palette_nearest.s src/graphics/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
-build/sgfx_read_pixel.bin: native/sgfx_read_pixel.s
+build/sgfx_read_pixel.bin: src/graphics/sgfx_read_pixel.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_planar_blit.bin: native/sgfx_planar_blit.s
+build/sgfx_planar_blit.bin: src/graphics/sgfx_planar_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_transparent_blit.bin: native/sgfx_transparent_blit.s
+build/sgfx_transparent_blit.bin: src/graphics/sgfx_transparent_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_readback.bin: native/sgfx_readback.s
+build/sgfx_readback.bin: src/graphics/sgfx_readback.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_planar_subrect_blit.bin: native/sgfx_planar_subrect_blit.s
+build/sgfx_planar_subrect_blit.bin: src/graphics/sgfx_planar_subrect_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
