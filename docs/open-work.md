@@ -4,7 +4,8 @@
    live-named VGA functions. The sub-rectangle blitter, three pixel helpers,
    opaque/transparent sprite blits, and readback helper now have stack layouts;
    dynamic range and buffer checks cover the plotter and four blit/readback
-   primitives.
+   primitives. The rectangular span-fill layout is statically recovered and
+   awaits dynamic range checks.
 2. Turn the captured DOS/BIOS, port, and 15-writer VGA-memory inventories into
    service and native drawing-replacement contracts. The BASIC path has no
    writes overlapping executed instruction bytes; extend that proof to other

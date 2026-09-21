@@ -162,6 +162,13 @@ plane on this run. Coordinates include `FFFFh`, so a native replacement must
 preserve unsigned 16-bit coordinate arithmetic and logical shifts rather than
 prematurely treating every coordinate word as a signed host integer.
 
+`live_vga_span_fill(x0, y0, x1, y1, value, screen_base)` is more precisely a
+rectangular fill assembled from horizontal spans. It receives six words,
+rejects empty half-open ranges, selects edge planes from `x0 & 3` and
+`(x1 - 1) & 3`, enables all planes for middle bytes, and repeats the span for
+`y1 - y0` rows. Only the low byte of `value` is written. Its existing symbol
+is retained for map stability until dynamic argument tracing is added.
+
 `live_vga_planar_subrect_blit(dest_x, dest_y, source_x, source_y, width,
 height, source_far, screen_base)` receives nine 16-bit stack words. The source
 starts with byte-width and height bytes, followed by four planes. One bounded
