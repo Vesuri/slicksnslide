@@ -119,15 +119,20 @@ byte-level comparison of every runtime write against all dynamically decoded
 instruction extents finds no write to executed code on the BASIC path after
 the Compack handoff.
 
-The live-seeded Ghidra workflow now disassembles 4,674 conservative block
+The live-seeded Ghidra workflow now disassembles 4,763 conservative block
 entries without promoting them all to functions. It names 12 curated VGA
 primitive candidates in both the relocated raw image and normalized MZ. The
-auditable raw-image listing expands from 56,706 to 59,663 instructions (687 to
-693 discovered functions); the normalized live listing contains 59,610
+auditable raw-image listing expands from 56,706 to 59,756 instructions (687 to
+693 discovered functions); the normalized live listing contains 59,703
 instructions and 692 functions. `live_vga_planar_subrect_blit` and
 `live_vga_plot` now have proved far-cdecl stack contracts and dynamically
 checked source/destination bounds, making them the first native 68020
 replacement targets.
+
+The same probe proves the opaque and transparent sprite-buffer ABIs and VGA
+readback ABI. The readback height is a word-sized stack argument whose low byte
+alone is significant, and observed coordinates include `FFFFh`. Preserving
+those exact 16-bit operations is part of the native graphics contract.
 
 ## Intended pipeline
 

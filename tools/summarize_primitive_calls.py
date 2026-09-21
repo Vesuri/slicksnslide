@@ -8,6 +8,21 @@ from pathlib import Path
 
 
 TARGETS = {
+    0x2A97C: (
+        "vga_transparent_blit",
+        ("x", "y", "source_offset", "source_segment", "screen_base"),
+    ),
+    0x2A9F2: (
+        "vga_planar_blit",
+        ("x", "y", "source_offset", "source_segment", "screen_base"),
+    ),
+    0x2AAE5: (
+        "vga_readback",
+        (
+            "x", "y", "width", "height_word", "destination_offset",
+            "destination_segment", "screen_base",
+        ),
+    ),
     0x2B40A: (
         "vga_plot",
         ("x", "y", "value", "screen_base"),
@@ -35,9 +50,12 @@ def main() -> None:
     calls_by_target: dict[int, int] = Counter()
     values: dict[int, list[set[int]]] = {}
     strides: dict[int, Counter[int]] = {}
-    source_sizes: Counter[tuple[int, int]] = Counter()
+    source_sizes: Counter[tuple[int, int, int]] = Counter()
+    readback_sizes: Counter[tuple[int, int]] = Counter()
     violations: Counter[str] = Counter()
     violation_calls: Counter[str] = Counter()
+    wraps: Counter[str] = Counter()
+    wrap_calls: Counter[str] = Counter()
 
     with args.trace.open(newline="") as source:
         reader = csv.DictReader(source)
@@ -82,6 +100,10 @@ def main() -> None:
                 violations[reason] += 1
                 violation_calls[reason] += count
 
+            def note_wrap(reason: str) -> None:
+                wraps[reason] += 1
+                wrap_calls[reason] += count
+
             if not stride:
                 reject("zero framebuffer stride")
 
@@ -90,12 +112,50 @@ def main() -> None:
                 if screen_base + y * stride + (x >> 2) >= 0x10000:
                     reject("plot destination outside 64 KiB plane")
 
+            if target in (0x2A97C, 0x2A9F2):
+                x, y, source_offset, _, screen_base = arguments
+                source_width = number(row["source_width"])
+                source_height = number(row["source_height"])
+                source_sizes[(target, source_width, source_height)] += count
+                if not source_width or not source_height:
+                    reject("zero-sized sprite")
+                elif (
+                    screen_base
+                    + (y + source_height - 1) * stride
+                    + (x >> 2)
+                    + source_width
+                    > 0x10000
+                ):
+                    note_wrap("sprite destination wraps 16-bit VGA offset")
+                if source_offset + 2 + 4 * source_width * source_height > 0x10000:
+                    reject("sprite source wraps 16-bit far offset")
+
+            if target == 0x2AAE5:
+                (x, y, width, height_word, destination_offset,
+                 _, screen_base) = arguments
+                height = height_word & 0xFF
+                width_bytes = (width + 3) >> 2
+                readback_sizes[(width, height)] += count
+                if not width or not height:
+                    reject("zero-sized readback")
+                elif (
+                    screen_base
+                    + (y + height - 1) * stride
+                    + (x >> 2)
+                    + width_bytes
+                    > 0x10000
+                ):
+                    note_wrap("readback source wraps 16-bit VGA offset")
+                output_size = 3 + 4 * width_bytes * height
+                if destination_offset + output_size > 0x10000:
+                    reject("readback destination wraps 16-bit far offset")
+
             if target == 0x2B8DE:
                 (dest_x, dest_y, source_x, source_y, width, height,
                  _, _, screen_base) = arguments
                 source_width = number(row["source_width"])
                 source_height = number(row["source_height"])
-                source_sizes[(source_width, source_height)] += count
+                source_sizes[(target, source_width, source_height)] += count
                 width_bytes = (width + 3) >> 2
                 if not width or not height:
                     reject("zero-sized blit")
@@ -103,6 +163,11 @@ def main() -> None:
                     reject("blit source x range outside sprite")
                 if source_y + height > source_height:
                     reject("blit source y range outside sprite")
+                if (
+                    arguments[6] + 2 + 4 * source_width * source_height
+                    > 0x10000
+                ):
+                    reject("blit source wraps 16-bit far offset")
                 final_byte = (
                     screen_base
                     + (dest_y + source_y + height - 1) * stride
@@ -138,8 +203,27 @@ def main() -> None:
 
     if source_sizes:
         print("sprite byte-width x height values:")
-        for dimensions, count in source_sizes.most_common():
-            print(f"  {dimensions[0]} x {dimensions[1]}: {count} calls")
+        ordered_sizes = source_sizes.most_common()
+        for dimensions, count in ordered_sizes[:20]:
+            print(
+                f"  {TARGETS[dimensions[0]][0]}: "
+                f"{dimensions[1]} x {dimensions[2]} ({count} calls)"
+            )
+        if len(ordered_sizes) > 20:
+            print(f"  ... {len(ordered_sizes) - 20} additional size combinations")
+
+    if readback_sizes:
+        print("readback width x height values:")
+        for dimensions, count in readback_sizes.most_common(20):
+            print(f"  {dimensions[0]} x {dimensions[1]} ({count} calls)")
+        if len(readback_sizes) > 20:
+            print(f"  ... {len(readback_sizes) - 20} additional size combinations")
+
+    for reason in sorted(wraps):
+        print(
+            f"NOTICE: {reason}: {wraps[reason]} tuples, "
+            f"{wrap_calls[reason]} calls"
+        )
 
     if violations:
         for reason in sorted(violations):

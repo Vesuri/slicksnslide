@@ -148,12 +148,19 @@ byte-width, a height byte, then four consecutive planar payloads. The opaque
 form copies every byte; the transparent form advances over zero source bytes
 without touching the destination.
 
-`live_vga_readback(x, y, width, height, destination_far, screen_base)` receives
-seven words. It writes `ceil(width / 4)` and height as the destination header,
+`live_vga_readback(x, y, width, height_word, destination_far, screen_base)`
+receives seven words, but consumes only the low byte of `height_word`. It
+writes `ceil(width / 4)` and that effective height as the destination header,
 copies the selected rectangle from all four VGA planes, and appends the
 starting-plane alignment `(4 - (x & 3)) & 3`. Call sites clean 14 bytes,
-confirming the layout. Dynamic value-range and allocation-bound checks remain
-to be added for these three routines.
+confirming the layout.
+
+The expanded call trace observes 2,627 transparent blits, 6,491 opaque blits,
+and 6,488 readbacks. All sprite payloads and far destination buffers stay
+within their 16-bit segments, and all computed VGA spans stay within the 64 KiB
+plane on this run. Coordinates include `FFFFh`, so a native replacement must
+preserve unsigned 16-bit coordinate arithmetic and logical shifts rather than
+prematurely treating every coordinate word as a signed host integer.
 
 `live_vga_planar_subrect_blit(dest_x, dest_y, source_x, source_y, width,
 height, source_far, screen_base)` receives nine 16-bit stack words. The source

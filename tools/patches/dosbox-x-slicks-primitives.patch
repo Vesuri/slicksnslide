@@ -12,7 +12,7 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  #include <unordered_set>
  #include <vector>
  
-@@ -65,6 +68,44 @@ bool slicks_previous_valid = false;
+@@ -65,6 +68,46 @@ bool slicks_previous_valid = false;
  std::vector<uint8_t> slicks_executed;
  std::unordered_set<uint64_t> slicks_edges;
  
@@ -45,9 +45,11 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +		call.args[i] = mem_readw(stack + stack_offset);
 +	}
 +	call.stride = mem_readw(SegPhys(ds) + 0x1d7b);
-+	if (target == 0x2b8de) {
-+		const auto source = (static_cast<PhysPt>(call.args[7]) << 4) +
-+		                    call.args[6];
++	if (target == 0x2a97c || target == 0x2a9f2 || target == 0x2b8de) {
++		const auto pointer_index = target == 0x2b8de ? 6 : 2;
++		const auto source =
++		        (static_cast<PhysPt>(call.args[pointer_index + 1]) << 4) +
++		        call.args[pointer_index];
 +		call.source_width = mem_readb(source);
 +		call.source_height = mem_readb(source + 1);
 +	}
@@ -57,7 +59,7 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  void Slicks_WriteTrace()
  {
  	if (!slicks_trace_active)
-@@ -84,8 +127,32 @@ void Slicks_WriteTrace()
+@@ -84,8 +129,38 @@ void Slicks_WriteTrace()
  			        static_cast<uint32_t>(edge));
  		fclose(output);
  	}
@@ -67,9 +69,15 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +		      output);
 +		for (const auto &item : slicks_primitive_calls) {
 +			const auto &call = item.first;
-+			const auto *name = call.target == 0x2b8de
-+			        ? "vga_planar_subrect_blit"
-+			        : "vga_plot";
++			const char *name = nullptr;
++			switch (call.target) {
++			case 0x2a97c: name = "vga_transparent_blit"; break;
++			case 0x2a9f2: name = "vga_planar_blit"; break;
++			case 0x2aae5: name = "vga_readback"; break;
++			case 0x2b40a: name = "vga_plot"; break;
++			case 0x2b8de: name = "vga_planar_subrect_blit"; break;
++			default: name = "unknown"; break;
++			}
 +			fprintf(output, "0x%05x,%s", call.target, name);
 +			for (uint8_t i = 0; i < 9; ++i) {
 +				if (i < call.argc)
@@ -90,11 +98,15 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  }
  
  void Slicks_TraceInstruction(const PhysPt address)
-@@ -123,6 +190,10 @@ void Slicks_TraceInstruction(const PhysPt address)
+@@ -123,6 +197,14 @@ void Slicks_TraceInstruction(const PhysPt address)
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
-+	if (offset == 0x2b8de)
++	if (offset == 0x2a97c || offset == 0x2a9f2)
++		Slicks_RecordPrimitiveCall(offset, 5);
++	else if (offset == 0x2aae5)
++		Slicks_RecordPrimitiveCall(offset, 7);
++	else if (offset == 0x2b8de)
 +		Slicks_RecordPrimitiveCall(offset, 9);
 +	else if (offset == 0x2b40a)
 +		Slicks_RecordPrimitiveCall(offset, 4);
