@@ -228,6 +228,14 @@ case, and F1/F9/F12 have distinct cases. The BASIC script supplies scan code
 implements that classification directly in 68020 assembly, passes every one
 of the 65,536 possible word inputs, and is now used by the A1200 platform input
 path. The strict target checksum remains `37048854`.
+The selected-zero Enter path then sets the original result sentinel 99, passes
+the live player/state gates, restores page `(1,0)`, and returns zero to its
+outer caller at `16252h`. The first following state transition is now native:
+`sgame_post_title_init` translates the complete `16272h..162E4h` nested-loop
+region, seeding four player words and rebuilding their 4-by-13 state grid from
+the shared flag vector. Another 256 relocated-x86-versus-68020 cases compare
+all 52 grid words and four seed words, bringing the differential corpus to
+6,267 cases.
 
 ## Intended pipeline
 

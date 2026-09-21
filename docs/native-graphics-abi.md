@@ -180,6 +180,17 @@ checked for all 65,536 word-valued inputs. Amiga raw Escape, Return, Space,
 F1, F9, and F10 now enter this native classifier through the platform input
 boundary; mouse activation maps to the original Enter case.
 
+`sgame_post_title_init` is the first native block after the title routine has
+returned zero to its outer caller. It translates runtime offsets
+`16272h..162E4h` as one nested-loop region rather than as individual helpers.
+For four players it copies a shared seed word, clears all 13 state words, and,
+only when the mode word is zero, replaces a cleared word with 4 when the
+corresponding shared flag byte has bit zero set. Its register ABI receives the
+52-word grid, 13 flag bytes, four seed words, mode, and seed directly. The
+complete outputs agree with the relocated x86 block in 256 randomized cases,
+including both mode branches and all flag combinations encountered by the
+corpus; word memory is normalized for the expected x86/68020 endian difference.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

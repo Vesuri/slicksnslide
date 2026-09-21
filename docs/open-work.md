@@ -11,8 +11,11 @@
    run natively. Their common caller and its eight-key dispatch table at
    `1A2B2h..1A2C8h` are recovered; the scan-code classifier now runs natively
    and the BASIC Enter edge is proved to target `1A3CCh`. Translate the
-   activation case and its six-way menu selection next; `199FAh` is the
-   alternate, unreached renderer. Recover the original
+   activation case and its six-way menu selection next. The selected-zero
+   path is proved to return zero to `16252h`, and its following 4-by-13 player
+   state initialization at `16272h..162E4h` is native and differential-tested;
+   continue through the remaining post-title setup into the first game frame.
+   `199FAh` is the alternate, unreached renderer. Recover the original
    font resource to replace the temporary compact 5x7 title and numeric
    vocabulary.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a

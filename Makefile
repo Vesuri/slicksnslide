@@ -199,6 +199,17 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
 
+build/sgame_post_title_init.bin: tools/sgame_post_title_init_test.s \
+		native/sgame_post_title_init.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
+build/verify_post_title_init: tools/verify_post_title_init.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
+		$< -lunicorn -o $@
+
 build/sgfx_span_fill.bin: native/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
@@ -244,6 +255,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sui_color_slot.bin \
 		build/sui_title_tail.bin \
 		build/sui_title_dispatch.bin build/verify_title_dispatch \
+		build/sgame_post_title_init.bin build/verify_post_title_init \
 		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
@@ -258,6 +270,8 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin
 	build/verify_title_dispatch build/sui_title_dispatch.bin
+	build/verify_post_title_init disasm/runtime.bin \
+		build/sgame_post_title_init.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log
