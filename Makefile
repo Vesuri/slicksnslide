@@ -189,6 +189,16 @@ build/sui_title_tail.bin: tools/sui_title_tail_test.s \
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
+build/sui_title_dispatch.bin: native/sui_title_dispatch.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_title_dispatch: tools/verify_title_dispatch.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
+		$< -lunicorn -o $@
+
 build/sgfx_span_fill.bin: native/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
@@ -233,6 +243,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sui_title_step.bin \
 		build/sui_color_slot.bin \
 		build/sui_title_tail.bin \
+		build/sui_title_dispatch.bin build/verify_title_dispatch \
 		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
@@ -246,6 +257,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sui_color_slot.bin build/sui_title_tail.bin \
 		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin
+	build/verify_title_dispatch build/sui_title_dispatch.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

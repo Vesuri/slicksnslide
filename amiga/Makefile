@@ -23,6 +23,7 @@ OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_title_pages.o obj/sgfx_title_crop.o obj/sutil_palette_nearest.o \
 	obj/sui_title_step.o obj/sui_color_slot.o obj/sui_bevel.o obj/sui_text.o \
 	obj/sui_title_menu.o obj/sui_title_status.o obj/sui_title_tail.o \
+	obj/sui_title_dispatch.o \
 	obj/basic_frame.o \
 	obj/status_assets.o obj/native_bridge.o
 
@@ -95,6 +96,9 @@ obj/sui_title_status.o: $(REPO)/native/sui_title_status.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sui_title_tail.o: $(REPO)/native/sui_title_tail.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sui_title_dispatch.o: $(REPO)/native/sui_title_dispatch.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/basic-frame.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \

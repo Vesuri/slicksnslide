@@ -168,6 +168,18 @@ the native counter and state mutations, including boundaries 99/100, 139/140,
 the trailing VGA start-address call receives `(0,0)` and has no Amiga-side
 operation.
 
+`sui_title_dispatch` translates the following caller's eight-entry scan-code
+table at `1A2B2h..1A2C8h`. A focused 286 trace resolves the segmented alias as
+`CS:IP = 1E7E:3CF2`, with the live table at normalized runtime offset `1A51Eh`.
+Its keys are `01h`, `1Ch`, `1Dh`, `39h`, `3Bh`, `43h`, `44h`, and `58h`:
+Escape/F10 select cancel, Enter/Ctrl/Space select the common activation case,
+and F1, F9, and F12 select three distinct cases. The BASIC script idles with
+zero events before delivering `1Ch`, whose original target is `1A3CCh`.
+The native routine returns compact semantic case identifiers and is exhaustively
+checked for all 65,536 word-valued inputs. Amiga raw Escape, Return, Space,
+F1, F9, and F10 now enter this native classifier through the platform input
+boundary; mouse activation maps to the original Enter case.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

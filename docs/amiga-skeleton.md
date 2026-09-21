@@ -78,3 +78,8 @@ start-address update to an Amiga no-op. The renderer at `199FAh` is the
 wrapper's alternate, unreached branch. The current 5x7 title and numeric font
 is intentionally compact; replacing it with the recovered original font
 remains a visual-fidelity task.
+
+The title screen's host input boundary now feeds Amiga raw keys through the
+native eight-key DOS scan-code classifier. Escape/F10 and
+Return/Space/mouse activation follow the original cancel and activation
+classes; deeper menu actions remain the next control-flow slice.

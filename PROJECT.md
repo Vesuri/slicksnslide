@@ -220,6 +220,14 @@ proves the optional text branch inactive; its final VGA start-address call with
 coordinates `(0,0)` is an Amiga no-op. A 256-case composed differential covers
 the phase boundaries, wrap, palette result, state mutation, and preserved
 registers.
+Both observed return sites belong to one title input loop rather than two
+callers. Focused instrumentation resolves its segmented indirect table at
+runtime offset `1A51Eh`: Escape/F10 cancel, Enter/Ctrl/Space share the active
+case, and F1/F9/F12 have distinct cases. The BASIC script supplies scan code
+`1Ch`, which dispatches from `1A2C8h` to `1A3CCh`. `sui_title_dispatch`
+implements that classification directly in 68020 assembly, passes every one
+of the 65,536 possible word inputs, and is now used by the A1200 platform input
+path. The strict target checksum remains `37048854`.
 
 ## Intended pipeline
 

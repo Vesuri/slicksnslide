@@ -1,10 +1,12 @@
 	section	code
 	xdef	slicks_draw_title_pages
+	xdef	slicks_dispatch_title_key
 	xref	sgfx_title_pages
 	xref	sui_title_step
 	xref	sui_title_menu
 	xref	sui_title_status
 	xref	sui_title_tail
+	xref	sui_title_dispatch
 	xref	slicks_basic_frame
 	xref	slicks_basic_palette
 	xref	slicks_title_counter
@@ -40,4 +42,10 @@ slicks_draw_title_pages:
 	lea	slicks_title_phase,a3
 	jsr	sui_title_tail
 	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; C-platform bridge for the native title-loop scan-code classifier.
+slicks_dispatch_title_key:
+	move.w	4(sp),d0
+	jsr	sui_title_dispatch
 	rts

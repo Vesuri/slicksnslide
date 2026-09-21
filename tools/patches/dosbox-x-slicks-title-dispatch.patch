@@ -1,0 +1,35 @@
+diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -95,5 +95,7 @@ std::map<SlicksPrimitiveCall, uint64_t> slicks_primitive_calls;
+ std::map<uint64_t, std::vector<uint8_t>> slicks_sprite_blobs;
+ std::map<uint64_t, std::array<uint8_t, 768>> slicks_palettes;
++bool slicks_title_dispatch_logged = false;
++uint32_t slicks_title_event_samples = 0;
+ 
+ void Slicks_RecordPrimitiveCall(const uint32_t target, const uint8_t argc)
+ {
+@@ -287,6 +289,23 @@ void Slicks_TraceInstruction(const PhysPt address)
+ 	}
+ 
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if (offset == 0x1a2b2 && !slicks_title_dispatch_logged) {
++		const auto table = SegPhys(cs) + 0x3f5e;
++		LOG_MSG("SLICKS_TITLE_DISPATCH_SITE cs=%04x ip=%04x site=%05x table=%05x",
++		        SegValue(cs), static_cast<uint16_t>(reg_eip), offset,
++		        static_cast<uint32_t>(table - slicks_runtime_base));
++		for (uint8_t i = 0; i < 16; ++i)
++			LOG_MSG("SLICKS_TITLE_DISPATCH[%u]=%04x",
++			        i, mem_readw(table + static_cast<PhysPt>(i * 2)));
++		slicks_title_dispatch_logged = true;
++	}
++	if (offset == 0x1a2a9 && slicks_title_event_samples < 64) {
++		const auto frame = SegPhys(ss) + reg_bp;
++		LOG_MSG("SLICKS_TITLE_EVENT ax=%04x raw=%04x selection=%04x previous=%02x",
++		        reg_ax, mem_readw(frame - 0x0e), mem_readw(frame - 0x04),
++		        mem_readb(frame - 0x09));
++		++slicks_title_event_samples;
++	}
+ 	if (offset == 0x00d9f)
+ 		Slicks_RecordPrimitiveCall(offset, 4);
+ 	else if (offset == 0x201b6)

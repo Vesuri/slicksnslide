@@ -42,7 +42,9 @@ original multi-plane VGA write masks. The complete native differential corpus
 also includes 64 composed bevel cases spanning the observed title-menu control
 and randomized legal geometry, colour, and page states. The shared title tail
 adds 256 composed phase, palette, and render-state cases. The corpus currently
-contains 6,011 cases.
+contains 6,011 x86-versus-68020 cases. The adjacent title-loop scan-code
+classifier has a separate exhaustive native contract check over all 65,536
+word values; only the eight captured keys may select a nonzero semantic case.
 
 ## Program behavior
 

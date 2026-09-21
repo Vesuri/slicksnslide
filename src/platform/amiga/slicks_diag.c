@@ -29,7 +29,21 @@ __attribute__((constructor)) static void initialize_sysbase(void)
 }
 
 extern void slicks_draw_title_pages(unsigned char *planes);
+extern unsigned short slicks_dispatch_title_key(unsigned short scan_code);
 extern const unsigned char slicks_basic_palette[];
+
+static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
+{
+    switch (raw & 0x7fu) {
+    case 0x45: return 0x01; /* Escape */
+    case 0x44: return 0x1c; /* Return */
+    case 0x40: return 0x39; /* Space */
+    case 0x50: return 0x3b; /* F1 */
+    case 0x58: return 0x43; /* F9 */
+    case 0x59: return 0x44; /* F10 */
+    default: return 0;
+    }
+}
 
 static unsigned char logical_pixel(const unsigned char *planes,
                                    unsigned short x, unsigned short y)
@@ -139,8 +153,12 @@ int main(void)
             unsigned long message_class = message->Class;
             unsigned short code = message->Code;
             ReplyMsg((struct Message *)message);
-            if (message_class == IDCMP_MOUSEBUTTONS ||
-                (message_class == IDCMP_RAWKEY && code == 0x45)) {
+            unsigned short scan =
+                message_class == IDCMP_MOUSEBUTTONS
+                    ? 0x1c
+                    : amiga_raw_to_dos_scan(code);
+            unsigned short action = slicks_dispatch_title_key(scan);
+            if (action == 1 || action == 2) {
                 result = 0;
                 goto cleanup;
             }

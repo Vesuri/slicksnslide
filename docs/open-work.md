@@ -8,8 +8,11 @@
    the complete `19653h..19718h` prefix, colour-slot helper at `1FD63h`, and
    six-entry title-menu loop at `19719h..19825h` and observed BASIC title-status
    slice at `19828h..199F9h` and shared wrapper suffix at `19E4Ah..19EFEh` now
-   run natively. Follow its observed caller continuations at `1A1E3h` and
-   `1A26Fh`; `199FAh` is the alternate, unreached renderer. Recover the original
+   run natively. Their common caller and its eight-key dispatch table at
+   `1A2B2h..1A2C8h` are recovered; the scan-code classifier now runs natively
+   and the BASIC Enter edge is proved to target `1A3CCh`. Translate the
+   activation case and its six-way menu selection next; `199FAh` is the
+   alternate, unreached renderer. Recover the original
    font resource to replace the temporary compact 5x7 title and numeric
    vocabulary.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
