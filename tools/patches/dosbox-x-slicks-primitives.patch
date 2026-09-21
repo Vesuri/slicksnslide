@@ -59,7 +59,7 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  void Slicks_WriteTrace()
  {
  	if (!slicks_trace_active)
-@@ -84,8 +129,41 @@ void Slicks_WriteTrace()
+@@ -84,8 +129,45 @@ void Slicks_WriteTrace()
  			        static_cast<uint32_t>(edge));
  		fclose(output);
  	}
@@ -77,7 +77,11 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +			case 0x2a97c: name = "vga_transparent_blit"; break;
 +			case 0x2a9f2: name = "vga_planar_blit"; break;
 +			case 0x2aae5: name = "vga_readback"; break;
++			case 0x2ad92: name = "vga_clear_full"; break;
++			case 0x2adb7: name = "vga_mode_setup"; break;
 +			case 0x2b40a: name = "vga_plot"; break;
++			case 0x2b45e: name = "vga_plot_plane"; break;
++			case 0x2b48e: name = "vga_read_pixel"; break;
 +			case 0x2b8de: name = "vga_planar_subrect_blit"; break;
 +			default: name = "unknown"; break;
 +			}
@@ -101,7 +105,7 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  }
  
  void Slicks_TraceInstruction(const PhysPt address)
-@@ -123,6 +200,20 @@ void Slicks_TraceInstruction(const PhysPt address)
+@@ -123,6 +204,26 @@ void Slicks_TraceInstruction(const PhysPt address)
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
@@ -115,10 +119,16 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +		Slicks_RecordPrimitiveCall(offset, 5);
 +	else if (offset == 0x2aae5)
 +		Slicks_RecordPrimitiveCall(offset, 7);
++	else if (offset == 0x2ad92)
++		Slicks_RecordPrimitiveCall(offset, 0);
++	else if (offset == 0x2adb7)
++		Slicks_RecordPrimitiveCall(offset, 2);
 +	else if (offset == 0x2b8de)
 +		Slicks_RecordPrimitiveCall(offset, 9);
-+	else if (offset == 0x2b40a)
++	else if (offset == 0x2b40a || offset == 0x2b45e)
 +		Slicks_RecordPrimitiveCall(offset, 4);
++	else if (offset == 0x2b48e)
++		Slicks_RecordPrimitiveCall(offset, 3);
  	slicks_executed[offset] = 1;
  	if (slicks_previous_valid) {
  		const auto edge = (static_cast<uint64_t>(slicks_previous_offset) << 32) |

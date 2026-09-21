@@ -136,6 +136,12 @@ those exact 16-bit operations is part of the native graphics contract.
 It also establishes the four-word Borland far-fill ABI and the seven-word
 in-place VGA color-remap ABI; observed memory, lookup-table, and framebuffer
 spans pass their 16-bit bounds checks.
+The final named pixel helpers are now dynamically measured as well. A bounded
+race made 428,740 plane-selected pixel reads and 88,708 plane-selected writes,
+making direct native replacement of these call boundaries a higher priority
+than general instruction-level optimization. The two-word mode-setup call
+selects mode 0 with a 400-pixel virtual width, producing the observed
+100-byte stride and 32,700-byte page separation.
 
 ## Intended pipeline
 
@@ -186,6 +192,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Recover the calling signatures and state contracts of the remaining live-named
-VGA primitives while expanding trace coverage beyond BASIC.SS to distinguish
-common engine code from track- and mode-specific paths.
+Define the native 68020 graphics ABI from the recovered VGA contracts and
+implement the first assembly replacement corpus around the hot pixel,
+sprite-blit, and readback boundaries. Continue expanding trace coverage beyond
+BASIC.SS to distinguish common engine code from track- and mode-specific paths.

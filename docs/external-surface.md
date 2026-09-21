@@ -154,7 +154,26 @@ y, value, screen_base)` takes the same four words, selects sequencer plane
 `x & 3`, and writes the byte. `live_vga_read_pixel(x, y, screen_base)` takes
 three words, selects graphics-controller read plane `x & 3`, and returns the
 zero-extended byte in AX. Static callers clean eight and six argument bytes,
-respectively, confirming far cdecl.
+respectively, confirming far cdecl. Dynamic tracing shows that these are major
+hot-path boundaries: one bounded race made 88,708 plane-selected writes and
+428,740 reads. Writes use x `58..293`, y `7..176`, and both screen bases;
+reads cover every x `0..319`, y `0..189`, and both bases. Every computed plane
+offset remains inside the 64 KiB VGA window.
+
+`live_vga_mode_setup(mode, virtual_width)` has a two-word far-cdecl contract;
+the BASIC fixture calls it once as `(0, 400)`. It clears the old video state,
+enters BIOS mode `13h`, switches VGA into an unchained planar layout, loads a
+mode-specific CRTC table, clears the new 64 KiB aperture, and derives the
+logical stride and page geometry. Mode 0 with virtual width 400 establishes
+the measured 100-byte stride and 32,700-byte page separation used by every
+traced drawing primitive. On Amiga this routine should initialize equivalent
+renderer state directly rather than reproduce VGA register programming.
+
+`live_vga_clear_full()` takes no arguments. The fixture calls it once from
+mode setup. It enables all four VGA planes, waits across a vertical-retrace
+edge, and zeroes the full 64 KiB aperture. The native equivalent is a page or
+buffer clear plus whatever presentation synchronization the Amiga renderer
+chooses; the polling loop is not part of the portable semantic contract.
 
 Three sprite-buffer routines also have stable far-cdecl layouts.
 `live_vga_planar_blit(x, y, source_far, screen_base)` and

@@ -38,9 +38,19 @@ TARGETS = {
             "destination_segment", "screen_base",
         ),
     ),
+    0x2AD92: ("vga_clear_full", ()),
+    0x2ADB7: ("vga_mode_setup", ("mode", "virtual_width")),
     0x2B40A: (
         "vga_plot",
         ("x", "y", "value", "screen_base"),
+    ),
+    0x2B45E: (
+        "vga_plot_plane",
+        ("x", "y", "value", "screen_base"),
+    ),
+    0x2B48E: (
+        "vga_read_pixel",
+        ("x", "y", "screen_base"),
     ),
     0x2B8DE: (
         "vga_planar_subrect_blit",
@@ -54,6 +64,7 @@ TARGETS = {
 # This exported primitive is not reached by the bounded BASIC.SS race, but it
 # remains instrumented so other modes can add coverage without rebuilding.
 OPTIONAL_TARGETS = {0x29E35}
+STRIDE_FREE_TARGETS = {0x00D9F, 0x2AD92, 0x2ADB7}
 
 
 def number(value: str) -> int:
@@ -122,7 +133,7 @@ def main() -> None:
                 seen.add(value)
 
             stride = number(row["stride"])
-            if target != 0x00D9F:
+            if target not in STRIDE_FREE_TARGETS:
                 strides[target][stride] += count
 
             def reject(reason: str) -> None:
@@ -133,7 +144,7 @@ def main() -> None:
                 wraps[reason] += 1
                 wrap_calls[reason] += count
 
-            if target != 0x00D9F and not stride:
+            if target not in STRIDE_FREE_TARGETS and not stride:
                 reject("zero framebuffer stride")
 
             if target == 0x00D9F:
@@ -179,10 +190,15 @@ def main() -> None:
                     if first_byte < 0 or final_byte >= 0x10000:
                         reject("fill destination outside 64 KiB plane")
 
-            if target == 0x2B40A:
+            if target in (0x2B40A, 0x2B45E):
                 x, y, _, screen_base = arguments
                 if screen_base + y * stride + (x >> 2) >= 0x10000:
                     reject("plot destination outside 64 KiB plane")
+
+            if target == 0x2B48E:
+                x, y, screen_base = arguments
+                if screen_base + y * stride + (x >> 2) >= 0x10000:
+                    reject("pixel read outside 64 KiB plane")
 
             if target in (0x2A97C, 0x2A9F2):
                 x, y, source_offset, _, screen_base = arguments
