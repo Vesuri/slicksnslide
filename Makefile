@@ -9,6 +9,7 @@ REFERENCE_TRACE_EDGES ?= $(REFERENCE_FIXED_ROOT)/slicks-edges.csv
 REFERENCE_INTERRUPTS ?= $(REFERENCE_FIXED_ROOT)/slicks-interrupts.csv
 REFERENCE_PORTS ?= $(REFERENCE_FIXED_ROOT)/slicks-ports.csv
 REFERENCE_MEMORY ?= $(REFERENCE_FIXED_ROOT)/slicks-memory.csv
+REFERENCE_PRIMITIVES ?= $(REFERENCE_FIXED_ROOT)/slicks-primitive-calls.csv
 LIVE_ENTRYPOINTS ?= disasm/live-entrypoints.csv
 LIVE_VGA_SITES ?= disasm/live-vga-sites.csv
 CC ?= cc
@@ -30,7 +31,7 @@ ABS_ROOT := $(abspath .)
 	reference-staging reference-286 reference-race reference-trace \
 	reference-frame-hash verify-reference-race verify-execution-trace \
 	verify-interrupt-trace verify-port-trace analyze-execution-trace \
-	verify-memory-trace analyze-vga-sites unpack rebuild-mz \
+	verify-memory-trace verify-primitive-trace analyze-vga-sites unpack rebuild-mz \
 	verify-runtime trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	todo clean
@@ -103,6 +104,9 @@ verify-port-trace:
 verify-memory-trace: unpack
 	$(PYTHON) tools/summarize_memory_trace.py $(REFERENCE_MEMORY) \
 		disasm/runtime.bin $(REFERENCE_TRACE_BITMAP)
+
+verify-primitive-trace:
+	$(PYTHON) tools/summarize_primitive_calls.py $(REFERENCE_PRIMITIVES)
 
 analyze-vga-sites: verify-memory-trace
 	$(PYTHON) tools/analyze_vga_sites.py disasm/runtime.bin \

@@ -112,19 +112,22 @@ and DMA, and VGA attribute/sequencer/graphics/palette/CRTC/status ports. Its
 millions of timer/retrace polls and dense VGA register traffic identify native
 routine replacement—not generic port emulation—as a performance requirement.
 
-Memory tracing reduces 4,721,833 accesses to 23,056 aggregates. Fourteen
-instruction sites account for 3,894,357 VGA writes, making them concrete native
-drawing-replacement boundaries. A byte-level comparison of every runtime write
-against all dynamically decoded instruction extents finds no write to executed
-code on the BASIC path after the Compack handoff.
+Memory tracing reduces millions of accesses to compact aggregates. Across the
+bounded BASIC runs, 19 instruction sites in 12 functions directly access VGA
+memory, making them concrete native drawing-replacement boundaries. A
+byte-level comparison of every runtime write against all dynamically decoded
+instruction extents finds no write to executed code on the BASIC path after
+the Compack handoff.
 
-The live-seeded Ghidra workflow now disassembles 3,012 conservative block
-entries without promoting them all to functions. It names 11 curated VGA
+The live-seeded Ghidra workflow now disassembles 4,674 conservative block
+entries without promoting them all to functions. It names 12 curated VGA
 primitive candidates in both the relocated raw image and normalized MZ. The
-auditable raw-image listing expands from 56,706 to 58,649 instructions (687 to
-689 discovered functions); the normalized live listing contains 58,383
-instructions and 688 functions. The dominant `live_vga_clipped_blit` and
-`live_vga_plot` routines are the first native 68020 replacement targets.
+auditable raw-image listing expands from 56,706 to 59,663 instructions (687 to
+693 discovered functions); the normalized live listing contains 59,610
+instructions and 692 functions. `live_vga_planar_subrect_blit` and
+`live_vga_plot` now have proved far-cdecl stack contracts and dynamically
+checked source/destination bounds, making them the first native 68020
+replacement targets.
 
 ## Intended pipeline
 
@@ -175,7 +178,6 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Recover the calling signatures and state contracts of the live-named VGA
-primitives, beginning with the clipped blitter and pixel writer, while
-expanding trace coverage beyond BASIC.SS to distinguish common engine code from
-track- and mode-specific paths.
+Recover the calling signatures and state contracts of the remaining live-named
+VGA primitives while expanding trace coverage beyond BASIC.SS to distinguish
+common engine code from track- and mode-specific paths.

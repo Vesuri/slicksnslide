@@ -108,9 +108,9 @@ known hot-path design.
 
 ### Native graphics candidates
 
-The live map groups the 16 VGA access instructions into 11 functions. Names
-remain deliberately provisional until their argument layouts and callers are
-fully typed.
+Across the bounded BASIC runs, the live map currently groups 19 VGA access
+instructions into 12 functions. Names remain provisional except where stack
+use and traced arguments establish the contract.
 
 | Runtime offset | Live symbol | Evidence |
 |---:|---|---|
@@ -124,15 +124,27 @@ fully typed.
 | `2ADB7h` | `live_vga_mode_setup` | CRTC/sequencer setup and clear |
 | `2B40Ah` | `live_vga_plot` | Direct pixel-byte write |
 | `2B45Eh` | `live_vga_plot_plane` | Plane-selected pixel write |
-| `2B8DEh` | `live_vga_clipped_blit` | Dominant clipped four-plane copy |
+| `2B48Eh` | `live_vga_read_pixel` | Plane-selected pixel read |
+| `2B8DEh` | `live_vga_planar_subrect_blit` | Four-plane sub-rectangle copy |
 
-`live_vga_clipped_blit` accounts for about 2.19 million writes in the measured
-run and `live_vga_plot` for about 1.18 million. These are the first two
-performance-critical candidates for direct 68020 implementations.
+Both proved routines use Borland far cdecl and leave stack cleanup to the
+caller. `live_vga_plot(x, y, value, screen_base)` computes
+`screen_base + y * stride + x / 4`; plane selection is deliberately outside
+this helper. A measured run made 144,812 calls with stride 100, x `5..313`, y
+`49..198`, 42 byte values, and screen bases 0 and 32,700.
+
+`live_vga_planar_subrect_blit(dest_x, dest_y, source_x, source_y, width,
+height, source_far, screen_base)` receives nine 16-bit stack words. The source
+starts with byte-width and height bytes, followed by four planes. One bounded
+run copied a `100 x 97` region at `(110,77)` from an `80-byte x 200-row` source
+to both screen bases. Recomputed source and 64 KiB plane bounds pass for every
+captured tuple. Other runs exercised this helper much more heavily, so call
+mix—not the contract—is path- and timing-dependent. These routines remain
+early direct-68020 replacement candidates.
 
 ## Still unmeasured
 
-- Semantic grouping of the 14 VGA-writing sites into drawing primitives and
+- Semantic contracts for the remaining VGA-access functions and their
   dirty-region behavior.
 - Executable-write coverage on additional tracks and modes.
 - Additional paths reached by other tracks, menus, multiplayer modes, and

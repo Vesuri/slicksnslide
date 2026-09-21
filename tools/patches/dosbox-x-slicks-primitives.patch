@@ -1,0 +1,103 @@
+diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -18,7 +18,10 @@
+ 
+ #include <stdio.h>
+ #include <algorithm>
++#include <array>
+ #include <cstdlib>
++#include <map>
++#include <tuple>
+ #include <unordered_set>
+ #include <vector>
+ 
+@@ -65,6 +68,44 @@ bool slicks_previous_valid = false;
+ std::vector<uint8_t> slicks_executed;
+ std::unordered_set<uint64_t> slicks_edges;
+ 
++struct SlicksPrimitiveCall {
++	uint32_t target;
++	uint8_t argc;
++	std::array<uint16_t, 9> args;
++	uint16_t stride;
++	uint8_t source_width;
++	uint8_t source_height;
++
++	bool operator<(const SlicksPrimitiveCall &other) const
++	{
++		return std::tie(target, argc, args, stride, source_width, source_height) <
++		       std::tie(other.target, other.argc, other.args, other.stride,
++		                other.source_width, other.source_height);
++	}
++};
++
++std::map<SlicksPrimitiveCall, uint64_t> slicks_primitive_calls;
++
++void Slicks_RecordPrimitiveCall(const uint32_t target, const uint8_t argc)
++{
++	SlicksPrimitiveCall call = {};
++	call.target = target;
++	call.argc = argc;
++	const auto stack = SegPhys(ss);
++	for (uint8_t i = 0; i < argc; ++i) {
++		const auto stack_offset = static_cast<uint16_t>(reg_sp + 4 + i * 2);
++		call.args[i] = mem_readw(stack + stack_offset);
++	}
++	call.stride = mem_readw(SegPhys(ds) + 0x1d7b);
++	if (target == 0x2b8de) {
++		const auto source = (static_cast<PhysPt>(call.args[7]) << 4) +
++		                    call.args[6];
++		call.source_width = mem_readb(source);
++		call.source_height = mem_readb(source + 1);
++	}
++	++slicks_primitive_calls[call];
++}
++
+ void Slicks_WriteTrace()
+ {
+ 	if (!slicks_trace_active)
+@@ -84,8 +127,32 @@ void Slicks_WriteTrace()
+ 			        static_cast<uint32_t>(edge));
+ 		fclose(output);
+ 	}
++	if (auto *output = fopen("slicks-primitive-calls.csv", "w")) {
++		fputs("target,name,arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,"
++		      "stride,source_width,source_height,count\n",
++		      output);
++		for (const auto &item : slicks_primitive_calls) {
++			const auto &call = item.first;
++			const auto *name = call.target == 0x2b8de
++			        ? "vga_planar_subrect_blit"
++			        : "vga_plot";
++			fprintf(output, "0x%05x,%s", call.target, name);
++			for (uint8_t i = 0; i < 9; ++i) {
++				if (i < call.argc)
++					fprintf(output, ",0x%04x", call.args[i]);
++				else
++					fputc(',', output);
++			}
++			fprintf(output, ",0x%04x,0x%02x,0x%02x,%llu\n", call.stride,
++			        call.source_width, call.source_height,
++			        static_cast<unsigned long long>(item.second));
++		}
++		fclose(output);
++	}
+ 	LOG_MSG("SLICKS: wrote execution bitmap and %zu unique transitions",
+ 	        slicks_edges.size());
++	LOG_MSG("SLICKS: wrote %zu primitive call aggregates",
++	        slicks_primitive_calls.size());
+ }
+ 
+ void Slicks_TraceInstruction(const PhysPt address)
+@@ -123,6 +190,10 @@ void Slicks_TraceInstruction(const PhysPt address)
+ 	}
+ 
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if (offset == 0x2b8de)
++		Slicks_RecordPrimitiveCall(offset, 9);
++	else if (offset == 0x2b40a)
++		Slicks_RecordPrimitiveCall(offset, 4);
+ 	slicks_executed[offset] = 1;
+ 	if (slicks_previous_valid) {
+ 		const auto edge = (static_cast<uint64_t>(slicks_previous_offset) << 32) |

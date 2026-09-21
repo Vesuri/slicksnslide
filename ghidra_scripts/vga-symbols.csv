@@ -9,4 +9,5 @@ offset,name,note
 2ADB7,live_vga_mode_setup,Observed VGA register setup and clear
 2B40A,live_vga_plot,Observed direct planar pixel write
 2B45E,live_vga_plot_plane,Observed plane-selected pixel write
-2B8DE,live_vga_clipped_blit,Provisional dominant clipped planar blit
+2B48E,live_vga_read_pixel,Observed plane-selected pixel read
+2B8DE,live_vga_planar_subrect_blit,Observed planar sub-rectangle copy
