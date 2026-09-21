@@ -39,10 +39,19 @@ The transparent form skips source bytes equal to zero. These larger helpers
 clobber `d0-d3/d5-d7` and `a1-a5`, preserving the plane base in `a0` and stride
 in `d4`. Zero dimensions are excluded by the measured source-buffer contract.
 
+`sgfx_readback` receives pixel width in `d2.w`, height in `d5.b`, and the
+destination sprite-buffer pointer in `a1`; the other inputs retain their common
+meanings. It writes the two-byte `ceil(width/4), height` header, four rotated
+plane payloads, and the trailing right-edge padding count `(-width) & 3`.
+Starting `x & 3` selects the first source plane and carries into the 16-bit
+source offset as the four planes rotate. The helper preserves `a0` and `d4`
+and otherwise uses the larger-helper clobber set above.
+
 The `verify-native-graphics` gate runs the original unpacked x86 helper bytes
 and these assembled 68020 routines in independent Unicorn engines. It compares
 the VGA plane selected by the original port write, the wrapped address, the
 returned byte, and the write side effect over deterministic edge cases and
 random states. The pixel helpers pass 2,040 paired states; each sprite blitter
 passes 256 states with the complete four-plane 256 KiB destination compared
-after every call.
+after every call. Readback passes 256 states with its complete 64 KiB
+destination segment compared after every call.

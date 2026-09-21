@@ -150,7 +150,8 @@ cases against the original unpacked x86 bodies in separate Unicorn x86-16 and
 68020 engines. The opaque and transparent planar sprite blitters pass another
 256 cases each, including destination-phase rotation, odd and even widths,
 transparent bytes, 16-bit starting-offset wrap, and whole-plane side-effect
-comparison.
+comparison. Native readback passes 256 more whole-segment cases covering its
+header, rotated payloads, right-edge padding, and untouched destination bytes.
 
 ## Intended pipeline
 
@@ -202,6 +203,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 ## Immediate next step
 
 Extend the proved native 68020 graphics ABI and differential corpus from the
-completed hot pixel and opaque/transparent sprite helpers to the readback and
-sub-rectangle boundaries. Continue expanding trace coverage beyond BASIC.SS
-to distinguish common engine code from track- and mode-specific paths.
+completed hot pixel, sprite-blit, and readback helpers to the sub-rectangle
+boundary and remaining drawing operations. Continue expanding trace coverage
+beyond BASIC.SS to distinguish common engine code from track- and mode-specific
+paths.

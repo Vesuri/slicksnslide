@@ -187,8 +187,9 @@ without touching the destination.
 receives seven words, but consumes only the low byte of `height_word`. It
 writes `ceil(width / 4)` and that effective height as the destination header,
 copies the selected rectangle from all four VGA planes, and appends the
-starting-plane alignment `(4 - (x & 3)) & 3`. Call sites clean 14 bytes,
-confirming the layout.
+right-edge padding count `(4 - (width & 3)) & 3`. The x coordinate instead
+selects the first source plane. Call sites clean 14 bytes, confirming the
+layout.
 
 The expanded call trace observes 2,688 transparent blits, 6,585 opaque blits,
 and 6,582 readbacks. All sprite payloads and far destination buffers stay

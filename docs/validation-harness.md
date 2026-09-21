@@ -22,7 +22,9 @@ corpus of 2,040 pixel states compares selected plane, wrapped 16-bit offset,
 returned value, and memory effect. Another 256 states for each opaque and
 transparent blitter compare the complete four-plane 256 KiB result, covering
 plane-phase rotation, odd and even widths, zero transparency, row stepping,
-and wrapped starting offsets.
+and wrapped starting offsets. A further 256 readback states compare the full
+64 KiB output segment, including header, rotated payloads, right-edge padding,
+and untouched bytes surrounding the result.
 
 ## Program behavior
 
