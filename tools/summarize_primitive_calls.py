@@ -8,6 +8,17 @@ from pathlib import Path
 
 
 TARGETS = {
+    0x00D9F: (
+        "far_fill",
+        ("destination_offset", "destination_segment", "count", "value_word"),
+    ),
+    0x24499: (
+        "vga_remap_copy",
+        (
+            "x0", "y0", "x1", "y1", "table_offset", "table_segment",
+            "screen_base",
+        ),
+    ),
     0x29E35: (
         "vga_span_fill",
         ("x0", "y0", "x1", "y1", "value_word", "screen_base"),
@@ -65,6 +76,8 @@ def main() -> None:
     source_sizes: Counter[tuple[int, int, int]] = Counter()
     readback_sizes: Counter[tuple[int, int]] = Counter()
     fill_sizes: Counter[tuple[int, int]] = Counter()
+    remap_sizes: Counter[tuple[int, int]] = Counter()
+    far_fill_video_calls = 0
     rejected_fills = 0
     rejected_fill_calls = 0
     violations: Counter[str] = Counter()
@@ -109,7 +122,8 @@ def main() -> None:
                 seen.add(value)
 
             stride = number(row["stride"])
-            strides[target][stride] += count
+            if target != 0x00D9F:
+                strides[target][stride] += count
 
             def reject(reason: str) -> None:
                 violations[reason] += 1
@@ -119,8 +133,33 @@ def main() -> None:
                 wraps[reason] += 1
                 wrap_calls[reason] += count
 
-            if not stride:
+            if target != 0x00D9F and not stride:
                 reject("zero framebuffer stride")
+
+            if target == 0x00D9F:
+                destination_offset, destination_segment, byte_count, _ = arguments
+                if destination_offset + byte_count > 0x10000:
+                    reject("far fill destination wraps 16-bit offset")
+                if destination_segment in (0xA000, 0xB800):
+                    far_fill_video_calls += count
+
+            if target == 0x24499:
+                (x0_word, y0_word, x1_word, y1_word, table_offset, _,
+                 screen_base) = arguments
+                x0 = signed_word(x0_word)
+                y0 = signed_word(y0_word)
+                x1 = signed_word(x1_word)
+                y1 = signed_word(y1_word)
+                if table_offset + 0x100 > 0x10000:
+                    reject("remap table wraps 16-bit far offset")
+                if x1 > x0 and y1 > y0:
+                    remap_sizes[(x1 - x0, y1 - y0)] += count
+                    first_byte = screen_base + y0 * stride + (x0 // 4)
+                    final_byte = (
+                        screen_base + (y1 - 1) * stride + ((x1 - 1) // 4)
+                    )
+                    if first_byte < 0 or final_byte >= 0x10000:
+                        reject("remap destination outside 64 KiB plane")
 
             if target == 0x29E35:
                 x0_word, y0_word, x1_word, y1_word, _, screen_base = arguments
@@ -265,6 +304,18 @@ def main() -> None:
         print(
             f"rejected empty fills: {rejected_fills} tuples, "
             f"{rejected_fill_calls} calls"
+        )
+
+    if remap_sizes:
+        print("remap width x height values:")
+        for dimensions, count in remap_sizes.most_common(20):
+            print(f"  {dimensions[0]} x {dimensions[1]} ({count} calls)")
+        if len(remap_sizes) > 20:
+            print(f"  ... {len(remap_sizes) - 20} additional size combinations")
+    if rows_by_target[0x00D9F]:
+        print(
+            "far fills targeting video segments A000h/B800h: "
+            f"{far_fill_video_calls} calls"
         )
 
     for reason in sorted(wraps):

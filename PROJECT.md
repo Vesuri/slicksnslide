@@ -133,6 +133,9 @@ The same probe proves the opaque and transparent sprite-buffer ABIs and VGA
 readback ABI. The readback height is a word-sized stack argument whose low byte
 alone is significant, and observed coordinates include `FFFFh`. Preserving
 those exact 16-bit operations is part of the native graphics contract.
+It also establishes the four-word Borland far-fill ABI and the seven-word
+in-place VGA color-remap ABI; observed memory, lookup-table, and framebuffer
+spans pass their 16-bit bounds checks.
 
 ## Intended pipeline
 

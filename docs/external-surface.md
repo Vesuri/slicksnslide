@@ -127,10 +127,26 @@ use and traced arguments establish the contract.
 | `2B48Eh` | `live_vga_read_pixel` | Plane-selected pixel read |
 | `2B8DEh` | `live_vga_planar_subrect_blit` | Four-plane sub-rectangle copy |
 
-Both proved routines use Borland far cdecl and leave stack cleanup to the
-caller. `live_vga_plot(x, y, value, screen_base)` computes
+`live_far_fill(destination_far, count, value_word)` is the Borland far-memory
+fill helper: four stack words because the destination pointer occupies two.
+It repeats only the low byte of `value_word`, first byte-aligning an odd
+destination and then using word stores. The bounded race made six calls, with
+counts from zero through 65,535; every destination remains within its 16-bit
+segment. One call fills VGA segment `A000h` and another fills text segment
+`B800h`, so the helper cannot be discarded as host-runtime scaffolding even
+though the other four calls target ordinary memory.
+
+`live_vga_remap_copy(x0, y0, x1, y1, table_far, screen_base)` receives seven
+stack words and remaps a half-open rectangle in place. It visits the four VGA
+planes, reads each selected byte, replaces it through the 256-byte far lookup
+table, and writes it back. Four observed calls use screen base zero and stride
+100, covering rectangles from `100 x 20` through `110 x 102`; all lookup-table
+and VGA spans pass the recomputed 16-bit bounds.
+
+The plot and sub-rectangle helpers also use Borland far cdecl and leave stack
+cleanup to the caller. `live_vga_plot(x, y, value, screen_base)` computes
 `screen_base + y * stride + x / 4`; plane selection is deliberately outside
-this helper. The latest bounded run made 138,093 calls with stride 100, x
+this helper. A bounded run made 138,093 calls with stride 100, x
 `5..313`, y `49..198`, 42 byte values, and screen bases 0 and 32,700.
 
 The adjacent helpers have equally direct contracts. `live_vga_plot_plane(x,
