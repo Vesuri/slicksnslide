@@ -10,18 +10,21 @@ the x86-versus-M68k differential suite.
 ## What the diagnostic proves
 
 `SlicksDiag` allocates the 256 KiB logical VGA store, runs the native equivalent
-of the observed mode-zero setup with its 400-pixel virtual width, and invokes
-the translated title-page caller, which feeds a call-time capture of the BASIC.SS title frame
-through the native opaque blitter to both original VGA pages. The platform
-shell converts the visible page to eight Amiga bitplanes, installs the captured
-256-colour VGA palette, opens a 320 by 200 AGA screen, and displays the result.
+of the observed mode-zero setup with its 400-pixel virtual width, opens the
+original `SLICKS.000` archive through AmigaDOS, and resolves `mainmenu.@I` and
+`partII` by their native archive directory entries. A hand-written 68020 pass
+converts the original 320 by 200 chunky image resource into the game's
+four-bank layout; the translated title caller then blits it to both original
+VGA pages and draws the native menu overlays. The platform shell converts the
+visible page to eight Amiga bitplanes, installs the archive palette, opens a
+320 by 200 AGA screen, and displays the result.
 The conversion is native 68020 assembly: a small staging pass interleaves the
 visible pixels from the four VGA banks into a 64,000-byte chunky buffer, then
 Mikael Kalms' Public Domain `c2p1x1_8_c5_bm` CPU5 routine writes directly to
 the arbitrary plane pointers in the Intuition `BitMap`. The target-side GDB
 check stops at a named post-display marker and verifies logical checksum
-`37048854` and planar display checksum `bf5d0cbe` after the native title menu
-and status indicators are drawn.
+`93c8bea6` and planar display checksum `29592c57` after the currently translated
+title menu overlays are drawn.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -67,11 +70,9 @@ image to both original VGA page bases through the native blitter. The observed
 `196ECh..19718h` redraw block then restores its fixed `100 by 97` crop through
 the native sub-rectangle blitter. That redraw now executes as part of the
 translated `19653h..19718h` UI prefix, including its three palette searches and
-animation-counter update. The original title-frame blob is identified by
-FNV-1a hash
-`a4fc8a1cbea08a30`; its call-time palette is
-`9b17b223ef7f93e3`. The ignored capture bundle is extracted during the build,
-so no original game bytes are committed.
+animation-counter update. No decoded title framebuffer or call-time sprite is
+linked into the executable: the original archive remains on the mounted Amiga
+volume and is parsed at runtime.
 
 The diagnostic still does not enter the original game loop. The six-entry loop
 at `19719h..19825h` is represented by native bevel and text rendering. The

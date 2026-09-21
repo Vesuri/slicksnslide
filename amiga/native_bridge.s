@@ -2,43 +2,48 @@
 	xdef	slicks_draw_title_pages
 	xdef	slicks_dispatch_title_key
 	xdef	slicks_setup_basic_mode
+	xdef	slicks_prepare_title_frame
 	xref	sgfx_title_pages
 	xref	sui_title_step
 	xref	sui_title_menu
-	xref	sui_title_status
 	xref	sui_title_tail
 	xref	sui_title_dispatch
 	xref	sgfx_mode_setup
-	xref	slicks_basic_frame
-	xref	slicks_basic_palette
+	xref	sgfx_chunky_asset_to_planar
 	xref	slicks_title_counter
 	xref	slicks_title_third_color
 	xref	slicks_title_render_state
 	xref	slicks_title_fallback_color
 	xref	slicks_title_phase
 
+; C ABI: slicks_prepare_title_frame(asset, frame)
+slicks_prepare_title_frame:
+	movea.l	4(sp),a0
+	movea.l	8(sp),a1
+	jsr	sgfx_chunky_asset_to_planar
+	rts
+
 ; Temporary C-platform bridge. The translated/native side uses the register
 ; ABI directly; this wrapper preserves the Amiga GCC callee-saved registers.
+; C ABI: slicks_draw_title_pages(planes, frame, palette)
 slicks_draw_title_pages:
 	movem.l	d2-d7/a2-a6,-(sp)
 	movea.l	48(sp),a0
-	lea	slicks_basic_frame,a1
+	movea.l	52(sp),a1
 	moveq	#100,d4
 	move.w	#$7fbc,d5
 	moveq	#0,d6
 	jsr	sgfx_title_pages
-	lea	slicks_basic_frame,a1
-	lea	slicks_basic_palette,a2
+	movea.l	52(sp),a1
+	movea.l	56(sp),a2
 	lea	slicks_title_counter,a3
 	lea	slicks_title_third_color,a4
 	moveq	#0,d7
 	jsr	sui_title_step
-	lea	slicks_basic_palette,a1
+	movea.l	56(sp),a1
 	moveq	#0,d7
 	jsr	sui_title_menu
-	moveq	#0,d7
-	jsr	sui_title_status
-	lea	slicks_basic_palette,a0
+	movea.l	56(sp),a0
 	lea	slicks_title_render_state,a1
 	lea	slicks_title_fallback_color,a2
 	lea	slicks_title_phase,a3

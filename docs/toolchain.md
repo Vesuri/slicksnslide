@@ -71,5 +71,5 @@ make todo          # immediate step and tracked work markers
 ```
 
 The AGA diagnostic launchers require the user's AmigaOS `SetPatch` at
-`tmp/SetPatch`. It is copied into the generated boot volume and is never added
-to the repository.
+`tmp/SetPatch`. They copy it and the original `ref/SLICKS.000` resource archive
+to the generated boot volume; neither is linked into the native executable.

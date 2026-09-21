@@ -1,5 +1,6 @@
 #include <exec/execbase.h>
 #include <exec/memory.h>
+#include <dos/dosextens.h>
 #include <graphics/displayinfo.h>
 #include <graphics/gfx.h>
 #include <graphics/gfxbase.h>
@@ -9,7 +10,10 @@
 #include <proto/graphics.h>
 #include <proto/intuition.h>
 
+#include "resource_archive.h"
+
 struct ExecBase *SysBase;
+struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
 struct IntuitionBase *IntuitionBase;
 
@@ -29,14 +33,17 @@ __attribute__((constructor)) static void initialize_sysbase(void)
     SysBase = base;
 }
 
-extern void slicks_draw_title_pages(unsigned char *planes);
+extern void slicks_draw_title_pages(unsigned char *planes,
+                                    const unsigned char *frame,
+                                    const unsigned char *palette);
+extern int slicks_prepare_title_frame(const unsigned char *asset,
+                                      unsigned char *frame);
 extern unsigned short slicks_dispatch_title_key(unsigned short scan_code);
 extern int slicks_setup_basic_mode(unsigned char *logical,
                                    unsigned short *mode_state);
 extern void slicks_convert_to_amiga(const unsigned char *logical,
                                     unsigned char *chunky,
                                     struct BitMap *bitmap);
-extern const unsigned char slicks_basic_palette[];
 
 static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
 {
@@ -51,9 +58,11 @@ static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
     }
 }
 
-static void make_title_surface(unsigned char *planes)
+static void make_title_surface(unsigned char *planes,
+                               const unsigned char *frame,
+                               const unsigned char *palette)
 {
-    slicks_draw_title_pages(planes);
+    slicks_draw_title_pages(planes, frame, palette);
 }
 
 static unsigned long checksum_planes(const unsigned char *planes)
@@ -102,19 +111,38 @@ static void load_palette(struct Screen *screen, unsigned long *table,
 int main(void)
 {
     static unsigned long palette[770];
+    static unsigned char source_palette[768];
     static unsigned short mode_state[11];
+    struct SlicksResourceArchive archive = {0, 0};
     unsigned char *logical = 0;
     unsigned char *chunky = 0;
+    unsigned char *title_asset = 0;
+    unsigned char *title_frame = 0;
     struct Screen *screen = 0;
     struct Window *window = 0;
     int result = 20;
 
+    DOSBase = (struct DosLibrary *)OpenLibrary(
+        (CONST_STRPTR)"dos.library", 37);
     GfxBase = (struct GfxBase *)OpenLibrary(
         (CONST_STRPTR)"graphics.library", 39);
     IntuitionBase =
         (struct IntuitionBase *)OpenLibrary(
             (CONST_STRPTR)"intuition.library", 39);
-    if (!GfxBase || !IntuitionBase)
+    if (!DOSBase || !GfxBase || !IntuitionBase)
+        goto cleanup;
+
+    if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0)
+        goto cleanup;
+    title_asset = (unsigned char *)AllocMem(64003UL, MEMF_ANY);
+    title_frame = (unsigned char *)AllocMem(64002UL, MEMF_ANY);
+    if (!title_asset || !title_frame)
+        goto cleanup;
+    if (slicks_resource_archive_load(&archive, "mainmenu.@I", title_asset,
+                                     64003UL) != 64003L ||
+        slicks_resource_archive_load(&archive, "partII", source_palette,
+                                     sizeof(source_palette)) != 768L ||
+        slicks_prepare_title_frame(title_asset, title_frame) != 0)
         goto cleanup;
 
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);
@@ -125,8 +153,13 @@ int main(void)
         goto cleanup;
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
-    make_title_surface(logical);
+    make_title_surface(logical, title_frame, source_palette);
     g_slicks_diag_checksum = checksum_planes(logical);
+    FreeMem(title_frame, 64002UL);
+    title_frame = 0;
+    FreeMem(title_asset, 64003UL);
+    title_asset = 0;
+    slicks_resource_archive_close(&archive);
 
     screen = OpenScreenTags(
         0, SA_DisplayID, LORES_KEY, SA_Width, 320, SA_Height, 200, SA_Depth, 8,
@@ -134,7 +167,7 @@ int main(void)
         TRUE, TAG_DONE);
     if (!screen)
         goto cleanup;
-    load_palette(screen, palette, slicks_basic_palette);
+    load_palette(screen, palette, source_palette);
 
     window = OpenWindowTags(
         0, WA_CustomScreen, (ULONG)screen, WA_Left, 0, WA_Top, 0, WA_Width, 320,
@@ -175,6 +208,7 @@ int main(void)
 
 cleanup:
     g_slicks_diag_ready = 0;
+    slicks_resource_archive_close(&archive);
     if (window)
         CloseWindow(window);
     if (screen)
@@ -183,11 +217,18 @@ cleanup:
         FreeMem(chunky, 320UL * 200UL);
     if (logical)
         FreeMem(logical, 0x40000UL);
+    if (title_frame)
+        FreeMem(title_frame, 64002UL);
+    if (title_asset)
+        FreeMem(title_asset, 64003UL);
     if (IntuitionBase)
         CloseLibrary((struct Library *)IntuitionBase);
     if (GfxBase)
         CloseLibrary((struct Library *)GfxBase);
+    if (DOSBase)
+        CloseLibrary((struct Library *)DOSBase);
     IntuitionBase = 0;
     GfxBase = 0;
+    DOSBase = 0;
     return result;
 }

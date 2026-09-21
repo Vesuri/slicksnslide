@@ -212,7 +212,10 @@ native. Extended call tracing proves the four live indicator signs and exact
 sprite hashes, both decimal values (`1`), their positions and styles, and the
 absence of all three optional badges. The Amiga build extracts the two measured
 2-byte-by-8-row sprite blobs by hash and composes them with the transparent
-blitter; the strict target checksum is now `37048854`.
+blitter. The target path now loads the pristine `mainmenu.@I` image and
+`partII` palette directly from `SLICKS.000`, converts the chunky asset to the
+four-bank layout in native 68020 code, and no longer links the captured title
+frame; its strict target checksum is `93c8bea6`.
 The shared wrapper suffix at `19E4Ah..19EFEh` now advances its 16-bit phase,
 reproduces the three-part red pulse, performs the original nearest-palette
 lookup, and mutates colour slot zero through the native helper. The BASIC path
@@ -227,7 +230,7 @@ case, and F1/F9/F12 have distinct cases. The BASIC script supplies scan code
 `1Ch`, which dispatches from `1A2C8h` to `1A3CCh`. `sui_title_dispatch`
 implements that classification directly in 68020 assembly, passes every one
 of the 65,536 possible word inputs, and is now used by the A1200 platform input
-path. The strict target checksum remains `37048854`.
+path. The archive-driven strict target checksum is `93c8bea6`.
 The selected-zero Enter path then sets the original result sentinel 99, passes
 the live player/state gates, restores page `(1,0)`, and returns zero to its
 outer caller at `16252h`. The first following state transition is now native:

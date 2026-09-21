@@ -17,6 +17,7 @@ mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
 printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f out/SlicksDiag.exe "$DH1/SlicksDiag"
+cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
 
 fsuae_claim_port
 "$FSUAE" \
