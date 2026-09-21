@@ -59,7 +59,7 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  void Slicks_WriteTrace()
  {
  	if (!slicks_trace_active)
-@@ -84,8 +129,38 @@ void Slicks_WriteTrace()
+@@ -84,8 +129,39 @@ void Slicks_WriteTrace()
  			        static_cast<uint32_t>(edge));
  		fclose(output);
  	}
@@ -71,6 +71,7 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +			const auto &call = item.first;
 +			const char *name = nullptr;
 +			switch (call.target) {
++			case 0x29e35: name = "vga_span_fill"; break;
 +			case 0x2a97c: name = "vga_transparent_blit"; break;
 +			case 0x2a9f2: name = "vga_planar_blit"; break;
 +			case 0x2aae5: name = "vga_readback"; break;
@@ -98,11 +99,13 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  }
  
  void Slicks_TraceInstruction(const PhysPt address)
-@@ -123,6 +197,14 @@ void Slicks_TraceInstruction(const PhysPt address)
+@@ -123,6 +198,16 @@ void Slicks_TraceInstruction(const PhysPt address)
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
-+	if (offset == 0x2a97c || offset == 0x2a9f2)
++	if (offset == 0x29e35)
++		Slicks_RecordPrimitiveCall(offset, 6);
++	else if (offset == 0x2a97c || offset == 0x2a9f2)
 +		Slicks_RecordPrimitiveCall(offset, 5);
 +	else if (offset == 0x2aae5)
 +		Slicks_RecordPrimitiveCall(offset, 7);

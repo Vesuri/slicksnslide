@@ -8,6 +8,10 @@ from pathlib import Path
 
 
 TARGETS = {
+    0x29E35: (
+        "vga_span_fill",
+        ("x0", "y0", "x1", "y1", "value_word", "screen_base"),
+    ),
     0x2A97C: (
         "vga_transparent_blit",
         ("x", "y", "source_offset", "source_segment", "screen_base"),
@@ -36,9 +40,17 @@ TARGETS = {
     ),
 }
 
+# This exported primitive is not reached by the bounded BASIC.SS race, but it
+# remains instrumented so other modes can add coverage without rebuilding.
+OPTIONAL_TARGETS = {0x29E35}
+
 
 def number(value: str) -> int:
     return int(value, 0)
+
+
+def signed_word(value: int) -> int:
+    return value - 0x10000 if value & 0x8000 else value
 
 
 def main() -> None:
@@ -52,6 +64,9 @@ def main() -> None:
     strides: dict[int, Counter[int]] = {}
     source_sizes: Counter[tuple[int, int, int]] = Counter()
     readback_sizes: Counter[tuple[int, int]] = Counter()
+    fill_sizes: Counter[tuple[int, int]] = Counter()
+    rejected_fills = 0
+    rejected_fill_calls = 0
     violations: Counter[str] = Counter()
     violation_calls: Counter[str] = Counter()
     wraps: Counter[str] = Counter()
@@ -106,6 +121,24 @@ def main() -> None:
 
             if not stride:
                 reject("zero framebuffer stride")
+
+            if target == 0x29E35:
+                x0_word, y0_word, x1_word, y1_word, _, screen_base = arguments
+                x0 = signed_word(x0_word)
+                y0 = signed_word(y0_word)
+                x1 = signed_word(x1_word)
+                y1 = signed_word(y1_word)
+                if x1 <= x0 or y1 <= y0:
+                    rejected_fills += 1
+                    rejected_fill_calls += count
+                else:
+                    fill_sizes[(x1 - x0, y1 - y0)] += count
+                    first_byte = screen_base + y0 * stride + (x0 >> 2)
+                    final_byte = (
+                        screen_base + (y1 - 1) * stride + ((x1 - 1) >> 2)
+                    )
+                    if first_byte < 0 or final_byte >= 0x10000:
+                        reject("fill destination outside 64 KiB plane")
 
             if target == 0x2B40A:
                 x, y, _, screen_base = arguments
@@ -178,10 +211,13 @@ def main() -> None:
                 if final_byte >= 0x10000:
                     reject("blit destination outside 64 KiB plane")
 
-    missing_targets = set(TARGETS).difference(rows_by_target)
+    missing_targets = set(TARGETS).difference(OPTIONAL_TARGETS, rows_by_target)
     if missing_targets:
         rendered = ", ".join(f"0x{target:05x}" for target in sorted(missing_targets))
         raise SystemExit(f"missing primitive targets: {rendered}")
+
+    for target in sorted(OPTIONAL_TARGETS.difference(rows_by_target)):
+        print(f"0x{target:05x} {TARGETS[target][0]}: not observed")
 
     for target in sorted(rows_by_target):
         name, arg_names = TARGETS[target]
@@ -218,6 +254,18 @@ def main() -> None:
             print(f"  {dimensions[0]} x {dimensions[1]} ({count} calls)")
         if len(readback_sizes) > 20:
             print(f"  ... {len(readback_sizes) - 20} additional size combinations")
+
+    if fill_sizes:
+        print("fill width x height values:")
+        for dimensions, count in fill_sizes.most_common(20):
+            print(f"  {dimensions[0]} x {dimensions[1]} ({count} calls)")
+        if len(fill_sizes) > 20:
+            print(f"  ... {len(fill_sizes) - 20} additional size combinations")
+    if rejected_fills:
+        print(
+            f"rejected empty fills: {rejected_fills} tuples, "
+            f"{rejected_fill_calls} calls"
+        )
 
     for reason in sorted(wraps):
         print(

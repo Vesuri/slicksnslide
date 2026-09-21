@@ -97,16 +97,16 @@ instrumentation must prove that interpretation. That shorter trace's
 conservative live seed set contains 3,014 possible basic-block entries.
 
 Explicit interrupt instrumentation now proves that interpretation on a larger
-bounded run: all 666 otherwise unexplained transitions correlate exactly with
+bounded run: all 637 otherwise unexplained transitions correlate exactly with
 an interrupt event's normalized resume address and destination. Timer vector
 `08h` entered `27A24h` 3,135 times and keyboard vector `09h` entered `26D29h`
-twice. The run recorded 9,197 boundary events in total: 3,162 hardware events
-and 6,035 software interrupts across vectors `10h`, `21h`, `2Fh`, and `33h`.
-Its larger coverage produces 22,725 decoded instruction starts, 25,820 edges,
-and 4,702 conservative block-entry candidates. Register snapshots at each
+twice. The run recorded 9,244 boundary events in total: 3,162 hardware events
+and 6,082 software interrupts across vectors `10h`, `21h`, `2Fh`, and `33h`.
+Its larger coverage produces 22,970 decoded instruction starts, 26,003 edges,
+and 4,728 conservative block-entry candidates. Register snapshots at each
 software interrupt provide the first measured DOS/BIOS service inventory.
 
-Direct I/O tracing captures 10,290,225 BASIC-race operations as 885 compact
+Direct I/O tracing captures 10,619,349 BASIC-race operations as 885 compact
 aggregates. The surface includes PIT/PIC/keyboard, joystick, Sound Blaster DSP
 and DMA, and VGA attribute/sequencer/graphics/palette/CRTC/status ports. Its
 millions of timer/retrace polls and dense VGA register traffic identify native

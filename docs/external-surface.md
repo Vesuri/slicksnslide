@@ -92,14 +92,14 @@ flat 320x200 framebuffer would be insufficient for faithful translation.
 
 ## VGA and runtime memory
 
-The memory tracer aggregates 4,721,833 accesses into 23,056 rows. The observed
-run contains 3,894,357 VGA writes from only 14 instruction sites and 35,388 VGA
-reads from two instruction sites. Writes touch 307 distinct 256-byte
-VGA-window buckets; reads touch 43. This small set of source routines is the
+The memory tracer aggregates 2,958,705 accesses into 25,193 rows. The observed
+run contains 1,134,378 VGA writes from only 16 instruction sites and 811,478
+VGA reads from five instruction sites. Writes touch 307 distinct 256-byte
+VGA-window buckets; reads touch 193. This small set of source routines is the
 natural boundary for native Amiga drawing replacements.
 
-The program also performs 792,088 writes to mutable storage within its loaded
-runtime allocation, covering 96 distinct 256-byte pages. A byte-level check
+The program also performs 1,012,849 writes to mutable storage within its loaded
+runtime allocation, covering 97 distinct 256-byte pages. A byte-level check
 against every dynamically decoded instruction finds zero writes overlapping
 executed instruction bytes. Thus the measured BASIC path is not
 self-modifying after the Compack handoff. This does not yet prove that every
@@ -130,8 +130,8 @@ use and traced arguments establish the contract.
 Both proved routines use Borland far cdecl and leave stack cleanup to the
 caller. `live_vga_plot(x, y, value, screen_base)` computes
 `screen_base + y * stride + x / 4`; plane selection is deliberately outside
-this helper. A measured run made 144,812 calls with stride 100, x `5..313`, y
-`49..198`, 42 byte values, and screen bases 0 and 32,700.
+this helper. The latest bounded run made 138,093 calls with stride 100, x
+`5..313`, y `49..198`, 42 byte values, and screen bases 0 and 32,700.
 
 The adjacent helpers have equally direct contracts. `live_vga_plot_plane(x,
 y, value, screen_base)` takes the same four words, selects sequencer plane
@@ -155,8 +155,8 @@ copies the selected rectangle from all four VGA planes, and appends the
 starting-plane alignment `(4 - (x & 3)) & 3`. Call sites clean 14 bytes,
 confirming the layout.
 
-The expanded call trace observes 2,627 transparent blits, 6,491 opaque blits,
-and 6,488 readbacks. All sprite payloads and far destination buffers stay
+The expanded call trace observes 2,688 transparent blits, 6,585 opaque blits,
+and 6,582 readbacks. All sprite payloads and far destination buffers stay
 within their 16-bit segments, and all computed VGA spans stay within the 64 KiB
 plane on this run. Coordinates include `FFFFh`, so a native replacement must
 preserve unsigned 16-bit coordinate arithmetic and logical shifts rather than
@@ -167,7 +167,11 @@ rectangular fill assembled from horizontal spans. It receives six words,
 rejects empty half-open ranges, selects edge planes from `x0 & 3` and
 `(x1 - 1) & 3`, enables all planes for middle bytes, and repeats the span for
 `y1 - y0` rows. Only the low byte of `value` is written. Its existing symbol
-is retained for map stability until dynamic argument tracing is added.
+is retained for map stability. The helper is now included in dynamic argument
+tracing, but the bounded BASIC.SS race made zero calls to it while exercising
+the other primitives more than 150,000 times. It is therefore not part of the
+live race renderer captured by this fixture; another menu, track, or game-mode
+path may use it, or it may be unused library code.
 
 `live_vga_planar_subrect_blit(dest_x, dest_y, source_x, source_y, width,
 height, source_far, screen_base)` receives nine 16-bit stack words. The source
