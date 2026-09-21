@@ -30,6 +30,8 @@ __attribute__((constructor)) static void initialize_sysbase(void)
 
 extern void sgfx_plot_plane(void);
 extern void sgfx_checker_fill(void);
+extern void slicks_blit_basic_frame(unsigned char *planes);
+extern const unsigned char slicks_basic_palette[];
 
 static void plot_native(unsigned char *planes, unsigned short x,
                         unsigned short y, unsigned char color)
@@ -101,6 +103,7 @@ static void make_test_surface(unsigned char *planes)
     }
 
     checker_fill_native(planes, 48, 32, 272, 168, 15);
+    slicks_blit_basic_frame(planes);
 }
 
 static void convert_to_amiga(const unsigned char *logical,
@@ -109,7 +112,7 @@ static void convert_to_amiga(const unsigned char *logical,
     unsigned short plane;
     unsigned short y;
     unsigned short byte_x;
-    for (plane = 0; plane < 4; ++plane) {
+    for (plane = 0; plane < 8; ++plane) {
         unsigned char *destination = bitmap->Planes[plane];
         for (y = 0; y < 200; ++y) {
             for (byte_x = 0; byte_x < 40; ++byte_x) {
@@ -139,10 +142,7 @@ static unsigned long checksum_planes(const unsigned char *planes)
 
 int main(void)
 {
-    static const unsigned short palette[16] = {
-        0x000, 0x003, 0x030, 0x033, 0x300, 0x303, 0x330, 0x777,
-        0x333, 0x00f, 0x0f0, 0x0ff, 0xf00, 0xf0f, 0xff0, 0xfff,
-    };
+    static unsigned long palette[770];
     unsigned char *logical = 0;
     struct Screen *screen = 0;
     struct Window *window = 0;
@@ -162,13 +162,21 @@ int main(void)
     make_test_surface(logical);
     g_slicks_diag_checksum = checksum_planes(logical);
 
+    palette[0] = 256UL << 16;
+    for (unsigned short index = 0; index < 768; ++index) {
+        unsigned long value = slicks_basic_palette[index];
+        unsigned long expanded = (value << 2) | (value >> 4);
+        palette[index + 1] = expanded * 0x01010101UL;
+    }
+    palette[769] = 0;
+
     screen = OpenScreenTags(
-        0, SA_DisplayID, LORES_KEY, SA_Width, 320, SA_Height, 200, SA_Depth, 4,
+        0, SA_DisplayID, LORES_KEY, SA_Width, 320, SA_Height, 200, SA_Depth, 8,
         SA_Type, CUSTOMSCREEN | SCREENQUIET, SA_ShowTitle, FALSE, SA_Quiet,
         TRUE, TAG_DONE);
     if (!screen)
         goto cleanup;
-    LoadRGB4(&screen->ViewPort, palette, 16);
+    LoadRGB32(&screen->ViewPort, palette);
 
     window = OpenWindowTags(
         0, WA_CustomScreen, (ULONG)screen, WA_Left, 0, WA_Top, 0, WA_Width, 320,

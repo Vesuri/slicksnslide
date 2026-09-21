@@ -12,32 +12,43 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  #include <unordered_set>
  #include <vector>
  
-@@ -65,6 +68,46 @@ bool slicks_previous_valid = false;
+@@ -33,1 +36,2 @@
+ #include "fpu.h"
++#include "vga.h"
+@@ -65,6 +69,86 @@ bool slicks_previous_valid = false;
  std::vector<uint8_t> slicks_executed;
  std::unordered_set<uint64_t> slicks_edges;
  
 +struct SlicksPrimitiveCall {
 +	uint32_t target;
++	uint32_t caller;
 +	uint8_t argc;
 +	std::array<uint16_t, 9> args;
 +	uint16_t stride;
 +	uint8_t source_width;
 +	uint8_t source_height;
++	uint64_t source_hash;
++	uint64_t palette_hash;
 +
 +	bool operator<(const SlicksPrimitiveCall &other) const
 +	{
-+		return std::tie(target, argc, args, stride, source_width, source_height) <
-+		       std::tie(other.target, other.argc, other.args, other.stride,
-+		                other.source_width, other.source_height);
++		return std::tie(target, caller, argc, args, stride, source_width,
++		                source_height, source_hash, palette_hash) <
++		       std::tie(other.target, other.caller, other.argc, other.args, other.stride,
++		                other.source_width, other.source_height, other.source_hash,
++		                other.palette_hash);
 +	}
 +};
 +
 +std::map<SlicksPrimitiveCall, uint64_t> slicks_primitive_calls;
++std::map<uint64_t, std::vector<uint8_t>> slicks_sprite_blobs;
++std::map<uint64_t, std::array<uint8_t, 768>> slicks_palettes;
 +
 +void Slicks_RecordPrimitiveCall(const uint32_t target, const uint8_t argc)
 +{
 +	SlicksPrimitiveCall call = {};
 +	call.target = target;
++	call.caller = slicks_previous_valid ? slicks_previous_offset : UINT32_MAX;
 +	call.argc = argc;
 +	const auto stack = SegPhys(ss);
 +	for (uint8_t i = 0; i < argc; ++i) {
@@ -52,6 +63,38 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +		        call.args[pointer_index];
 +		call.source_width = mem_readb(source);
 +		call.source_height = mem_readb(source + 1);
++		const auto source_size = static_cast<size_t>(2) +
++		                         static_cast<size_t>(4) * call.source_width *
++		                                 call.source_height;
++		std::vector<uint8_t> blob(source_size);
++		call.source_hash = UINT64_C(14695981039346656037);
++		for (size_t i = 0; i < source_size; ++i) {
++			blob[i] = mem_readb(source + static_cast<PhysPt>(i));
++			call.source_hash ^= blob[i];
++			call.source_hash *= UINT64_C(1099511628211);
++		}
++		const auto existing = slicks_sprite_blobs.find(call.source_hash);
++		if (existing == slicks_sprite_blobs.end())
++			slicks_sprite_blobs.emplace(call.source_hash, std::move(blob));
++		else if (existing->second != blob)
++			call.source_hash = 0;
++
++		std::array<uint8_t, 768> palette = {};
++		call.palette_hash = UINT64_C(14695981039346656037);
++		for (size_t i = 0; i < 256; ++i) {
++			palette[i * 3] = vga.dac.rgb[i].red;
++			palette[i * 3 + 1] = vga.dac.rgb[i].green;
++			palette[i * 3 + 2] = vga.dac.rgb[i].blue;
++		}
++		for (const auto component : palette) {
++			call.palette_hash ^= component;
++			call.palette_hash *= UINT64_C(1099511628211);
++		}
++		const auto existing_palette = slicks_palettes.find(call.palette_hash);
++		if (existing_palette == slicks_palettes.end())
++			slicks_palettes.emplace(call.palette_hash, palette);
++		else if (existing_palette->second != palette)
++			call.palette_hash = 0;
 +	}
 +	++slicks_primitive_calls[call];
 +}
@@ -59,13 +102,13 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
  void Slicks_WriteTrace()
  {
  	if (!slicks_trace_active)
-@@ -84,8 +129,45 @@ void Slicks_WriteTrace()
+@@ -84,8 +168,88 @@ void Slicks_WriteTrace()
  			        static_cast<uint32_t>(edge));
  		fclose(output);
  	}
 +	if (auto *output = fopen("slicks-primitive-calls.csv", "w")) {
-+		fputs("target,name,arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,"
-+		      "stride,source_width,source_height,count\n",
++		fputs("target,caller,name,arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,"
++		      "stride,source_width,source_height,source_hash,palette_hash,count\n",
 +		      output);
 +		for (const auto &item : slicks_primitive_calls) {
 +			const auto &call = item.first;
@@ -85,27 +128,70 @@ diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
 +			case 0x2b8de: name = "vga_planar_subrect_blit"; break;
 +			default: name = "unknown"; break;
 +			}
-+			fprintf(output, "0x%05x,%s", call.target, name);
++			fprintf(output, "0x%05x,0x%05x,%s", call.target, call.caller, name);
 +			for (uint8_t i = 0; i < 9; ++i) {
 +				if (i < call.argc)
 +					fprintf(output, ",0x%04x", call.args[i]);
 +				else
 +					fputc(',', output);
 +			}
-+			fprintf(output, ",0x%04x,0x%02x,0x%02x,%llu\n", call.stride,
++			fprintf(output, ",0x%04x,0x%02x,0x%02x,%016llx,%016llx,%llu\n",
++			        call.stride,
 +			        call.source_width, call.source_height,
++			        static_cast<unsigned long long>(call.source_hash),
++			        static_cast<unsigned long long>(call.palette_hash),
 +			        static_cast<unsigned long long>(item.second));
 +		}
 +		fclose(output);
++	}
++	if (auto *index = fopen("slicks-sprite-blobs.csv", "w")) {
++		fputs("source_hash,offset,size,width,height\n", index);
++		auto *binary = fopen("slicks-sprite-blobs.bin", "wb");
++		size_t offset = 0;
++		for (const auto &item : slicks_sprite_blobs) {
++			const auto &blob = item.second;
++			fprintf(index, "%016llx,0x%zx,0x%zx,0x%02x,0x%02x\n",
++			        static_cast<unsigned long long>(item.first), offset,
++			        blob.size(), blob[0], blob[1]);
++			if (binary)
++				fwrite(blob.data(), 1, blob.size(), binary);
++			offset += blob.size();
++		}
++		if (binary)
++			fclose(binary);
++		fclose(index);
++	} else if (auto *binary = fopen("slicks-sprite-blobs.bin", "wb")) {
++		for (const auto &item : slicks_sprite_blobs)
++			fwrite(item.second.data(), 1, item.second.size(), binary);
++		fclose(binary);
++	}
++	if (auto *index = fopen("slicks-palettes.csv", "w")) {
++		fputs("palette_hash,offset,size\n", index);
++		auto *binary = fopen("slicks-palettes.bin", "wb");
++		size_t offset = 0;
++		for (const auto &item : slicks_palettes) {
++			fprintf(index, "%016llx,0x%zx,0x%zx\n",
++			        static_cast<unsigned long long>(item.first), offset,
++			        item.second.size());
++			if (binary)
++				fwrite(item.second.data(), 1, item.second.size(), binary);
++			offset += item.second.size();
++		}
++		if (binary)
++			fclose(binary);
++		fclose(index);
 +	}
  	LOG_MSG("SLICKS: wrote execution bitmap and %zu unique transitions",
  	        slicks_edges.size());
 +	LOG_MSG("SLICKS: wrote %zu primitive call aggregates",
 +	        slicks_primitive_calls.size());
++	LOG_MSG("SLICKS: wrote %zu unique call-time sprite blobs",
++	        slicks_sprite_blobs.size());
++	LOG_MSG("SLICKS: wrote %zu call-time VGA palettes", slicks_palettes.size());
  }
  
  void Slicks_TraceInstruction(const PhysPt address)
-@@ -123,6 +204,26 @@ void Slicks_TraceInstruction(const PhysPt address)
+@@ -123,6 +287,26 @@ void Slicks_TraceInstruction(const PhysPt address)
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);

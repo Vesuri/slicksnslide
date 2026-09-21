@@ -9,11 +9,12 @@ the x86-versus-M68k differential suite.
 
 ## What the diagnostic proves
 
-`SlicksDiag` allocates the 256 KiB logical VGA store, draws a deterministic
-pattern through the native plot helper and the first translated Slicks caller,
-converts it to four Amiga bitplanes, opens a 320 by 200 screen, and displays the
-result. The target-side GDB check stops at a named post-display marker and
-verifies the checksum `86bdc061`.
+`SlicksDiag` allocates the 256 KiB logical VGA store, invokes the native opaque
+planar blitter with a call-time capture of the BASIC.SS title frame, converts
+the result to eight Amiga bitplanes, installs the captured 256-colour VGA
+palette, opens a 320 by 200 AGA screen, and displays the result. The target-side
+GDB check stops at a named post-display marker and verifies checksum
+`0e00b1da`.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -24,10 +25,10 @@ pixel  = vga_plane[plane][offset]       # one complete 8-bit colour index
 ```
 
 Those are four byte-interleaved VGA banks, not four Amiga bitplanes. An Amiga
-bitplane stores one bit of every pixel. The current 16-colour diagnostic makes
-that boundary explicit by converting the logical VGA store to four real Amiga
-bitplanes once per displayed frame. A later renderer can optimize or replace
-this conversion without changing translated drawing semantics.
+bitplane stores one bit of every pixel. The diagnostic makes that boundary
+explicit by converting the 8-bit indices in the logical VGA store to eight
+real AGA bitplanes once per displayed frame. A later renderer can optimize or
+replace this conversion without changing translated drawing semantics.
 
 ## Commands
 
@@ -44,14 +45,21 @@ make amiga-check    # boot it and verify the displayed-frame marker/checksum
 following the conventions of the existing ports. Generated objects, emulator
 state, mounted scratch disks, maps, and debugger files remain ignored.
 
+An AmigaOS `SetPatch` binary must be present at `tmp/SetPatch`. It remains
+ignored and is copied to the generated boot volume as `C:SetPatch`; both launch
+paths run it before opening the eight-bitplane AGA screen.
+
 ## Current boundary
 
 This milestone proves the complete host-build-to-target-display path, the
-native graphics ABI, and one application-level control-flow translation on the
-actual emulated target configuration. The block is Slicks' recovered
-checker-pattern rectangle routine at runtime offset `A498h`; it calls the
-native pixel helper and passes 256 whole-framebuffer comparisons against the
-original x86 code. The current BASIC trace has not reached this particular
-caller, so the next slice must come from the observed game path.
-The diagnostic still does not enter the original game loop or display a full
-original Slicks frame. That is the next vertical-slice boundary.
+native graphics ABI, one application-level control-flow translation, and an
+observed BASIC-path call using original game data on the actual emulated target
+configuration. The original title-frame blob is identified by FNV-1a hash
+`a4fc8a1cbea08a30`; its call-time palette is
+`9b17b223ef7f93e3`. The ignored capture bundle is extracted during the build,
+so no original game bytes are committed.
+
+The diagnostic still does not enter the original game loop. The next vertical
+slice is translating the observed caller around runtime offset `19711h` so the
+frame is reached through native control flow rather than invoked by the
+temporary platform shell.

@@ -159,10 +159,12 @@ write plane made explicit in the native register ABI.
 
 The first bootable Amiga HUNK now closes the build-to-display loop. It runs in
 FS-UAE as an A1200 with exactly 2 MiB of chip memory and no fast memory, invokes
-the proved native plane-selected plot and translated checker routines, converts
-the logical VGA store to an Intuition screen, and reaches its displayed-frame
-marker. The small C shell is platform/display glue only; no translated CPU
-execution passes through generated C. See `docs/amiga-skeleton.md`.
+proved native graphics routines, converts the logical VGA store to an
+eight-bitplane AGA Intuition screen, installs the original 256-colour palette,
+and reaches its displayed-frame marker. The launch disk runs the user's local
+AmigaOS `SetPatch` first. The small C shell is platform/display glue only; no
+translated CPU execution passes through generated C. See
+`docs/amiga-skeleton.md`.
 
 The first application-level control-flow translation now replaces the recovered
 checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
@@ -170,9 +172,17 @@ trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. The complete native differential gate
 now covers 4,088 cases. Linked into the A1200 diagnostic, the translated block
-produces a repeatable post-display checksum of `86bdc061` across fresh FS-UAE
+produced a repeatable post-display checksum of `86bdc061` across fresh FS-UAE
 boots. The target check also exposed and fixed the first platform ABI issue:
 callee-saved M68k registers must survive the temporary C/display boundary.
+
+Call-time primitive instrumentation now records caller offsets, exact planar
+sprite blobs, and the active VGA DAC palette. A bounded BASIC.SS trace captured
+the complete 320 by 200 title frame (`a4fc8a1cbea08a30`) and its palette
+(`9b17b223ef7f93e3`) at the observed sub-rectangle blitter caller `19711h`.
+The Amiga build extracts those ignored bytes by hash, sends the frame through
+the native 68020 opaque blitter, and displays the recognizable original title
+screen. The strict A1200 check now verifies checksum `0e00b1da`.
 
 ## Intended pipeline
 
@@ -217,16 +227,16 @@ amiga/                 build, run, debug, and diagnostic scripts
 - [ ] Phase 2: exhaustive entry-point and external-surface map.
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
-- [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation and
-      first translated application block are proved; original game-loop entry
-      and a full reference-derived frame remain.
+- [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation,
+      first translated application block, and full reference-derived title
+      frame are proved; original game-loop entry remains.
 - [ ] Phase 6: subsystem completion and measured optimization.
 - [ ] Phase 7: packaging.
 
 ## Immediate next step
 
-Extend the bootable vertical slice from the proved checker-pattern caller to an
-observed BASIC-path routine that consumes original game data and produces a
-recognizable reference-derived frame region. In parallel, extend the native
-differential corpus to remap, fill, clear, and mode-setup boundaries and expand
-trace coverage beyond BASIC.SS.
+Translate the observed BASIC-path caller around runtime offset `19711h` so the
+captured title frame is reached by native application control flow rather than
+the temporary platform shell. In parallel, extend the native differential
+corpus to remap, fill, clear, and mode-setup boundaries and expand trace
+coverage beyond BASIC.SS.

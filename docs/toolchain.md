@@ -69,3 +69,7 @@ make ghidra-live   # seed observed blocks and curated VGA symbols, export listin
 make ghidra-live-normalized # apply the same live map to the normalized MZ
 make todo          # immediate step and tracked work markers
 ```
+
+The AGA diagnostic launchers require the user's AmigaOS `SetPatch` at
+`tmp/SetPatch`. It is copied into the generated boot volume and is never added
+to the repository.

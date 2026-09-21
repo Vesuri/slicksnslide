@@ -8,12 +8,15 @@ cd "$(dirname "$0")"
 FSUAE="${FSUAE:-fs-uae}"
 ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
 EXE="${SLICKS_EXE:-out/SlicksDiag.exe}"
+SETPATCH="${SETPATCH:-../tmp/SetPatch}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make)"; exit 1; }
+[ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"
-mkdir -p "$DH0/s" "$DH1" "$RUN/state"
-printf 'cd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state"
+printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$EXE" "$DH1/SlicksDiag"
 rm -f "$RUN"/state/*.uss
 

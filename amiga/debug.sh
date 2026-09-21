@@ -7,12 +7,15 @@ cd "$(dirname "$0")"
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
 ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
+SETPATCH="${SETPATCH:-../tmp/SetPatch}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
 [ -f out/SlicksDiag.elf ] || { echo "build first: make"; exit 1; }
+[ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
-mkdir -p "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-printf 'cd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
+printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f out/SlicksDiag.exe "$DH1/SlicksDiag"
 
 fsuae_claim_port

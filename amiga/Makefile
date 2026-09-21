@@ -3,6 +3,7 @@ CC       = m68k-amiga-elf-gcc
 AS       = m68k-amiga-elf-as
 VASM     = vasmm68k_mot
 OBJDUMP  = m68k-amiga-elf-objdump
+PYTHON   = python3
 SDKDIR   = $(abspath $(dir $(shell which $(CC)))../m68k-amiga-elf/sys-include)
 SUPPORT  = $(abspath $(dir $(shell which $(CC)))../../support)
 REPO     = ..
@@ -16,7 +17,12 @@ VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
-	obj/sgfx_plot_plane.o obj/sgfx_checker_fill.o
+	obj/sgfx_plot_plane.o obj/sgfx_checker_fill.o obj/sgfx_planar_blit.o \
+	obj/basic_frame.o obj/native_bridge.o
+
+CAPTURE_DIR = $(REPO)/tmp/pc-fixed
+FRAME_HASH = a4fc8a1cbea08a30
+PALETTE_HASH = 9b17b223ef7f93e3
 
 .PHONY: all clean
 
@@ -38,6 +44,29 @@ obj/sgfx_plot_plane.o: $(REPO)/native/sgfx_plot_plane.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_checker_fill.o: $(REPO)/native/sgfx_checker_fill.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgfx_planar_blit.o: $(REPO)/native/sgfx_planar_blit.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/basic-frame.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.bin \
+		$(REPO)/tools/extract_capture_blob.py | obj
+	$(PYTHON) $(REPO)/tools/extract_capture_blob.py \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.csv \
+		$(CAPTURE_DIR)/slicks-sprite-blobs.bin $(FRAME_HASH) $@
+
+obj/basic-palette.bin: $(CAPTURE_DIR)/slicks-palettes.csv \
+		$(CAPTURE_DIR)/slicks-palettes.bin \
+		$(REPO)/tools/extract_capture_blob.py | obj
+	$(PYTHON) $(REPO)/tools/extract_capture_blob.py \
+		$(CAPTURE_DIR)/slicks-palettes.csv \
+		$(CAPTURE_DIR)/slicks-palettes.bin $(PALETTE_HASH) $@
+
+obj/basic_frame.o: basic_frame.s obj/basic-frame.bin obj/basic-palette.bin | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/native_bridge.o: native_bridge.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 $(OUT).elf: $(OBJECTS) | out
