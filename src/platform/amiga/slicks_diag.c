@@ -11,6 +11,7 @@
 #include <proto/graphics.h>
 #include <proto/intuition.h>
 
+#include "../../game/race_runtime.h"
 #include "../../game/track_scene.h"
 #include "resource_archive.h"
 
@@ -25,8 +26,20 @@ volatile unsigned short g_slicks_diag_race_error;
 volatile unsigned short g_slicks_diag_race_stage;
 volatile unsigned long g_slicks_diag_checksum;
 volatile unsigned long g_slicks_diag_display_checksum;
+volatile unsigned long g_slicks_diag_race_frame;
+volatile unsigned long g_slicks_diag_skidmarks;
+volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
+volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
+volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_waypoint[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char *g_slicks_diag_logical;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_gameplay_ready(void)
 {
     __asm volatile("" ::: "memory");
 }
@@ -131,23 +144,33 @@ static long load_plain_file(const char *path, void *destination,
     return size;
 }
 
+static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
+
 static int enter_basic_race(struct Screen *screen, unsigned long *palette,
                             unsigned char *logical, unsigned char *chunky,
-                            unsigned short *mode_state)
+                            unsigned short *mode_state,
+                            struct SlicksRaceRuntime *race)
 {
     struct SlicksResourceArchive archive = {0, 0};
+    struct SlicksTrackNavigation *navigation = 0;
     unsigned char *dat = 0;
     unsigned char *track = 0;
     unsigned char *arena = 0;
+    unsigned char *car_resource = 0;
     unsigned char race_palette[768];
     long dat_size;
     long track_size;
+    unsigned short car;
+    unsigned short direction;
     int result = -1;
 
     dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
     track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
     arena = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
-    if (!dat || !track || !arena) {
+    navigation = (struct SlicksTrackNavigation *)
+        AllocMem(sizeof(*navigation), MEMF_ANY);
+    car_resource = (unsigned char *)AllocMem(128UL, MEMF_ANY);
+    if (!dat || !track || !arena || !navigation || !car_resource) {
         g_slicks_diag_race_error = 1;
         goto cleanup;
     }
@@ -172,17 +195,43 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     }
     race_checkpoint(4);
     if (slicks_build_track_scene(logical, dat, (unsigned long)dat_size, track,
-                                 (unsigned long)track_size, arena, 65536UL) !=
-        233) {
+                                 (unsigned long)track_size, arena, 65536UL,
+                                 navigation) != 233) {
         g_slicks_diag_race_error = 5;
         goto cleanup;
     }
     race_checkpoint(5);
 
-    load_palette(screen, palette, race_palette);
+    slicks_race_initialize(race, navigation);
+    for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+        for (direction = 0; direction < SLICKS_CAR_BASE_DIRECTIONS;
+             ++direction) {
+            char name[11] = "auto00.000";
+            long car_size;
+            name[5] = (char)('0' + car);
+            name[9] = (char)('0' + direction);
+            car_size = slicks_resource_archive_load(
+                &archive, name, car_resource, 128UL);
+            if (car_size <= 0 ||
+                slicks_race_add_car_sprite(race, car, direction,
+                                           car_resource,
+                                           (unsigned long)car_size) != 0) {
+                g_slicks_diag_race_error = 6;
+                goto cleanup;
+            }
+        }
+    }
     race_checkpoint(6);
-    slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
+    if (slicks_race_start(race, logical) != 0) {
+        g_slicks_diag_race_error = 7;
+        goto cleanup;
+    }
     race_checkpoint(7);
+
+    load_palette(screen, palette, race_palette);
+    race_checkpoint(8);
+    slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
+    race_checkpoint(9);
     g_slicks_diag_checksum = checksum_planes(logical);
     g_slicks_diag_display_checksum =
         checksum_bitmap(screen->RastPort.BitMap);
@@ -190,11 +239,16 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     RethinkDisplay();
     ScreenToFront(screen);
     g_slicks_diag_ingame = 1;
+    update_race_diagnostics(race);
     slicks_diag_frame_ready();
     result = 0;
 
 cleanup:
     slicks_resource_archive_close(&archive);
+    if (car_resource)
+        FreeMem(car_resource, 128UL);
+    if (navigation)
+        FreeMem(navigation, sizeof(*navigation));
     if (arena)
         FreeMem(arena, 65536UL);
     if (track)
@@ -204,6 +258,40 @@ cleanup:
     if (result != 0)
         slicks_diag_frame_ready();
     return result;
+}
+
+static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
+{
+    unsigned short car;
+    g_slicks_diag_race_frame = race->frame_count;
+    g_slicks_diag_skidmarks = race->skidmark_count;
+    for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+        g_slicks_diag_car_x[car] = race->cars[car].x;
+        g_slicks_diag_car_y[car] = race->cars[car].y;
+        g_slicks_diag_timer[car] = race->cars[car].elapsed_centiseconds;
+        g_slicks_diag_waypoint[car] = race->cars[car].waypoint;
+    }
+}
+
+static int update_race_key(struct SlicksRaceRuntime *race,
+                           unsigned short raw)
+{
+    unsigned char control;
+    unsigned char controls = race->controls;
+    unsigned char pressed = !(raw & 0x80);
+    switch (raw & 0x7f) {
+    case 0x4c: control = SLICKS_CONTROL_ACCELERATE; break;
+    case 0x4d: control = SLICKS_CONTROL_BRAKE; break;
+    case 0x4e: control = SLICKS_CONTROL_RIGHT; break;
+    case 0x4f: control = SLICKS_CONTROL_LEFT; break;
+    default: return 0;
+    }
+    if (pressed)
+        controls |= control;
+    else
+        controls &= (unsigned char)~control;
+    slicks_race_set_controls(race, controls, 1);
+    return 1;
 }
 
 int main(int argc, char **argv)
@@ -216,6 +304,7 @@ int main(int argc, char **argv)
     unsigned char *chunky = 0;
     unsigned char *title_asset = 0;
     unsigned char *title_frame = 0;
+    struct SlicksRaceRuntime *race = 0;
     struct Screen *screen = 0;
     struct Window *window = 0;
     int result = 20;
@@ -246,8 +335,12 @@ int main(int argc, char **argv)
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);
     if (!logical)
         goto cleanup;
+    g_slicks_diag_logical = logical;
     chunky = (unsigned char *)AllocMem(320UL * 200UL, MEMF_ANY);
     if (!chunky)
+        goto cleanup;
+    race = (struct SlicksRaceRuntime *)AllocMem(sizeof(*race), MEMF_ANY);
+    if (!race)
         goto cleanup;
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
@@ -286,17 +379,31 @@ int main(int argc, char **argv)
 
     (void)argv;
     if (argc > 1 &&
-        enter_basic_race(screen, palette, logical, chunky, mode_state) != 0)
+        enter_basic_race(screen, palette, logical, chunky, mode_state,
+                         race) != 0)
         goto cleanup;
 
     for (;;) {
         struct IntuiMessage *message;
-        WaitPort(window->UserPort);
+        if (g_slicks_diag_ingame)
+            WaitTOF();
+        else
+            WaitPort(window->UserPort);
         while ((message =
                     (struct IntuiMessage *)GetMsg(window->UserPort)) != 0) {
             unsigned long message_class = message->Class;
             unsigned short code = message->Code;
             ReplyMsg((struct Message *)message);
+            if (g_slicks_diag_ingame) {
+                if (message_class == IDCMP_RAWKEY &&
+                    (code & 0x7f) == 0x45) {
+                    result = 0;
+                    goto cleanup;
+                }
+                if (message_class == IDCMP_RAWKEY)
+                    (void)update_race_key(race, code);
+                continue;
+            }
             unsigned short scan =
                 message_class == IDCMP_MOUSEBUTTONS
                     ? 0x1c
@@ -308,8 +415,21 @@ int main(int argc, char **argv)
             }
             if (action == 2 && !g_slicks_diag_ingame &&
                 enter_basic_race(screen, palette, logical, chunky,
-                                 mode_state) != 0)
+                                 mode_state, race) != 0)
                 goto cleanup;
+        }
+        if (g_slicks_diag_ingame) {
+            slicks_race_step(race, logical);
+            slicks_convert_to_amiga(logical, chunky,
+                                    screen->RastPort.BitMap);
+            update_race_diagnostics(race);
+            if (race->frame_count == 200) {
+                g_slicks_diag_checksum = checksum_planes(logical);
+                g_slicks_diag_display_checksum =
+                    checksum_bitmap(screen->RastPort.BitMap);
+                slicks_diag_gameplay_ready();
+            }
+            slicks_diag_frame_ready();
         }
     }
 
@@ -323,8 +443,11 @@ cleanup:
         CloseScreen(screen);
     if (chunky)
         FreeMem(chunky, 320UL * 200UL);
+    if (race)
+        FreeMem(race, sizeof(*race));
     if (logical)
         FreeMem(logical, 0x40000UL);
+    g_slicks_diag_logical = 0;
     if (title_frame)
         FreeMem(title_frame, 64002UL);
     if (title_asset)

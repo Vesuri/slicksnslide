@@ -27,11 +27,16 @@ public class ExportDecompile extends GhidraScript {
                 Function function = getGlobalFunctions(functionName).stream()
                     .findFirst().orElse(null);
                 if (function == null && functionName.startsWith("0x")) {
+                    long physical = Long.parseUnsignedLong(
+                        functionName.substring(2), 16);
+                    String segmented = String.format(
+                        "%04x:%04x", (physical & 0xf0000) >> 4,
+                        physical & 0xffff);
                     Address address = currentProgram.getAddressFactory()
-                        .getDefaultAddressSpace()
-                        .getAddress(Long.parseUnsignedLong(
-                            functionName.substring(2), 16));
+                        .getAddress(segmented);
                     function = getFunctionAt(address);
+                    if (function == null)
+                        function = getFunctionContaining(address);
                     if (function == null) {
                         disassemble(address);
                         function = createFunction(address, null);

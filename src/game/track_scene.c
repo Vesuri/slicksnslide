@@ -150,14 +150,17 @@ int slicks_build_track_scene(unsigned char *logical,
                              const unsigned char *track,
                              unsigned long track_size,
                              unsigned char *sprite_arena,
-                             unsigned long arena_size)
+                             unsigned long arena_size,
+                             struct SlicksTrackNavigation *navigation)
 {
     struct TrackSprite sprites[SLICKS_SPRITE_COUNT];
     unsigned long at;
     unsigned short count;
     unsigned short object;
+    unsigned short object_count;
 
-    if (!logical || !dat || !track || !sprite_arena || track_size < 6 ||
+    if (!logical || !dat || !track || !sprite_arena || !navigation ||
+        track_size < 6 ||
         track[4] != 0x7e || track[5] != 2 ||
         decode_dat_images(dat, dat_size, sprite_arena, arena_size,
                           sprites) != 0)
@@ -180,6 +183,7 @@ int slicks_build_track_scene(unsigned char *logical,
         return -1;
     at += 8; /* Four original string checksum words. */
     count = read_be16(track + at);
+    object_count = count;
     at += 2;
     if (at + (unsigned long)count * 5 > track_size)
         return -1;
@@ -195,5 +199,48 @@ int slicks_build_track_scene(unsigned char *logical,
         if (!is_control_object(type))
             draw_sprite(logical, &sprites[type], x, y, rotation);
     }
-    return (int)count;
+
+    /* Four palette/remap ranges follow the objects in BASIC.SS. */
+    if (at + 2 > track_size)
+        return -1;
+    count = read_be16(track + at);
+    at += 2;
+    if (at + (unsigned long)count * 6 > track_size)
+        return -1;
+    at += (unsigned long)count * 6;
+
+    /* The next records are the original AI/navigation regions: three points
+     * and one speed byte each.  The third point is the driving target. */
+    if (at + 2 > track_size)
+        return -1;
+    count = read_be16(track + at);
+    at += 2;
+    if (count > SLICKS_TRACK_ZONE_MAX ||
+        at + (unsigned long)count * 10 > track_size)
+        return -1;
+    navigation->zone_count = count;
+    for (object = 0; object < count; ++object) {
+        unsigned short point;
+        for (point = 0; point < 3; ++point) {
+            navigation->zones[object].x[point] = read_be16(track + at);
+            navigation->zones[object].y[point] = track[at + 2];
+            at += 3;
+        }
+        navigation->zones[object].speed = track[at++];
+    }
+
+    /* Optional auxiliary path points are not used by BASIC.SS, but consume
+     * them exactly so the common start-pose trailer is parsed correctly. */
+    if (at + 2 > track_size)
+        return -1;
+    count = read_be16(track + at);
+    at += 2;
+    if (at + (unsigned long)count * 4 + 7 > track_size)
+        return -1;
+    at += (unsigned long)count * 4;
+    navigation->start_x = read_be16(track + at);
+    navigation->start_y = read_be16(track + at + 2);
+    navigation->start_heading = track[at + 4];
+    navigation->start_style = track[at + 5];
+    return (int)object_count;
 }

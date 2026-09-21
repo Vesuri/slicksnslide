@@ -17,6 +17,7 @@ VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)"
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/resource_archive.o obj/track_scene.o \
+	obj/race_runtime.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
 	obj/sgfx_planar_blit.o obj/sgfx_transparent_blit.o \
@@ -44,6 +45,11 @@ obj/resource_archive.o: $(REPO)/src/platform/amiga/resource_archive.c \
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/track_scene.o: $(REPO)/src/game/track_scene.c \
+		$(REPO)/src/game/track_scene.h | obj
+	$(CC) $(CCFLAGS) -c -o $@ $<
+
+obj/race_runtime.o: $(REPO)/src/game/race_runtime.c \
+		$(REPO)/src/game/race_runtime.h \
 		$(REPO)/src/game/track_scene.h | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 

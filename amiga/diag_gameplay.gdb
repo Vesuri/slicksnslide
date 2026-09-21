@@ -1,0 +1,29 @@
+break slicks_diag_frame_ready
+commands
+  silent
+  if g_slicks_diag_race_error
+    printf "SLICKS_GAMEPLAY_ERROR=%u STAGE=%u\n", g_slicks_diag_race_error, g_slicks_diag_race_stage
+    quit
+  end
+  if g_slicks_diag_ingame
+    printf "SLICKS_GAMEPLAY_START FRAME=%u SKIDS=%u TIMER=%u X=%d Y=%d CHECKSUM=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_checksum
+    disable 1
+  end
+  continue
+end
+break slicks_diag_gameplay_ready
+commands
+  silent
+  set $ok = g_slicks_diag_race_frame == 200 && g_slicks_diag_timer[0] == 400 && g_slicks_diag_skidmarks > 0
+  set $ok = $ok && (g_slicks_diag_car_x[0] != 25500 || g_slicks_diag_car_y[0] != 5700)
+  set $ok = $ok && (g_slicks_diag_car_x[1] != 26300 || g_slicks_diag_car_y[1] != 5700)
+  set $ok = $ok && (g_slicks_diag_car_x[2] != 25500 || g_slicks_diag_car_y[2] != 4900)
+  set $ok = $ok && (g_slicks_diag_car_x[3] != 26300 || g_slicks_diag_car_y[3] != 4900)
+  if !$ok
+    printf "SLICKS_GAMEPLAY_FAILED FRAME=%u SKIDS=%u TIMER=%u X=%d Y=%d C1X=%d C1Y=%d C2X=%d C2Y=%d C3X=%d C3Y=%d\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_car_x[1], g_slicks_diag_car_y[1], g_slicks_diag_car_x[2], g_slicks_diag_car_y[2], g_slicks_diag_car_x[3], g_slicks_diag_car_y[3]
+    quit 1
+  end
+  printf "SLICKS_GAMEPLAY_OK FRAME=%u SKIDS=%u TIMER=%u WAYPOINTS=%u,%u,%u,%u X=%d Y=%d C1X=%d C1Y=%d C2X=%d C2Y=%d C3X=%d C3Y=%d CHECKSUM=%08x DISPLAY=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_waypoint[0], g_slicks_diag_waypoint[1], g_slicks_diag_waypoint[2], g_slicks_diag_waypoint[3], g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_car_x[1], g_slicks_diag_car_y[1], g_slicks_diag_car_x[2], g_slicks_diag_car_y[2], g_slicks_diag_car_x[3], g_slicks_diag_car_y[3], g_slicks_diag_checksum, g_slicks_diag_display_checksum
+  quit
+end
+continue

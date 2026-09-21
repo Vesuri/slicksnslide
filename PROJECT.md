@@ -253,6 +253,24 @@ converter. No DOS screenshot or framebuffer is present in the executable.
 The target gate reports logical checksum `815c70ca` and displayed-planar
 checksum `024f572b` with exactly 2 MiB chip RAM and no fast RAM.
 
+The race is now live rather than a one-frame scene. The track parser also
+recovers all nine `BASIC.SS` navigation records and its start pose. Four
+persistent car states use the original 100-units-per-pixel position scale,
+`4B0h` heading steps, and the signed 16-direction tables recovered from the
+race engine. Each car decodes four original `autoXX.000` directional sprites
+from `SLICKS.000`; quarter-turn composition supplies all sixteen headings.
+Entering each record's original rectangular trigger selects the next target
+point and speed. The repeating target loop restores sprites in reverse layer
+order, advances state, leaves persistent skidmarks in the logical course,
+draws four live timers, and presents through the Kalms converter. Cursor keys
+take over car one, while the diagnostic path leaves all four under navigation
+control. A strict stock-A1200 gate runs 200 frames and proves that all cars
+moved, navigation reached regions 3--4, the timers reached 400 centiseconds,
+230 skid pixels were emitted, and the logical/display checksums became
+`35bb8f32` and `0068404e`. A debugger dump of that exact target framebuffer was
+visually checked; it contains original course and car assets, route-following
+trails, and all four timer slots, with no captured DOS frame in the program.
+
 ## Intended pipeline
 
 ```text
@@ -299,14 +317,16 @@ amiga/                 build, run, debug, and diagnostic scripts
 - [ ] Phase 4: native 68020 backend and block differentials.
 - [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation,
       archive-driven title, post-title transition, and first asset-and-state
-      driven BASIC.SS race scene are proved; live car/update logic remains.
+      driven BASIC.SS race scene and its live car/update loop are proved;
+      collision, countdown/lap completion, and remaining race systems remain.
 - [ ] Phase 6: subsystem completion and measured optimization.
 - [ ] Phase 7: packaging.
 
 ## Immediate next step
 
-Port the first live car/sprite update and HUD composition on top of the genuine
-`BASIC.SS` course scene, then replace the one-time C course rasterizer with the
-equivalent direct 68020 hot-path implementation if target timing requires it.
-Resolve the screen-transition call that relies on 16-bit source wrap at caller
-level and recover the original Slicks font resource.
+Port collision response, countdown and lap-completion rules, and exact
+car-property handling on top of the live `BASIC.SS` update loop. Measure and
+optimize the full-screen presentation rate on the stock 68020, replacing cold
+or hot C paths with direct 68020 code where target timing requires it. Resolve
+the screen-transition call that relies on 16-bit source wrap at caller level
+and recover the original Slicks font resource.

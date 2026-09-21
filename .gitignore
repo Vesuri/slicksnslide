@@ -17,6 +17,7 @@ tools/ghidra-proj/
 tools/ghidra-normalized-proj/
 tools/ghidra-live-proj/
 tools/ghidra-live-normalized-proj/
+tools/ghidra-gameplay-proj/
 tools/vendor/
 __pycache__/
 work/

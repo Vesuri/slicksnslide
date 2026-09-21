@@ -15,7 +15,11 @@ SETPATCH="${SETPATCH:-../tmp/SetPatch}"
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state"
-printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+if [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"
+else
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+fi
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$EXE" "$DH1/SlicksDiag"
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"

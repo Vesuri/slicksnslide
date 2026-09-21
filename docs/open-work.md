@@ -1,13 +1,17 @@
 # Open work
 
-1. Continue from the genuine native `BASIC.SS` course frame into the first live
-   car/sprite update and HUD. The current target decodes 110 original
-   `SLICKS.DAT` images, parses and draws all 233 track records, loads the race
-   palette from `SLICKS.000`, and passes a strict 2 MiB A1200 gate without any
-   captured framebuffer. Port car-state initialization, sprite selection,
-   countdown, input, collision, and the repeating update/present loop. Keep the
-   translated path free of a generated-C CPU-context layer. Recover the
-   original font resource to replace the compact 5x7 title renderer.
+1. Extend the live `BASIC.SS` race from its first complete native update loop.
+   Four persistent cars now decode their original directional archive sprites,
+   initialize from the track start pose, steer through the track's original
+   ten-byte navigation regions, leave persistent skidmarks, and update four
+   on-screen timers. Cursor keys can take over car one; otherwise the original
+   navigation records drive all four cars. The strict 2 MiB A1200 gate proves
+   movement, route-region progress, skid output, timers, and two distinct
+   rendered checksums after 200 frames. Continue with collision response,
+   countdown/lap rules, exact car-property interpretation, and the remaining
+   race services. Keep the translated path free of a generated-C CPU-context
+   layer. Recover the original font resource to replace the compact 5x7 title
+   renderer.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;
