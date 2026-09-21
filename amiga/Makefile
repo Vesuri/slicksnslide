@@ -17,8 +17,8 @@ VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
-	obj/sgfx_plot_plane.o obj/sgfx_checker_fill.o obj/sgfx_planar_blit.o \
-	obj/basic_frame.o obj/native_bridge.o
+	obj/sgfx_planar_blit.o \
+	obj/sgfx_title_pages.o obj/basic_frame.o obj/native_bridge.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
 FRAME_HASH = a4fc8a1cbea08a30
@@ -47,6 +47,9 @@ obj/sgfx_checker_fill.o: $(REPO)/native/sgfx_checker_fill.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_planar_blit.o: $(REPO)/native/sgfx_planar_blit.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sgfx_title_pages.o: $(REPO)/native/sgfx_title_pages.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/basic-frame.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \

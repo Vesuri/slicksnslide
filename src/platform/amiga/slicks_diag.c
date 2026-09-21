@@ -28,45 +28,8 @@ __attribute__((constructor)) static void initialize_sysbase(void)
     SysBase = base;
 }
 
-extern void sgfx_plot_plane(void);
-extern void sgfx_checker_fill(void);
-extern void slicks_blit_basic_frame(unsigned char *planes);
+extern void slicks_draw_title_pages(unsigned char *planes);
 extern const unsigned char slicks_basic_palette[];
-
-static void plot_native(unsigned char *planes, unsigned short x,
-                        unsigned short y, unsigned char color)
-{
-    register unsigned char *r_a0 __asm("a0") = planes;
-    register unsigned long r_d0 __asm("d0") = x;
-    register unsigned long r_d1 __asm("d1") = y;
-    register unsigned long r_d2 __asm("d2") = color;
-    register unsigned long r_d3 __asm("d3") = 0;
-    register unsigned long r_d4 __asm("d4") = 100;
-    __asm volatile("jsr sgfx_plot_plane"
-                   : "+a"(r_a0), "+d"(r_d0), "+d"(r_d1), "+d"(r_d2),
-                     "+d"(r_d3), "+d"(r_d4)
-                   :
-                   : "d5", "d6", "cc", "memory");
-}
-
-static void checker_fill_native(unsigned char *planes, unsigned short x0,
-                                unsigned short y0, unsigned short x1,
-                                unsigned short y1, unsigned char color)
-{
-    register unsigned char *r_a0 __asm("a0") = planes;
-    register unsigned long r_d0 __asm("d0") = x0;
-    register unsigned long r_d1 __asm("d1") = y0;
-    register unsigned long r_d2 __asm("d2") = x1;
-    register unsigned long r_d3 __asm("d3") = y1;
-    register unsigned long r_d4 __asm("d4") = color;
-    register unsigned long r_d5 __asm("d5") = 0;
-    register unsigned long r_d6 __asm("d6") = 100;
-    __asm volatile("jsr sgfx_checker_fill"
-                   : "+a"(r_a0), "+d"(r_d0), "+d"(r_d1), "+d"(r_d2),
-                     "+d"(r_d3), "+d"(r_d4), "+d"(r_d5), "+d"(r_d6)
-                   :
-                   : "cc", "memory");
-}
 
 static unsigned char logical_pixel(const unsigned char *planes,
                                    unsigned short x, unsigned short y)
@@ -76,34 +39,9 @@ static unsigned char logical_pixel(const unsigned char *planes,
     return planes[address];
 }
 
-static void make_test_surface(unsigned char *planes)
+static void make_title_surface(unsigned char *planes)
 {
-    unsigned short x;
-    unsigned short y;
-    for (y = 0; y < 200; ++y) {
-        for (x = 0; x < 320; ++x) {
-            unsigned char color =
-                (unsigned char)(((x >> 5) + (y >> 4)) & 15u);
-            unsigned long address = ((unsigned long)(x & 3u) << 16) +
-                                    (unsigned long)y * 100u + (x >> 2);
-            planes[address] = color;
-        }
-    }
-
-    for (x = 0; x < 320; ++x) {
-        plot_native(planes, x, 0, 15);
-        plot_native(planes, x, 199, 15);
-    }
-    for (y = 0; y < 200; ++y) {
-        unsigned short diagonal = (unsigned short)(y + (y >> 1));
-        plot_native(planes, 0, y, 15);
-        plot_native(planes, 319, y, 15);
-        plot_native(planes, diagonal, y, 0);
-        plot_native(planes, (unsigned short)(319 - diagonal), y, 0);
-    }
-
-    checker_fill_native(planes, 48, 32, 272, 168, 15);
-    slicks_blit_basic_frame(planes);
+    slicks_draw_title_pages(planes);
 }
 
 static void convert_to_amiga(const unsigned char *logical,
@@ -159,7 +97,7 @@ int main(void)
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY | MEMF_CLEAR);
     if (!logical)
         goto cleanup;
-    make_test_surface(logical);
+    make_title_surface(logical);
     g_slicks_diag_checksum = checksum_planes(logical);
 
     palette[0] = 256UL << 16;

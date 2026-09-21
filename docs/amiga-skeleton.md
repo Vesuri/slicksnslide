@@ -9,12 +9,13 @@ the x86-versus-M68k differential suite.
 
 ## What the diagnostic proves
 
-`SlicksDiag` allocates the 256 KiB logical VGA store, invokes the native opaque
-planar blitter with a call-time capture of the BASIC.SS title frame, converts
-the result to eight Amiga bitplanes, installs the captured 256-colour VGA
-palette, opens a 320 by 200 AGA screen, and displays the result. The target-side
-GDB check stops at a named post-display marker and verifies checksum
-`0e00b1da`.
+`SlicksDiag` allocates the 256 KiB logical VGA store and invokes the translated
+title-page caller, which feeds a call-time capture of the BASIC.SS title frame
+through the native opaque blitter to both original VGA pages. The platform
+shell converts the visible page to eight Amiga bitplanes, installs the captured
+256-colour VGA palette, opens a 320 by 200 AGA screen, and displays the result.
+The target-side GDB check stops at a named post-display marker and verifies
+checksum `87956515`.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -52,14 +53,15 @@ paths run it before opening the eight-bitplane AGA screen.
 ## Current boundary
 
 This milestone proves the complete host-build-to-target-display path, the
-native graphics ABI, one application-level control-flow translation, and an
-observed BASIC-path call using original game data on the actual emulated target
-configuration. The original title-frame blob is identified by FNV-1a hash
+native graphics ABI, and application-level control-flow translations including
+an observed BASIC-path caller using original game data on the actual emulated
+target configuration. The translated `195F0h..19639h` block submits the title
+image to both original VGA page bases through the native blitter. The original
+title-frame blob is identified by FNV-1a hash
 `a4fc8a1cbea08a30`; its call-time palette is
 `9b17b223ef7f93e3`. The ignored capture bundle is extracted during the build,
 so no original game bytes are committed.
 
 The diagnostic still does not enter the original game loop. The next vertical
-slice is translating the observed caller around runtime offset `19711h` so the
-frame is reached through native control flow rather than invoked by the
-temporary platform shell.
+slice is the surrounding UI update logic and its observed cropped redraw at
+runtime offset `19711h`.

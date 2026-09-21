@@ -73,6 +73,18 @@ states with the complete four-plane destination compared after every call.
 The direct plot helper passes 512 states spanning all four caller-selected
 planes.
 
+`sgfx_title_pages` is the first translated caller from the observed BASIC.SS
+path. It corresponds to runtime offsets `195F0h..19639h` and invokes
+`sgfx_planar_blit` twice at `(0,0)`, preserving the source pointer between the
+calls. The two page bases arrive in `d5.w` and `d6.w`; the trace observed
+`7FBCh` followed by `0000h`. The caller preserves `d2-d7/a0-a6` for the
+temporary platform boundary and uses the native register ABI internally.
+
+The differential gate executes the original relocated x86 caller—including
+both far calls and its global source/page loads—and the composed 68020 caller
+plus blitter. It passes the exact 320 by 200 title-frame case and 32 randomized
+page, size, overlap, and 16-bit-wrap cases.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

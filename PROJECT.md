@@ -170,19 +170,23 @@ The first application-level control-flow translation now replaces the recovered
 checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
-whole-framebuffer x86-versus-68020 cases. The complete native differential gate
-now covers 4,088 cases. Linked into the A1200 diagnostic, the translated block
-produced a repeatable post-display checksum of `86bdc061` across fresh FS-UAE
+whole-framebuffer x86-versus-68020 cases. With the observed title-page caller,
+the complete native differential gate now covers 4,121 cases. Linked into the
+A1200 diagnostic, the translated checker block produced a repeatable
+post-display checksum of `86bdc061` across fresh FS-UAE
 boots. The target check also exposed and fixed the first platform ABI issue:
 callee-saved M68k registers must survive the temporary C/display boundary.
 
 Call-time primitive instrumentation now records caller offsets, exact planar
 sprite blobs, and the active VGA DAC palette. A bounded BASIC.SS trace captured
 the complete 320 by 200 title frame (`a4fc8a1cbea08a30`) and its palette
-(`9b17b223ef7f93e3`) at the observed sub-rectangle blitter caller `19711h`.
-The Amiga build extracts those ignored bytes by hash, sends the frame through
-the native 68020 opaque blitter, and displays the recognizable original title
-screen. The strict A1200 check now verifies checksum `0e00b1da`.
+(`9b17b223ef7f93e3`) at full-page calls `1960Dh`/`19632h` and the later
+sub-rectangle call `19711h`. The Amiga build extracts those ignored bytes by
+hash. A direct 68020 translation of the observed `195F0h..19639h` caller now
+sends the frame through the native opaque blitter to both original page bases
+(`7FBCh`, then `0000h`) and displays the recognizable original title screen.
+The original relocated x86 caller and composed 68020 caller+callee agree in 33
+whole-framebuffer cases. The strict A1200 check verifies checksum `87956515`.
 
 ## Intended pipeline
 
@@ -235,8 +239,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Translate the observed BASIC-path caller around runtime offset `19711h` so the
-captured title frame is reached by native application control flow rather than
-the temporary platform shell. In parallel, extend the native differential
+Translate the surrounding BASIC-path UI update logic and its repeated cropped
+redraw at runtime offset `19711h`. In parallel, extend the native differential
 corpus to remap, fill, clear, and mode-setup boundaries and expand trace
 coverage beyond BASIC.SS.
