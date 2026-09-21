@@ -147,7 +147,10 @@ The first production-language replacements now exist as Motorola-syntax 68020
 assembly with a register ABI and no CPU-context traffic. The native
 plane-selected plot and read routines pass 2,040 deterministic differential
 cases against the original unpacked x86 bodies in separate Unicorn x86-16 and
-68020 engines, including arbitrary 16-bit wrap cases and VGA plane selection.
+68020 engines. The opaque and transparent planar sprite blitters pass another
+256 cases each, including destination-phase rotation, odd and even widths,
+transparent bytes, 16-bit starting-offset wrap, and whole-plane side-effect
+comparison.
 
 ## Intended pipeline
 
@@ -199,6 +202,6 @@ amiga/                 build, run, debug, and diagnostic scripts
 ## Immediate next step
 
 Extend the proved native 68020 graphics ABI and differential corpus from the
-completed hot pixel helpers to the opaque/transparent sprite blits and
-readback boundaries. Continue expanding trace coverage beyond BASIC.SS to
-distinguish common engine code from track- and mode-specific paths.
+completed hot pixel and opaque/transparent sprite helpers to the readback and
+sub-rectangle boundaries. Continue expanding trace coverage beyond BASIC.SS
+to distinguish common engine code from track- and mode-specific paths.

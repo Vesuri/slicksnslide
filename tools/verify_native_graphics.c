@@ -16,7 +16,15 @@ enum {
     x86_stack_offset = 0x8000,
     x86_vga_base = 0xa0000,
     x86_vga_size = 0x10000,
+    x86_source_base = 0x60000,
+    x86_source_size = 0x10000,
+    x86_source_segment = 0x6000,
+    x86_source_offset = 0x0100,
     x86_stride_address = 0x3e86b,
+    x86_transparent_start = 0x3a97c,
+    x86_transparent_stop = 0x3a9f1,
+    x86_opaque_start = 0x3a9f2,
+    x86_opaque_stop = 0x3aa67,
     x86_plot_start = 0x3b45e,
     x86_plot_stop = 0x3b48d,
     x86_read_start = 0x3b48e,
@@ -24,11 +32,15 @@ enum {
     m68k_code_base = 0x1000,
     m68k_plane_base = 0x100000,
     m68k_plane_size = 0x40000,
+    m68k_source_base = 0x200000,
+    m68k_source_size = 0x10000,
 };
 
 typedef struct {
     int plane;
+    int sequencer_index;
     int bad_port_value;
+    uint8_t *planes;
 } VgaPortState;
 
 static void fail_uc(const char *operation, const uc_err error)
@@ -72,7 +84,7 @@ static void write_le16(uint8_t bytes[2], const uint16_t value)
 
 static uint32_t plane_from_mask(const uint32_t mask)
 {
-    switch (mask) {
+    switch (mask & 0x0fu) {
     case 1: return 0;
     case 2: return 1;
     case 4: return 2;
@@ -86,6 +98,20 @@ static void hook_x86_out(uc_engine *uc, uint32_t port, int size,
 {
     (void)uc;
     VgaPortState *state = user_data;
+    if (size == 1 && port == 0x3c4) {
+        state->sequencer_index = (uint8_t)value;
+        if (state->sequencer_index != 2)
+            state->bad_port_value = 1;
+        return;
+    }
+    if (size == 1 && port == 0x3c5 && state->sequencer_index == 2) {
+        const uint32_t plane = plane_from_mask((uint8_t)value);
+        if (plane == UINT32_MAX)
+            state->bad_port_value = 1;
+        else
+            state->plane = (int)plane;
+        return;
+    }
     if (size != 2) {
         state->bad_port_value = 1;
         return;
@@ -108,6 +134,25 @@ static void hook_x86_out(uc_engine *uc, uint32_t port, int size,
     }
 }
 
+static void hook_x86_vga_write(uc_engine *uc, uc_mem_type type,
+                               uint64_t address, int size, int64_t value,
+                               void *user_data)
+{
+    (void)uc;
+    (void)type;
+    VgaPortState *state = user_data;
+    if (!state->planes || state->plane < 0 || state->plane > 3 ||
+        (size != 1 && size != 2) || address < x86_vga_base ||
+        address + (uint64_t)size > x86_vga_base + x86_vga_size) {
+        state->bad_port_value = 1;
+        return;
+    }
+    const size_t offset = (size_t)(address - x86_vga_base);
+    for (int i = 0; i < size; ++i)
+        state->planes[(size_t)state->plane * x86_vga_size + offset + (size_t)i] =
+            (uint8_t)((uint64_t)value >> (8 * i));
+}
+
 static uc_engine *open_x86(const uint8_t *runtime)
 {
     uc_engine *uc = NULL;
@@ -117,6 +162,8 @@ static uc_engine *open_x86(const uint8_t *runtime)
              uc_mem_write(uc, runtime_base, runtime, runtime_size));
     check_uc("map x86 stack",
              uc_mem_map(uc, x86_stack_base, x86_stack_size, UC_PROT_ALL));
+    check_uc("map x86 source",
+             uc_mem_map(uc, x86_source_base, x86_source_size, UC_PROT_ALL));
     check_uc("map x86 VGA", uc_mem_map(uc, x86_vga_base, x86_vga_size,
                                         UC_PROT_ALL));
     const uint8_t stride[2] = {100, 0};
@@ -134,6 +181,8 @@ static uc_engine *open_m68k(const uint8_t *code, const size_t code_size)
     check_uc("write m68k code", uc_mem_write(uc, m68k_code_base, code, code_size));
     check_uc("map m68k planes",
              uc_mem_map(uc, m68k_plane_base, m68k_plane_size, UC_PROT_ALL));
+    check_uc("map m68k source",
+             uc_mem_map(uc, m68k_source_base, m68k_source_size, UC_PROT_ALL));
     return uc;
 }
 
@@ -144,9 +193,10 @@ static uint16_t guest_offset(const uint16_t x, const uint16_t y,
 }
 
 static void prepare_x86_stack(uc_engine *uc, const uint16_t *arguments,
-                              const size_t argument_count)
+                              const size_t argument_count,
+                              const uint16_t code_segment)
 {
-    uint8_t stack[4 + 8] = {0};
+    uint8_t stack[4 + 10] = {0};
     for (size_t i = 0; i < argument_count; ++i)
         write_le16(&stack[4 + i * 2], arguments[i]);
     const uint64_t address = x86_stack_base + x86_stack_offset;
@@ -158,7 +208,7 @@ static void prepare_x86_stack(uc_engine *uc, const uint16_t *arguments,
     check_uc("write SP", uc_reg_write(uc, UC_X86_REG_SP, &value));
     value = 0x3caf;
     check_uc("write DS", uc_reg_write(uc, UC_X86_REG_DS, &value));
-    value = 0x3b45;
+    value = code_segment;
     check_uc("write CS", uc_reg_write(uc, UC_X86_REG_CS, &value));
     value = 0;
     check_uc("clear BP", uc_reg_write(uc, UC_X86_REG_BP, &value));
@@ -215,6 +265,7 @@ static void check_m68k_live_out(uc_engine *uc, const uint16_t x,
 static void reset_x86_hook(uc_engine *uc, VgaPortState *state, uc_hook *hook)
 {
     state->plane = -1;
+    state->sequencer_index = -1;
     state->bad_port_value = 0;
     if (*hook)
         check_uc("delete OUT hook", uc_hook_del(uc, *hook));
@@ -235,7 +286,7 @@ static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
         m68k_plane_base + expected_plane * 0x10000u + offset;
     const uint64_t x86_address = x86_vga_base + offset;
     const uint8_t sentinel = (uint8_t)(pixel ^ 0xa5u);
-    VgaPortState ports = {-1, 0};
+    VgaPortState ports = {-1, -1, 0, NULL};
     uc_hook hook = 0;
 
     check_uc("seed x86 plot byte", uc_mem_write(x86_plot, x86_address,
@@ -243,7 +294,7 @@ static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
     check_uc("seed m68k plot byte", uc_mem_write(m68k_plot, native_address,
                                                   &sentinel, 1));
     const uint16_t plot_args[] = {x, y, pixel, screen_base};
-    prepare_x86_stack(x86_plot, plot_args, 4);
+    prepare_x86_stack(x86_plot, plot_args, 4, 0x3b45);
     reset_x86_hook(x86_plot, &ports, &hook);
     check_uc("run x86 plot",
              uc_emu_start(x86_plot, x86_plot_start, x86_plot_stop, 0, 0));
@@ -275,7 +326,7 @@ static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
     check_uc("seed m68k read byte", uc_mem_write(m68k_read, native_address,
                                                   &pixel, 1));
     const uint16_t read_args[] = {x, y, screen_base};
-    prepare_x86_stack(x86_read, read_args, 3);
+    prepare_x86_stack(x86_read, read_args, 3, 0x3b45);
     reset_x86_hook(x86_read, &ports, &hook);
     check_uc("run x86 read",
              uc_emu_start(x86_read, x86_read_start, x86_read_stop, 0, 0));
@@ -311,19 +362,143 @@ static uint32_t next_random(void)
     return random_state;
 }
 
+static void prepare_m68k_blit(uc_engine *uc, const uint16_t x,
+                              const uint16_t y, const uint16_t screen_base)
+{
+    uint32_t value = m68k_plane_base;
+    check_uc("write blit A0", uc_reg_write(uc, UC_M68K_REG_A0, &value));
+    value = m68k_source_base + x86_source_offset;
+    check_uc("write blit A1", uc_reg_write(uc, UC_M68K_REG_A1, &value));
+    value = 0x11110000u | x;
+    check_uc("write blit D0", uc_reg_write(uc, UC_M68K_REG_D0, &value));
+    value = 0x22220000u | y;
+    check_uc("write blit D1", uc_reg_write(uc, UC_M68K_REG_D1, &value));
+    value = 0x33333333u;
+    check_uc("write blit D2", uc_reg_write(uc, UC_M68K_REG_D2, &value));
+    value = 0x44440000u | screen_base;
+    check_uc("write blit D3", uc_reg_write(uc, UC_M68K_REG_D3, &value));
+    value = 0x55550064u;
+    check_uc("write blit D4", uc_reg_write(uc, UC_M68K_REG_D4, &value));
+}
+
+static void check_m68k_blit_preserved(uc_engine *uc, const char *name,
+                                      const unsigned case_number)
+{
+    uint32_t a0 = 0;
+    uint32_t d4 = 0;
+    check_uc("read blit A0", uc_reg_read(uc, UC_M68K_REG_A0, &a0));
+    check_uc("read blit D4", uc_reg_read(uc, UC_M68K_REG_D4, &d4));
+    if (a0 != m68k_plane_base || d4 != 0x55550064u) {
+        fprintf(stderr,
+                "%s case %u corrupted preserved registers: A0=%08x "
+                "D4=%08x\n",
+                name, case_number, a0, d4);
+        exit(1);
+    }
+}
+
+static void run_blit_case(uc_engine *x86, uc_engine *m68k,
+                          const size_t m68k_code_size, const int transparent,
+                          const uint16_t x, const uint16_t y,
+                          const uint16_t screen_base, const uint8_t width,
+                          const uint8_t height, const unsigned case_number,
+                          uint8_t *expected_planes, uint8_t *actual_planes,
+                          uint8_t *sprite)
+{
+    const char *name = transparent ? "transparent blit" : "opaque blit";
+    const size_t payload_size = 4u * width * height;
+    const size_t sprite_size = 2u + payload_size;
+    sprite[0] = width;
+    sprite[1] = height;
+    for (size_t i = 0; i < payload_size; ++i) {
+        uint8_t value = (uint8_t)(i * 73u + case_number * 29u + 17u);
+        if (((i + case_number) & 3u) == 0)
+            value = 0;
+        sprite[2 + i] = value;
+    }
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 37u + (i >> 16) * 41u + case_number * 13u);
+
+    check_uc("seed native blit planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+    check_uc("write x86 sprite",
+             uc_mem_write(x86, x86_source_base + x86_source_offset, sprite,
+                          sprite_size));
+    check_uc("write native sprite",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset, sprite,
+                          sprite_size));
+
+    const uint16_t arguments[] = {x, y, x86_source_offset,
+                                  x86_source_segment, screen_base};
+    prepare_x86_stack(x86, arguments, 5, 0x3a90);
+    VgaPortState ports = {-1, -1, 0, expected_planes};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    const uint64_t start = transparent ? x86_transparent_start
+                                       : x86_opaque_start;
+    const uint64_t stop = transparent ? x86_transparent_stop
+                                      : x86_opaque_stop;
+    check_uc("run x86 blit", uc_emu_start(x86, start, stop, 0, 0));
+    check_uc("delete blit OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete VGA memory hook", uc_hook_del(x86, memory_hook));
+
+    prepare_m68k_blit(m68k, x, y, screen_base);
+    check_uc("run m68k blit",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+    check_m68k_blit_preserved(m68k, name, case_number);
+    check_uc("read native blit planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value || memcmp(expected_planes, actual_planes,
+                                       m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "%s case %u failed: x=%04x y=%04x base=%04x size=%ux%u "
+                "last-plane=%d",
+                name, case_number, x, y, screen_base, width, height,
+                ports.plane);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 4) {
-        fprintf(stderr, "usage: %s runtime.bin plot.bin read.bin\n", argv[0]);
+    if (argc != 6) {
+        fprintf(stderr,
+                "usage: %s runtime.bin plot.bin read.bin opaque.bin "
+                "transparent.bin\n",
+                argv[0]);
         return 2;
     }
     size_t runtime_bytes = 0;
     size_t plot_bytes = 0;
     size_t read_bytes = 0;
+    size_t opaque_bytes = 0;
+    size_t transparent_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
-    if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4) {
+    uint8_t *opaque = read_file(argv[4], &opaque_bytes);
+    uint8_t *transparent = read_file(argv[5], &transparent_bytes);
+    if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
+        opaque_bytes < 4 || transparent_bytes < 4) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -332,6 +507,10 @@ int main(int argc, char **argv)
     uc_engine *x86_read = open_x86(runtime);
     uc_engine *m68k_plot = open_m68k(plot, plot_bytes);
     uc_engine *m68k_read = open_m68k(read, read_bytes);
+    uc_engine *x86_opaque = open_x86(runtime);
+    uc_engine *x86_transparent = open_x86(runtime);
+    uc_engine *m68k_opaque = open_m68k(opaque, opaque_bytes);
+    uc_engine *m68k_transparent = open_m68k(transparent, transparent_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -353,13 +532,66 @@ int main(int argc, char **argv)
                  read_bytes, x, y, pixel, base, cases++);
     }
 
+    uint8_t *expected_planes = malloc(m68k_plane_size);
+    uint8_t *actual_planes = malloc(m68k_plane_size);
+    uint8_t *sprite = malloc(x86_source_size - x86_source_offset);
+    if (!expected_planes || !actual_planes || !sprite) {
+        fprintf(stderr, "cannot allocate blit test buffers\n");
+        return 1;
+    }
+    static const struct {
+        uint16_t x, y, base;
+        uint8_t width, height;
+    } blit_edges[] = {
+        {0, 0, 0, 1, 1},       {1, 1, 32700, 2, 3},
+        {2, 189, 0, 7, 2},     {3, 326, 32700, 8, 8},
+        {319, 0xffff, 0, 5, 4}, {0xffff, 0xffff, 0xffff, 9, 7},
+    };
+    unsigned blit_cases = 0;
+    for (size_t i = 0; i < sizeof(blit_edges) / sizeof(blit_edges[0]); ++i) {
+        run_blit_case(x86_opaque, m68k_opaque, opaque_bytes, 0,
+                      blit_edges[i].x, blit_edges[i].y, blit_edges[i].base,
+                      blit_edges[i].width, blit_edges[i].height, blit_cases,
+                      expected_planes, actual_planes, sprite);
+        run_blit_case(x86_transparent, m68k_transparent, transparent_bytes, 1,
+                      blit_edges[i].x, blit_edges[i].y, blit_edges[i].base,
+                      blit_edges[i].width, blit_edges[i].height, blit_cases,
+                      expected_planes, actual_planes, sprite);
+        ++blit_cases;
+    }
+    for (unsigned i = 0; i < 250; ++i) {
+        const uint16_t x = (uint16_t)next_random();
+        const uint16_t y = (uint16_t)next_random();
+        const uint16_t base = (uint16_t)next_random();
+        const uint8_t width = (uint8_t)(next_random() % 16u + 1u);
+        const uint8_t height = (uint8_t)(next_random() % 12u + 1u);
+        run_blit_case(x86_opaque, m68k_opaque, opaque_bytes, 0, x, y, base,
+                      width, height, blit_cases, expected_planes,
+                      actual_planes, sprite);
+        run_blit_case(x86_transparent, m68k_transparent, transparent_bytes, 1,
+                      x, y, base, width, height, blit_cases, expected_planes,
+                      actual_planes, sprite);
+        ++blit_cases;
+    }
+
     uc_close(x86_plot);
     uc_close(x86_read);
     uc_close(m68k_plot);
     uc_close(m68k_read);
+    uc_close(x86_opaque);
+    uc_close(x86_transparent);
+    uc_close(m68k_opaque);
+    uc_close(m68k_transparent);
     free(runtime);
     free(plot);
     free(read);
-    printf("native graphics differential: %u plot/read cases passed\n", cases);
+    free(opaque);
+    free(transparent);
+    free(expected_planes);
+    free(actual_planes);
+    free(sprite);
+    printf("native graphics differential: %u plot/read and %u each opaque/"
+           "transparent blit cases passed\n",
+           cases, blit_cases);
     return 0;
 }

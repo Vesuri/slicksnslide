@@ -30,8 +30,19 @@ of `d3.w + d1.w * d4.w + (d0.w >> 2)`.
 `d0.l`. Both routines deliberately preserve the 286's unsigned logical shift
 and 16-bit address wrap. They do not load or store an emulated CPU structure.
 
+`sgfx_planar_blit` and `sgfx_transparent_blit` additionally receive `a1`
+pointing at the proved sprite format: byte width, byte height, then four plane
+payloads of `width * height` bytes each. Source plane zero begins at the
+destination phase `x & 3`; later source planes advance that phase and carry
+into the destination byte offset exactly as the VGA sequencer rotation did.
+The transparent form skips source bytes equal to zero. These larger helpers
+clobber `d0-d3/d5-d7` and `a1-a5`, preserving the plane base in `a0` and stride
+in `d4`. Zero dimensions are excluded by the measured source-buffer contract.
+
 The `verify-native-graphics` gate runs the original unpacked x86 helper bytes
 and these assembled 68020 routines in independent Unicorn engines. It compares
 the VGA plane selected by the original port write, the wrapped address, the
 returned byte, and the write side effect over deterministic edge cases and
-random states.
+random states. The pixel helpers pass 2,040 paired states; each sprite blitter
+passes 256 states with the complete four-plane 256 KiB destination compared
+after every call.

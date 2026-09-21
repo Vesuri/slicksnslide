@@ -15,11 +15,14 @@ code under an independent M68k engine. Compare the complete live-out contract,
 not merely RAM.
 
 The first concrete gate is `make verify-native-graphics`. It executes the
-unpacked `live_vga_plot_plane` and `live_vga_read_pixel` machine-code bodies in
-Unicorn's x86-16 engine, including their VGA plane-select port writes, and runs
+unpacked pixel and sprite-blit machine-code bodies in Unicorn's x86-16 engine,
+including their VGA sequencer and graphics-controller port writes, and runs
 the assembled native replacements in Unicorn's 68020 engine. A deterministic
-corpus of 2,040 observed-shape, edge, and random states compares selected
-plane, wrapped 16-bit offset, returned value, and memory effect.
+corpus of 2,040 pixel states compares selected plane, wrapped 16-bit offset,
+returned value, and memory effect. Another 256 states for each opaque and
+transparent blitter compare the complete four-plane 256 KiB result, covering
+plane-phase rotation, odd and even widths, zero transparency, row stepping,
+and wrapped starting offsets.
 
 ## Program behavior
 
