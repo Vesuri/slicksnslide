@@ -56,12 +56,14 @@ This milestone proves the complete host-build-to-target-display path, the
 native graphics ABI, and application-level control-flow translations including
 an observed BASIC-path caller using original game data on the actual emulated
 target configuration. The translated `195F0h..19639h` block submits the title
-image to both original VGA page bases through the native blitter. The original
-title-frame blob is identified by FNV-1a hash
+image to both original VGA page bases through the native blitter. The observed
+`196ECh..19718h` redraw block then restores its fixed `100 by 97` crop through
+the native sub-rectangle blitter. The original title-frame blob is identified
+by FNV-1a hash
 `a4fc8a1cbea08a30`; its call-time palette is
 `9b17b223ef7f93e3`. The ignored capture bundle is extracted during the build,
 so no original game bytes are committed.
 
 The diagnostic still does not enter the original game loop. The next vertical
-slice is the surrounding UI update logic and its observed cropped redraw at
-runtime offset `19711h`.
+slice is the surrounding UI update logic before and after these proved native
+graphics submissions.

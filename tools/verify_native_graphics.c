@@ -39,6 +39,8 @@ enum {
     x86_checker_stop = 0x1a5f6,
     x86_title_start = 0x296f0,
     x86_title_stop = 0x2973a,
+    x86_title_crop_start = 0x297ec,
+    x86_title_crop_stop = 0x29819,
     x86_title_source_address = 0x3d1a8,
     x86_relocated_stride_address = 0x3e96b,
     x86_screen_base_address = 0x3e977,
@@ -678,6 +680,141 @@ static void run_title_pages_case(
     }
 }
 
+static void prepare_m68k_title_crop(uc_engine *uc, const uint16_t screen_base)
+{
+    const uint32_t values[] = {
+        m68k_plane_base, m68k_source_base + x86_source_offset,
+        0x22222222u, 0x33333333u, 0x44440064u, 0x55555555u,
+        0x66666666u, 0x77770000u | screen_base, 0x12121212u,
+        0x23232323u, 0x34343434u, 0x45454545u, 0x56565656u,
+    };
+    const int registers[] = {
+        UC_M68K_REG_A0, UC_M68K_REG_A1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A2,
+        UC_M68K_REG_A3, UC_M68K_REG_A4, UC_M68K_REG_A5,
+        UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write title crop register",
+                 uc_reg_write(uc, registers[i], &values[i]));
+    uint32_t stack_pointer = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write title crop A7",
+             uc_reg_write(uc, UC_M68K_REG_A7, &stack_pointer));
+}
+
+static void run_title_crop_case(
+    uc_engine *x86, uc_engine *m68k, const size_t subrect_code_size,
+    const size_t crop_code_size, const uint16_t screen_base,
+    const uint8_t source_width, const uint8_t source_height,
+    const unsigned case_number, uint8_t *expected_planes,
+    uint8_t *actual_planes, uint8_t *sprite)
+{
+    const size_t payload_size = 4u * source_width * source_height;
+    const size_t sprite_size = 2u + payload_size;
+    sprite[0] = source_width;
+    sprite[1] = source_height;
+    for (size_t i = 0; i < payload_size; ++i)
+        sprite[2 + i] =
+            (uint8_t)(i * 71u + case_number * 37u + (i >> 8) * 13u);
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 41u + (i >> 16) * 47u + case_number * 17u);
+
+    check_uc("write x86 title crop sprite",
+             uc_mem_write(x86, x86_source_base + x86_source_offset, sprite,
+                          sprite_size));
+    check_uc("write native title crop sprite",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset, sprite,
+                          sprite_size));
+    check_uc("seed native title crop planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+
+    uint8_t far_pointer[4];
+    write_le16(far_pointer, x86_source_offset);
+    write_le16(far_pointer + 2, x86_source_segment);
+    check_uc("write x86 title crop source pointer",
+             uc_mem_write(x86, x86_title_source_address, far_pointer,
+                          sizeof(far_pointer)));
+    uint8_t page[2];
+    write_le16(page, screen_base);
+    check_uc("write x86 title crop page",
+             uc_mem_write(x86, x86_screen_base_address + 2, page,
+                          sizeof(page)));
+
+    prepare_x86_stack(x86, NULL, 0, 0x2970);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write relocated title crop DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add title crop VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 title crop",
+             uc_emu_start(x86, x86_title_crop_start, x86_title_crop_stop,
+                          0, 0));
+    check_uc("delete title crop OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete title crop VGA hook", uc_hook_del(x86, memory_hook));
+
+    prepare_m68k_title_crop(m68k, screen_base);
+    check_uc("run m68k title crop",
+             uc_emu_start(m68k, m68k_code_base + subrect_code_size,
+                          m68k_code_base + crop_code_size - 2, 0, 0));
+    const int preserved_registers[] = {
+        UC_M68K_REG_A0, UC_M68K_REG_A1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A2,
+        UC_M68K_REG_A3, UC_M68K_REG_A4, UC_M68K_REG_A5,
+        UC_M68K_REG_A6,
+    };
+    const uint32_t preserved_values[] = {
+        m68k_plane_base, m68k_source_base + x86_source_offset,
+        0x22222222u, 0x33333333u, 0x44440064u, 0x55555555u,
+        0x66666666u, 0x77770000u | screen_base, 0x12121212u,
+        0x23232323u, 0x34343434u, 0x45454545u, 0x56565656u,
+    };
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 0;
+         i < sizeof(preserved_registers) / sizeof(preserved_registers[0]);
+         ++i) {
+        uint32_t value = 0;
+        check_uc("read title crop preserved register",
+                 uc_reg_read(m68k, preserved_registers[i], &value));
+        if (value != preserved_values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = value;
+        }
+    }
+    check_uc("read native title crop planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value || bad_preserved_register >= 0 ||
+        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "title crop case %u failed: page=%04x source=%ux%u "
+                "plane=%d preserved=%d/%08x",
+                case_number, screen_base, source_width, source_height,
+                ports.plane, bad_preserved_register, bad_register_value);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 static void prepare_m68k_readback(uc_engine *uc, const uint16_t x,
                                   const uint16_t y, const uint16_t width,
                                   const uint8_t height,
@@ -1039,11 +1176,11 @@ static void run_checker_case(
 
 int main(int argc, char **argv)
 {
-    if (argc != 11) {
+    if (argc != 12) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
-                "checker-fill.bin title-pages.bin\n",
+                "checker-fill.bin title-pages.bin title-crop.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1057,6 +1194,7 @@ int main(int argc, char **argv)
     size_t direct_plot_bytes = 0;
     size_t checker_bytes = 0;
     size_t title_bytes = 0;
+    size_t crop_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -1067,11 +1205,13 @@ int main(int argc, char **argv)
     uint8_t *direct_plot = read_file(argv[8], &direct_plot_bytes);
     uint8_t *checker = read_file(argv[9], &checker_bytes);
     uint8_t *title = read_file(argv[10], &title_bytes);
+    uint8_t *crop = read_file(argv[11], &crop_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
         checker_bytes <= plot_bytes || memcmp(checker, plot, plot_bytes) ||
-        title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes)) {
+        title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
+        crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes)) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -1095,6 +1235,8 @@ int main(int argc, char **argv)
     uc_engine *m68k_checker = open_m68k(checker, checker_bytes);
     uc_engine *x86_title = open_x86_relocated(runtime);
     uc_engine *m68k_title = open_m68k(title, title_bytes);
+    uc_engine *x86_crop = open_x86_relocated(runtime);
+    uc_engine *m68k_crop = open_m68k(crop, crop_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -1170,6 +1312,25 @@ int main(int argc, char **argv)
         run_title_pages_case(
             x86_title, m68k_title, opaque_bytes, title_bytes, first_page,
             second_page, width, height, title_cases++, expected_planes,
+            actual_planes, sprite);
+    }
+
+    unsigned crop_cases = 0;
+    run_title_crop_case(x86_crop, m68k_crop, subrect_bytes, crop_bytes, 0,
+                        80, 200, crop_cases++, expected_planes,
+                        actual_planes, sprite);
+    run_title_crop_case(x86_crop, m68k_crop, subrect_bytes, crop_bytes,
+                        0x7fbc, 80, 200, crop_cases++, expected_planes,
+                        actual_planes, sprite);
+    for (unsigned i = 0; i < 32; ++i) {
+        const uint16_t screen_base = (uint16_t)next_random();
+        const uint8_t source_width =
+            (uint8_t)(53u + next_random() % 28u);
+        const uint8_t source_height =
+            (uint8_t)(174u + next_random() % 27u);
+        run_title_crop_case(
+            x86_crop, m68k_crop, subrect_bytes, crop_bytes, screen_base,
+            source_width, source_height, crop_cases++, expected_planes,
             actual_planes, sprite);
     }
     static const struct {
@@ -1332,6 +1493,8 @@ int main(int argc, char **argv)
     uc_close(m68k_checker);
     uc_close(x86_title);
     uc_close(m68k_title);
+    uc_close(x86_crop);
+    uc_close(m68k_crop);
     free(runtime);
     free(plot);
     free(read);
@@ -1342,6 +1505,7 @@ int main(int argc, char **argv)
     free(direct_plot);
     free(checker);
     free(title);
+    free(crop);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
@@ -1349,9 +1513,9 @@ int main(int argc, char **argv)
     free(native_destination);
     printf("native graphics differential: %u plot/read, %u each opaque/"
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
-           "%u checker-control-flow, and %u title-page-control-flow cases "
-           "passed\n",
+           "%u checker-control-flow, %u title-page-control-flow, and %u "
+           "title-crop-control-flow cases passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
-           direct_plot_cases, checker_cases, title_cases);
+           direct_plot_cases, checker_cases, title_cases, crop_cases);
     return 0;
 }

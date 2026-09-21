@@ -1,6 +1,7 @@
 	section	code
 	xdef	slicks_draw_title_pages
 	xref	sgfx_title_pages
+	xref	sgfx_title_crop
 	xref	slicks_basic_frame
 
 ; Temporary C-platform bridge. The translated/native side uses the register
@@ -13,5 +14,8 @@ slicks_draw_title_pages:
 	move.w	#$7fbc,d5
 	moveq	#0,d6
 	jsr	sgfx_title_pages
+	lea	slicks_basic_frame,a1
+	moveq	#0,d7
+	jsr	sgfx_title_crop
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

@@ -170,8 +170,8 @@ The first application-level control-flow translation now replaces the recovered
 checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
-whole-framebuffer x86-versus-68020 cases. With the observed title-page caller,
-the complete native differential gate now covers 4,121 cases. Linked into the
+whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
+callers, the complete native differential gate now covers 4,155 cases. Linked into the
 A1200 diagnostic, the translated checker block produced a repeatable
 post-display checksum of `86bdc061` across fresh FS-UAE
 boots. The target check also exposed and fixed the first platform ABI issue:
@@ -186,7 +186,10 @@ hash. A direct 68020 translation of the observed `195F0h..19639h` caller now
 sends the frame through the native opaque blitter to both original page bases
 (`7FBCh`, then `0000h`) and displays the recognizable original title screen.
 The original relocated x86 caller and composed 68020 caller+callee agree in 33
-whole-framebuffer cases. The strict A1200 check verifies checksum `87956515`.
+whole-framebuffer cases. A second direct translation covers the observed
+`196ECh..19718h` fixed `100 by 97` title redraw through the native sub-rectangle
+blitter, passing another 34 whole-framebuffer cases. Both callers now execute
+in the A1200 diagnostic. The strict target check verifies checksum `87956515`.
 
 ## Intended pipeline
 
@@ -239,7 +242,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Translate the surrounding BASIC-path UI update logic and its repeated cropped
-redraw at runtime offset `19711h`. In parallel, extend the native differential
-corpus to remap, fill, clear, and mode-setup boundaries and expand trace
-coverage beyond BASIC.SS.
+Translate the surrounding BASIC-path UI update logic before and after the
+proved title-page and crop submissions. In parallel, extend the native
+differential corpus to remap, fill, clear, and mode-setup boundaries and expand
+trace coverage beyond BASIC.SS.

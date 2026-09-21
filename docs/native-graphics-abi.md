@@ -85,6 +85,15 @@ both far calls and its global source/page loads—and the composed 68020 caller
 plus blitter. It passes the exact 320 by 200 title-frame case and 32 randomized
 page, size, overlap, and 16-bit-wrap cases.
 
+`sgfx_title_crop` translates the next observed redraw block at
+`196ECh..19718h`. It invokes `sgfx_planar_subrect_blit` with the measured fixed
+arguments `(dest 0,0; source 110,77; size 100 by 97)` and accepts the current
+page base in `d7.w`. The exact relocated x86 caller and composed 68020 code
+agree for both observed pages and 32 randomized legal source/page states. The
+routine is linked into the A1200 path after the two-page initializer; restoring
+the crop from the same image intentionally leaves checksum `87956515`
+unchanged.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this
