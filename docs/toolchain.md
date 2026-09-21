@@ -42,8 +42,10 @@ make verify-reference-race REFERENCE_RACE_VIDEO=tmp/pc-fixed/capture/slicks_001.
   # verify stable BASIC.SS states and live race advancement
 make verify-execution-trace \
   # validate and summarize normalized instruction starts and transitions
+make verify-interrupt-trace \
+  # validate vectors, runtime boundaries, and software-service functions
 make analyze-execution-trace \
-  # decode and classify observed control flow with Capstone
+  # decode control flow and correlate asynchronous interrupt entries
 make unpack        # execute only Compack and capture its handoff image/state
 make rebuild-mz    # reverse relocations and build a normalized local MZ
 make verify-runtime # compare the Unicorn and independent emulator captures

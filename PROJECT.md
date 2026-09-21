@@ -93,8 +93,18 @@ call edges (16 indirect), 1,049 jump edges (2 indirect), 1,189 returns, and
 331 unexplained non-sequential transfers. Of the latter, 329 converge on
 offset `27A24h` and two on `26D29h`; the many unrelated source instructions
 make these strong asynchronous-interrupt-entry candidates. Explicit interrupt
-instrumentation must prove that interpretation. The current conservative live
-seed set contains 3,014 possible basic-block entries.
+instrumentation must prove that interpretation. That shorter trace's
+conservative live seed set contains 3,014 possible basic-block entries.
+
+Explicit interrupt instrumentation now proves that interpretation on a larger
+bounded run: all 666 otherwise unexplained transitions correlate exactly with
+an interrupt event's normalized resume address and destination. Timer vector
+`08h` entered `27A24h` 3,135 times and keyboard vector `09h` entered `26D29h`
+twice. The run recorded 9,197 boundary events in total: 3,162 hardware events
+and 6,035 software interrupts across vectors `10h`, `21h`, `2Fh`, and `33h`.
+Its larger coverage produces 22,725 decoded instruction starts, 25,820 edges,
+and 4,702 conservative block-entry candidates. Register snapshots at each
+software interrupt provide the first measured DOS/BIOS service inventory.
 
 ## Intended pipeline
 

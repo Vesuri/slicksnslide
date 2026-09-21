@@ -25,6 +25,7 @@ from capstone.x86_const import (
 )
 
 from summarize_execution_trace import load_bitmap, load_edges
+from summarize_interrupt_trace import load_interrupts
 
 
 LOOP_INSTRUCTIONS = {
@@ -32,7 +33,8 @@ LOOP_INSTRUCTIONS = {
 }
 
 
-def classify(instruction, destination: int) -> str:
+def classify(instruction, destination: int,
+             interrupt_edges: set[tuple[int, int]] | None = None) -> str:
     source = instruction.address
     if destination == source:
         return "repeat"
@@ -48,6 +50,11 @@ def classify(instruction, destination: int) -> str:
         ) else "indirect-jump"
     if instruction.group(CS_GRP_RET) or instruction.group(CS_GRP_IRET):
         return "return"
+    if interrupt_edges and (
+        (source, destination) in interrupt_edges or
+        (source + instruction.size, destination) in interrupt_edges
+    ):
+        return "interrupt-entry"
     return "unexplained-nonsequential"
 
 
@@ -56,12 +63,20 @@ def main() -> None:
     parser.add_argument("runtime", type=Path)
     parser.add_argument("bitmap", type=Path)
     parser.add_argument("edges", type=Path)
+    parser.add_argument("--interrupts", type=Path)
     parser.add_argument("--entries", type=Path)
     args = parser.parse_args()
 
     image = args.runtime.read_bytes()
     executed = load_bitmap(args.bitmap)
     edges = load_edges(args.edges, executed)
+    interrupt_edges = set()
+    if args.interrupts:
+        interrupt_edges = {
+            (event["source_offset"], event["target_offset"])
+            for event in load_interrupts(args.interrupts)
+            if event["target_offset"] >= 0
+        }
     decoder = Cs(CS_ARCH_X86, CS_MODE_16)
     decoder.detail = True
 
@@ -81,7 +96,7 @@ def main() -> None:
     entry_reasons = {0: {"runtime-entry"}}
     incoming = Counter(destination for _, destination in edges)
     for source, destination in edges:
-        category = classify(instructions[source], destination)
+        category = classify(instructions[source], destination, interrupt_edges)
         categories[category] += 1
         if category != "fallthrough":
             entry_reasons.setdefault(destination, set()).add(
@@ -108,7 +123,7 @@ def main() -> None:
     print(f"decoded executed starts: {len(instructions)}")
     for category in (
         "fallthrough", "repeat", "direct-call", "indirect-call",
-        "direct-jump", "indirect-jump", "return",
+        "direct-jump", "indirect-jump", "return", "interrupt-entry",
         "unexplained-nonsequential",
     ):
         print(f"{category}: {categories[category]}")
@@ -116,7 +131,7 @@ def main() -> None:
     print(f"conservative observed block entries: {len(entry_reasons)}")
     unexplained_destinations = Counter(
         destination for source, destination in edges
-        if classify(instructions[source], destination) ==
+        if classify(instructions[source], destination, interrupt_edges) ==
         "unexplained-nonsequential"
     )
     if unexplained_destinations:

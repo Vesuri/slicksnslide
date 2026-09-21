@@ -1,0 +1,165 @@
+diff --git a/src/cpu/core_normal.cpp b/src/cpu/core_normal.cpp
+--- a/src/cpu/core_normal.cpp
++++ b/src/cpu/core_normal.cpp
+@@ -31,6 +31,9 @@
+ #include <vector>
+ 
+ extern bool do_lds_wraparound;
++extern bool slicks_trace_active;
++extern PhysPt slicks_runtime_base;
++extern uint32_t slicks_runtime_size;
+ 
+ bool CPU_RDMSR();
+ bool CPU_WRMSR();
+@@ -105,11 +108,8 @@ static uint8_t last_prefix;
+ namespace {
+ 
+ bool slicks_entered_decoder = false;
+-bool slicks_trace_active = false;
+ bool slicks_trace_registered = false;
+ uint16_t slicks_decoder_cs = 0;
+-PhysPt slicks_runtime_base = 0;
+-uint32_t slicks_runtime_size = 0;
+ uint32_t slicks_previous_offset = 0;
+ bool slicks_previous_valid = false;
+ std::vector<uint8_t> slicks_executed;
+diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -29,6 +29,9 @@
+ #include "fpu.h"
+ 
+ extern bool do_lds_wraparound;
++extern bool slicks_trace_active;
++extern PhysPt slicks_runtime_base;
++extern uint32_t slicks_runtime_size;
+ 
+ bool CPU_RDMSR();
+ bool CPU_WRMSR();
+@@ -55,11 +58,8 @@ static uint16_t last_ea86_offset;
+ namespace {
+ 
+ bool slicks_entered_decoder = false;
+-bool slicks_trace_active = false;
+ bool slicks_trace_registered = false;
+ uint16_t slicks_decoder_cs = 0;
+-PhysPt slicks_runtime_base = 0;
+-uint32_t slicks_runtime_size = 0;
+ uint32_t slicks_previous_offset = 0;
+ bool slicks_previous_valid = false;
+ std::vector<uint8_t> slicks_executed;
+diff --git a/src/cpu/cpu.cpp b/src/cpu/cpu.cpp
+index 84b0e9a..d09f894 100644
+--- a/src/cpu/cpu.cpp
++++ b/src/cpu/cpu.cpp
+@@ -18,8 +18,11 @@
+ 
+ 
+ #include <assert.h>
++#include <cstdio>
++#include <cstdlib>
+ #include <sstream>
+ #include <stddef.h>
++#include <vector>
+ 
+ #include "cpu.h"
+ #include "debug.h"
+@@ -124,6 +127,90 @@ CPU_Regs cpu_regs;
+ CPUBlock cpu;
+ Segments Segs;
+ 
++bool slicks_trace_active = false;
++PhysPt slicks_runtime_base = 0;
++uint32_t slicks_runtime_size = 0;
++
++namespace {
++
++struct SlicksInterruptEvent {
++	uint32_t sequence;
++	uint8_t vector;
++	uint8_t type;
++	uint16_t source_cs;
++	uint16_t resume_ip;
++	uint16_t target_cs;
++	uint16_t target_ip;
++	int32_t source_offset;
++	int32_t target_offset;
++	uint16_t ax, bx, cx, dx, si, di, bp, sp, flags;
++};
++
++std::vector<SlicksInterruptEvent> slicks_interrupts;
++bool slicks_interrupt_writer_registered = false;
++
++int32_t Slicks_NormalizedOffset(const PhysPt address)
++{
++	if (address < slicks_runtime_base ||
++	    address >= slicks_runtime_base + slicks_runtime_size)
++		return -1;
++	return static_cast<int32_t>(address - slicks_runtime_base);
++}
++
++void Slicks_WriteInterrupts()
++{
++	if (slicks_interrupts.empty())
++		return;
++	if (auto *output = fopen("slicks-interrupts.csv", "w")) {
++		fputs("sequence,vector,type,source_cs,resume_ip,target_cs,target_ip,"
++		      "source_offset,target_offset,ax,bx,cx,dx,si,di,bp,sp,flags\n",
++		      output);
++		for (const auto &event : slicks_interrupts) {
++			fprintf(output,
++			        "%u,0x%02x,0x%02x,0x%04x,0x%04x,0x%04x,0x%04x,"
++			        "%d,%d,0x%04x,0x%04x,0x%04x,0x%04x,0x%04x,0x%04x,"
++			        "0x%04x,0x%04x,0x%04x\n",
++			        event.sequence, event.vector, event.type, event.source_cs,
++			        event.resume_ip, event.target_cs, event.target_ip,
++			        event.source_offset, event.target_offset, event.ax, event.bx,
++			        event.cx, event.dx, event.si, event.di, event.bp, event.sp,
++			        event.flags);
++		}
++		fclose(output);
++	}
++	LOG_MSG("SLICKS: wrote %zu interrupt events", slicks_interrupts.size());
++}
++
++void Slicks_RecordRealModeInterrupt(const Bitu num, const Bitu type,
++	                                const uint32_t oldeip)
++{
++	if (!slicks_trace_active || cpu.pmode)
++		return;
++	const auto vector_base = cpu.idt.GetBase() + (num << 2);
++	const auto target_ip = mem_readw(static_cast<PhysPt>(vector_base));
++	const auto target_cs = mem_readw(static_cast<PhysPt>(vector_base + 2));
++	const auto source_cs = SegValue(cs);
++	const auto resume_ip = static_cast<uint16_t>(oldeip);
++	const auto source_address = SegPhys(cs) + resume_ip;
++	const auto target_address = (static_cast<PhysPt>(target_cs) << 4) + target_ip;
++	const auto source_offset = Slicks_NormalizedOffset(source_address);
++	const auto target_offset = Slicks_NormalizedOffset(target_address);
++	if (source_offset < 0 && target_offset < 0)
++		return;
++	if (!slicks_interrupt_writer_registered) {
++		std::atexit(Slicks_WriteInterrupts);
++		slicks_interrupt_writer_registered = true;
++	}
++	slicks_interrupts.push_back({
++	        static_cast<uint32_t>(slicks_interrupts.size()),
++	        static_cast<uint8_t>(num), static_cast<uint8_t>(type), source_cs,
++	        resume_ip, target_cs, target_ip, source_offset, target_offset,
++	        reg_ax, reg_bx, reg_cx, reg_dx, reg_si, reg_di, reg_bp, reg_sp,
++	        static_cast<uint16_t>(reg_flags)});
++}
++
++} // namespace
++
+ uint64_t CPU_fixed_RDTSC_rate = 0;
+ 
+ int64_t CPU_RDTSC() {
+@@ -1204,6 +1291,7 @@ void CPU_Interrupt(Bitu num,Bitu type,uint32_t oldeip) {
+     }
+ 	lastint=(uint8_t)num;
+ 	FillFlags();
++	Slicks_RecordRealModeInterrupt(num, type, oldeip);
+ #if C_DEBUG
+ # if C_HEAVY_DEBUG
+     bool DEBUG_IntBreakpoint(uint8_t intNum);
