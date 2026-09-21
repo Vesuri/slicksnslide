@@ -42,6 +42,8 @@ enum {
     x86_title_crop_start = 0x297ec,
     x86_title_crop_stop = 0x29819,
     x86_title_source_address = 0x3d1a8,
+    x86_palette_nearest_start = 0x36fae,
+    x86_palette_nearest_stop = 0x37039,
     x86_relocated_stride_address = 0x3e96b,
     x86_screen_base_address = 0x3e977,
     m68k_code_base = 0x1000,
@@ -815,6 +817,105 @@ static void run_title_crop_case(
     }
 }
 
+static void run_palette_nearest_case(
+    uc_engine *x86, uc_engine *m68k, const size_t m68k_code_size,
+    const uint8_t red, const uint8_t green, const uint8_t blue,
+    const unsigned case_number, uint8_t palette[768])
+{
+    for (size_t i = 0; i < 768; ++i)
+        palette[i] =
+            (uint8_t)(i * 61u + case_number * 43u + (i >> 3) * 17u);
+    if (case_number == 0)
+        memset(palette, 0, 768);
+    else if ((case_number & 3u) == 0) {
+        const size_t index = case_number % 255u + 1u;
+        palette[index * 3] = red;
+        palette[index * 3 + 1] = green;
+        palette[index * 3 + 2] = blue;
+    }
+    check_uc("write x86 search palette",
+             uc_mem_write(x86, x86_source_base + x86_source_offset, palette,
+                          768));
+    check_uc("write native search palette",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset, palette,
+                          768));
+
+    const uint16_t arguments[] = {red, green, blue, x86_source_offset,
+                                  x86_source_segment};
+    prepare_x86_stack(x86, arguments, 5, 0x36f0);
+    check_uc("run x86 palette nearest",
+             uc_emu_start(x86, x86_palette_nearest_start,
+                          x86_palette_nearest_stop, 0, 0));
+    uint16_t x86_ax = 0;
+    check_uc("read x86 palette result",
+             uc_reg_read(x86, UC_X86_REG_AX, &x86_ax));
+
+    const uint32_t values[] = {
+        0x11110000u | red, 0x22220000u | green, 0x33330000u | blue,
+        0x44444444u, 0x55555555u, 0x66666666u, 0x77777777u,
+        0x12121212u, 0x23232323u, 0x34343434u, 0x45454545u,
+        0x56565656u, 0x67676767u, m68k_source_base + x86_source_offset,
+    };
+    const int registers[] = {
+        UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0,
+        UC_M68K_REG_A2, UC_M68K_REG_A3, UC_M68K_REG_A4,
+        UC_M68K_REG_A5, UC_M68K_REG_A1,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write palette register",
+                 uc_reg_write(m68k, registers[i], &values[i]));
+    uint32_t value = 0x78787878u;
+    check_uc("write palette A6",
+             uc_reg_write(m68k, UC_M68K_REG_A6, &value));
+    value = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write palette A7",
+             uc_reg_write(m68k, UC_M68K_REG_A7, &value));
+    check_uc("run m68k palette nearest",
+             uc_emu_start(m68k, m68k_code_base,
+                          m68k_code_base + m68k_code_size - 2, 0, 0));
+    uint32_t native_d0 = 0;
+    check_uc("read native palette result",
+             uc_reg_read(m68k, UC_M68K_REG_D0, &native_d0));
+
+    const int preserved_registers[] = {
+        UC_M68K_REG_D1, UC_M68K_REG_D2, UC_M68K_REG_D3,
+        UC_M68K_REG_D4, UC_M68K_REG_D5, UC_M68K_REG_D6,
+        UC_M68K_REG_D7, UC_M68K_REG_A0, UC_M68K_REG_A1,
+        UC_M68K_REG_A2, UC_M68K_REG_A3, UC_M68K_REG_A4,
+        UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    const uint32_t preserved_values[] = {
+        0x22220000u | green, 0x33330000u | blue, 0x44444444u,
+        0x55555555u, 0x66666666u, 0x77777777u, 0x12121212u,
+        0x23232323u, m68k_source_base + x86_source_offset,
+        0x34343434u, 0x45454545u, 0x56565656u, 0x67676767u,
+        0x78787878u,
+    };
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 0;
+         i < sizeof(preserved_registers) / sizeof(preserved_registers[0]);
+         ++i) {
+        value = 0;
+        check_uc("read palette preserved register",
+                 uc_reg_read(m68k, preserved_registers[i], &value));
+        if (value != preserved_values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = value;
+        }
+    }
+    if ((uint8_t)x86_ax != native_d0 || bad_preserved_register >= 0) {
+        fprintf(stderr,
+                "palette nearest case %u failed: rgb=%02x/%02x/%02x "
+                "x86=%02x m68k=%08x preserved=%d/%08x\n",
+                case_number, red, green, blue, (uint8_t)x86_ax, native_d0,
+                bad_preserved_register, bad_register_value);
+        exit(1);
+    }
+}
+
 static void prepare_m68k_readback(uc_engine *uc, const uint16_t x,
                                   const uint16_t y, const uint16_t width,
                                   const uint8_t height,
@@ -1176,11 +1277,12 @@ static void run_checker_case(
 
 int main(int argc, char **argv)
 {
-    if (argc != 12) {
+    if (argc != 13) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
-                "checker-fill.bin title-pages.bin title-crop.bin\n",
+                "checker-fill.bin title-pages.bin title-crop.bin "
+                "palette-nearest.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1195,6 +1297,7 @@ int main(int argc, char **argv)
     size_t checker_bytes = 0;
     size_t title_bytes = 0;
     size_t crop_bytes = 0;
+    size_t palette_nearest_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -1206,12 +1309,15 @@ int main(int argc, char **argv)
     uint8_t *checker = read_file(argv[9], &checker_bytes);
     uint8_t *title = read_file(argv[10], &title_bytes);
     uint8_t *crop = read_file(argv[11], &crop_bytes);
+    uint8_t *palette_nearest =
+        read_file(argv[12], &palette_nearest_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
         checker_bytes <= plot_bytes || memcmp(checker, plot, plot_bytes) ||
         title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
-        crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes)) {
+        crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
+        palette_nearest_bytes < 4) {
         fprintf(stderr, "unexpected runtime or native routine size\n");
         return 1;
     }
@@ -1237,6 +1343,9 @@ int main(int argc, char **argv)
     uc_engine *m68k_title = open_m68k(title, title_bytes);
     uc_engine *x86_crop = open_x86_relocated(runtime);
     uc_engine *m68k_crop = open_m68k(crop, crop_bytes);
+    uc_engine *x86_palette = open_x86_relocated(runtime);
+    uc_engine *m68k_palette =
+        open_m68k(palette_nearest, palette_nearest_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -1264,6 +1373,17 @@ int main(int argc, char **argv)
     if (!expected_planes || !actual_planes || !sprite) {
         fprintf(stderr, "cannot allocate blit test buffers\n");
         return 1;
+    }
+
+    uint8_t palette[768];
+    unsigned palette_cases = 0;
+    for (unsigned i = 0; i < 512; ++i) {
+        const uint8_t red = i == 0 ? 255 : (uint8_t)next_random();
+        const uint8_t green = i == 0 ? 255 : (uint8_t)next_random();
+        const uint8_t blue = i == 0 ? 255 : (uint8_t)next_random();
+        run_palette_nearest_case(x86_palette, m68k_palette,
+                                 palette_nearest_bytes, red, green, blue,
+                                 palette_cases++, palette);
     }
 
     static const struct {
@@ -1495,6 +1615,8 @@ int main(int argc, char **argv)
     uc_close(m68k_title);
     uc_close(x86_crop);
     uc_close(m68k_crop);
+    uc_close(x86_palette);
+    uc_close(m68k_palette);
     free(runtime);
     free(plot);
     free(read);
@@ -1506,6 +1628,7 @@ int main(int argc, char **argv)
     free(checker);
     free(title);
     free(crop);
+    free(palette_nearest);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
@@ -1513,9 +1636,10 @@ int main(int argc, char **argv)
     free(native_destination);
     printf("native graphics differential: %u plot/read, %u each opaque/"
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
-           "%u checker-control-flow, %u title-page-control-flow, and %u "
-           "title-crop-control-flow cases passed\n",
+           "%u checker-control-flow, %u title-page-control-flow, %u "
+           "title-crop-control-flow, and %u palette-nearest cases passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
-           direct_plot_cases, checker_cases, title_cases, crop_cases);
+           direct_plot_cases, checker_cases, title_cases, crop_cases,
+           palette_cases);
     return 0;
 }

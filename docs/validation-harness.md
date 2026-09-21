@@ -29,6 +29,10 @@ compare all four destination planes across source cropping, independent source
 and destination row strides, phase rotation, and 16-bit destination wrap.
 The direct plot boundary adds 512 states across all four explicit native write
 planes, checking the original byte effect and native live-register contract.
+Composed caller/callee tests add 33 title-page and 34 title-crop cases. The
+palette nearest-colour utility adds 512 cases, including high requested bytes
+that expose the original's asymmetric signed/unsigned component handling. The
+complete native differential corpus currently contains 4,667 cases.
 
 ## Program behavior
 

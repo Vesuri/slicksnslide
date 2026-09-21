@@ -94,6 +94,14 @@ routine is linked into the A1200 path after the two-page initializer; restoring
 the crop from the same image intentionally leaves checksum `87956515`
 unchanged.
 
+`sutil_palette_nearest` translates the non-rendering palette search at
+`26EAEh`, called three times by the surrounding UI routine. It scans entries
+1 through 255 using Manhattan RGB distance and preserves the original initial
+best index 1 / distance 300 rule. The requested component bytes are
+sign-extended exactly like the original `CBW` instructions, while stored
+palette bytes are unsigned. This distinction is normally invisible for 6-bit
+VGA values but is covered by 512 randomized x86-versus-68020 cases.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

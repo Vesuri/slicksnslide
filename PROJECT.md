@@ -171,8 +171,9 @@ checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
-callers, the complete native differential gate now covers 4,155 cases. Linked into the
-A1200 diagnostic, the translated checker block produced a repeatable
+callers and the palette utility, the complete native differential gate now
+covers 4,667 cases. Linked into the A1200 diagnostic, the translated checker
+block produced a repeatable
 post-display checksum of `86bdc061` across fresh FS-UAE
 boots. The target check also exposed and fixed the first platform ABI issue:
 callee-saved M68k registers must survive the temporary C/display boundary.
@@ -190,6 +191,10 @@ whole-framebuffer cases. A second direct translation covers the observed
 `196ECh..19718h` fixed `100 by 97` title redraw through the native sub-rectangle
 blitter, passing another 34 whole-framebuffer cases. Both callers now execute
 in the A1200 diagnostic. The strict target check verifies checksum `87956515`.
+The surrounding routine's helper at `26EAEh` is now identified as a
+nearest-colour palette search and translated directly to 68020. Its 512-case
+differential exposed and preserved the original's asymmetric component
+handling: requested bytes are sign-extended, while palette bytes are unsigned.
 
 ## Intended pipeline
 

@@ -169,6 +169,10 @@ build/sgfx_title_crop.bin: tools/sgfx_title_crop_test.s \
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 
+build/sutil_palette_nearest.bin: native/sutil_palette_nearest.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
 build/sgfx_read_pixel.bin: native/sgfx_read_pixel.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
@@ -200,13 +204,15 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_transparent_blit.bin build/sgfx_readback.bin \
 		build/sgfx_planar_subrect_blit.bin build/sgfx_checker_fill.bin \
 		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
+		build/sutil_palette_nearest.bin \
 		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
 		build/sgfx_plot_plane.bin build/sgfx_read_pixel.bin \
 		build/sgfx_planar_blit.bin build/sgfx_transparent_blit.bin \
 		build/sgfx_readback.bin build/sgfx_planar_subrect_blit.bin \
 		build/sgfx_plot.bin build/sgfx_checker_fill.bin \
-		build/sgfx_title_pages.bin build/sgfx_title_crop.bin
+		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
+		build/sutil_palette_nearest.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log
