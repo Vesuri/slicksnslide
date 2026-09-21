@@ -21,8 +21,9 @@ OBJECTS = obj/slicks_diag.o obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_planar_blit.o obj/sgfx_transparent_blit.o \
 	obj/sgfx_planar_subrect_blit.o \
 	obj/sgfx_title_pages.o obj/sgfx_title_crop.o obj/sutil_palette_nearest.o \
-	obj/sui_title_step.o obj/sui_bevel.o obj/sui_text.o \
-	obj/sui_title_menu.o obj/sui_title_status.o obj/basic_frame.o \
+	obj/sui_title_step.o obj/sui_color_slot.o obj/sui_bevel.o obj/sui_text.o \
+	obj/sui_title_menu.o obj/sui_title_status.o obj/sui_title_tail.o \
+	obj/basic_frame.o \
 	obj/status_assets.o obj/native_bridge.o
 
 CAPTURE_DIR = $(REPO)/tmp/pc-fixed
@@ -75,6 +76,9 @@ obj/sutil_palette_nearest.o: $(REPO)/native/sutil_palette_nearest.s | obj
 obj/sui_title_step.o: $(REPO)/native/sui_title_step.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
+obj/sui_color_slot.o: $(REPO)/native/sui_color_slot.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
 obj/sgfx_span_fill.o: $(REPO)/native/sgfx_span_fill.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
@@ -88,6 +92,9 @@ obj/sui_title_menu.o: $(REPO)/native/sui_title_menu.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sui_title_status.o: $(REPO)/native/sui_title_status.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sui_title_tail.o: $(REPO)/native/sui_title_tail.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/basic-frame.bin: $(CAPTURE_DIR)/slicks-sprite-blobs.csv \

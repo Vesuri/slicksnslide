@@ -53,6 +53,11 @@ enum {
     x86_title_third_color_address = 0x3e1f0,
     x86_color_slot_start = 0x2fe63,
     x86_color_slot_stop = 0x2feae,
+    x86_title_tail_start = 0x29f4a,
+    x86_title_tail_stop = 0x29fef,
+    x86_title_phase_address = 0x3dd34,
+    x86_title_state_pointer_address = 0x3d270,
+    x86_title_optional_text_address = 0x3d21f,
     x86_span_fill_start = 0x39f35,
     x86_span_fill_stop = 0x39fb7,
     x86_bevel_start = 0x309cf,
@@ -1256,6 +1261,135 @@ static void run_color_slot_case(
     }
 }
 
+static void run_title_tail_case(
+    uc_engine *x86, uc_engine *m68k, const size_t native_entry_offset,
+    const size_t native_code_size, const uint16_t initial_phase,
+    const unsigned case_number, uint8_t palette[768],
+    uint8_t expected_state[256], uint8_t actual_state[256])
+{
+    for (size_t i = 0; i < 768; ++i)
+        palette[i] =
+            (uint8_t)((i * 19u + case_number * 11u + (i >> 3)) & 63u);
+    for (size_t i = 0; i < 256; ++i)
+        expected_state[i] =
+            (uint8_t)(i * 43u + case_number * 17u + (i >> 1));
+    expected_state[5] = 8;
+
+    check_uc("write x86 title-tail palette",
+             uc_mem_write(x86, x86_palette_base + x86_source_offset,
+                          palette, 768));
+    check_uc("write native title-tail palette",
+             uc_mem_write(m68k, m68k_palette_base + x86_source_offset,
+                          palette, 768));
+    check_uc("write x86 title-tail state",
+             uc_mem_write(x86, x86_source_base + x86_source_offset,
+                          expected_state, 256));
+    check_uc("write native title-tail state",
+             uc_mem_write(m68k, m68k_source_base + x86_source_offset,
+                          expected_state, 256));
+
+    uint8_t far_pointer[4];
+    write_le16(far_pointer, x86_source_offset);
+    write_le16(far_pointer + 2, x86_palette_segment);
+    check_uc("write x86 title-tail palette pointer",
+             uc_mem_write(x86, x86_title_palette_address, far_pointer, 4));
+    write_le16(far_pointer, x86_source_offset);
+    write_le16(far_pointer + 2, x86_source_segment);
+    check_uc("write x86 title-tail state pointer",
+             uc_mem_write(x86, x86_title_state_pointer_address,
+                          far_pointer, 4));
+    uint8_t word[2];
+    write_le16(word, initial_phase);
+    check_uc("write x86 title phase",
+             uc_mem_write(x86, x86_title_phase_address, word, 2));
+    const uint8_t optional_text = 0;
+    check_uc("disable x86 optional title text",
+             uc_mem_write(x86, x86_title_optional_text_address,
+                          &optional_text, 1));
+    prepare_x86_stack(x86, NULL, 0, 0x29f4);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write title-tail DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    check_uc("run x86 title tail",
+             uc_emu_start(x86, x86_title_tail_start, x86_title_tail_stop,
+                          0, 0));
+    uint8_t x86_phase_bytes[2];
+    check_uc("read x86 title phase",
+             uc_mem_read(x86, x86_title_phase_address,
+                         x86_phase_bytes, 2));
+    const uint16_t x86_phase =
+        (uint16_t)(x86_phase_bytes[0] | (x86_phase_bytes[1] << 8));
+    check_uc("read x86 title-tail state",
+             uc_mem_read(x86, x86_source_base + x86_source_offset,
+                         expected_state, 256));
+
+    const uint32_t native_phase_address =
+        m68k_source_base + m68k_source_size - 0x100;
+    const uint8_t native_phase_seed[2] = {
+        (uint8_t)(initial_phase >> 8), (uint8_t)initial_phase,
+    };
+    check_uc("write native title phase",
+             uc_mem_write(m68k, native_phase_address,
+                          native_phase_seed, 2));
+    const uint32_t native_fallback_address = native_phase_address + 2;
+    const uint8_t fallback_seed[2] = {0x5a, 0xa5};
+    check_uc("write native title fallback",
+             uc_mem_write(m68k, native_fallback_address,
+                          fallback_seed, 2));
+    const uint32_t values[] = {
+        m68k_palette_base + x86_source_offset,
+        m68k_source_base + x86_source_offset,
+        native_fallback_address, native_phase_address,
+        0x11111111u, 0x22222222u, 0x33333333u, 0x44444444u,
+        0x55555555u, 0x66666666u, 0x77777777u,
+        0x45454545u, 0x56565656u, 0x67676767u, 0x78787878u,
+    };
+    const int registers[] = {
+        UC_M68K_REG_A0, UC_M68K_REG_A1, UC_M68K_REG_A2,
+        UC_M68K_REG_A3, UC_M68K_REG_D0, UC_M68K_REG_D1,
+        UC_M68K_REG_D2, UC_M68K_REG_D3, UC_M68K_REG_D4,
+        UC_M68K_REG_D5, UC_M68K_REG_D6, UC_M68K_REG_D7,
+        UC_M68K_REG_A4, UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write title-tail register",
+                 uc_reg_write(m68k, registers[i], &values[i]));
+    uint32_t native_stack = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write title-tail A7",
+             uc_reg_write(m68k, UC_M68K_REG_A7, &native_stack));
+    check_uc("run m68k title tail",
+             uc_emu_start(m68k, m68k_code_base + native_entry_offset,
+                          m68k_code_base + native_code_size - 2, 0, 0));
+
+    uint8_t native_phase_bytes[2];
+    check_uc("read native title phase",
+             uc_mem_read(m68k, native_phase_address,
+                         native_phase_bytes, 2));
+    const uint16_t native_phase =
+        (uint16_t)((native_phase_bytes[0] << 8) | native_phase_bytes[1]);
+    check_uc("read native title-tail state",
+             uc_mem_read(m68k, m68k_source_base + x86_source_offset,
+                         actual_state, 256));
+    int bad_preserved_register = -1;
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i) {
+        uint32_t actual = 0;
+        check_uc("read title-tail preserved register",
+                 uc_reg_read(m68k, registers[i], &actual));
+        if (actual != values[i] && bad_preserved_register < 0)
+            bad_preserved_register = (int)i;
+    }
+    if (x86_phase != native_phase ||
+        memcmp(expected_state, actual_state, 256) != 0 ||
+        bad_preserved_register >= 0) {
+        fprintf(stderr,
+                "title tail case %u failed: initial=%04x phases=%04x/%04x "
+                "slots=%02x/%02x preserved=%d\n",
+                case_number, initial_phase, x86_phase, native_phase,
+                expected_state[6], actual_state[6], bad_preserved_register);
+        exit(1);
+    }
+}
+
 static void prepare_m68k_readback(uc_engine *uc, const uint16_t x,
                                   const uint16_t y, const uint16_t width,
                                   const uint8_t height,
@@ -1824,13 +1958,13 @@ static void run_bevel_case(
 
 int main(int argc, char **argv)
 {
-    if (argc != 17) {
+    if (argc != 18) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
                 "checker-fill.bin title-pages.bin title-crop.bin "
                 "palette-nearest.bin title-ui-step.bin color-slot.bin "
-                "span-fill.bin bevel.bin\n",
+                "title-tail.bin span-fill.bin bevel.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1848,6 +1982,7 @@ int main(int argc, char **argv)
     size_t palette_nearest_bytes = 0;
     size_t title_ui_bytes = 0;
     size_t color_slot_bytes = 0;
+    size_t title_tail_bytes = 0;
     size_t span_fill_bytes = 0;
     size_t bevel_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
@@ -1865,8 +2000,9 @@ int main(int argc, char **argv)
         read_file(argv[12], &palette_nearest_bytes);
     uint8_t *title_ui = read_file(argv[13], &title_ui_bytes);
     uint8_t *color_slot = read_file(argv[14], &color_slot_bytes);
-    uint8_t *span_fill = read_file(argv[15], &span_fill_bytes);
-    uint8_t *bevel = read_file(argv[16], &bevel_bytes);
+    uint8_t *title_tail = read_file(argv[15], &title_tail_bytes);
+    uint8_t *span_fill = read_file(argv[16], &span_fill_bytes);
+    uint8_t *bevel = read_file(argv[17], &bevel_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
@@ -1874,6 +2010,10 @@ int main(int argc, char **argv)
         title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
         crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
         palette_nearest_bytes < 4 || color_slot_bytes < 4 ||
+        title_tail_bytes <= palette_nearest_bytes + color_slot_bytes ||
+        memcmp(title_tail, palette_nearest, palette_nearest_bytes) ||
+        memcmp(title_tail + palette_nearest_bytes,
+               color_slot, color_slot_bytes) ||
         span_fill_bytes < 4 ||
         bevel_bytes <= palette_nearest_bytes + span_fill_bytes ||
         memcmp(bevel, palette_nearest, palette_nearest_bytes) ||
@@ -1913,6 +2053,8 @@ int main(int argc, char **argv)
     uc_engine *m68k_title_ui = open_m68k(title_ui, title_ui_bytes);
     uc_engine *x86_color_slot = open_x86_relocated(runtime);
     uc_engine *m68k_color_slot = open_m68k(color_slot, color_slot_bytes);
+    uc_engine *x86_title_tail = open_x86_relocated(runtime);
+    uc_engine *m68k_title_tail = open_m68k(title_tail, title_tail_bytes);
     uc_engine *x86_span_fill = open_x86_relocated(runtime);
     uc_engine *m68k_span_fill = open_m68k(span_fill, span_fill_bytes);
     uc_engine *x86_bevel = open_x86_relocated(runtime);
@@ -1981,6 +2123,29 @@ int main(int argc, char **argv)
             replacement, slot_word, count, fallback, color_slot_cases++,
             expected_color_state, actual_color_state);
     }
+
+    const uint32_t random_state_before_title_tail = random_state;
+    static const uint16_t title_tail_edges[] = {
+        0, 1, 98, 99, 100, 138, 139, 140, 1999, 2000, 2001,
+        0x7fff, 0x8000, 0xffff,
+    };
+    unsigned title_tail_cases = 0;
+    const size_t title_tail_entry =
+        palette_nearest_bytes + color_slot_bytes;
+    for (size_t i = 0;
+         i < sizeof(title_tail_edges) / sizeof(title_tail_edges[0]); ++i) {
+        run_title_tail_case(
+            x86_title_tail, m68k_title_tail, title_tail_entry,
+            title_tail_bytes, title_tail_edges[i], title_tail_cases++,
+            palette, expected_color_state, actual_color_state);
+    }
+    for (unsigned i = 0; i < 242; ++i) {
+        run_title_tail_case(
+            x86_title_tail, m68k_title_tail, title_tail_entry,
+            title_tail_bytes, (uint16_t)next_random(), title_tail_cases++,
+            palette, expected_color_state, actual_color_state);
+    }
+    random_state = random_state_before_title_tail;
 
     static const struct {
         uint16_t x0, y0, x1, y1;
@@ -2266,6 +2431,8 @@ int main(int argc, char **argv)
     uc_close(m68k_title_ui);
     uc_close(x86_color_slot);
     uc_close(m68k_color_slot);
+    uc_close(x86_title_tail);
+    uc_close(m68k_title_tail);
     uc_close(x86_span_fill);
     uc_close(m68k_span_fill);
     uc_close(x86_bevel);
@@ -2284,6 +2451,7 @@ int main(int argc, char **argv)
     free(palette_nearest);
     free(title_ui);
     free(color_slot);
+    free(title_tail);
     free(span_fill);
     free(bevel);
     free(expected_planes);
@@ -2295,11 +2463,12 @@ int main(int argc, char **argv)
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
            "%u checker-control-flow, %u title-page-control-flow, %u "
            "title-crop-control-flow, %u palette-nearest, %u "
-           "title-UI-control-flow, %u color-slot, %u span-fill, and %u bevel cases "
+           "title-UI-control-flow, %u color-slot, %u title-tail, %u span-fill, "
+           "and %u bevel cases "
            "passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
            direct_plot_cases, checker_cases, title_cases, crop_cases,
-           palette_cases, title_ui_cases, color_slot_cases,
+           palette_cases, title_ui_cases, color_slot_cases, title_tail_cases,
            span_fill_cases, bevel_cases);
     return 0;
 }

@@ -4,10 +4,14 @@
 	xref	sui_title_step
 	xref	sui_title_menu
 	xref	sui_title_status
+	xref	sui_title_tail
 	xref	slicks_basic_frame
 	xref	slicks_basic_palette
 	xref	slicks_title_counter
 	xref	slicks_title_third_color
+	xref	slicks_title_render_state
+	xref	slicks_title_fallback_color
+	xref	slicks_title_phase
 
 ; Temporary C-platform bridge. The translated/native side uses the register
 ; ABI directly; this wrapper preserves the Amiga GCC callee-saved registers.
@@ -30,5 +34,10 @@ slicks_draw_title_pages:
 	jsr	sui_title_menu
 	moveq	#0,d7
 	jsr	sui_title_status
+	lea	slicks_basic_palette,a0
+	lea	slicks_title_render_state,a1
+	lea	slicks_title_fallback_color,a2
+	lea	slicks_title_phase,a3
+	jsr	sui_title_tail
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

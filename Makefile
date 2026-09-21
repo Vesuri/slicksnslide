@@ -183,6 +183,12 @@ build/sui_color_slot.bin: native/sui_color_slot.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sui_title_tail.bin: tools/sui_title_tail_test.s \
+		native/sui_title_tail.s native/sutil_palette_nearest.s \
+		native/sui_color_slot.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
 build/sgfx_span_fill.bin: native/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
@@ -226,6 +232,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sutil_palette_nearest.bin \
 		build/sui_title_step.bin \
 		build/sui_color_slot.bin \
+		build/sui_title_tail.bin \
 		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
@@ -236,7 +243,8 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_plot.bin build/sgfx_checker_fill.bin \
 		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
 		build/sutil_palette_nearest.bin build/sui_title_step.bin \
-		build/sui_color_slot.bin build/sgfx_span_fill.bin \
+		build/sui_color_slot.bin build/sui_title_tail.bin \
+		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin
 
 trace-summary:

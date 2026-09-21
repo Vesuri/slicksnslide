@@ -157,6 +157,17 @@ that both overlaid counters have value `1`, at `(219,112)` with centred style 6
 and `(222,114)` with left style 4. Execution edges prove all three optional
 badge branches are inactive for the bounded BASIC path.
 
+`sui_title_tail` composes the palette matcher and colour-slot helper for the
+live shared wrapper suffix at `19E4Ah..19EFEh`. It preserves the original
+signed 16-bit phase comparison and reset above 2000, including the rising
+`phase+20`, falling `160-phase`, and steady 20 red components. Green and blue
+remain 20. The resulting nearest palette index replaces colour slot zero. All
+256 composed differential cases compare the original relocated x86 block with
+the native counter and state mutations, including boundaries 99/100, 139/140,
+2000/2001 and signed-word edge values. The traced optional-text flag is zero;
+the trailing VGA start-address call receives `(0,0)` and has no Amiga-side
+operation.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this

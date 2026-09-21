@@ -7,10 +7,11 @@
    path free of a generated-C CPU layer. The palette matcher at `26EAEh` and
    the complete `19653h..19718h` prefix, colour-slot helper at `1FD63h`, and
    six-entry title-menu loop at `19719h..19825h` and observed BASIC title-status
-   slice at `19828h..199F9h` now run natively. Continue with the observed shared
-   wrapper suffix at `19E4Ah`; `199FAh` is its alternate, unreached renderer.
-   Recover the original font resource to replace the temporary compact 5x7
-   title and numeric vocabulary.
+   slice at `19828h..199F9h` and shared wrapper suffix at `19E4Ah..19EFEh` now
+   run natively. Follow its observed caller continuations at `1A1E3h` and
+   `1A26Fh`; `199FAh` is the alternate, unreached renderer. Recover the original
+   font resource to replace the temporary compact 5x7 title and numeric
+   vocabulary.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;
@@ -18,7 +19,8 @@
    Readback passes another 256 whole-segment cases, and sub-rectangle copy
    passes 256 whole-plane cases. The direct plotter passes 512 cases across all
    four caller-selected planes, and the half-open span filler passes 256
-   whole-framebuffer cases. Next are the remapper, remaining fills, clear, and
+   whole-framebuffer cases, and the composed title-wrapper tail passes 256
+   state-and-palette cases. Next are the remapper, remaining fills, clear, and
    mode-setup boundaries. Dynamic range and buffer checks already cover those
    routines. The rectangular span-fill layout is statically recovered and
    traced, but the BASIC.SS fixture makes no calls; another mode must supply its

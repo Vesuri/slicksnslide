@@ -172,8 +172,8 @@ trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
 callers, palette utility, composed UI prefix, UI colour-slot helper, native
-span filler, and composed bevel, the complete differential gate now covers
-5,755 cases. Linked into
+span filler, composed bevel, and shared title tail, the complete differential
+gate now covers 6,011 cases. Linked into
 the A1200 diagnostic, the translated checker block produced a repeatable
 post-display checksum of `86bdc061` across fresh FS-UAE boots. The target check
 also exposed and fixed the first platform ABI issue:
@@ -213,6 +213,13 @@ sprite hashes, both decimal values (`1`), their positions and styles, and the
 absence of all three optional badges. The Amiga build extracts the two measured
 2-byte-by-8-row sprite blobs by hash and composes them with the transparent
 blitter; the strict target checksum is now `37048854`.
+The shared wrapper suffix at `19E4Ah..19EFEh` now advances its 16-bit phase,
+reproduces the three-part red pulse, performs the original nearest-palette
+lookup, and mutates colour slot zero through the native helper. The BASIC path
+proves the optional text branch inactive; its final VGA start-address call with
+coordinates `(0,0)` is an Amiga no-op. A 256-case composed differential covers
+the phase boundaries, wrap, palette result, state mutation, and preserved
+registers.
 
 ## Intended pipeline
 
@@ -265,9 +272,10 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Continue the observed shared UI suffix at `19E4Ah`, after the now-native title
-menu and BASIC-path status cluster. The renderer at `199FAh` is the alternate,
-unreached branch selected by the same wrapper. Recover the original Slicks font
-resource to replace the compact title and numeric vocabulary renderer. In
-parallel, extend the native differential corpus to remap, remaining fill,
-clear, and mode-setup boundaries and expand trace coverage beyond BASIC.SS.
+Follow the observed caller continuations at `1A1E3h` and `1A26Fh` now that the
+shared title wrapper is native through its return at `19EFEh`. The renderer at
+`199FAh` remains the alternate, unreached wrapper branch. Recover the original
+Slicks font resource to replace the compact title and numeric vocabulary
+renderer. In parallel, extend the native differential corpus to remap,
+remaining fill, clear, and mode-setup boundaries and expand trace coverage
+beyond BASIC.SS.

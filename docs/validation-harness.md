@@ -40,8 +40,9 @@ native span filler adds another 256 whole-framebuffer cases covering all
 four boundary phases, empty rectangles, both observed page bases, and the
 original multi-plane VGA write masks. The complete native differential corpus
 also includes 64 composed bevel cases spanning the observed title-menu control
-and randomized legal geometry, colour, and page states. It currently contains
-5,755 cases.
+and randomized legal geometry, colour, and page states. The shared title tail
+adds 256 composed phase, palette, and render-state cases. The corpus currently
+contains 6,011 cases.
 
 ## Program behavior
 

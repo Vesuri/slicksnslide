@@ -71,8 +71,10 @@ at `19719h..19825h` is represented by native bevel and text rendering. The
 observed BASIC-path status slice at `19828h..199F9h` now follows it: four exact
 call-time planar indicator sprites are drawn at their measured positions and
 the two measured counters both show `1`; the three conditional badge branches
-are proved inactive on this path. Control returns to the observed shared update
-suffix at `19E4Ah`; the renderer at `199FAh` is the wrapper's alternate,
-unreached branch. The current 5x7 title and numeric font is intentionally
-compact; replacing it with the recovered original font remains a
-visual-fidelity task.
+are proved inactive on this path. The observed shared update suffix at
+`19E4Ah..19EFEh` is native as well: it advances the title phase, updates the
+pulsing colour slot, skips the inactive optional text, and maps the final VGA
+start-address update to an Amiga no-op. The renderer at `199FAh` is the
+wrapper's alternate, unreached branch. The current 5x7 title and numeric font
+is intentionally compact; replacing it with the recovered original font
+remains a visual-fidelity task.
