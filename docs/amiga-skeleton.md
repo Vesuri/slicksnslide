@@ -15,7 +15,7 @@ through the native opaque blitter to both original VGA pages. The platform
 shell converts the visible page to eight Amiga bitplanes, installs the captured
 256-colour VGA palette, opens a 320 by 200 AGA screen, and displays the result.
 The target-side GDB check stops at a named post-display marker and verifies
-checksum `87956515`.
+checksum `c61a023d` after the native title menu is drawn.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -67,7 +67,8 @@ FNV-1a hash
 so no original game bytes are committed.
 
 The diagnostic still does not enter the original game loop. The next vertical
-slice is the surrounding UI update logic before and after these proved native
-graphics submissions, beginning with the six-entry loop at `19719h` (indices 0
-through 6, skipping 4). Its colour-slot mutation dependency at `1FD63h` is
-already translated and differentially proved.
+slice begins with the post-menu state and drawing logic at `19828h`. The
+six-entry loop at `19719h..19825h` is now represented by native bevel and text
+rendering and runs on the strict A1200/2 MiB target. Its current 5x7 title font
+is intentionally compact; replacing it with the recovered original font is a
+remaining visual-fidelity task.

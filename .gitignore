@@ -19,6 +19,7 @@ tools/ghidra-live-proj/
 tools/ghidra-live-normalized-proj/
 tools/vendor/
 __pycache__/
+work/
 
 # Generated translator/build output.
 build/

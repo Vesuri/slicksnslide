@@ -5,9 +5,10 @@
    (`196ECh..19718h`) into their surrounding UI routine, then onward to an
    interactive menu and game-loop entry. Keep the translated-to-native-helper
    path free of a generated-C CPU layer. The palette matcher at `26EAEh` and
-   the complete `19653h..19718h` prefix and its colour-slot helper at `1FD63h`
-   are translated and proved; next is the six-entry text/object loop beginning
-   at `19719h` (indices 0 through 6, skipping 4).
+   the complete `19653h..19718h` prefix, colour-slot helper at `1FD63h`, and
+   six-entry title-menu loop at `19719h..19825h` now run natively. Continue at
+   the post-menu logic at `19828h`, and recover the original font resource to
+   replace the temporary compact 5x7 title vocabulary.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;

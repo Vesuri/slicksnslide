@@ -171,8 +171,9 @@ checker-pattern rectangle function at runtime offset `A498h`. The bounded BASIC
 trace has not reached this caller, but its callee is the heavily exercised live
 plane-selected plot primitive. Its signed nested loops pass 256
 whole-framebuffer x86-versus-68020 cases. With the observed title-page and crop
-callers, palette utility, composed UI prefix, UI colour-slot helper, and native
-span filler, the complete differential gate now covers 5,691 cases. Linked into
+callers, palette utility, composed UI prefix, UI colour-slot helper, native
+span filler, and composed bevel, the complete differential gate now covers
+5,755 cases. Linked into
 the A1200 diagnostic, the translated checker block produced a repeatable
 post-display checksum of `86bdc061` across fresh FS-UAE boots. The target check
 also exposed and fixed the first platform ABI issue:
@@ -201,6 +202,11 @@ All 256 possible initial counter bytes agree with the original relocated x86
 caller across its live colour outputs, counter and stored-colour mutations,
 preserved registers, and four-plane framebuffer. This composed step executes
 in the strict A1200 diagnostic without changing its `87956515` frame checksum.
+The observed selected-index-zero menu slice at `19719h..19825h` now follows
+that prefix on target: its exact bevel geometry is differentially proved, and
+a native 5x7 renderer places all six resolved English labels. Two fresh A1200
+boots produced the new post-menu checksum `c61a023d`. The compact font is an
+intermediate native subsystem replacement; original-font recovery remains.
 
 ## Intended pipeline
 
@@ -253,8 +259,8 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Translate the six-entry text/object loop beginning at `19719h` (indices 0
-through 6, skipping 4), using the live colour outputs from `sui_title_step` and
-the proved `sui_color_slot` helper. In parallel, extend the native differential
-corpus to remap, fill, clear, and mode-setup boundaries and expand trace coverage
-beyond BASIC.SS.
+Continue the observed UI routine at `19828h`, after the now-native six-entry
+title-menu loop. Recover the original Slicks font resource to replace the
+compact title vocabulary renderer. In parallel, extend the native differential
+corpus to remap, remaining fill, clear, and mode-setup boundaries and expand
+trace coverage beyond BASIC.SS.

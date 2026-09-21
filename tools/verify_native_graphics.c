@@ -55,6 +55,9 @@ enum {
     x86_color_slot_stop = 0x2feae,
     x86_span_fill_start = 0x39f35,
     x86_span_fill_stop = 0x39fb7,
+    x86_bevel_start = 0x309cf,
+    x86_bevel_stop = 0x30b5a,
+    x86_clip_top_address = 0x3e97d,
     x86_relocated_stride_address = 0x3e96b,
     x86_screen_base_address = 0x3e977,
     m68k_code_base = 0x1000,
@@ -1705,15 +1708,129 @@ static void run_span_fill_case(
     }
 }
 
+static void run_bevel_case(
+    uc_engine *x86, uc_engine *m68k, const size_t native_entry,
+    const size_t native_code_size, const uint16_t x, const uint16_t y,
+    const uint16_t width, const uint16_t height, const uint8_t red,
+    const uint8_t green, const uint8_t blue, const uint16_t screen_base,
+    const unsigned case_number, uint8_t *expected_planes,
+    uint8_t *actual_planes, uint8_t palette[768])
+{
+    for (size_t i = 0; i < 768; ++i)
+        palette[i] =
+            (uint8_t)((i * 19u + case_number * 13u + (i >> 3)) & 63u);
+    for (size_t i = 0; i < m68k_plane_size; ++i)
+        expected_planes[i] =
+            (uint8_t)(i * 23u + (i >> 16) * 67u + case_number * 11u);
+    check_uc("write x86 bevel palette",
+             uc_mem_write(x86, x86_palette_base + x86_source_offset,
+                          palette, 768));
+    check_uc("write native bevel palette",
+             uc_mem_write(m68k, m68k_palette_base + x86_source_offset,
+                          palette, 768));
+    check_uc("seed native bevel planes",
+             uc_mem_write(m68k, m68k_plane_base, expected_planes,
+                          m68k_plane_size));
+
+    uint8_t far_pointer[4];
+    write_le16(far_pointer, x86_source_offset);
+    write_le16(far_pointer + 2, x86_palette_segment);
+    check_uc("write x86 bevel palette pointer",
+             uc_mem_write(x86, x86_title_palette_address, far_pointer, 4));
+    const uint8_t clip[8] = {
+        0, 0, 199, 0, 0, 0, 79, 0,
+    };
+    check_uc("write x86 bevel clip",
+             uc_mem_write(x86, x86_clip_top_address, clip, sizeof(clip)));
+    const uint16_t arguments[] = {
+        x, y, width, height, red, green, blue, screen_base,
+    };
+    prepare_x86_stack(x86, arguments, 8, 0x3000);
+    uint16_t relocated_data_segment = 0x3cbf;
+    check_uc("write relocated bevel DS",
+             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
+    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
+    uc_hook out_hook = 0;
+    uc_hook memory_hook = 0;
+    reset_x86_hook(x86, &ports, &out_hook);
+    check_uc("add bevel VGA memory hook",
+             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
+                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
+                         x86_vga_base + x86_vga_size - 1));
+    check_uc("run x86 bevel",
+             uc_emu_start(x86, x86_bevel_start, x86_bevel_stop, 0, 0));
+    check_uc("delete bevel OUT hook", uc_hook_del(x86, out_hook));
+    check_uc("delete bevel VGA hook", uc_hook_del(x86, memory_hook));
+
+    const uint32_t values[] = {
+        0x11110000u | x, 0x22220000u | y, 0x33330000u | width,
+        0x44440000u | height, 0x55550000u | red,
+        0x66660000u | green, 0x77770000u | blue,
+        0x88880000u | screen_base, m68k_plane_base,
+        m68k_palette_base + x86_source_offset, 0x22222222u,
+        0x33333333u, 0x44444444u, 0x55555555u, 0x66666666u,
+    };
+    const int registers[] = {
+        UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
+        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
+        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0,
+        UC_M68K_REG_A1, UC_M68K_REG_A2, UC_M68K_REG_A3,
+        UC_M68K_REG_A4, UC_M68K_REG_A5, UC_M68K_REG_A6,
+    };
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
+        check_uc("write bevel register",
+                 uc_reg_write(m68k, registers[i], &values[i]));
+    uint32_t native_stack = m68k_stack_base + m68k_stack_size / 2;
+    check_uc("write bevel A7",
+             uc_reg_write(m68k, UC_M68K_REG_A7, &native_stack));
+    check_uc("run m68k bevel",
+             uc_emu_start(m68k, m68k_code_base + native_entry,
+                          m68k_code_base + native_code_size - 2, 0, 0));
+
+    int bad_preserved_register = -1;
+    uint32_t bad_register_value = 0;
+    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i) {
+        uint32_t actual = 0;
+        check_uc("read bevel preserved register",
+                 uc_reg_read(m68k, registers[i], &actual));
+        if (actual != values[i] && bad_preserved_register < 0) {
+            bad_preserved_register = (int)i;
+            bad_register_value = actual;
+        }
+    }
+    check_uc("read native bevel planes",
+             uc_mem_read(m68k, m68k_plane_base, actual_planes,
+                         m68k_plane_size));
+    if (ports.bad_port_value || bad_preserved_register >= 0 ||
+        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
+        size_t difference = 0;
+        while (difference < m68k_plane_size &&
+               expected_planes[difference] == actual_planes[difference])
+            ++difference;
+        fprintf(stderr,
+                "bevel case %u failed: xy=%u,%u size=%ux%u rgb=%02x/%02x/%02x "
+                "base=%04x preserved=%d/%08x",
+                case_number, x, y, width, height, red, green, blue,
+                screen_base, bad_preserved_register, bad_register_value);
+        if (difference < m68k_plane_size)
+            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
+                            "m68k=%02x",
+                    difference >> 16, difference & 0xffffu,
+                    expected_planes[difference], actual_planes[difference]);
+        fputc('\n', stderr);
+        exit(1);
+    }
+}
+
 int main(int argc, char **argv)
 {
-    if (argc != 16) {
+    if (argc != 17) {
         fprintf(stderr,
                 "usage: %s runtime.bin plot.bin read.bin opaque.bin "
                 "transparent.bin readback.bin subrect.bin direct-plot.bin "
                 "checker-fill.bin title-pages.bin title-crop.bin "
                 "palette-nearest.bin title-ui-step.bin color-slot.bin "
-                "span-fill.bin\n",
+                "span-fill.bin bevel.bin\n",
                 argv[0]);
         return 2;
     }
@@ -1732,6 +1849,7 @@ int main(int argc, char **argv)
     size_t title_ui_bytes = 0;
     size_t color_slot_bytes = 0;
     size_t span_fill_bytes = 0;
+    size_t bevel_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
     uint8_t *read = read_file(argv[3], &read_bytes);
@@ -1748,6 +1866,7 @@ int main(int argc, char **argv)
     uint8_t *title_ui = read_file(argv[13], &title_ui_bytes);
     uint8_t *color_slot = read_file(argv[14], &color_slot_bytes);
     uint8_t *span_fill = read_file(argv[15], &span_fill_bytes);
+    uint8_t *bevel = read_file(argv[16], &bevel_bytes);
     if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
         opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
         subrect_bytes < 4 || direct_plot_bytes < 4 ||
@@ -1756,6 +1875,9 @@ int main(int argc, char **argv)
         crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
         palette_nearest_bytes < 4 || color_slot_bytes < 4 ||
         span_fill_bytes < 4 ||
+        bevel_bytes <= palette_nearest_bytes + span_fill_bytes ||
+        memcmp(bevel, palette_nearest, palette_nearest_bytes) ||
+        memcmp(bevel + palette_nearest_bytes, span_fill, span_fill_bytes) ||
         title_ui_bytes <= palette_nearest_bytes + crop_bytes ||
         memcmp(title_ui, palette_nearest, palette_nearest_bytes) ||
         memcmp(title_ui + palette_nearest_bytes, crop, crop_bytes)) {
@@ -1793,6 +1915,8 @@ int main(int argc, char **argv)
     uc_engine *m68k_color_slot = open_m68k(color_slot, color_slot_bytes);
     uc_engine *x86_span_fill = open_x86_relocated(runtime);
     uc_engine *m68k_span_fill = open_m68k(span_fill, span_fill_bytes);
+    uc_engine *x86_bevel = open_x86_relocated(runtime);
+    uc_engine *m68k_bevel = open_m68k(bevel, bevel_bytes);
 
     static const uint16_t edge_x[] = {0, 1, 2, 3, 4, 319, 320, 0xffff};
     static const uint16_t edge_y[] = {0, 1, 189, 326, 0xffff};
@@ -1885,6 +2009,27 @@ int main(int argc, char **argv)
                            span_fill_cases++, expected_planes,
                            actual_planes);
     }
+
+    const uint32_t random_state_before_bevel = random_state;
+    unsigned bevel_cases = 0;
+    const size_t bevel_entry = palette_nearest_bytes + span_fill_bytes;
+    for (unsigned i = 0; i < 64; ++i) {
+        const uint16_t x = i == 0 ? 120 : (uint16_t)(next_random() % 220u);
+        const uint16_t y = i == 0 ? 82 : (uint16_t)(next_random() % 130u);
+        const uint16_t width = i == 0 ? 81 :
+            (uint16_t)(8u + next_random() % (313u - x));
+        const uint16_t height = i == 0 ? 14 :
+            (uint16_t)(2u + next_random() % (198u - y));
+        const uint8_t red = i == 0 ? 50 : (uint8_t)next_random();
+        const uint8_t green = i == 0 ? 10 : (uint8_t)next_random();
+        const uint8_t blue = i == 0 ? 10 : (uint8_t)next_random();
+        const uint16_t page = (i & 1u) ? 0x7fbcu : 0;
+        run_bevel_case(x86_bevel, m68k_bevel, bevel_entry, bevel_bytes,
+                       x, y, width, height, red, green, blue, page,
+                       bevel_cases++, expected_planes, actual_planes,
+                       palette);
+    }
+    random_state = random_state_before_bevel;
 
     static const struct {
         uint16_t x0, y0, x1, y1, base;
@@ -2123,6 +2268,8 @@ int main(int argc, char **argv)
     uc_close(m68k_color_slot);
     uc_close(x86_span_fill);
     uc_close(m68k_span_fill);
+    uc_close(x86_bevel);
+    uc_close(m68k_bevel);
     free(runtime);
     free(plot);
     free(read);
@@ -2138,6 +2285,7 @@ int main(int argc, char **argv)
     free(title_ui);
     free(color_slot);
     free(span_fill);
+    free(bevel);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
@@ -2147,11 +2295,11 @@ int main(int argc, char **argv)
            "transparent blit, %u readback, %u subrect, %u direct-plot, "
            "%u checker-control-flow, %u title-page-control-flow, %u "
            "title-crop-control-flow, %u palette-nearest, %u "
-           "title-UI-control-flow, %u color-slot, and %u span-fill cases "
+           "title-UI-control-flow, %u color-slot, %u span-fill, and %u bevel cases "
            "passed\n",
            cases, blit_cases, readback_cases, subrect_cases,
            direct_plot_cases, checker_cases, title_cases, crop_cases,
            palette_cases, title_ui_cases, color_slot_cases,
-           span_fill_cases);
+           span_fill_cases, bevel_cases);
     return 0;
 }

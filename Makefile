@@ -187,6 +187,11 @@ build/sgfx_span_fill.bin: native/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sui_bevel.bin: tools/sui_bevel_test.s native/sui_bevel.s \
+		native/sutil_palette_nearest.s native/sgfx_span_fill.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
 build/sgfx_read_pixel.bin: native/sgfx_read_pixel.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
@@ -222,6 +227,7 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sui_title_step.bin \
 		build/sui_color_slot.bin \
 		build/sgfx_span_fill.bin \
+		build/sui_bevel.bin \
 		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
 		build/sgfx_plot_plane.bin build/sgfx_read_pixel.bin \
@@ -230,7 +236,8 @@ verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
 		build/sgfx_plot.bin build/sgfx_checker_fill.bin \
 		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
 		build/sutil_palette_nearest.bin build/sui_title_step.bin \
-		build/sui_color_slot.bin build/sgfx_span_fill.bin
+		build/sui_color_slot.bin build/sgfx_span_fill.bin \
+		build/sui_bevel.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log

@@ -2,6 +2,7 @@
 	xdef	slicks_draw_title_pages
 	xref	sgfx_title_pages
 	xref	sui_title_step
+	xref	sui_title_menu
 	xref	slicks_basic_frame
 	xref	slicks_basic_palette
 	xref	slicks_title_counter
@@ -23,5 +24,8 @@ slicks_draw_title_pages:
 	lea	slicks_title_third_color,a4
 	moveq	#0,d7
 	jsr	sui_title_step
+	lea	slicks_basic_palette,a1
+	moveq	#0,d7
+	jsr	sui_title_menu
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

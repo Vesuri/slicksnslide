@@ -134,6 +134,20 @@ that low byte residing at `1(a2)` on the big-endian 68020 and preserves
 512 differential cases, including out-of-range slots and both replacement
 signs.
 
+`sui_bevel` composes `sutil_palette_nearest` and `sgfx_span_fill` into the
+button renderer at `208CFh`. It preserves the original base-colour centre,
+highlighted upper/side edges, shadowed lower/side edges, shrinking bevel width,
+and inclusive layer count. Sixty-four whole-framebuffer differentials include
+the observed `(120,82), 81 by 14, RGB 50/10/10` title-menu call.
+
+`sui_title_menu` is the native observed selected-index-zero slice of the
+six-entry loop at `19719h..19825h`. It keeps indices 0 through 6 with index 4 absent,
+uses the translated bevel for the selected `GO !!!` row, and positions the six
+resolved English labels at the observed 13-pixel row spacing. `sui_draw_text`
+is currently a compact native 5x7 renderer for that vocabulary. It deliberately
+avoids a guest CPU or C rendering layer, but it is not yet the original Slicks
+font; recovering and using that font resource remains a visual-fidelity item.
+
 `sgfx_checker_fill` is the first translated application-level caller rather
 than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
 runtime-image offset `A498h`; the bounded BASIC trace has not reached this
