@@ -46,6 +46,8 @@ make verify-interrupt-trace \
   # validate vectors, runtime boundaries, and software-service functions
 make verify-port-trace \
   # validate and summarize compact direct port-I/O aggregates
+make verify-memory-trace \
+  # summarize VGA/runtime memory and reject writes to executed code bytes
 make analyze-execution-trace \
   # decode control flow and correlate asynchronous interrupt entries
 make unpack        # execute only Compack and capture its handoff image/state

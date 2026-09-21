@@ -1,0 +1,177 @@
+diff --git a/include/paging.h b/include/paging.h
+index e7e6974..85887c1 100644
+--- a/include/paging.h
++++ b/include/paging.h
+@@ -438,13 +438,31 @@ static INLINE PhysPt64 PAGING_GetPhysicalAddress64(const LinearPt linAddr) {
+ 
+ /* Special inlined memory reading/writing */
+ 
++extern bool slicks_trace_active;
++extern PhysPt slicks_runtime_base;
++extern uint32_t slicks_runtime_size;
++void Slicks_RecordMemoryAccess(bool write, LinearPt address, uint8_t width);
++
++static INLINE bool Slicks_IsVgaAddress(const LinearPt address) {
++	return address >= 0xa0000u && address < 0xc0000u;
++}
++
++static INLINE bool Slicks_IsRuntimeAddress(const LinearPt address) {
++	return address >= slicks_runtime_base &&
++	       address < slicks_runtime_base + slicks_runtime_size;
++}
++
+ static INLINE uint8_t mem_readb_inline(const LinearPt address) {
++	if (slicks_trace_active && Slicks_IsVgaAddress(address))
++		Slicks_RecordMemoryAccess(false, address, 1);
+ 	const HostPt tlb_addr=get_tlb_read(address);
+ 	if (tlb_addr) return host_readb(tlb_addr+address);
+ 	else return (uint8_t)(get_tlb_readhandler(address))->readb(address);
+ }
+ 
+ static INLINE uint16_t mem_readw_inline(const LinearPt address) {
++	if (slicks_trace_active && Slicks_IsVgaAddress(address))
++		Slicks_RecordMemoryAccess(false, address, 2);
+ 	if ((address & 0xfff)<0xfff) {
+ 		const HostPt tlb_addr=get_tlb_read(address);
+ 		if (tlb_addr) return host_readw(tlb_addr+address);
+@@ -453,6 +471,8 @@ static INLINE uint16_t mem_readw_inline(const LinearPt address) {
+ }
+ 
+ static INLINE uint32_t mem_readd_inline(const LinearPt address) {
++	if (slicks_trace_active && Slicks_IsVgaAddress(address))
++		Slicks_RecordMemoryAccess(false, address, 4);
+ 	if ((address & 0xfff)<0xffd) {
+ 		const HostPt tlb_addr=get_tlb_read(address);
+ 		if (tlb_addr) return host_readd(tlb_addr+address);
+@@ -461,12 +481,18 @@ static INLINE uint32_t mem_readd_inline(const LinearPt address) {
+ }
+ 
+ static INLINE void mem_writeb_inline(const LinearPt address,const uint8_t val) {
++	if (slicks_trace_active &&
++	    (Slicks_IsVgaAddress(address) || Slicks_IsRuntimeAddress(address)))
++		Slicks_RecordMemoryAccess(true, address, 1);
+ 	const HostPt tlb_addr=get_tlb_write(address);
+ 	if (tlb_addr) host_writeb(tlb_addr+address,val);
+ 	else (get_tlb_writehandler(address))->writeb(address,val);
+ }
+ 
+ static INLINE void mem_writew_inline(const LinearPt address,const uint16_t val) {
++	if (slicks_trace_active &&
++	    (Slicks_IsVgaAddress(address) || Slicks_IsRuntimeAddress(address)))
++		Slicks_RecordMemoryAccess(true, address, 2);
+ 	if ((address & 0xfffu)<0xfffu) {
+ 		const HostPt tlb_addr=get_tlb_write(address);
+ 		if (tlb_addr) host_writew(tlb_addr+address,val);
+@@ -475,6 +501,9 @@ static INLINE void mem_writew_inline(const LinearPt address,const uint16_t val)
+ }
+ 
+ static INLINE void mem_writed_inline(const LinearPt address,const uint32_t val) {
++	if (slicks_trace_active &&
++	    (Slicks_IsVgaAddress(address) || Slicks_IsRuntimeAddress(address)))
++		Slicks_RecordMemoryAccess(true, address, 4);
+ 	if ((address & 0xfffu)<0xffdu) {
+ 		const HostPt tlb_addr=get_tlb_write(address);
+ 		if (tlb_addr) host_writed(tlb_addr+address,val);
+diff --git a/src/cpu/cpu.cpp b/src/cpu/cpu.cpp
+--- a/src/cpu/cpu.cpp
++++ b/src/cpu/cpu.cpp
+@@ -20,8 +20,10 @@
+ #include <assert.h>
+ #include <cstdio>
+ #include <cstdlib>
++#include <map>
+ #include <sstream>
+ #include <stddef.h>
++#include <tuple>
+ #include <vector>
+ 
+ #include "cpu.h"
+@@ -148,6 +150,25 @@ struct SlicksInterruptEvent {
+ std::vector<SlicksInterruptEvent> slicks_interrupts;
+ bool slicks_interrupt_writer_registered = false;
+ 
++struct SlicksMemoryKey {
++	bool write;
++	uint8_t width;
++	bool runtime;
++	uint32_t source_offset;
++	uint32_t target_offset;
++
++	bool operator<(const SlicksMemoryKey &other) const
++	{
++		return std::tie(write, width, runtime, source_offset, target_offset) <
++		       std::tie(other.write, other.width, other.runtime,
++		                other.source_offset, other.target_offset);
++	}
++};
++
++std::map<SlicksMemoryKey, uint64_t> slicks_memory_events;
++uint64_t slicks_memory_event_count = 0;
++bool slicks_memory_writer_registered = false;
++
+ int32_t Slicks_NormalizedOffset(const PhysPt address)
+ {
+ 	if (address < slicks_runtime_base ||
+@@ -181,6 +201,27 @@ void Slicks_WriteInterrupts()
+ 	LOG_MSG("SLICKS: wrote %zu interrupt events", slicks_interrupts.size());
+ }
+ 
++void Slicks_WriteMemoryEvents()
++{
++	if (slicks_memory_events.empty())
++		return;
++	if (auto *output = fopen("slicks-memory.csv", "w")) {
++		fputs("direction,width,region,source_offset,target_offset,count\n", output);
++		for (const auto &item : slicks_memory_events) {
++			const auto &event = item.first;
++			fprintf(output, "%s,%u,%s,0x%05x,0x%05x,%llu\n",
++			        event.write ? "write" : "read", event.width,
++			        event.runtime ? "runtime" : "vga", event.source_offset,
++			        event.target_offset,
++			        static_cast<unsigned long long>(item.second));
++		}
++		fclose(output);
++	}
++	LOG_MSG("SLICKS: wrote %zu memory aggregates covering %llu events",
++	        slicks_memory_events.size(),
++	        static_cast<unsigned long long>(slicks_memory_event_count));
++}
++
+ void Slicks_RecordRealModeInterrupt(const Bitu num, const Bitu type,
+ 	                                const uint32_t oldeip)
+ {
+@@ -212,6 +253,34 @@ void Slicks_RecordRealModeInterrupt(const Bitu num, const Bitu type,
+ 
+ } // namespace
+ 
++void Slicks_RecordMemoryAccess(const bool write, const LinearPt address,
++	                           const uint8_t width)
++{
++	if (!slicks_trace_active)
++		return;
++	const auto source_address = SegPhys(cs) + static_cast<uint16_t>(reg_eip);
++	if (source_address < slicks_runtime_base ||
++	    source_address >= slicks_runtime_base + slicks_runtime_size)
++		return;
++	const bool runtime = address >= slicks_runtime_base &&
++	                     address < slicks_runtime_base + slicks_runtime_size;
++	if (!runtime && (address < 0xa0000u || address >= 0xc0000u))
++		return;
++	if (!slicks_memory_writer_registered) {
++		std::atexit(Slicks_WriteMemoryEvents);
++		slicks_memory_writer_registered = true;
++	}
++	const auto target_offset = runtime
++	        ? static_cast<uint32_t>(address - slicks_runtime_base)
++	        : static_cast<uint32_t>((address - 0xa0000u) & ~0xffu);
++	const SlicksMemoryKey key = {
++	        write, width, runtime,
++	        static_cast<uint32_t>(source_address - slicks_runtime_base),
++	        target_offset};
++	++slicks_memory_events[key];
++	++slicks_memory_event_count;
++}
++
+ uint64_t CPU_fixed_RDTSC_rate = 0;
+ 
+ int64_t CPU_RDTSC() {

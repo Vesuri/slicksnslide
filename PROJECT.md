@@ -112,6 +112,12 @@ and DMA, and VGA attribute/sequencer/graphics/palette/CRTC/status ports. Its
 millions of timer/retrace polls and dense VGA register traffic identify native
 routine replacement—not generic port emulation—as a performance requirement.
 
+Memory tracing reduces 4,721,833 accesses to 23,056 aggregates. Fourteen
+instruction sites account for 3,894,357 VGA writes, making them concrete native
+drawing-replacement boundaries. A byte-level comparison of every runtime write
+against all dynamically decoded instruction extents finds no write to executed
+code on the BASIC path after the Compack handoff.
+
 ## Intended pipeline
 
 ```text

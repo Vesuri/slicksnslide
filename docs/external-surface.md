@@ -90,9 +90,26 @@ it should not implement these as generic per-port calls. The sequencer and
 graphics-controller traffic also proves that treating mode `13h` as only a
 flat 320x200 framebuffer would be insufficient for faithful translation.
 
+## VGA and runtime memory
+
+The memory tracer aggregates 4,721,833 accesses into 23,056 rows. The observed
+run contains 3,894,357 VGA writes from only 14 instruction sites and 35,388 VGA
+reads from two instruction sites. Writes touch 307 distinct 256-byte
+VGA-window buckets; reads touch 43. This small set of source routines is the
+natural boundary for native Amiga drawing replacements.
+
+The program also performs 792,088 writes to mutable storage within its loaded
+runtime allocation, covering 96 distinct 256-byte pages. A byte-level check
+against every dynamically decoded instruction finds zero writes overlapping
+executed instruction bytes. Thus the measured BASIC path is not
+self-modifying after the Compack handoff. This does not yet prove that every
+unvisited mode has the same property, but it removes self-modification from the
+known hot-path design.
+
 ## Still unmeasured
 
-- VGA memory reads/writes and dirty-region behavior.
-- Writes into the runtime code image.
+- Semantic grouping of the 14 VGA-writing sites into drawing primitives and
+  dirty-region behavior.
+- Executable-write coverage on additional tracks and modes.
 - Additional paths reached by other tracks, menus, multiplayer modes, and
   failure cases.
