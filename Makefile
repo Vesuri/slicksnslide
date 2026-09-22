@@ -32,7 +32,8 @@ ABS_ROOT := $(abspath .)
 	reference-staging reference-286 reference-race reference-trace \
 	reference-frame-hash verify-reference-race verify-execution-trace \
 	verify-interrupt-trace verify-port-trace analyze-execution-trace \
-	verify-memory-trace verify-primitive-trace analyze-vga-sites unpack rebuild-mz \
+	verify-memory-trace verify-primitive-trace verify-race-state \
+	analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	amiga amiga-run amiga-debug amiga-check amiga-race-check \
@@ -110,6 +111,10 @@ verify-memory-trace: unpack
 
 verify-primitive-trace:
 	$(PYTHON) tools/summarize_primitive_calls.py $(REFERENCE_PRIMITIVES)
+
+verify-race-state:
+	$(PYTHON) tools/verify_race_state.py \
+		$(REFERENCE_FIXED_ROOT)/slicks-race-state.csv
 
 analyze-vga-sites: verify-memory-trace
 	$(PYTHON) tools/analyze_vga_sites.py disasm/runtime.bin \

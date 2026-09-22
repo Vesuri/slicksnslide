@@ -94,6 +94,9 @@ struct SlicksRaceCar {
     unsigned short finish_time_centiseconds;
     unsigned short ai_stuck_ticks;
     unsigned short ai_recovery_ticks;
+    short steering_scale;
+    short steering_penalty;
+    short steering_property;
     unsigned char waypoint;
     unsigned char vehicle;
     unsigned char style;

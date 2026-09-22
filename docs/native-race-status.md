@@ -12,6 +12,11 @@ from the original files at run time.
 - The start grid is derived from each track's recorded position and heading.
 - Four cars use persistent fixed-point position, velocity, speed, and heading
   state. Throttle uses the traced `0xa0` increment and `.omi` top-speed value.
+  Coasting applies the recovered Q15 multiplier
+  `0x7bdd - ((omi[23] - 100) * 2)` to the drive scalar.
+  Steering now preserves the original four-stage signed integer recurrence,
+  including the traced human/AI input strengths and per-driver scales; the
+  semantic trace proves 9,329 literal heading transitions.
 - The normal computer-control path follows the original ten-byte navigation
   records. Its steering thresholds, unconditional no-obstacle throttle, centre
   checkpoint comparisons, 150-tick stationary watch, and 40-tick recovery

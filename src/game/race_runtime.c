@@ -646,6 +646,9 @@ static void update_car(struct SlicksRaceRuntime *race,
             : ai_controls(race, car_index);
     unsigned char turning = controls & (SLICKS_CONTROL_LEFT |
                                         SLICKS_CONTROL_RIGHT);
+    unsigned char steering_input =
+        (unsigned char)(car_index == 0 && race->human_control ? 100 : 140);
+    long steering_step;
     unsigned short direction;
     short velocity_response;
     long target_velocity_x;
@@ -666,7 +669,12 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->speed_fixed < (long)properties->top_speed * 100L) {
         car->speed_fixed += 0xa0L;
     } else if (car->speed_fixed > 0) {
-        car->speed_fixed -= 2;
+        /* 2000:0e5e multiplies car-state +10h by the Q15 factor held in
+         * DS:53fe.  aeb6 constructs that factor as 7bddh minus twice the
+         * signed displacement of .omi byte 23 from 100.  This reproduces
+         * captured coast sequences such as 10000, 9676, 9363 exactly. */
+        long coast_factor = 0x7bddL - properties->balance_bias;
+        car->speed_fixed = car->speed_fixed * coast_factor / 0x8000L;
     }
     if (controls & SLICKS_CONTROL_BRAKE) {
         car->speed_fixed -= 0x21L * properties->top_speed;
@@ -675,12 +683,22 @@ static void update_car(struct SlicksRaceRuntime *race,
     }
     car->speed = (short)(car->speed_fixed / 100L);
 
-    if ((controls & SLICKS_CONTROL_LEFT) && car->speed > 5)
-        car->heading -=
-            (90 + car->speed / 3) * properties->steering / 100;
-    if ((controls & SLICKS_CONTROL_RIGHT) && car->speed > 5)
-        car->heading +=
-            (90 + car->speed / 3) * properties->steering / 100;
+    /* 2000:0c79..0d54 performs these divisions separately with signed IDIV;
+     * preserving their order is observable.  The semantic DOS trace proves
+     * this recurrence for 9,329 turns.  The +26h penalty is zero in the
+     * captured normal race but remains explicit for the recovered state. */
+    car->steering_amount = steering_input;
+    steering_step = (long)steering_input *
+        (car->steering_scale / 10);
+    steering_step /= 155;
+    steering_step *= 80 - car->steering_penalty / 25;
+    steering_step /= 100;
+    steering_step *= car->steering_property;
+    steering_step /= 50;
+    if (controls & SLICKS_CONTROL_LEFT)
+        car->heading -= (short)steering_step;
+    if (controls & SLICKS_CONTROL_RIGHT)
+        car->heading += (short)steering_step;
     while (car->heading < 0)
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)
@@ -1114,6 +1132,9 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     static const unsigned char default_vehicle[SLICKS_RACE_CAR_COUNT] = {
         5, 2, 0, 0
     };
+    static const short default_steering_scale[SLICKS_RACE_CAR_COUNT] = {
+        700, 1000, 850, 1000
+    };
     unsigned short car;
     unsigned short direction;
     unsigned short x;
@@ -1164,6 +1185,10 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         state->lap = 1;
         state->speed = 0;
         state->speed_fixed = 0;
+        state->steering_amount = (unsigned char)(car ? 140 : 100);
+        state->steering_scale = default_steering_scale[car];
+        state->steering_penalty = 0;
+        state->steering_property = 104;
         state->ai_last_x = state->x;
         state->ai_last_y = state->y;
         state->ai_stuck_ticks = 150;

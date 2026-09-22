@@ -1,6 +1,6 @@
 --- a/src/cpu/core_normal_286.cpp
 +++ b/src/cpu/core_normal_286.cpp
-@@ -91,11 +91,61 @@
+@@ -91,11 +91,70 @@
  	}
  };
  
@@ -13,6 +13,10 @@
 +	uint32_t x;
 +	uint32_t y;
 +	uint16_t heading;
++	int16_t steering_input;
++	int16_t timestep;
++	int16_t steering_scale;
++	int16_t steering_property;
 +	uint8_t car_state[0x36];
 +	uint16_t ai_state[7];
 +};
@@ -50,6 +54,11 @@
 +	state.x = mem_readd(data + 0x538c + car * 4);
 +	state.y = mem_readd(data + 0x539c + car * 4);
 +	state.heading = mem_readw(data + 0x681c + car * 2);
++	state.steering_input = static_cast<int16_t>(
++	        mem_readw(SegPhys(ss) + reg_bp - 0x48 + car * 2));
++	state.timestep = static_cast<int16_t>(mem_readw(SegPhys(ss) + reg_bp - 2));
++	state.steering_scale = static_cast<int16_t>(mem_readw(data + 0x4c3a + car * 2));
++	state.steering_property = static_cast<int16_t>(mem_readw(data + 0x6aee + car * 0x0e));
 +	for (uint8_t i = 0; i < sizeof(state.car_state); ++i)
 +		state.car_state[i] = mem_readb(data + 0x302f + car * 0x36 + i);
 +	for (uint8_t i = 0; i < 7; ++i)
@@ -62,22 +71,24 @@
  void Slicks_RecordPrimitiveCall(const uint32_t target, const uint8_t argc)
  {
  	SlicksPrimitiveCall call = {};
-@@ -244,6 +294,31 @@
+@@ -244,6 +303,33 @@
  		if (binary)
  			fclose(binary);
  		fclose(index);
 +	}
 +	if (auto *output = fopen("slicks-race-state.csv", "w")) {
 +		fputs("sample,frame,car,accelerate,brake,left,right,extra,surface,contact,"
-+		      "x,y,heading,car_state_hex,ai_state_0,ai_state_1,ai_state_2,"
++		      "x,y,heading,steering_input,timestep,steering_scale,steering_property,"
++		      "car_state_hex,ai_state_0,ai_state_1,ai_state_2,"
 +		      "ai_state_3,ai_state_4,ai_state_5,ai_state_6\n", output);
 +		for (const auto &state : slicks_race_states) {
-+			fprintf(output, "%u,%u,%u,%u,%u,%u,%u,%u,%d,%u,%u,%u,%u,",
++			fprintf(output, "%u,%u,%u,%u,%u,%u,%u,%u,%d,%u,%u,%u,%u,%d,%d,%d,%d,",
 +			        state.sample, state.sample / 4, state.car,
 +			        state.controls[0], state.controls[1], state.controls[2],
 +			        state.controls[3], state.controls[4],
 +			        static_cast<int8_t>(state.surface), state.contact,
-+			        state.x, state.y, state.heading);
++			        state.x, state.y, state.heading, state.steering_input,
++			        state.timestep, state.steering_scale, state.steering_property);
 +			for (const auto value : state.car_state)
 +				fprintf(output, "%02x", value);
 +			for (const auto value : state.ai_state)
@@ -94,7 +105,7 @@
  	}
  	LOG_MSG("SLICKS: wrote execution bitmap and %zu unique transitions",
  	        slicks_edges.size());
-@@ -289,6 +364,9 @@
+@@ -289,6 +375,9 @@
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
