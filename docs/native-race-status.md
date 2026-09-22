@@ -60,7 +60,8 @@ still require instruction-level recovery before calling the simulation
 bit-exact:
 
 - exposing non-default values for the recovered driver setup, the
-  contact/reverse brake branches, the special car-state path, and the remaining
+  contact/reverse brake branches, the trigger for the special car-state path,
+  and the remaining
   `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
@@ -80,5 +81,12 @@ of `direction * drive_scalar * 200`; its divisor is the low 32 bits of
 `drive3 * drive0 * (state20 / 70 + 10) * (23 or 38)`; and the previous
 velocity is decayed by branch Q15 factor 4 or 3 over `32768 + drive1` before
 the force is added. The coast branch first applies Q15 factor 5 to the drive
-scalar. The native runtime now uses this recovered normal-state block; dynamic
-setup choices, contact/reverse braking, and the special state remain to recover.
+scalar. Ordinary braking applies Q15 factor 8 once per elapsed simulation
+quantum before clearing the drive scalar. The opt-in
+`dosbox-x-slicks-special-state.patch` fixture additionally proves that positive
+car-state word `+29h` bypasses the normal integrator and multiplies both
+velocity components by the zero-extended Q15 factor 7. Its countdown/target
+maintenance and the event that enters this state are mapped, but the entering
+event still needs a natural DOS capture. The native runtime now uses the
+recovered normal-state block; dynamic setup choices, contact/reverse braking,
+and that special-state trigger remain to recover.

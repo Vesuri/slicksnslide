@@ -1,0 +1,80 @@
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -130,12 +130,26 @@
+ std::array<SlicksRaceState, 4> slicks_pending_race_states = {};
+ std::array<bool, 4> slicks_pending_race_valid = {};
+ uint32_t slicks_race_frame = 0;
++uint32_t slicks_special_capture_frame = UINT32_MAX;
+ std::array<uint8_t, 0x7000> slicks_race_data = {};
+ bool slicks_race_data_valid = false;
+ 
+-void Slicks_RecordRaceStatePre()
++void Slicks_InjectSpecialState()
++{
++	if (!std::getenv("SLICKS_TRACE_SPECIAL") ||
++	    slicks_race_frame < 200 || slicks_race_frame >= 250)
++		return;
++	const auto car = static_cast<uint8_t>(mem_readw(SegPhys(ss) + reg_bp - 0x68));
++	if (car != 1)
++		return;
++	mem_writew(SegPhys(ds) + 0x302f + car * 0x36 + 0x29, 1000);
++}
++
++void Slicks_RecordRaceStatePreCar(const uint8_t car)
+ {
+ 	if (slicks_race_states.size() >= 16384)
++		return;
++	if (car >= 4)
+ 		return;
+ 	const auto data = SegPhys(ds);
+ 	if (!slicks_race_data_valid) {
+@@ -143,9 +157,6 @@
+ 			slicks_race_data[i] = mem_readb(data + static_cast<PhysPt>(i));
+ 		slicks_race_data_valid = true;
+ 	}
+-	const auto car = static_cast<uint8_t>(mem_readw(SegPhys(ss) + reg_bp - 0x68));
+-	if (car >= 4)
+-		return;
+ 	SlicksRaceState state = {};
+ 	state.sample = slicks_race_frame * 4 + car;
+ 	state.car = car;
+@@ -169,6 +180,27 @@
+ 		state.ai_state[i] = mem_readw(data + 0x6902 + car * 2 + i * 8);
+ 	slicks_pending_race_states[car] = state;
+ 	slicks_pending_race_valid[car] = true;
++}
++
++void Slicks_RecordRaceStatePre()
++{
++	Slicks_RecordRaceStatePreCar(
++	        static_cast<uint8_t>(mem_readw(SegPhys(ss) + reg_bp - 0x68)));
++}
++
++void Slicks_RecordSpecialStatePre()
++{
++	if (slicks_special_capture_frame == slicks_race_frame)
++		return;
++	const auto data = SegPhys(ds);
++	for (uint8_t car = 0; car < 4; ++car) {
++		if (static_cast<int16_t>(
++		            mem_readw(data + 0x302f + car * 0x36 + 0x29)) > 0) {
++			Slicks_RecordRaceStatePreCar(car);
++			slicks_special_capture_frame = slicks_race_frame;
++			return;
++		}
++	}
+ }
+ 
+ void Slicks_RecordRaceForce(const bool y_axis)
+@@ -463,6 +495,11 @@
+ 	}
+ 
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if (offset == 0x103f7)
++		Slicks_InjectSpecialState();
++	/* The special-state branch bypasses the common pre-update hook. */
++	if (offset == 0x10dde)
++		Slicks_RecordSpecialStatePre();
+ 	/* Common post-control/steering path in the live per-car race loop. */
+ 	if (offset == 0x10d59) {
+ 		Slicks_RecordRaceStatePre();

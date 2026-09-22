@@ -96,18 +96,24 @@ def main() -> int:
     force_operand_mismatches = 0
     brake_matches = 0
     brake_mismatches = 0
+    special_matches = 0
+    special_mismatches = 0
     for row in rows:
         car = int(row["car"])
         old = previous.get(car)
         previous[car] = row
-        if old is None or old["sample"] == row["sample"]:
+        if (old is None or
+                int(row["sample"]) != int(old["sample"]) + 4):
             continue
+        state = bytes.fromhex(row["car_state_hex"])
         if int(row["brake"]) and not int(row["contact"]):
-            state = bytes.fromhex(row["car_state_hex"])
-            expected_x = s32(mul32(int(old["velocity_x"]),
-                                   int(row["q15_8"]))) >> 15
-            expected_y = s32(mul32(int(old["velocity_y"]),
-                                   int(row["q15_8"]))) >> 15
+            expected_x = int(old["velocity_x"])
+            expected_y = int(old["velocity_y"])
+            for _ in range(int(row["timestep"])):
+                expected_x = s32(mul32(expected_x,
+                                       int(row["q15_8"]))) >> 15
+                expected_y = s32(mul32(expected_y,
+                                       int(row["q15_8"]))) >> 15
             if (expected_x == int(row["velocity_before_x"]) and
                     expected_y == int(row["velocity_before_y"]) and
                     scalar(state) == 0):
@@ -120,9 +126,21 @@ def main() -> int:
         constant = 23 if branch else 38
         heading = int(row["heading"]) % 0x4B00
         direction = heading // 0x4B0
+        special_state = word(state, 0x29)
         for axis, table in (("x", DIR_X), ("y", DIR_Y)):
             old_velocity = int(row[f"velocity_before_{axis}"])
             observed = int(row[f"velocity_{axis}"])
+            if special_state > 0:
+                # The 286 path clears the multiplier's high word before the
+                # signed 32x32 multiply.  Factors above 0x7fff are therefore
+                # unsigned positive Q15 values, despite CSV's signed word.
+                special_factor = int(row["q15_7"]) & 0xFFFF
+                expected = s32(mul32(old_velocity, special_factor)) >> 15
+                if expected == observed:
+                    special_matches += 1
+                else:
+                    special_mismatches += 1
+                continue
             expression = force_expression(row, table[direction], constant)
             decay = div0(mul32(old_velocity, q15), divisor)
             force = int(row[f"force_{axis}"])
@@ -177,6 +195,8 @@ def main() -> int:
     print(f"force operand mismatches: {force_operand_mismatches}")
     print(f"ordinary brake transitions: {brake_matches}")
     print(f"ordinary brake mismatches: {brake_mismatches}")
+    print(f"special-state components: {special_matches}")
+    print(f"special-state mismatches: {special_mismatches}")
     data_path = path.with_name("slicks-race-data.bin")
     coefficient_mismatches = 0
     if data_path.exists():
@@ -198,6 +218,7 @@ def main() -> int:
         or force_division_mismatches != 0
         or force_operand_mismatches != 0
         or brake_mismatches != 0
+        or special_mismatches != 0
         or coefficient_mismatches != 0
     )
 
