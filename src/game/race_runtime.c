@@ -329,6 +329,69 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     car->elapsed_centiseconds += 2;
 }
 
+static long absolute_long(long value)
+{
+    return value < 0 ? -value : value;
+}
+
+static void resolve_car_collisions(struct SlicksRaceRuntime *race)
+{
+    unsigned short first;
+    for (first = 0; first < SLICKS_RACE_CAR_COUNT; ++first) {
+        unsigned short second;
+        for (second = first + 1; second < SLICKS_RACE_CAR_COUNT; ++second) {
+            struct SlicksRaceCar *a = &race->cars[first];
+            struct SlicksRaceCar *b = &race->cars[second];
+            const struct SlicksCarProperties *pa = &race->properties[first];
+            const struct SlicksCarProperties *pb = &race->properties[second];
+            long dx = b->x - a->x;
+            long dy = b->y - a->y;
+            long minimum =
+                (long)(pa->collision_radius + pb->collision_radius) * 45L;
+            long distance_squared = dx * dx + dy * dy;
+            short heading_delta;
+            unsigned short total_weight;
+            unsigned short common_speed;
+
+            if (distance_squared >= minimum * minimum)
+                continue;
+
+            /* Property 5 supplies the contact extent and property 25 the
+             * weighting in the original resolver.  The exact DOS fixed-point
+             * impulse remains to be transliterated; this native pass already
+             * preserves those recovered inputs and prevents overlap. */
+            if (absolute_long(dx) >= absolute_long(dy)) {
+                long overlap = minimum - absolute_long(dx);
+                long direction = dx < 0 ? -1 : 1;
+                a->x -= direction * ((overlap + 1) / 2);
+                b->x += direction * (overlap / 2);
+            } else {
+                long overlap = minimum - absolute_long(dy);
+                long direction = dy < 0 ? -1 : 1;
+                a->y -= direction * ((overlap + 1) / 2);
+                b->y += direction * (overlap / 2);
+            }
+
+            heading_delta = heading_difference(a->heading, b->heading);
+            if (heading_delta < 0)
+                heading_delta = -heading_delta;
+            if (heading_delta > SLICKS_HEADING_FULL / 4) {
+                a->speed /= 3;
+                b->speed /= 3;
+            } else {
+                total_weight =
+                    pa->collision_weight + pb->collision_weight;
+                common_speed =
+                    (a->speed * pa->collision_weight +
+                     b->speed * pb->collision_weight) / total_weight;
+                a->speed = (a->speed + common_speed) / 2;
+                b->speed = (b->speed + common_speed) / 2;
+            }
+            ++race->collision_count;
+        }
+    }
+}
+
 static void clear_timer_strip(unsigned char *logical)
 {
     unsigned short x;
@@ -482,6 +545,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
         restore_car(logical, &race->cars[car - 1]);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         update_car(race, logical, car);
+    resolve_car_collisions(race);
     draw_timers(race, logical);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         draw_car(race, logical, car);

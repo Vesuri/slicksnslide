@@ -57,6 +57,7 @@ struct SlicksRaceRuntime {
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
     unsigned long frame_count;
     unsigned long skidmark_count;
+    unsigned long collision_count;
     unsigned char controls;
     unsigned char human_control;
     unsigned char started;

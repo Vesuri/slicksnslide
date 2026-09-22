@@ -11,8 +11,12 @@
    34-byte `.omi` record; recovered acceleration and steering fields drive the
    cars independently, and the collision dimensions/weight are retained for
    the collision pass. Continue with collision response, countdown/lap rules,
-   the remaining car-property interpretation, and the remaining
-   race services. Keep the translated path free of a generated-C CPU-context
+   the remaining car-property interpretation, and the remaining race
+   services. Car-to-car contacts now use the recovered collision extent and
+   weight, separate overlapping cars, exchange momentum, and are asserted by
+   the live gate; replace the provisional native impulse with the exact DOS
+   fixed-point response as that routine is recovered. Keep the translated
+   path free of a generated-C CPU-context
    layer. Recover the original font resource to replace the compact 5x7 title
    renderer.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
