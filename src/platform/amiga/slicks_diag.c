@@ -31,9 +31,12 @@ volatile unsigned long g_slicks_diag_skidmarks;
 volatile unsigned long g_slicks_diag_collisions;
 volatile unsigned long g_slicks_diag_track_collisions;
 volatile unsigned char g_slicks_diag_countdown_stage;
+volatile unsigned short g_slicks_diag_track_zones;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
+volatile short g_slicks_diag_speed[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_material[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_lap[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_lap_timer[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_waypoint[SLICKS_RACE_CAR_COUNT];
@@ -156,10 +159,11 @@ static long load_plain_file(const char *path, void *destination,
 
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 
-static int enter_basic_race(struct Screen *screen, unsigned long *palette,
-                            unsigned char *logical, unsigned char *chunky,
-                            unsigned short *mode_state,
-                            struct SlicksRaceRuntime *race)
+static int enter_race(struct Screen *screen, unsigned long *palette,
+                      unsigned char *logical, unsigned char *chunky,
+                      unsigned short *mode_state,
+                      struct SlicksRaceRuntime *race,
+                      const char *track_path)
 {
     struct SlicksResourceArchive archive = {0, 0};
     struct SlicksTrackNavigation *navigation = 0;
@@ -189,7 +193,7 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     }
     race_checkpoint(1);
     dat_size = load_plain_file("SLICKS.DAT", dat, 65536UL);
-    track_size = load_plain_file("TRACKS/BASIC.SS", track, 8192UL);
+    track_size = load_plain_file(track_path, track, 8192UL);
     if (dat_size <= 0 || track_size <= 0) {
         g_slicks_diag_race_error = 2;
         goto cleanup;
@@ -209,13 +213,14 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     race_checkpoint(4);
     if (slicks_build_track_scene(logical, dat, (unsigned long)dat_size, track,
                                  (unsigned long)track_size, arena, 65536UL,
-                                 navigation) != 233) {
+                                 navigation) <= 0) {
         g_slicks_diag_race_error = 5;
         goto cleanup;
     }
     race_checkpoint(5);
 
     slicks_race_initialize(race, navigation);
+    g_slicks_diag_track_zones = navigation->zone_count;
     {
         long font_size = slicks_resource_archive_load(
             &archive, "pieni.@f", font_resource, 2048UL);
@@ -308,6 +313,16 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;
         g_slicks_diag_timer[car] = race->cars[car].elapsed_centiseconds;
+        g_slicks_diag_speed[car] = race->cars[car].speed;
+        {
+            long x = race->cars[car].x / 100;
+            long y = race->cars[car].y / 100;
+            g_slicks_diag_material[car] =
+                x >= 0 && x < 320 && y >= 0 && y < 190
+                    ? race->material_map[(unsigned long)y * 320UL +
+                                         (unsigned long)x]
+                    : 31;
+        }
         g_slicks_diag_lap[car] = race->cars[car].lap;
         g_slicks_diag_lap_timer[car] =
             race->cars[car].current_lap_centiseconds;
@@ -427,8 +442,10 @@ int main(int argc, char **argv)
     if (argc > 0 && ((const char *)argv)[0] == 'L')
         g_slicks_diag_target_frame = 700;
     if (argc > 1 &&
-        enter_basic_race(screen, palette, logical, chunky, mode_state,
-                         race) != 0)
+        enter_race(screen, palette, logical, chunky, mode_state, race,
+                   ((const char *)argv)[0] == 'T'
+                       ? "TRACKS/BASICTRK.SS"
+                       : "TRACKS/BASIC.SS") != 0)
         goto cleanup;
 
     for (;;) {
@@ -462,8 +479,8 @@ int main(int argc, char **argv)
                 goto cleanup;
             }
             if (action == 2 && !g_slicks_diag_ingame &&
-                enter_basic_race(screen, palette, logical, chunky,
-                                 mode_state, race) != 0)
+                enter_race(screen, palette, logical, chunky, mode_state,
+                           race, "TRACKS/BASIC.SS") != 0)
                 goto cleanup;
         }
         if (g_slicks_diag_ingame) {

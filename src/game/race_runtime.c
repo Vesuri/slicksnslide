@@ -239,7 +239,11 @@ static unsigned char ai_controls(const struct SlicksRaceRuntime *race,
     short target_heading =
         (short)nearest_direction(dx, dy) * SLICKS_HEADING_STEP;
     short difference = heading_difference(target_heading, car->heading);
-    short target_speed = (short)zone->speed * 2;
+    /* Editor/template tracks can provide a complete navigation path while
+     * leaving every optional speed hint at zero.  Treat that as the normal
+     * cruise value used by the original BASIC course, not as an instruction
+     * for computer cars to remain parked on the grid. */
+    short target_speed = (short)(zone->speed ? zone->speed : 40) * 2;
     unsigned char controls = 0;
 
     if (difference < -SLICKS_HEADING_STEP / 3)
@@ -266,13 +270,13 @@ static int material_is_driveable(unsigned char material)
 {
     /* The original collision reader returns palette_index >> 3.  BASIC.SS
      * uses 0 for tarmac, 14/15 for dirt, 20/21 for grass and 27 for the
-     * bridge deck.  Codes 2/3/6 are start-line markings, 12 alternates with
-     * zero across the bridge texture, and 22 occurs beneath the starting
-     * grid. Other classes are scenery or raised track boundaries.
+     * bridge deck.  Codes 2/3/5/6 are track and start-line markings, 12
+     * alternates with zero across the bridge texture, and 22 occurs beneath
+     * the starting grid. Other classes are scenery or raised track boundaries.
      * Surface-specific friction is applied separately as its .omi triplets
      * are recovered. */
     return material == 0 || material == 2 || material == 3 ||
-           material == 6 || material == 12 ||
+           material == 5 || material == 6 || material == 12 ||
            material == 14 || material == 15 || material == 20 ||
            material == 21 || material == 22 || material == 27;
 }

@@ -54,6 +54,7 @@ make amiga-run      # show the diagnostic; mouse button or Escape exits
 make amiga-debug    # open the target under the M68k GDB stub
 make amiga-check    # boot it and verify the displayed-frame marker/checksum
 make amiga-race-check # enter BASIC.SS and verify its asset-built race frame
+make amiga-track-check # run BASICTRK.SS through the generalized race path
 ```
 
 `amiga/env.sh` selects the shared toolchain, FS-UAE, and default Kickstart path,
@@ -86,6 +87,12 @@ The strict race gate reports logical checksum `815c70ca` and display checksum
 `024f572b`. No captured DOS frame is linked or loaded.
 
 The diagnostic now runs a repeating four-car race/update loop after the title.
+The same loader and runtime also run the original `BASICTRK.SS` editor/template
+course: all 262 scene objects and 25 navigation regions are consumed, and its
+zero-valued optional speed hints fall back to the normal cruise speed.  The
+strict alternate-track gate proves all four cars advance through multiple
+regions, produce skidmarks, and avoid spurious boundary contacts for 200
+frames on the 2 MiB A1200 configuration.
 Its HUD timer decodes `pieni.@f` directly from the original archive: the font's
 character map, variable widths, fixed five-pixel glyph height, and raw bitmap
 payload are consumed without converted or captured assets. The six-entry loop

@@ -200,7 +200,7 @@ int slicks_build_track_scene(unsigned char *logical,
             draw_sprite(logical, &sprites[type], x, y, rotation);
     }
 
-    /* Four palette/remap ranges follow the objects in BASIC.SS. */
+    /* Six-byte auxiliary line records follow the placed objects. */
     if (at + 2 > track_size)
         return -1;
     count = read_be16(track + at);

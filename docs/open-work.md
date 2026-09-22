@@ -31,6 +31,13 @@
    three-value `.omi` surface groups for exact friction recovery. A separate
    strict 700-frame gate proves a complete checkpoint wrap, lap 2, lap-time
    rollover, and continued motion after hundreds of boundary contacts.
+   Track loading is no longer fixed to BASIC's 233 objects or nine navigation
+   regions. A second strict gate runs the original 262-object `BASICTRK.SS`
+   editor/template course with all 25 regions. Its zero speed hints use the
+   normal cruise fallback; after 200 frames all cars have advanced through
+   multiple regions, emitted skidmarks, and registered no boundary contacts.
+   Continue by exposing track choice in the native menu and testing a broader
+   representative set of user tracks.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;
