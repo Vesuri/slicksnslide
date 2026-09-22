@@ -7,8 +7,11 @@
    on-screen timers. Cursor keys can take over car one; otherwise the original
    navigation records drive all four cars. The strict 2 MiB A1200 gate proves
    movement, route-region progress, skid output, timers, and two distinct
-   rendered checksums after 200 frames. Continue with collision response,
-   countdown/lap rules, exact car-property interpretation, and the remaining
+   rendered checksums after 200 frames. The runtime now loads each original
+   34-byte `.omi` record; recovered acceleration and steering fields drive the
+   cars independently, and the collision dimensions/weight are retained for
+   the collision pass. Continue with collision response, countdown/lap rules,
+   the remaining car-property interpretation, and the remaining
    race services. Keep the translated path free of a generated-C CPU-context
    layer. Recover the original font resource to replace the compact 5x7 title
    renderer.

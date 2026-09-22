@@ -6,6 +6,7 @@
 #define SLICKS_RACE_CAR_COUNT 4
 #define SLICKS_CAR_BASE_DIRECTIONS 4
 #define SLICKS_CAR_PIXEL_MAX 100
+#define SLICKS_CAR_PROPERTY_SIZE 34
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -19,12 +20,24 @@ struct SlicksCarSprite {
     unsigned char ready;
 };
 
+struct SlicksCarProperties {
+    unsigned char raw[SLICKS_CAR_PROPERTY_SIZE];
+    unsigned char body_radius_x;
+    unsigned char body_radius_y;
+    unsigned char collision_radius;
+    unsigned char acceleration;
+    unsigned char steering;
+    unsigned char collision_weight;
+    unsigned char ready;
+};
+
 struct SlicksRaceCar {
     long x;
     long y;
     short heading;
     short speed;
     unsigned short elapsed_centiseconds;
+    unsigned short acceleration_remainder;
     unsigned short lap;
     unsigned char waypoint;
     unsigned char style;
@@ -40,6 +53,7 @@ struct SlicksRaceRuntime {
     struct SlicksTrackNavigation navigation;
     struct SlicksCarSprite
         sprites[SLICKS_RACE_CAR_COUNT][SLICKS_CAR_BASE_DIRECTIONS];
+    struct SlicksCarProperties properties[SLICKS_RACE_CAR_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
     unsigned long frame_count;
     unsigned long skidmark_count;
@@ -55,6 +69,10 @@ int slicks_race_add_car_sprite(struct SlicksRaceRuntime *race,
                                unsigned short base_direction,
                                const unsigned char *resource,
                                unsigned long resource_size);
+int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
+                                   unsigned short car,
+                                   const unsigned char *resource,
+                                   unsigned long resource_size);
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical);
 void slicks_race_set_controls(struct SlicksRaceRuntime *race,
                               unsigned char controls,

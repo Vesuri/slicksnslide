@@ -32,6 +32,8 @@ volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_waypoint[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char *g_slicks_diag_logical;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
@@ -204,6 +206,17 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
 
     slicks_race_initialize(race, navigation);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+        char property_name[11] = "auto00.omi";
+        long property_size;
+        property_name[5] = (char)('0' + car);
+        property_size = slicks_resource_archive_load(
+            &archive, property_name, car_resource, 128UL);
+        if (property_size != SLICKS_CAR_PROPERTY_SIZE ||
+            slicks_race_add_car_properties(
+                race, car, car_resource, (unsigned long)property_size) != 0) {
+            g_slicks_diag_race_error = 6;
+            goto cleanup;
+        }
         for (direction = 0; direction < SLICKS_CAR_BASE_DIRECTIONS;
              ++direction) {
             char name[11] = "auto00.000";
@@ -270,6 +283,9 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
         g_slicks_diag_car_y[car] = race->cars[car].y;
         g_slicks_diag_timer[car] = race->cars[car].elapsed_centiseconds;
         g_slicks_diag_waypoint[car] = race->cars[car].waypoint;
+        g_slicks_diag_acceleration[car] =
+            race->properties[car].acceleration;
+        g_slicks_diag_steering[car] = race->properties[car].steering;
     }
 }
 

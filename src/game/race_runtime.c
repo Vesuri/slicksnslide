@@ -286,6 +286,8 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned char *logical,
                        unsigned short car_index)
 {
     struct SlicksRaceCar *car = &race->cars[car_index];
+    const struct SlicksCarProperties *properties =
+        &race->properties[car_index];
     unsigned char controls =
         car_index == 0 && race->human_control
             ? race->controls
@@ -294,17 +296,25 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned char *logical,
                                         SLICKS_CONTROL_RIGHT);
     unsigned short direction;
 
-    if ((controls & SLICKS_CONTROL_ACCELERATE) && car->speed < 150)
-        car->speed += 2;
+    if ((controls & SLICKS_CONTROL_ACCELERATE) && car->speed < 150) {
+        unsigned short acceleration =
+            car->acceleration_remainder + properties->acceleration * 2U;
+        car->speed += acceleration / 100U;
+        car->acceleration_remainder = acceleration % 100U;
+        if (car->speed > 150)
+            car->speed = 150;
+    }
     else if (!(controls & SLICKS_CONTROL_ACCELERATE) && car->speed > 0)
         --car->speed;
     if ((controls & SLICKS_CONTROL_BRAKE) && car->speed > 0)
         car->speed -= car->speed > 3 ? 3 : car->speed;
 
     if ((controls & SLICKS_CONTROL_LEFT) && car->speed > 5)
-        car->heading -= 90 + car->speed / 3;
+        car->heading -=
+            (90 + car->speed / 3) * properties->steering / 100;
     if ((controls & SLICKS_CONTROL_RIGHT) && car->speed > 5)
-        car->heading += 90 + car->speed / 3;
+        car->heading +=
+            (90 + car->speed / 3) * properties->steering / 100;
     while (car->heading < 0)
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)
@@ -389,12 +399,46 @@ int slicks_race_add_car_sprite(struct SlicksRaceRuntime *race,
                          resource_size);
 }
 
+int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
+                                   unsigned short car,
+                                   const unsigned char *resource,
+                                   unsigned long resource_size)
+{
+    struct SlicksCarProperties *properties;
+    unsigned short at;
+    if (!race || !resource || car >= SLICKS_RACE_CAR_COUNT ||
+        resource_size != SLICKS_CAR_PROPERTY_SIZE)
+        return -1;
+    properties = &race->properties[car];
+    for (at = 0; at < SLICKS_CAR_PROPERTY_SIZE; ++at)
+        properties->raw[at] = resource[at];
+
+    /* The original loader transposes the 34-byte .omi record into its
+     * per-car property tables.  These fields have been traced through the
+     * original collision and driving routines; the remaining bytes stay in
+     * raw[] until their behaviour is recovered. */
+    properties->body_radius_x = resource[0];
+    properties->body_radius_y = resource[1];
+    properties->collision_radius = resource[2];
+    properties->acceleration = resource[4];
+    properties->steering = resource[6];
+    properties->collision_weight = resource[22];
+    if (!properties->acceleration || !properties->steering ||
+        !properties->collision_weight)
+        return -1;
+    properties->ready = 1;
+    return 0;
+}
+
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical)
 {
     unsigned short car;
     unsigned short direction;
     if (!race || !logical || !race->navigation.zone_count)
         return -1;
+    for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
+        if (!race->properties[car].ready)
+            return -1;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         for (direction = 0; direction < SLICKS_CAR_BASE_DIRECTIONS;
              ++direction)

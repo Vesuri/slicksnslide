@@ -19,6 +19,10 @@ commands
   set $ok = $ok && (g_slicks_diag_car_x[1] != 26300 || g_slicks_diag_car_y[1] != 5700)
   set $ok = $ok && (g_slicks_diag_car_x[2] != 25500 || g_slicks_diag_car_y[2] != 4900)
   set $ok = $ok && (g_slicks_diag_car_x[3] != 26300 || g_slicks_diag_car_y[3] != 4900)
+  set $ok = $ok && g_slicks_diag_acceleration[0] == 100 && g_slicks_diag_acceleration[1] == 108
+  set $ok = $ok && g_slicks_diag_acceleration[2] == 87 && g_slicks_diag_acceleration[3] == 82
+  set $ok = $ok && g_slicks_diag_steering[0] == 100 && g_slicks_diag_steering[1] == 85
+  set $ok = $ok && g_slicks_diag_steering[2] == 106 && g_slicks_diag_steering[3] == 140
   if !$ok
     printf "SLICKS_GAMEPLAY_FAILED FRAME=%u SKIDS=%u TIMER=%u X=%d Y=%d C1X=%d C1Y=%d C2X=%d C2Y=%d C3X=%d C3Y=%d\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_car_x[1], g_slicks_diag_car_y[1], g_slicks_diag_car_x[2], g_slicks_diag_car_y[2], g_slicks_diag_car_x[3], g_slicks_diag_car_y[3]
     quit 1
