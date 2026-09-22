@@ -55,8 +55,11 @@ static unsigned long build_copper(unsigned short view_index,
         colours[colour] = (r << 16) | (g << 8) | b;
     }
     Palette24Bit aga_palette(colours, 256);
+    /* DIWHIGH carries the ninth vertical stop bit. Centre the 200-line
+     * playfield at $9c so the window is exactly $38..$ff (VSTOP=$100),
+     * matching the framework's extended-window setup. */
     at = list->setPlayfield(1, 320, 200, 8, true, false, false,
-                            false, false, true, 0x90);
+                            false, false, true, 0x9c);
     list->showBitmap(at, *bitmap);
     at += 16;
     at = list->setPalette24Bit(at, aga_palette, 0, 0, 255, true);
@@ -76,6 +79,10 @@ static int validate_framework_view(unsigned short view_index)
         return -1;
     if (list[11] != copperMove(bpl1mod, 280) ||
         list[12] != copperMove(bpl2mod, 280))
+        return -1;
+    if (list[6] != copperMove(diwstrt, 0x3881) ||
+        list[7] != copperMove(diwstop, 0x00c1) ||
+        list[8] != copperMove(diwhigh, 0x2100))
         return -1;
     bitplane = (unsigned long)bitmap->data;
     for (plane = 0; plane < 8; ++plane, bitplane += 40) {

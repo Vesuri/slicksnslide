@@ -34,6 +34,8 @@ chip-memory views. The DanceDiverse3 framework's `Bitmap` describes each
 eight-plane interleaved allocation; `CopperList::showBitmap` emits its eight
 plane pointers, `CopperList::setPlayfield` emits the matching 280-byte
 `BPL1MOD`/`BPL2MOD`, and `setPalette24Bit` emits the AGA palette banks. The
+200-line display window spans raster rows `$38..$ff`; its exclusive `$100`
+stop matches the ninth vertical-stop bit emitted in `DIWHIGH`. The
 platform then takes over copper DMA and the vertical-blank vector directly.
 It restores the original interrupt vector, DMA/interrupt masks, copper list,
 and OS view on exit.
