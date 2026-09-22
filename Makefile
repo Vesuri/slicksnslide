@@ -33,6 +33,7 @@ ABS_ROOT := $(abspath .)
 	reference-frame-hash verify-reference-race verify-execution-trace \
 	verify-interrupt-trace verify-port-trace analyze-execution-trace \
 	verify-memory-trace verify-primitive-trace verify-race-state \
+	analyze-race-velocity \
 	analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
@@ -114,6 +115,10 @@ verify-primitive-trace:
 
 verify-race-state:
 	$(PYTHON) tools/verify_race_state.py \
+		$(REFERENCE_FIXED_ROOT)/slicks-race-state.csv
+
+analyze-race-velocity:
+	$(PYTHON) tools/analyze_race_velocity.py \
 		$(REFERENCE_FIXED_ROOT)/slicks-race-state.csv
 
 analyze-vga-sites: verify-memory-trace

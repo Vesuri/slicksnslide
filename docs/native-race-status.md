@@ -62,3 +62,7 @@ bit-exact:
 `tools/patches/dosbox-x-slicks-race-state.patch` provides the semantic DOS
 trace used to compare controls, navigation state, positions, headings, and raw
 54-byte per-car state without introducing an emulated CPU into the Amiga build.
+Its paired integrator hooks also preserve the velocity entering and leaving
+each update together with the seven drive coefficients and ten Q15 factors;
+`tools/analyze_race_velocity.py` uses that closed state to recover the remaining
+tyre-force helper ordering without collision-state contamination.

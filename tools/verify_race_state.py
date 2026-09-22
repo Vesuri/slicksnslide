@@ -11,16 +11,12 @@ from pathlib import Path
 # The breakpoint records each car as its update returns.  Car 0 is idle in the
 # first captured frame; the AI cars have already applied their first steering
 # step, so their first heading is 4651 rather than the grid heading 4800.
-FIRST_SAMPLE = {
-    0: (26326, 5274, 4800),
-    1: (26326, 6126, 4651),
-    2: (25474, 6126, 4651),
-    3: (25474, 5274, 4651),
+GRID_POSITIONS = {
+    (26326, 5274),
+    (26326, 6126),
+    (25474, 6126),
+    (25474, 5274),
 }
-
-# Default vehicle lineup 5,2,0,0.  FUN_2000_aeb6 constructs DS:53fe as
-# 0x7bdd - ((omi[23] - 100) * 2), giving these Q15 coast multipliers.
-COAST_FACTOR = {0: 31789, 1: 31773, 2: 31709, 3: 31709}
 
 
 def scalar(row: dict[str, str]) -> int:
@@ -70,24 +66,28 @@ def main() -> int:
     coast_matches = 0
     steering_matches = 0
     steering_samples = 0
+    nonzero_velocity_samples = 0
+    first_positions: set[tuple[int, int]] = set()
     for car, samples in by_car.items():
         if not samples:
             raise SystemExit(f"missing car {car}")
         first = samples[0]
-        observed = (int(first["x"]), int(first["y"]), int(first["heading"]))
-        if observed != FIRST_SAMPLE[car]:
+        observed_position = (int(first["x"]), int(first["y"]))
+        first_positions.add(observed_position)
+        expected_heading = 4800 if car == 0 else 4651
+        if int(first["heading"]) != expected_heading:
             raise SystemExit(
-                f"car {car} first sample {observed!r}, "
-                f"expected {FIRST_SAMPLE[car]!r}"
+                f"car {car} first heading {first['heading']}, "
+                f"expected {expected_heading}"
             )
-        factor = COAST_FACTOR[car]
         previous = samples[0]
         for current in samples[1:]:
             before = scalar(previous)
             after = scalar(current)
+            factor = int(current["q15_5"])
             if (
-                previous["accelerate"] == "0"
-                and previous["brake"] == "0"
+                current["accelerate"] == "0"
+                and current["brake"] == "0"
                 and before > 0
                 and after == before * factor // 0x8000
             ):
@@ -102,7 +102,15 @@ def main() -> int:
                 ) & 0xFFFF
                 if int(current["heading"]) == expected:
                     steering_matches += 1
+            if int(current["velocity_x"]) or int(current["velocity_y"]):
+                nonzero_velocity_samples += 1
             previous = current
+
+    if first_positions != GRID_POSITIONS:
+        raise SystemExit(
+            f"first grid positions {sorted(first_positions)!r}, "
+            f"expected {sorted(GRID_POSITIONS)!r}"
+        )
 
     if coast_matches < 100:
         raise SystemExit(
@@ -113,10 +121,16 @@ def main() -> int:
             f"only {steering_matches}/{steering_samples} exact steering "
             "transitions; expected at least 1000"
         )
+    if nonzero_velocity_samples < 1000:
+        raise SystemExit(
+            f"only {nonzero_velocity_samples} nonzero velocity samples; "
+            "expected at least 1000"
+        )
     print(
         f"DOS race state: {len(rows)} samples, exact first states and "
         f"{coast_matches} Q15 coast transitions, plus "
         f"{steering_matches}/{steering_samples} literal steering transitions "
+        f"and {nonzero_velocity_samples} post-integrator velocity samples "
         "verified"
     )
     return 0
