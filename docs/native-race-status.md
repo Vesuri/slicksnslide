@@ -29,7 +29,16 @@ from the original files at run time.
   records. Its steering thresholds, unconditional no-obstacle throttle, centre
   checkpoint comparisons, 150-tick stationary watch, and 40-tick recovery
   interval are recovered from `e204` and `f09d`.
-- Car contacts use the recovered `.omi` extents and weight ratios. Track
+- Car contacts use the recovered `.omi` extent and weight ratios. For each
+  updated car, `2000:2d27..31bd` projects a point ten fixed units along its
+  velocity using `(abs(vx) + abs(vy)) / 2`, tests that point against the other
+  car's centre using the current car's byte-2 extent times 50, and applies the
+  original integer-percent component transfer. It does not separate positions.
+  Each car has the original persistent contact latch, which suppresses another
+  impulse until that car completes a scan with no overlap. A forced DOS overlap
+  gives current velocity `(-885,172)` and other velocity `(-863,889)` for
+  weights 18 and 20; `make verify-car-collision` fixes that oracle independently
+  of the full race. Track
   contacts walk every integer centre pixel from the old to proposed position,
   snap to the last clear pixel at the original 100-unit scale, apply the
   four-neighbour `c63e` velocity transform, and then use the original fixed
@@ -82,7 +91,7 @@ bit-exact:
   `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
-- animated boundary classes 22–26 and the secondary car-contact state;
+- animated boundary classes 22–26 and the secondary collision-effect state;
 - exact sound-event selection, priority, pitch, and duration rather than the
   current native event mapping.
 

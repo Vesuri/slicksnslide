@@ -110,6 +110,7 @@ struct SlicksRaceCar {
     unsigned char finished;
     unsigned char finish_position;
     unsigned char touching_solid;
+    unsigned char touching_car;
     unsigned char old_x;
     unsigned char old_y;
     unsigned char old_width;
@@ -165,7 +166,6 @@ struct SlicksRaceRuntime {
     unsigned char finished_count;
     unsigned char race_complete;
     unsigned char results_drawn;
-    unsigned char active_collision_pairs;
     unsigned char started;
 };
 
@@ -201,6 +201,8 @@ void slicks_race_set_vehicle(struct SlicksRaceRuntime *race,
 void slicks_race_set_laps(struct SlicksRaceRuntime *race,
                          unsigned short laps);
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical);
+void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
+                                        unsigned short current);
 void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race);
 
 #endif

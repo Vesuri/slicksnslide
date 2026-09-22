@@ -36,6 +36,7 @@ ABS_ROOT := $(abspath .)
 	analyze-race-velocity \
 	analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
+	verify-car-collision \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	amiga amiga-run amiga-debug amiga-check amiga-race-check \
 	amiga-track-check amiga-lap-check amiga-results-check \
@@ -161,6 +162,15 @@ verify-runtime: rebuild-mz
 build/sgfx_plot_plane.bin: src/graphics/sgfx_plot_plane.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_car_collision: tools/verify_car_collision.c \
+		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip $< src/game/race_runtime.c -o $@
+
+verify-car-collision: build/verify_car_collision
+	build/verify_car_collision
 
 build/sgfx_plot.bin: src/graphics/sgfx_plot.s
 	@mkdir -p build

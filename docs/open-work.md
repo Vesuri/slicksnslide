@@ -24,10 +24,11 @@ The historical detail below records how the port reached that state.
    Navigation regions are consumed in track order; wrapping the
    final region advances the lap and records current, last, and best lap
    times independently of total race time. Car-to-car contacts now use the
-   recovered collision extent and
-   weight, separate overlapping cars, exchange momentum, and are asserted by
-   the live gate; replace the provisional native impulse with the exact DOS
-   fixed-point response as that routine is recovered. Keep the translated
+   exact DOS point-ahead box test, integer-percent weight transfer, and
+   per-car contact latch. The original deliberately leaves overlapping
+   positions untouched; the native code does likewise. A focused unequal-
+   weight oracle and the live A1200 gates cover the recovered response. Keep
+   the translated
    path free of a generated-C CPU-context layer. The race timer now decodes and
    draws digits from the original `pieni.@f` archive font; the title renderer's
    separate compact font remains a visual-fidelity item. The live display path

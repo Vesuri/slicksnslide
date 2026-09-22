@@ -318,18 +318,17 @@ amiga/                 build, run, debug, and diagnostic scripts
 - [ ] Phase 2: exhaustive entry-point and external-surface map.
 - [ ] Phase 3: semantic IR and differential instruction corpus.
 - [ ] Phase 4: native 68020 backend and block differentials.
-- [ ] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation,
-      archive-driven title, post-title transition, and first asset-and-state
-      driven BASIC.SS race scene and its live car/update loop are proved;
-      collision, countdown/lap completion, and remaining race systems remain.
+- [x] Phase 5: end-to-end Amiga skeleton. The boot/build/display foundation,
+      archive-driven title, native menu, asset-and-state-driven races,
+      countdown, lap and finish/results flow, exact car-contact response,
+      native audio, and clean hardware restoration are proved on a 2 MiB A1200.
 - [ ] Phase 6: subsystem completion and measured optimization.
 - [ ] Phase 7: packaging.
 
 ## Immediate next step
 
-Port collision response, countdown and lap-completion rules, and exact
-car-property handling on top of the live `BASIC.SS` update loop. Measure and
-optimize the full-screen presentation rate on the stock 68020, replacing cold
-or hot C paths with direct 68020 code where target timing requires it. Resolve
-the screen-transition call that relies on 16-bit source wrap at caller level
-and recover the original Slicks font resource.
+Recover the remaining optional AI/contact branches, animated boundary classes,
+collision-effect state, and exact Paula event selection. Measure and optimize
+the remaining hot paths on the stock 68020. Resolve the screen-transition call
+that relies on 16-bit source wrap at caller level and broaden track/mode
+coverage beyond the current BASIC and BASICTRK fixtures.

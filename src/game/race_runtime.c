@@ -927,6 +927,7 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)
         car->heading -= SLICKS_HEADING_FULL;
+    slicks_race_resolve_car_collisions(race, car_index);
     emit_wheel_surface(race, car, car_index);
     if (!car->finished) {
         car->elapsed_centiseconds += 2;
@@ -940,84 +941,58 @@ static long absolute_long(long value)
     return value < 0 ? -value : value;
 }
 
-static void resolve_car_collisions(struct SlicksRaceRuntime *race)
+void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
+                                        unsigned short current)
 {
-    unsigned short first;
-    unsigned char pair_bit = 1;
-    unsigned char next_pairs = 0;
-    for (first = 0; first < SLICKS_RACE_CAR_COUNT; ++first) {
-        unsigned short second;
-        for (second = first + 1; second < SLICKS_RACE_CAR_COUNT; ++second) {
-            struct SlicksRaceCar *a = &race->cars[first];
-            struct SlicksRaceCar *b = &race->cars[second];
-            const struct SlicksCarProperties *pa =
-                &race->properties[a->vehicle];
-            const struct SlicksCarProperties *pb =
-                &race->properties[b->vehicle];
-            long dx = b->x - a->x;
-            long dy = b->y - a->y;
-            long minimum =
-                (long)(pa->collision_radius + pb->collision_radius) * 50L;
-            long delta_vx;
-            long delta_vy;
+    struct SlicksRaceCar *a = &race->cars[current];
+    const struct SlicksCarProperties *pa = &race->properties[a->vehicle];
+    long speed = (absolute_long(a->velocity_x) +
+                  absolute_long(a->velocity_y)) / 2L;
+    long probe_x = a->x + a->velocity_x * 10L / (speed + 1L);
+    long probe_y = a->y + a->velocity_y * 10L / (speed + 1L);
+    long extent = (long)pa->collision_radius * 50L;
+    unsigned short other;
+    unsigned char hit = 0;
 
-            /* Finished entrants no longer participate in the race contact
-             * set; otherwise a stopped winner can permanently blockade the
-             * checkpoint line for the remaining cars. */
-            if (a->finished || b->finished) {
-                pair_bit <<= 1;
-                continue;
-            }
-
-            /* The DOS resolver performs two extent comparisons, not a radial
-             * distance test. Its impulse then transfers each relative vector
-             * component using the other car's .omi weight divided by this
-             * car's weight. */
-            if (absolute_long(dx) >= minimum || absolute_long(dy) >= minimum) {
-                pair_bit <<= 1;
-                continue;
-            }
-            next_pairs |= pair_bit;
-
-            if (absolute_long(dx) >= absolute_long(dy)) {
-                long overlap = minimum - absolute_long(dx);
-                long direction = dx < 0 ? -1 : 1;
-                a->x -= direction * ((overlap + 1) / 2);
-                b->x += direction * (overlap / 2);
-            } else {
-                long overlap = minimum - absolute_long(dy);
-                long direction = dy < 0 ? -1 : 1;
-                a->y -= direction * ((overlap + 1) / 2);
-                b->y += direction * (overlap / 2);
-            }
-
-            if (!(race->active_collision_pairs & pair_bit)) {
-                delta_vx = a->velocity_x - b->velocity_x;
-                delta_vy = a->velocity_y - b->velocity_y;
-                a->velocity_x -= delta_vx * pb->collision_weight /
-                                 pa->collision_weight;
-                a->velocity_y -= delta_vy * pb->collision_weight /
-                                 pa->collision_weight;
-                b->velocity_x += delta_vx * pa->collision_weight /
-                                 pb->collision_weight;
-                b->velocity_y += delta_vy * pa->collision_weight /
-                                 pb->collision_weight;
-                a->speed_fixed =
-                    (absolute_long(a->velocity_x) +
-                     absolute_long(a->velocity_y)) * 55L;
-                b->speed_fixed =
-                    (absolute_long(b->velocity_x) +
-                     absolute_long(b->velocity_y)) * 55L;
-                if (a->speed_fixed > (long)a->maximum_speed * 100L)
-                    a->speed_fixed = (long)a->maximum_speed * 100L;
-                if (b->speed_fixed > (long)b->maximum_speed * 100L)
-                    b->speed_fixed = (long)b->maximum_speed * 100L;
-                ++race->collision_count;
-            }
-            pair_bit <<= 1;
+    /* 2000:2d27..31bd tests each updated car against all four entrants.  The
+     * .omi byte is a full collision-box width: DOS compares a point ten fixed
+     * units ahead of the current car with +/- width*50 around the other car.
+     * It never separates positions.  A per-car latch, rather than a pair
+     * table, suppresses further impulses until that car has no overlap. */
+    for (other = 0; other < SLICKS_RACE_CAR_COUNT; ++other) {
+        struct SlicksRaceCar *b;
+        const struct SlicksCarProperties *pb;
+        long delta_vx;
+        long delta_vy;
+        long ratio;
+        if (other == current)
+            continue;
+        b = &race->cars[other];
+        pb = &race->properties[b->vehicle];
+        if (a->finished || b->finished)
+            continue;
+        if (probe_x < b->x - extent || probe_x > b->x + extent ||
+            probe_y < b->y - extent || probe_y > b->y + extent)
+            continue;
+        hit = 1;
+        if (!a->touching_car) {
+            delta_vx = a->velocity_x - b->velocity_x;
+            delta_vy = a->velocity_y - b->velocity_y;
+            ratio = (long)pb->collision_weight * 100L /
+                    pa->collision_weight;
+            a->velocity_x -= delta_vx * ratio / 100L;
+            a->velocity_y -= delta_vy * ratio / 100L;
+            ratio = (long)pa->collision_weight * 100L /
+                    pb->collision_weight;
+            b->velocity_x += delta_vx * ratio / 100L;
+            b->velocity_y += delta_vy * ratio / 100L;
+            ++race->collision_count;
         }
+        a->touching_car = 1;
+        b->touching_car = 1;
     }
-    race->active_collision_pairs = next_pairs;
+    if (!hit)
+        a->touching_car = 0;
 }
 
 static void clear_timer_strip(struct SlicksRaceRuntime *race,
@@ -1425,7 +1400,6 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     advance_trail_particles(race);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         update_car(race, car);
-    resolve_car_collisions(race);
     draw_timers(race, logical);
     draw_trail_particles(race, logical);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
