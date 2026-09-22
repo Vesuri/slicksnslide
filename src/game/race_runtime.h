@@ -98,6 +98,7 @@ struct SlicksRaceCar {
     short steering_penalty;
     short steering_property;
     short drive_bias;
+    short drive_setup[13];
     short drive_coefficients[7];
     short tyre_load;
     unsigned short maximum_speed;

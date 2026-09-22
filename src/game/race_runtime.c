@@ -494,6 +494,33 @@ static int position_touches_solid(const struct SlicksRaceRuntime *race,
            !material_is_driveable(material_at(race, x, y + ry));
 }
 
+static void interpolate_drive_coefficients(struct SlicksRaceCar *car)
+{
+    static const signed char source_index[7] = {1, 1, 0, 0, 0, 3, 1};
+    static const short table[7][6] = {
+        {99, 103, 107, 111, 115, 118},
+        {72, 18, 4, -10, -26, -40},
+        {110, 100, 93, 86, 80, 75},
+        {103, 99, 95, 91, 87, 84},
+        {90, 100, 110, 118, 125, 125},
+        {110, 100, 80, 60, 45, 30},
+        {100, 104, 108, 112, 116, 120}
+    };
+    unsigned short coefficient;
+
+    /* 2000:e032 copies these tables from DS:1175/117c, then linearly
+     * interpolates adjacent entries in quarter steps. */
+    for (coefficient = 0; coefficient < 7; ++coefficient) {
+        short source = car->drive_setup[
+            (unsigned char)source_index[coefficient]];
+        short quotient = source / 4;
+        short remainder = source % 4;
+        car->drive_coefficients[coefficient] = (short)(
+            (table[coefficient][quotient] * (4 - remainder) +
+             table[coefficient][quotient + 1] * remainder) / 4);
+    }
+}
+
 static void advance_waypoint(struct SlicksRaceRuntime *race,
                              struct SlicksRaceCar *car)
 {
@@ -858,10 +885,10 @@ static void resolve_car_collisions(struct SlicksRaceRuntime *race)
                 b->speed_fixed =
                     (absolute_long(b->velocity_x) +
                      absolute_long(b->velocity_y)) * 55L;
-                if (a->speed_fixed > (long)pa->top_speed * 100L)
-                    a->speed_fixed = (long)pa->top_speed * 100L;
-                if (b->speed_fixed > (long)pb->top_speed * 100L)
-                    b->speed_fixed = (long)pb->top_speed * 100L;
+                if (a->speed_fixed > (long)a->maximum_speed * 100L)
+                    a->speed_fixed = (long)a->maximum_speed * 100L;
+                if (b->speed_fixed > (long)b->maximum_speed * 100L)
+                    b->speed_fixed = (long)b->maximum_speed * 100L;
                 ++race->collision_count;
             }
             pair_bit <<= 1;
@@ -1155,9 +1182,6 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     static const short default_drive_bias[SLICKS_RACE_CAR_COUNT] = {
         0, -8, 0, 0
     };
-    static const short default_drive_coefficients[7] = {
-        103, 18, 100, 99, 100, 100, 104
-    };
     unsigned short car;
     unsigned short direction;
     unsigned short x;
@@ -1213,9 +1237,9 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         state->steering_penalty = 0;
         state->steering_property = 104;
         state->drive_bias = default_drive_bias[car];
-        for (direction = 0; direction < 7; ++direction)
-            state->drive_coefficients[direction] =
-                default_drive_coefficients[direction];
+        for (direction = 0; direction < 13; ++direction)
+            state->drive_setup[direction] = direction < 5 ? 4 : 0;
+        interpolate_drive_coefficients(state);
         state->tyre_load = 0;
         state->maximum_speed = 100;
         state->ai_last_x = state->x;

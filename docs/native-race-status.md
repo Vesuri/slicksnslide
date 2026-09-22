@@ -16,7 +16,9 @@ from the original files at run time.
   branch-specific Q15 velocity decay, and `velocity / 20` position step.
   Coasting first applies its recovered per-driver Q15 multiplier to the drive
   scalar. Ordinary braking applies the recovered Q15 factor 8 to both velocity
-  components and clears that scalar before the active-force update.
+  components and clears that scalar before the active-force update. The seven
+  force coefficients are produced by the original quarter-step interpolation
+  table from the default 13-value driver setup rather than hard-coded outputs.
   Steering now preserves the original four-stage signed integer recurrence,
   including the traced human/AI input strengths and per-driver scales; the
   semantic trace proves 9,329 literal heading transitions.
@@ -54,9 +56,9 @@ The implementation is playable and complete as a race loop, but these details
 still require instruction-level recovery before calling the simulation
 bit-exact:
 
-- non-default setup values for the recovered seven-coefficient interpolation,
-  the contact/reverse brake branches, the special car-state path, and the
-  remaining `.omi` property semantics;
+- exposing non-default values for the recovered driver setup, the
+  contact/reverse brake branches, the special car-state path, and the remaining
+  `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
 - the complete DOS boundary-contact resolver and secondary car-contact state;
