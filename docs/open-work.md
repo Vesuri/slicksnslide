@@ -47,8 +47,10 @@ The historical detail below records how the port reached that state.
    regions. A second strict gate runs the original 262-object `BASICTRK.SS`
    editor/template course with all 25 regions. Its zero speed hints use the
    normal cruise fallback; after 200 frames all cars have advanced through
-   multiple regions, emitted surface particles, and registered no boundary
-   contacts.
+   multiple regions and registered no boundary contacts. The DOS-derived
+   mode-one map proves that this initial interval crosses no effect-emitting
+   wheel surface, so its strict gate expects zero particles rather than the
+   former heuristic output.
    Continue by exposing track choice in the native menu and testing a broader
    representative set of user tracks.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a

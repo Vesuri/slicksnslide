@@ -17,7 +17,7 @@
 #define SLICKS_DIRTY_ROW_MAX 16
 #define SLICKS_TRAIL_SPRITE_COUNT 3
 #define SLICKS_TRAIL_PIXEL_MAX 16
-#define SLICKS_TRAIL_PARTICLE_MAX 32
+#define SLICKS_TRAIL_PARTICLE_MAX 64
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -127,6 +127,8 @@ struct SlicksTrailParticle {
     short old_y;
     unsigned char saved_under[SLICKS_TRAIL_PIXEL_MAX];
     unsigned char lifetime;
+    unsigned char sprite;
+    unsigned char surface;
     unsigned char saved_valid;
 };
 
@@ -142,11 +144,13 @@ struct SlicksRaceRuntime {
     struct SlicksTrailParticle trail_particles[SLICKS_TRAIL_PARTICLE_MAX];
     struct SlicksDirtyRows dirty_rows[SLICKS_DIRTY_ROW_MAX];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
+    unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
     unsigned long frame_count;
     unsigned long skidmark_count;
     unsigned long collision_count;
     unsigned long track_collision_count;
+    unsigned long random_state;
     short countdown_ticks;
     unsigned char countdown_stage;
     unsigned char racing;

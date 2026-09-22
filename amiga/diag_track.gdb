@@ -15,8 +15,9 @@ commands
   silent
   set $ok = g_slicks_diag_race_frame == 200
   set $ok = $ok && g_slicks_diag_track_zones == 25
+  set $ok = $ok && g_slicks_diag_surface_checksum == 0xe472d3a7
   set $ok = $ok && g_slicks_diag_timer[0] == 218
-  set $ok = $ok && g_slicks_diag_skidmarks > 0
+  set $ok = $ok && g_slicks_diag_skidmarks == 0
   set $ok = $ok && g_slicks_diag_track_collisions == 0
   set $ok = $ok && g_slicks_diag_waypoint[0] > 0
   set $ok = $ok && g_slicks_diag_waypoint[1] > 0

@@ -26,6 +26,7 @@ struct SlicksTrackNavigation {
  */
 int slicks_build_track_scene(unsigned char *logical,
                              unsigned char *material_map,
+                             unsigned char *surface_map,
                              const unsigned char *dat,
                              unsigned long dat_size,
                              const unsigned char *track,

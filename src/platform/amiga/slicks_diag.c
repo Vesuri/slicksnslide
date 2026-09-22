@@ -38,6 +38,7 @@ volatile unsigned short g_slicks_diag_restore_status;
 volatile unsigned short g_slicks_diag_force_exit;
 volatile unsigned short g_slicks_diag_track_zones;
 volatile unsigned long g_slicks_diag_material_checksum;
+volatile unsigned long g_slicks_diag_surface_checksum;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
@@ -204,6 +205,15 @@ static unsigned long checksum_material_map(const unsigned char *material_map)
     return checksum;
 }
 
+static unsigned long checksum_surface_map(const unsigned char *surface_map)
+{
+    unsigned long checksum = 0x53555246UL;
+    unsigned long at;
+    for (at = 0; at < SLICKS_TRACK_MATERIAL_SIZE; ++at)
+        checksum = (checksum << 5) ^ (checksum >> 27) ^ surface_map[at];
+    return checksum;
+}
+
 static long load_plain_file(const char *path, void *destination,
                             unsigned long capacity)
 {
@@ -318,7 +328,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
     race_checkpoint(4);
-    if (slicks_build_track_scene(logical, race->material_map, dat,
+    if (slicks_build_track_scene(logical, race->material_map,
+                                 race->surface_map, dat,
                                  (unsigned long)dat_size, track,
                                  (unsigned long)track_size, arena, 65536UL,
                                  navigation) <= 0) {
@@ -331,6 +342,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     g_slicks_diag_track_zones = navigation->zone_count;
     g_slicks_diag_material_checksum =
         checksum_material_map(race->material_map);
+    g_slicks_diag_surface_checksum =
+        checksum_surface_map(race->surface_map);
     {
         long font_size = slicks_resource_archive_load(
             &archive, "pieni.@f", font_resource, 2048UL);

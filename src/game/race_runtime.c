@@ -25,15 +25,30 @@ static const signed char direction_y[16] = {
     0, -38, -71, -92, -100, -92, -71, -38
 };
 
-/* DS:017e in the original race engine.  A non-zero entry creates a
- * four-frame trail particle; its signed magnitude controls how quickly the
- * particle moves along the car's heading.  Dirt therefore throws the mark
- * backwards while grass throws it forwards. */
-static const signed char trail_velocity_by_material[32] = {
-    1, 1, 1, 0, -1, 0, 0, 0,
-    20, 0, 30, 0, 15, 0, -6, 0,
-    20, 0, -12, 1, 10, 0, -56, 0,
-    10, 11, 12, 13, 14, 15, 15, 13
+static long absolute_long(long value);
+
+/* DS:4ca4/4d24: the two wheel sample points generated for each of the four
+ * entrants and sixteen headings.  Coordinates are relative to the original
+ * centre-minus-three car anchor. */
+static const signed char wheel_x[4][2][16] = {
+    {{2,1,2,1,1,3,4,4,5,4,4,3,1,1,2,1},
+     {2,3,4,4,4,6,6,6,5,6,6,6,4,4,4,3}},
+    {{2,1,2,1,1,3,4,4,5,4,4,3,1,1,2,1},
+     {2,3,4,4,4,6,6,6,5,6,6,6,4,4,4,3}},
+    {{2,1,1,0,0,2,3,4,5,4,3,2,0,0,1,1},
+     {2,3,4,4,4,6,6,6,5,6,6,6,4,4,4,3}},
+    {{2,1,2,1,1,3,4,4,5,4,4,3,1,1,2,1},
+     {2,3,4,4,4,6,6,6,5,6,6,6,4,4,4,3}}
+};
+static const signed char wheel_y[4][2][16] = {
+    {{1,4,4,3,2,1,2,1,1,6,6,6,5,4,4,3},
+     {4,1,2,1,2,3,4,4,4,3,4,4,5,6,6,6}},
+    {{1,4,4,3,2,1,2,1,1,6,6,6,5,4,4,3},
+     {4,1,2,1,2,3,4,4,4,3,4,4,5,6,6,6}},
+    {{0,4,4,3,2,1,1,0,0,6,6,6,5,4,3,2},
+     {4,0,1,1,2,3,4,4,4,2,3,4,5,6,6,6}},
+    {{1,4,4,3,2,1,2,1,1,6,6,6,5,4,4,3},
+     {4,1,2,1,2,3,4,4,4,3,4,4,5,6,6,6}}
 };
 
 static unsigned char read_pixel(const unsigned char *logical,
@@ -629,8 +644,7 @@ static void restore_trail_particles(struct SlicksRaceRuntime *race,
             &race->trail_particles[--at];
         if (particle->saved_valid) {
             const struct SlicksCarSprite *sprite =
-                &race->trail_sprites[particle->lifetime < 2 ? 2 :
-                    4 - particle->lifetime];
+                &race->trail_sprites[particle->sprite];
             unsigned short x;
             unsigned short y;
             unsigned short saved_at = 0;
@@ -664,31 +678,91 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
     race->trail_particle_count = (unsigned char)destination;
 }
 
-static void add_trail_particle(struct SlicksRaceRuntime *race,
-                               const struct SlicksRaceCar *car)
+static unsigned short next_random(struct SlicksRaceRuntime *race)
 {
-    unsigned short direction;
-    unsigned char material;
-    signed char strength;
+    /* The DOS helper at 1010:32a7 is Borland's 32-bit LCG. */
+    race->random_state = race->random_state * 0x015a4e35UL + 1UL;
+    return (unsigned short)((race->random_state >> 16) & 0x7fffUL);
+}
+
+static short random_scaled(struct SlicksRaceRuntime *race,
+                           unsigned short limit)
+{
+    return (short)(((unsigned long)next_random(race) * limit) / 0x8000UL);
+}
+
+static void add_trail_component(struct SlicksRaceRuntime *race,
+                                short x, short y, unsigned char sprite,
+                                unsigned char surface, short velocity_x,
+                                short velocity_y)
+{
     struct SlicksTrailParticle *particle;
     if (race->trail_particle_count >= SLICKS_TRAIL_PARTICLE_MAX)
         return;
-    material = material_at(race, (short)(car->x / 100),
-                           (short)(car->y / 100));
-    strength = trail_velocity_by_material[material];
-    if (!strength)
-        return;
-    direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
     particle = &race->trail_particles[race->trail_particle_count++];
-    particle->x = car->x * 64L / 100L;
-    particle->y = car->y * 64L / 100L;
-    particle->velocity_x =
-        (short)strength * (short)direction_x[direction] * 2;
-    particle->velocity_y =
-        (short)strength * (short)direction_y[direction] * 2;
-    particle->lifetime = 4;
+    particle->x = (long)x * 64L;
+    particle->y = (long)y * 64L;
+    particle->velocity_x = velocity_x;
+    particle->velocity_y = velocity_y;
+    particle->lifetime = 3;
+    particle->sprite = sprite;
+    particle->surface = surface;
     particle->saved_valid = 0;
     ++race->skidmark_count;
+}
+
+static void emit_wheel_surface(struct SlicksRaceRuntime *race,
+                               const struct SlicksRaceCar *car,
+                               unsigned short car_index)
+{
+    long magnitude = (absolute_long(car->velocity_x) +
+                      absolute_long(car->velocity_y)) / 2L;
+    unsigned short direction = (unsigned short)car->heading /
+                               SLICKS_HEADING_STEP;
+    unsigned short wheel;
+    if (magnitude <= 200L)
+        return;
+    for (wheel = 0; wheel < 2; ++wheel) {
+        short x = (short)(car->x / 100L) - 3 +
+                  wheel_x[car_index][wheel][direction];
+        short y = (short)(car->y / 100L) - 3 +
+                  wheel_y[car_index][wheel][direction];
+        unsigned char surface;
+        unsigned char sprite;
+        short radius;
+        short sample_x;
+        short sample_y;
+        unsigned char sampled_surface;
+        if (x < 0 || x >= SLICKS_SCREEN_WIDTH ||
+            y < 0 || y >= SLICKS_TRACK_HEIGHT)
+            continue;
+        surface = race->surface_map[(unsigned long)y * 320UL + x];
+        if (surface == 5)
+            sprite = (unsigned char)random_scaled(race, 3);
+        else if (surface == 3)
+            sprite = (unsigned char)random_scaled(race, 3);
+        else
+            continue;
+        radius = (short)(magnitude / 120L);
+        sample_x = (short)(x + random_scaled(race, (unsigned short)radius) -
+                           radius / 2);
+        sample_y = (short)(y + random_scaled(race, (unsigned short)radius) -
+                           radius / 2);
+        if (sample_x < 0 || sample_x >= SLICKS_SCREEN_WIDTH ||
+            sample_y < 0 || sample_y >= SLICKS_TRACK_HEIGHT)
+            continue;
+        sampled_surface = race->surface_map[
+            (unsigned long)sample_y * 320UL + sample_x];
+        if (sampled_surface != 2 && sampled_surface != 15 &&
+            (sampled_surface < 22 || sampled_surface > 26))
+            add_trail_component(race, sample_x, sample_y, sprite, surface,
+                                0, 0);
+        if (magnitude > 250L)
+            add_trail_component(
+                race, x, y, sprite, surface,
+                (short)(random_scaled(race, 23) - 11),
+                (short)(random_scaled(race, 23) - 11));
+    }
 }
 
 static void draw_trail_particles(struct SlicksRaceRuntime *race,
@@ -697,8 +771,7 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
     unsigned short at;
     for (at = 0; at < race->trail_particle_count; ++at) {
         struct SlicksTrailParticle *particle = &race->trail_particles[at];
-        unsigned short frame = particle->lifetime < 2 ? 2 :
-            4 - particle->lifetime;
+        unsigned short frame = particle->sprite;
         const struct SlicksCarSprite *sprite = &race->trail_sprites[frame];
         short x = (short)(particle->x / 64L);
         short y = (short)(particle->y / 64L);
@@ -737,8 +810,6 @@ static void update_car(struct SlicksRaceRuntime *race,
         car_index == 0 && race->human_control
             ? race->controls
             : ai_controls(race, car_index);
-    unsigned char turning = controls & (SLICKS_CONTROL_LEFT |
-                                        SLICKS_CONTROL_RIGHT);
     unsigned char steering_input =
         (unsigned char)(car_index == 0 && race->human_control ? 100 : 140);
     unsigned char active_drive;
@@ -852,8 +923,7 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)
         car->heading -= SLICKS_HEADING_FULL;
-    if (turning && car->speed > 65 && !(race->frame_count & 1))
-        add_trail_particle(race, car);
+    emit_wheel_surface(race, car, car_index);
     if (!car->finished) {
         car->elapsed_centiseconds += 2;
         car->current_lap_centiseconds += 2;
@@ -1236,6 +1306,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         !race->font.ready)
         return -1;
     race->chunky = chunky;
+    race->random_state = 0x1fadec20UL;
     for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car)
         if (!race->properties[car].ready)
             return -1;

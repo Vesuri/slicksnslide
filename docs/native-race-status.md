@@ -38,10 +38,18 @@ from the original files at run time.
 - The immutable mode-zero `b089` material map is reconstructed independently
   of the visible track pixels. Its four classes match the captured DOS
   `BASIC.SS` map at all 60,800 pixels; the strict A1200 gate fixes its checksum
-  at `80f1987a`. The classes feed the original 32-entry
-  trail-velocity table. Turning skids and transient `savu` particles are
-  produced by live movement; the original per-car effect-state transitions
-  still need recovery.
+  at `80f1987a`. A second independently layered mode-one map now also matches
+  all 60,800 captured pixels for both `BASIC.SS` (`aa8bc219`) and
+  `BASICTRK.SS` (`e472d3a7`). It retains the packed upper surface bits which
+  cannot be recovered from the visible low-three-bit pixels alone.
+- Wheel effects use the original per-car/per-heading wheel offsets and the
+  recovered speed scalar `(abs(vx) + abs(vy)) / 2`. Classes 3 and 5 dispatch
+  the original three-way random `savu` choice: above 200 it scatters one
+  static component around each wheel, and above 250 it adds the moving
+  component. Sampling suppresses classes 2, 15, and 22 through 26. The native
+  generator is the original 32-bit `state * 0x015a4e35 + 1` recurrence.
+  Selection of the alternate sprite/remap group and the remaining actor
+  defaults still need instruction-level recovery.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.

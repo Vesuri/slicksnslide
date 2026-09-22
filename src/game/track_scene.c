@@ -113,6 +113,7 @@ static void put_pixel(unsigned char *logical, unsigned short x,
 
 static void draw_sprite(unsigned char *logical,
                         unsigned char *material_map,
+                        unsigned char *surface_map,
                         const struct TrackSprite *sprite,
                         unsigned short origin_x, unsigned short origin_y,
                         unsigned char rotation,
@@ -164,6 +165,93 @@ static void draw_sprite(unsigned char *logical,
                 }
                 if (write_material)
                     material_map[(unsigned long)y * 320UL + x] = material;
+
+                /* b1a5 stores the independent mode-one b089 value used by
+                 * the wheel-effect dispatcher.  The value is a property of
+                 * the DAT object class, not of its displayed palette index;
+                 * bridge and foreground overlays deliberately preserve the
+                 * surface beneath them. */
+                {
+                    unsigned char surface_pixel = pixel != 0;
+                    unsigned long surface_at =
+                        (unsigned long)y * 320UL + x;
+                    unsigned char previous_surface = surface_map[surface_at];
+                    unsigned char write_surface = 1;
+                    unsigned char surface = 0;
+                    /* The DOS surface pass has a small set of deliberate mask
+                     * corrections which differ from the displayed DAT byte. */
+                    if (type == 31 && source_x == 12 && source_y == 0)
+                        surface_pixel = 0;
+                    if ((type == 32 && source_x == 11 && source_y == 2) ||
+                        (type == 36 &&
+                         ((source_x == 7 && source_y == 13) ||
+                          (source_x == 14 && source_y == 6))) ||
+                        (type == 28 &&
+                         ((source_x == 28 && source_y == 2) ||
+                          (source_x == 22 && source_y == 2) ||
+                          (source_x == 35 && source_y == 3) ||
+                          (source_x == 37 && source_y == 3) ||
+                          (source_x == 5 && source_y == 8) ||
+                          (source_x == 4 && source_y == 11))) ||
+                        (type == 44 &&
+                         ((source_x == 4 && source_y == 2) ||
+                          (source_x == 3 && source_y == 3) ||
+                          (source_x == 6 && source_y == 3) ||
+                          (source_x == 6 && source_y == 6))))
+                        surface_pixel = 1;
+                    if (type == 30 && source_x == 6 && source_y == 9)
+                        surface_pixel = 0;
+                    if (!surface_pixel || y >= 185)
+                        write_surface = 0;
+                    /* The mode-one plane has two protected overlay classes.
+                     * Object 0 is permanent; object 44 survives later scenery
+                     * except for the recovered object-9 eraser. Bits 7 and 6
+                     * are build-only priority markers. */
+                    if (((previous_surface & 0x80) &&
+                         type != 18 && type != 33) ||
+                        ((previous_surface & 0x40) && type != 9))
+                        write_surface = 0;
+                    switch (type) {
+                    case 0: surface = 17; break;
+                    case 18: case 19: case 20:
+                    case 23: case 31: case 32: case 33:
+                        surface = 2; break;
+                    case 24: case 25: case 27: case 44:
+                        surface = 3; break;
+                    case 35: case 36: case 37: case 43:
+                        surface = 5; break;
+                    case 28: case 30: case 50:
+                        surface = 11; break;
+                    case 39: case 40:
+                        surface = pixel == 216 ? 19 :
+                                  (pixel == 26 || pixel == 217) ? 2 : 0;
+                        break;
+                    case 63:
+                        surface = pixel == 75 ? 6 :
+                                  pixel == 74 ? 5 : 14;
+                        break;
+                    case 64: surface = 14; break;
+                    case 87: surface = pixel == 217 ? 2 : 19; break;
+                    case 49:
+                        surface = pixel == 26 ? 2 : 0;
+                        break;
+                    case 68: case 85:
+                        write_surface = 0;
+                        break;
+                    default:
+                        surface = 0;
+                        break;
+                    }
+                    if (type == 44 && (previous_surface & 0x1f) == 2)
+                        write_surface = 0;
+                    if (write_surface) {
+                        if (type == 0)
+                            surface |= 0x80;
+                        else if (type == 44)
+                            surface |= 0x40;
+                        surface_map[surface_at] = surface;
+                    }
+                }
             }
         }
     }
@@ -171,6 +259,7 @@ static void draw_sprite(unsigned char *logical,
 
 int slicks_build_track_scene(unsigned char *logical,
                              unsigned char *material_map,
+                             unsigned char *surface_map,
                              const unsigned char *dat,
                              unsigned long dat_size,
                              const unsigned char *track,
@@ -185,7 +274,7 @@ int slicks_build_track_scene(unsigned char *logical,
     unsigned short object;
     unsigned short object_count;
 
-    if (!logical || !material_map || !dat || !track || !sprite_arena ||
+    if (!logical || !material_map || !surface_map || !dat || !track || !sprite_arena ||
         !navigation ||
         track_size < 6 ||
         track[4] != 0x7e || track[5] != 2 ||
@@ -193,8 +282,10 @@ int slicks_build_track_scene(unsigned char *logical,
                           sprites) != 0)
         return -1;
 
-    for (at = 0; at < 320UL * 190UL; ++at)
+    for (at = 0; at < 320UL * 190UL; ++at) {
         material_map[at] = 0;
+        surface_map[at] = 0;
+    }
 
     /* The original loader seeks forward 165h after consuming the two-byte
      * file signature, reads its two compatibility words and flags byte, then
@@ -227,8 +318,15 @@ int slicks_build_track_scene(unsigned char *logical,
         if (type >= SLICKS_SPRITE_COUNT)
             return -1;
         if (!is_control_object(type))
-            draw_sprite(logical, material_map, &sprites[type], x, y, rotation,
-                        type);
+            draw_sprite(logical, material_map, surface_map, &sprites[type],
+                        x, y, rotation, type);
+    }
+
+    /* Strip the construction priorities before gameplay samples b089. */
+    {
+        unsigned long surface_at;
+        for (surface_at = 0; surface_at < 320UL * 190UL; ++surface_at)
+            surface_map[surface_at] &= 0x1f;
     }
 
     /* Six-byte auxiliary line records follow the placed objects. */
