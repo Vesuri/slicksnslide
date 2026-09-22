@@ -37,12 +37,11 @@ struct SlicksCarProperties {
     unsigned char body_radius_y;
     unsigned char collision_radius;
     unsigned char model_class;
-    unsigned char top_speed;
-    unsigned char drive_response;
-    unsigned char steering;
+    unsigned char property_4;
+    unsigned char property_5;
+    unsigned char property_6;
     unsigned char collision_weight;
     signed char surface[SLICKS_SURFACE_GROUP_COUNT][3];
-    short balance_bias;
     unsigned char effect_profile;
     signed char engine_sound;
     unsigned char collision_sound;

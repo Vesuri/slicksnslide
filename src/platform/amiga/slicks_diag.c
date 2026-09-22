@@ -463,9 +463,9 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
         g_slicks_diag_finish_position[car] =
             race->cars[car].finish_position;
         g_slicks_diag_acceleration[car] =
-            race->properties[race->cars[car].vehicle].top_speed;
+            race->properties[race->cars[car].vehicle].property_4;
         g_slicks_diag_steering[car] =
-            race->properties[race->cars[car].vehicle].steering;
+            race->properties[race->cars[car].vehicle].property_6;
     }
     g_slicks_diag_race_complete = race->race_complete;
     g_slicks_diag_results_drawn = race->results_drawn;

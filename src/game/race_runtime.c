@@ -1070,9 +1070,9 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
     properties->body_radius_y = resource[1];
     properties->collision_radius = resource[2];
     properties->model_class = resource[3];
-    properties->top_speed = resource[4];
-    properties->drive_response = resource[5];
-    properties->steering = resource[6];
+    properties->property_4 = resource[4];
+    properties->property_5 = resource[5];
+    properties->property_6 = resource[6];
     properties->collision_weight = resource[22];
     for (at = 0; at < SLICKS_SURFACE_GROUP_COUNT; ++at) {
         unsigned short source_at = 7 + at * 3;
@@ -1080,7 +1080,6 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
         properties->surface[at][1] = (signed char)resource[source_at + 2];
         properties->surface[at][2] = (signed char)resource[source_at + 1];
     }
-    properties->balance_bias = (short)((resource[23] - 100) * 2);
     properties->effect_profile = resource[24];
     properties->engine_sound = (signed char)resource[25];
     properties->collision_sound = resource[26];
@@ -1090,7 +1089,7 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
     properties->auxiliary_accumulator = (signed char)resource[31];
     properties->ai_speed = resource[32];
     properties->ai_aggression = resource[33];
-    if (!properties->top_speed || !properties->steering ||
+    if (!properties->property_4 || !properties->property_6 ||
         !properties->collision_weight)
         return -1;
     properties->ready = 1;

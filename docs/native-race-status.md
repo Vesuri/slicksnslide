@@ -9,6 +9,9 @@ from the original files at run time.
 
 - All ten 34-byte `.omi` records and all forty directional car images load
   from `SLICKS.000`. The default DOS lineup is vehicles 5, 2, 0, and 0.
+  Unproved bytes 4–6 remain explicitly numbered rather than carrying the old
+  speculative top-speed/response/steering names; the live speed limit and
+  steering recurrence use their separately traced per-driver values.
 - The start grid is derived from each track's recorded position and heading.
 - Four cars use persistent fixed-point position, velocity, speed, and heading
   state. Throttle uses the traced `0xa0` increment. The normal tyre-force
