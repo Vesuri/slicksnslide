@@ -29,6 +29,7 @@ volatile unsigned long g_slicks_diag_display_checksum;
 volatile unsigned long g_slicks_diag_race_frame;
 volatile unsigned long g_slicks_diag_skidmarks;
 volatile unsigned long g_slicks_diag_collisions;
+volatile unsigned char g_slicks_diag_countdown_stage;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
@@ -280,6 +281,7 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
     g_slicks_diag_race_frame = race->frame_count;
     g_slicks_diag_skidmarks = race->skidmark_count;
     g_slicks_diag_collisions = race->collision_count;
+    g_slicks_diag_countdown_stage = race->countdown_stage;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;

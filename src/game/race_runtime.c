@@ -512,16 +512,28 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical)
         struct SlicksRaceCar *state = &race->cars[car];
         short lane = (car & 1) ? 4 : -4;
         short row = (short)(car / 2) * 8;
-        state->x = ((long)race->navigation.start_x + lane) * 100;
-        state->y = ((long)race->navigation.start_y - row) * 100;
+        unsigned short start_direction;
         state->heading =
             (short)race->navigation.start_heading * 0x78;
+        while (state->heading >= SLICKS_HEADING_FULL)
+            state->heading -= SLICKS_HEADING_FULL;
+        start_direction =
+            (unsigned short)state->heading / SLICKS_HEADING_STEP;
+        state->x = (long)race->navigation.start_x * 100L +
+            (long)lane * direction_y[start_direction] -
+            (long)row * direction_x[start_direction];
+        state->y = (long)race->navigation.start_y * 100L -
+            (long)lane * direction_x[start_direction] -
+            (long)row * direction_y[start_direction];
         state->style = (unsigned char)car;
         state->waypoint = 0;
         state->speed = 0;
         draw_car(race, logical, car);
     }
     draw_timers(race, logical);
+    race->countdown_ticks = 0x78;
+    race->countdown_stage = 0;
+    race->racing = 0;
     race->started = 1;
     return 0;
 }
@@ -539,6 +551,17 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     unsigned short car;
     if (!race || !logical || !race->started)
         return;
+    if (!race->racing) {
+        race->countdown_ticks -= 2;
+        if (race->countdown_ticks < 0) {
+            ++race->countdown_stage;
+            race->countdown_ticks = 10;
+            if (race->countdown_stage > 5)
+                race->racing = 1;
+        }
+        ++race->frame_count;
+        return;
+    }
     /* Saved-under images contain any cars drawn before them.  Restore in the
      * opposite order so the final restore exposes the real track surface. */
     for (car = SLICKS_RACE_CAR_COUNT; car > 0; --car)

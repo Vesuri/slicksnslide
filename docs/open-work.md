@@ -12,7 +12,9 @@
    cars independently, and the collision dimensions/weight are retained for
    the collision pass. Continue with collision response, countdown/lap rules,
    the remaining car-property interpretation, and the remaining race
-   services. Car-to-car contacts now use the recovered collision extent and
+   services. The starting grid is now oriented from each track's start heading
+   and the recovered 120-tick, five-stage start sequence gates movement and
+   race timing. Car-to-car contacts now use the recovered collision extent and
    weight, separate overlapping cars, exchange momentum, and are asserted by
    the live gate; replace the provisional native impulse with the exact DOS
    fixed-point response as that routine is recovered. Keep the translated

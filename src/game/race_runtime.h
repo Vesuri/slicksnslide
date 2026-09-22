@@ -58,6 +58,9 @@ struct SlicksRaceRuntime {
     unsigned long frame_count;
     unsigned long skidmark_count;
     unsigned long collision_count;
+    short countdown_ticks;
+    unsigned char countdown_stage;
+    unsigned char racing;
     unsigned char controls;
     unsigned char human_control;
     unsigned char started;
