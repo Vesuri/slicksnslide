@@ -10,9 +10,8 @@
    rendered checksums after 200 frames. The runtime now loads each original
    34-byte `.omi` record; recovered acceleration and steering fields drive the
    cars independently, and the collision dimensions/weight are retained for
-   the collision pass. Continue with collision response, countdown/lap rules,
-   the remaining car-property interpretation, and the remaining race
-   services. The starting grid is now oriented from each track's start heading
+   the collision pass. Continue with the remaining car-property interpretation
+   and race services. The starting grid is now oriented from each track's start heading
    and the recovered 120-tick, five-stage start sequence gates movement and
    race timing. Navigation regions are consumed in track order; wrapping the
    final region advances the lap and records current, last, and best lap
@@ -23,7 +22,9 @@
    fixed-point response as that routine is recovered. Keep the translated
    path free of a generated-C CPU-context layer. The race timer now decodes and
    draws digits from the original `pieni.@f` archive font; the title renderer's
-   separate compact font remains a visual-fidelity item.
+   separate compact font remains a visual-fidelity item. The live display path
+   mirrors changed pixels into chunky storage and calls Kalms directly each
+   frame, removing its former redundant full-screen VGA deinterleave.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;

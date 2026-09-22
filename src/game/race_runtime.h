@@ -77,6 +77,7 @@ struct SlicksRaceRuntime {
     short countdown_ticks;
     unsigned char countdown_stage;
     unsigned char racing;
+    unsigned char *chunky;
     unsigned char controls;
     unsigned char human_control;
     unsigned char started;
@@ -96,7 +97,8 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
 int slicks_race_add_font(struct SlicksRaceRuntime *race,
                          const unsigned char *resource,
                          unsigned long resource_size);
-int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical);
+int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
+                      unsigned char *chunky);
 void slicks_race_set_controls(struct SlicksRaceRuntime *race,
                               unsigned char controls,
                               unsigned char human_control);

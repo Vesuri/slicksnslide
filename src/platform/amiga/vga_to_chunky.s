@@ -1,5 +1,6 @@
 	section	code,code
 	xdef	slicks_convert_to_amiga
+	xdef	slicks_chunky_to_amiga
 	xref	c2p1x1_8_c5_bm
 
 ; Convert the visible 320x200 pixels from the original four-bank VGA
@@ -49,5 +50,21 @@ slicks_convert_to_amiga:
 	movea.l	56(sp),a1
 	jsr	c2p1x1_8_c5_bm
 
+	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; Convert an already synchronized 320x200 chunky surface.  The live race
+; updates both its VGA-compatible logical store and this surface per pixel,
+; avoiding a redundant full-screen VGA deinterleave every frame.
+; C ABI: slicks_chunky_to_amiga(chunky, bitmap)
+slicks_chunky_to_amiga:
+	movem.l	d2-d7/a2-a6,-(sp)
+	move.w	#320,d0
+	move.w	#200,d1
+	moveq	#0,d2
+	moveq	#0,d3
+	movea.l	48(sp),a0
+	movea.l	52(sp),a1
+	jsr	c2p1x1_8_c5_bm
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

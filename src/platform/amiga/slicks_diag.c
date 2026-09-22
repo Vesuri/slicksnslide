@@ -74,6 +74,8 @@ extern int slicks_setup_basic_mode(unsigned char *logical,
 extern void slicks_convert_to_amiga(const unsigned char *logical,
                                     unsigned char *chunky,
                                     struct BitMap *bitmap);
+extern void slicks_chunky_to_amiga(const unsigned char *chunky,
+                                   struct BitMap *bitmap);
 
 static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
 {
@@ -252,7 +254,7 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
         }
     }
     race_checkpoint(6);
-    if (slicks_race_start(race, logical) != 0) {
+    if (slicks_race_start(race, logical, chunky) != 0) {
         g_slicks_diag_race_error = 7;
         goto cleanup;
     }
@@ -460,8 +462,7 @@ int main(int argc, char **argv)
         }
         if (g_slicks_diag_ingame) {
             slicks_race_step(race, logical);
-            slicks_convert_to_amiga(logical, chunky,
-                                    screen->RastPort.BitMap);
+            slicks_chunky_to_amiga(chunky, screen->RastPort.BitMap);
             update_race_diagnostics(race);
             if (race->frame_count == 200) {
                 g_slicks_diag_checksum = checksum_planes(logical);
