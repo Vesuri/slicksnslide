@@ -36,7 +36,7 @@ ABS_ROOT := $(abspath .)
 	verify-runtime verify-native-graphics trace-summary \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	amiga amiga-run amiga-debug amiga-check amiga-race-check \
-	amiga-track-check todo clean
+	amiga-track-check amiga-lap-check amiga-restore-check todo clean
 
 inspect:
 	$(PYTHON) tools/mz_info.py $(SOURCE)
@@ -338,6 +338,12 @@ amiga-race-check: amiga
 
 amiga-track-check: amiga
 	cd amiga && . ./env.sh && ./diag_track.sh
+
+amiga-lap-check: amiga
+	cd amiga && . ./env.sh && ./diag_lap.sh
+
+amiga-restore-check: amiga
+	cd amiga && . ./env.sh && ./diag_restore.sh
 
 ghidra: unpack
 	@mkdir -p tools/ghidra-proj

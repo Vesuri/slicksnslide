@@ -12,11 +12,20 @@ CCFLAGS  = -g -MP -MMD -m68020 -msoft-float -O2 -nostdlib \
 	-fomit-frame-pointer -fno-tree-loop-distribution \
 	-ffunction-sections -fdata-sections -Wall -Wextra -Werror \
 	-Wno-volatile-register-var
+CPPFLAGS = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new \
+	-std=gnu++17 -fpermissive -Wno-write-strings -Wno-pointer-arith \
+	-Wno-ignored-qualifiers -Wno-sign-compare \
+	-Wno-parentheses -Wno-unused-parameter \
+	-include "$(REPO)/src/platform/amiga/framework/SASCCompat.h" \
+	-I"$(REPO)/src/platform/amiga/framework"
 ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
 VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)"
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
-OBJECTS = obj/slicks_diag.o obj/resource_archive.o obj/track_scene.o \
+OBJECTS = obj/slicks_diag.o obj/amiga_platform.o obj/framework_runtime.o \
+	obj/framework_amiga_hardware.o obj/framework_bitmap.o \
+	obj/framework_copper_list.o obj/framework_palette24.o \
+	obj/resource_archive.o obj/track_scene.o \
 	obj/race_runtime.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
@@ -39,6 +48,28 @@ obj out:
 
 obj/slicks_diag.o: $(REPO)/src/platform/amiga/slicks_diag.c | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
+
+obj/amiga_platform.o: $(REPO)/src/platform/amiga/amiga_platform.cpp \
+		$(REPO)/src/platform/amiga/amiga_platform.h | obj
+	$(CC) $(CPPFLAGS) -c -o $@ $<
+
+obj/framework_runtime.o: $(REPO)/src/platform/amiga/framework_runtime.cpp | obj
+	$(CC) $(CPPFLAGS) -c -o $@ $<
+
+obj/framework_amiga_hardware.o: \
+		$(REPO)/src/platform/amiga/framework/AmigaHardware.cpp | obj
+	$(CC) $(CPPFLAGS) -c -o $@ $<
+
+obj/framework_bitmap.o: $(REPO)/src/platform/amiga/framework/Bitmap.cpp | obj
+	$(CC) $(CPPFLAGS) -c -o $@ $<
+
+obj/framework_copper_list.o: \
+		$(REPO)/src/platform/amiga/framework/CopperList.cpp | obj
+	$(CC) $(CPPFLAGS) -c -o $@ $<
+
+obj/framework_palette24.o: \
+		$(REPO)/src/platform/amiga/framework/Palette24Bit.cpp | obj
+	$(CC) $(CPPFLAGS) -c -o $@ $<
 
 obj/resource_archive.o: $(REPO)/src/platform/amiga/resource_archive.c \
 		$(REPO)/src/platform/amiga/resource_archive.h | obj

@@ -2,10 +2,9 @@
 
 The repository now builds a bootable Amiga HUNK and runs it in FS-UAE as an
 A1200 with a 68020, exactly 2 MiB of chip memory, and no fast memory. This is a
-platform diagnostic rather than a C transliteration of the DOS program: C is
-used only for the temporary Amiga OS/display shell, while the graphics operation
-under test is the same hand-written 68020 `sgfx_plot_plane` routine exercised by
-the x86-versus-M68k differential suite.
+platform diagnostic rather than a C transliteration of the DOS program. The
+game operations under test are native 68020 routines; a small C/C++ platform
+coordinator connects them to the shared dA JoRMaS Amiga framework.
 
 ## What the diagnostic proves
 
@@ -15,19 +14,29 @@ original `SLICKS.000` archive through AmigaDOS, and resolves `mainmenu.@I` and
 `partII` by their native archive directory entries. A hand-written 68020 pass
 converts the original 320 by 200 chunky image resource into the game's
 four-bank layout; the translated title caller then blits it to both original
-VGA pages and draws the native menu overlays. The platform shell converts the
-visible page to eight Amiga bitplanes, installs the archive palette, opens a
-320 by 200 AGA screen, and displays the result.
+VGA pages and draws the native menu overlays. The platform layer converts the
+visible page to eight Amiga bitplanes and displays it as a native 320 by 200
+AGA playfield.
 The conversion is native 68020 assembly: a small staging pass interleaves the
 visible pixels from the four VGA banks into a 64,000-byte chunky buffer, then
 Mikael Kalms' Public Domain `c2p1x1_8_c5_bm` CPU5 routine writes directly to
-the arbitrary plane pointers in the Intuition `BitMap`. The initial scene uses
+the plane pointers in a 320-byte-row interleaved `BitMap` adapter. The initial scene uses
 that full staging pass once. Live race writes mirror changed pixels into the
 chunky surface, allowing later frames to call Kalms directly without another
 64,000-pixel VGA deinterleave. The target-side GDB
 check stops at a named post-display marker and verifies logical checksum
 `93c8bea6` and planar display checksum `29592c57` after the currently translated
 title menu overlays are drawn.
+
+There is no Intuition screen or window in the active display path. Before
+takeover, Slicks loads both the title and race resources and prepares two
+chip-memory views. The DanceDiverse3 framework's `Bitmap` describes each
+eight-plane interleaved allocation; `CopperList::showBitmap` emits its eight
+plane pointers, `CopperList::setPlayfield` emits the matching 280-byte
+`BPL1MOD`/`BPL2MOD`, and `setPalette24Bit` emits the AGA palette banks. The
+platform then takes over copper DMA and the vertical-blank vector directly.
+It restores the original interrupt vector, DMA/interrupt masks, copper list,
+and OS view on exit.
 
 The VGA representation is the unchained 256-colour layout used by the game:
 
@@ -55,6 +64,8 @@ make amiga-debug    # open the target under the M68k GDB stub
 make amiga-check    # boot it and verify the displayed-frame marker/checksum
 make amiga-race-check # enter BASIC.SS and verify its asset-built race frame
 make amiga-track-check # run BASICTRK.SS through the generalized race path
+make amiga-lap-check  # prove a complete checkpoint/lap wrap
+make amiga-restore-check # prove readable OS state is restored on exit
 ```
 
 `amiga/env.sh` selects the shared toolchain, FS-UAE, and default Kickstart path,
@@ -63,7 +74,7 @@ state, mounted scratch disks, maps, and debugger files remain ignored.
 
 An AmigaOS `SetPatch` binary must be present at `tmp/SetPatch`. It remains
 ignored and is copied to the generated boot volume as `C:SetPatch`; both launch
-paths run it before opening the eight-bitplane AGA screen.
+paths run it before taking over the eight-bitplane AGA display.
 
 ## Current boundary
 

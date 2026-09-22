@@ -1,24 +1,20 @@
 #include <exec/execbase.h>
 #include <exec/memory.h>
 #include <dos/dosextens.h>
-#include <graphics/displayinfo.h>
 #include <graphics/gfx.h>
 #include <graphics/gfxbase.h>
-#include <intuition/intuition.h>
-#include <intuition/screens.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
-#include <proto/intuition.h>
 
 #include "../../game/race_runtime.h"
 #include "../../game/track_scene.h"
+#include "amiga_platform.h"
 #include "resource_archive.h"
 
 struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
-struct IntuitionBase *IntuitionBase;
 
 volatile unsigned short g_slicks_diag_ready;
 volatile unsigned short g_slicks_diag_ingame;
@@ -37,6 +33,8 @@ volatile unsigned short g_slicks_diag_dirty_ranges;
 volatile unsigned short g_slicks_diag_dirty_rows;
 volatile unsigned long g_slicks_diag_dirty_c2p_calls;
 volatile unsigned long g_slicks_diag_dirty_c2p_rows;
+volatile unsigned short g_slicks_diag_restore_status;
+volatile unsigned short g_slicks_diag_force_exit;
 volatile unsigned short g_slicks_diag_track_zones;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
@@ -61,10 +59,16 @@ __attribute__((noinline)) void slicks_diag_gameplay_ready(void)
     __asm volatile("" ::: "memory");
 }
 
+__attribute__((noinline)) void slicks_diag_system_restored(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
 static void race_checkpoint(unsigned short stage)
 {
     g_slicks_diag_race_stage = stage;
-    slicks_diag_frame_ready();
+    if (g_slicks_diag_ready)
+        slicks_diag_frame_ready();
 }
 
 __attribute__((constructor)) static void initialize_sysbase(void)
@@ -139,20 +143,6 @@ static unsigned long checksum_bitmap(const struct BitMap *bitmap)
     return checksum;
 }
 
-static void load_palette(struct Screen *screen, unsigned long *table,
-                         const unsigned char *source)
-{
-    unsigned short index;
-    table[0] = 256UL << 16;
-    for (index = 0; index < 768; ++index) {
-        unsigned long value = source[index];
-        unsigned long expanded = (value << 2) | (value >> 4);
-        table[index + 1] = expanded * 0x01010101UL;
-    }
-    table[769] = 0;
-    LoadRGB32(&screen->ViewPort, table);
-}
-
 static long load_plain_file(const char *path, void *destination,
                             unsigned long capacity)
 {
@@ -167,11 +157,12 @@ static long load_plain_file(const char *path, void *destination,
 
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 
-static int enter_race(struct Screen *screen, unsigned long *palette,
+static int prepare_race(struct SlicksAmigaPlatform *platform,
                       unsigned char *logical, unsigned char *chunky,
                       unsigned short *mode_state,
                       struct SlicksRaceRuntime *race,
-                      const char *track_path)
+                      const char *track_path,
+                      unsigned char *race_palette)
 {
     struct SlicksResourceArchive archive = {0, 0};
     struct SlicksTrackNavigation *navigation = 0;
@@ -180,7 +171,6 @@ static int enter_race(struct Screen *screen, unsigned long *palette,
     unsigned char *arena = 0;
     unsigned char *car_resource = 0;
     unsigned char *font_resource = 0;
-    unsigned char race_palette[768];
     long dat_size;
     long track_size;
     unsigned short car;
@@ -209,7 +199,7 @@ static int enter_race(struct Screen *screen, unsigned long *palette,
     race_checkpoint(2);
     if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0 ||
         slicks_resource_archive_load(&archive, "peli.@p", race_palette,
-                                     sizeof(race_palette)) != 768L) {
+                                     768UL) != 768L) {
         g_slicks_diag_race_error = 3;
         goto cleanup;
     }
@@ -288,20 +278,14 @@ static int enter_race(struct Screen *screen, unsigned long *palette,
     }
     race_checkpoint(7);
 
-    load_palette(screen, palette, race_palette);
+    if (slicks_amiga_platform_set_view(platform, 1, race_palette) != 0) {
+        g_slicks_diag_race_error = 8;
+        goto cleanup;
+    }
     race_checkpoint(8);
-    slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
+    slicks_convert_to_amiga(logical, chunky, platform->views[1].bitmap);
     slicks_race_clear_dirty_rows(race);
     race_checkpoint(9);
-    g_slicks_diag_checksum = checksum_planes(logical);
-    g_slicks_diag_display_checksum =
-        checksum_bitmap(screen->RastPort.BitMap);
-    MakeScreen(screen);
-    RethinkDisplay();
-    ScreenToFront(screen);
-    g_slicks_diag_ingame = 1;
-    update_race_diagnostics(race);
-    slicks_diag_frame_ready();
     result = 0;
 
 cleanup:
@@ -321,6 +305,20 @@ cleanup:
     if (result != 0)
         slicks_diag_frame_ready();
     return result;
+}
+
+static void enter_prepared_race(struct SlicksAmigaPlatform *platform,
+                                unsigned char *logical,
+                                struct SlicksRaceRuntime *race)
+{
+    g_slicks_diag_logical = logical;
+    g_slicks_diag_checksum = checksum_planes(logical);
+    g_slicks_diag_display_checksum =
+        checksum_bitmap(platform->views[1].bitmap);
+    slicks_amiga_platform_show(platform, 1);
+    g_slicks_diag_ingame = 1;
+    update_race_diagnostics(race);
+    slicks_diag_frame_ready();
 }
 
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
@@ -380,27 +378,31 @@ static int update_race_key(struct SlicksRaceRuntime *race,
 
 int main(int argc, char **argv)
 {
-    static unsigned long palette[770];
     static unsigned char source_palette[768];
+    static unsigned char race_palette[768];
     static unsigned short mode_state[11];
     struct SlicksResourceArchive archive = {0, 0};
+    struct SlicksAmigaPlatform platform = {0};
     unsigned char *logical = 0;
     unsigned char *chunky = 0;
     unsigned char *title_asset = 0;
     unsigned char *title_frame = 0;
     struct SlicksRaceRuntime *race = 0;
-    struct Screen *screen = 0;
-    struct Window *window = 0;
+    unsigned long title_checksum = 0;
+    unsigned long title_display_checksum = 0;
+    unsigned char left_was_down = 0;
+    unsigned char auto_race;
+    unsigned char restore_test;
+    const char *track_path;
     int result = 20;
 
     DOSBase = (struct DosLibrary *)OpenLibrary(
         (CONST_STRPTR)"dos.library", 37);
     GfxBase = (struct GfxBase *)OpenLibrary(
         (CONST_STRPTR)"graphics.library", 39);
-    IntuitionBase =
-        (struct IntuitionBase *)OpenLibrary(
-            (CONST_STRPTR)"intuition.library", 39);
-    if (!DOSBase || !GfxBase || !IntuitionBase)
+    if (!DOSBase || !GfxBase)
+        goto cleanup;
+    if (slicks_amiga_platform_create(&platform, GfxBase) != 0)
         goto cleanup;
 
     if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0)
@@ -429,84 +431,91 @@ int main(int argc, char **argv)
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
     make_title_surface(logical, title_frame, source_palette);
-    g_slicks_diag_checksum = checksum_planes(logical);
+    title_checksum = checksum_planes(logical);
+    slicks_convert_to_amiga(logical, chunky, platform.views[0].bitmap);
+    if (slicks_amiga_platform_set_view(&platform, 0, source_palette) != 0)
+        goto cleanup;
+    title_display_checksum = checksum_bitmap(platform.views[0].bitmap);
     FreeMem(title_frame, 64002UL);
     title_frame = 0;
     FreeMem(title_asset, 64003UL);
     title_asset = 0;
     slicks_resource_archive_close(&archive);
 
-    screen = OpenScreenTags(
-        0, SA_DisplayID, LORES_KEY, SA_Width, 320, SA_Height, 200, SA_Depth, 8,
-        SA_Type, CUSTOMSCREEN | SCREENQUIET, SA_ShowTitle, FALSE, SA_Quiet,
-        TRUE, TAG_DONE);
-    if (!screen)
-        goto cleanup;
-    load_palette(screen, palette, source_palette);
-
-    window = OpenWindowTags(
-        0, WA_CustomScreen, (ULONG)screen, WA_Left, 0, WA_Top, 0, WA_Width, 320,
-        WA_Height, 200, WA_Backdrop, TRUE, WA_Borderless, TRUE, WA_Activate,
-        TRUE, WA_RMBTrap, TRUE, WA_NoCareRefresh, TRUE, WA_IDCMP,
-        IDCMP_MOUSEBUTTONS | IDCMP_RAWKEY, TAG_DONE);
-    if (!window)
-        goto cleanup;
-
-    slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
-    g_slicks_diag_display_checksum =
-        checksum_bitmap(screen->RastPort.BitMap);
-    MakeScreen(screen);
-    RethinkDisplay();
-    ScreenToFront(screen);
-    g_slicks_diag_ready = 1;
-    slicks_diag_frame_ready();
-
     /* The no-stdlib Amiga entry passes the CLI byte count in d0 and its raw
      * argument string in a0, rather than constructing a Unix argv array. */
+    restore_test = (unsigned char)(
+        argc > 0 && ((const char *)argv)[0] == 'E');
+    auto_race = (unsigned char)(argc > 1 && !restore_test);
     if (argc > 0 && ((const char *)argv)[0] == 'L')
         g_slicks_diag_target_frame = 700;
-    if (argc > 1 &&
-        enter_race(screen, palette, logical, chunky, mode_state, race,
-                   ((const char *)argv)[0] == 'T'
-                       ? "TRACKS/BASICTRK.SS"
-                       : "TRACKS/BASIC.SS") != 0)
+    track_path = argc > 0 && ((const char *)argv)[0] == 'T'
+                     ? "TRACKS/BASICTRK.SS"
+                     : "TRACKS/BASIC.SS";
+
+    /* All DOS reads and allocations finish before the OS display/VERTB
+     * takeover. The prepared race lives in the second hardware bitmap. */
+    if (prepare_race(&platform, logical, chunky, mode_state, race,
+                     track_path, race_palette) != 0)
         goto cleanup;
 
+    g_slicks_diag_checksum = title_checksum;
+    g_slicks_diag_display_checksum = title_display_checksum;
+    if (slicks_amiga_platform_begin(&platform, 0) != 0)
+        goto cleanup;
+    g_slicks_diag_ready = 1;
+    slicks_diag_frame_ready();
+    if (restore_test || g_slicks_diag_force_exit) {
+        result = 0;
+        goto cleanup;
+    }
+
+    if (auto_race)
+        enter_prepared_race(&platform, logical, race);
+
     for (;;) {
-        struct IntuiMessage *message;
-        if (g_slicks_diag_ingame)
-            WaitTOF();
-        else
-            WaitPort(window->UserPort);
-        while ((message =
-                    (struct IntuiMessage *)GetMsg(window->UserPort)) != 0) {
-            unsigned long message_class = message->Class;
-            unsigned short code = message->Code;
-            ReplyMsg((struct Message *)message);
+        unsigned short code;
+        unsigned char left_down;
+        slicks_amiga_platform_wait_vblank(&platform);
+        if (g_slicks_diag_force_exit) {
+            result = 0;
+            goto cleanup;
+        }
+        if (slicks_amiga_platform_right_mouse()) {
+            result = 0;
+            goto cleanup;
+        }
+        while (slicks_amiga_platform_poll_key(&platform, &code)) {
             if (g_slicks_diag_ingame) {
-                if (message_class == IDCMP_RAWKEY &&
-                    (code & 0x7f) == 0x45) {
+                if (!(code & 0x80) && (code & 0x7f) == 0x45) {
                     result = 0;
                     goto cleanup;
                 }
-                if (message_class == IDCMP_RAWKEY)
-                    (void)update_race_key(race, code);
+                (void)update_race_key(race, code);
                 continue;
             }
-            unsigned short scan =
-                message_class == IDCMP_MOUSEBUTTONS
-                    ? 0x1c
-                    : amiga_raw_to_dos_scan(code);
-            unsigned short action = slicks_dispatch_title_key(scan);
+            {
+                unsigned short action = slicks_dispatch_title_key(
+                    amiga_raw_to_dos_scan(code));
+                if (action == 1) {
+                    result = 0;
+                    goto cleanup;
+                }
+                if (action == 2)
+                    enter_prepared_race(&platform, logical, race);
+            }
+        }
+        left_down = (unsigned char)slicks_amiga_platform_left_mouse();
+        if (!g_slicks_diag_ingame && left_down && !left_was_down) {
+            unsigned short action = slicks_dispatch_title_key(0x1c);
             if (action == 1) {
                 result = 0;
                 goto cleanup;
             }
-            if (action == 2 && !g_slicks_diag_ingame &&
-                enter_race(screen, palette, logical, chunky, mode_state,
-                           race, "TRACKS/BASIC.SS") != 0)
-                goto cleanup;
+            if (action == 2)
+                enter_prepared_race(&platform, logical, race);
         }
+        left_was_down = left_down;
         if (g_slicks_diag_ingame) {
             unsigned short dirty;
             slicks_race_step(race, logical);
@@ -515,7 +524,7 @@ int main(int argc, char **argv)
             for (dirty = 0; dirty < race->dirty_row_count; ++dirty) {
                 const struct SlicksDirtyRows *rows = &race->dirty_rows[dirty];
                 slicks_chunky_rows_to_amiga(
-                    chunky, screen->RastPort.BitMap,
+                    chunky, platform.views[1].bitmap,
                     rows->top, rows->bottom);
                 g_slicks_diag_dirty_rows += rows->bottom - rows->top;
                 g_slicks_diag_dirty_c2p_rows += rows->bottom - rows->top;
@@ -526,7 +535,7 @@ int main(int argc, char **argv)
             if (race->frame_count == g_slicks_diag_target_frame) {
                 g_slicks_diag_checksum = checksum_planes(logical);
                 g_slicks_diag_display_checksum =
-                    checksum_bitmap(screen->RastPort.BitMap);
+                    checksum_bitmap(platform.views[1].bitmap);
                 slicks_diag_gameplay_ready();
             }
             slicks_diag_frame_ready();
@@ -537,10 +546,13 @@ cleanup:
     g_slicks_diag_ready = 0;
     g_slicks_diag_ingame = 0;
     slicks_resource_archive_close(&archive);
-    if (window)
-        CloseWindow(window);
-    if (screen)
-        CloseScreen(screen);
+    slicks_amiga_platform_end(&platform);
+    if (platform.gfx_base) {
+        g_slicks_diag_restore_status =
+            slicks_amiga_platform_restore_status(&platform);
+        slicks_diag_system_restored();
+    }
+    slicks_amiga_platform_destroy(&platform);
     if (chunky)
         FreeMem(chunky, 320UL * 200UL);
     if (race)
@@ -552,13 +564,10 @@ cleanup:
         FreeMem(title_frame, 64002UL);
     if (title_asset)
         FreeMem(title_asset, 64003UL);
-    if (IntuitionBase)
-        CloseLibrary((struct Library *)IntuitionBase);
     if (GfxBase)
         CloseLibrary((struct Library *)GfxBase);
     if (DOSBase)
         CloseLibrary((struct Library *)DOSBase);
-    IntuitionBase = 0;
     GfxBase = 0;
     DOSBase = 0;
     return result;
