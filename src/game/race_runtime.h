@@ -17,7 +17,7 @@
 #define SLICKS_DIRTY_ROW_MAX 16
 #define SLICKS_TRAIL_SPRITE_COUNT 3
 #define SLICKS_TRAIL_PIXEL_MAX 16
-#define SLICKS_TRAIL_PARTICLE_MAX 64
+#define SLICKS_TRAIL_PARTICLE_MAX 256
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -160,7 +160,7 @@ struct SlicksRaceRuntime {
     unsigned char start_light_visible;
     unsigned char start_light_stage_mask;
     unsigned char dirty_row_count;
-    unsigned char trail_particle_count;
+    unsigned short trail_particle_count;
     unsigned char laps_to_run;
     unsigned char finished_count;
     unsigned char race_complete;

@@ -694,7 +694,7 @@ static short random_scaled(struct SlicksRaceRuntime *race,
 static void add_trail_component(struct SlicksRaceRuntime *race,
                                 short x, short y, unsigned char sprite,
                                 unsigned char surface, short velocity_x,
-                                short velocity_y)
+                                short velocity_y, unsigned char lifetime)
 {
     struct SlicksTrailParticle *particle;
     if (race->trail_particle_count >= SLICKS_TRAIL_PARTICLE_MAX)
@@ -704,7 +704,7 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
     particle->y = (long)y * 64L;
     particle->velocity_x = velocity_x;
     particle->velocity_y = velocity_y;
-    particle->lifetime = 3;
+    particle->lifetime = lifetime;
     particle->sprite = sprite;
     particle->surface = surface;
     particle->saved_valid = 0;
@@ -756,12 +756,16 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
         if (sampled_surface != 2 && sampled_surface != 15 &&
             (sampled_surface < 22 || sampled_surface > 26))
             add_trail_component(race, sample_x, sample_y, sprite, surface,
-                                0, 0);
-        if (magnitude > 250L)
+                                0, 0, 3);
+        if (magnitude > 250L) {
+            unsigned char lifetime =
+                (unsigned char)(random_scaled(race, 10) + 15);
+            short velocity_x = (short)(random_scaled(race, 23) - 11);
+            short velocity_y = (short)(random_scaled(race, 23) - 11);
             add_trail_component(
-                race, x, y, sprite, surface,
-                (short)(random_scaled(race, 23) - 11),
-                (short)(random_scaled(race, 23) - 11));
+                race, x, y, sprite, surface, velocity_x, velocity_y,
+                lifetime);
+        }
     }
 }
 

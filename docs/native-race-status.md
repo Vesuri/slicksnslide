@@ -46,10 +46,11 @@ from the original files at run time.
   recovered speed scalar `(abs(vx) + abs(vy)) / 2`. Classes 3 and 5 dispatch
   the original three-way random `savu` choice: above 200 it scatters one
   static component around each wheel, and above 250 it adds the moving
-  component. Sampling suppresses classes 2, 15, and 22 through 26. The native
-  generator is the original 32-bit `state * 0x015a4e35 + 1` recurrence.
-  Selection of the alternate sprite/remap group and the remaining actor
-  defaults still need instruction-level recovery.
+  component with the original random 15-through-24-tick lifetime and
+  -11-through-11 velocity components. Sampling suppresses classes 2, 15, and
+  22 through 26. The native generator is the original 32-bit
+  `state * 0x015a4e35 + 1` recurrence. Selection of the alternate actor sprite
+  group and its draw-priority details still need instruction-level recovery.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.
