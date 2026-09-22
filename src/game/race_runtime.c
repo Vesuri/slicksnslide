@@ -407,21 +407,28 @@ static void clear_timer_strip(unsigned char *logical)
             write_pixel(logical, x, y, 0);
 }
 
-static void draw_digit(unsigned char *logical, unsigned short x,
-                       unsigned short y, unsigned char digit)
+static unsigned char draw_character(const struct SlicksRaceFont *font,
+                                    unsigned char *logical,
+                                    unsigned short x, unsigned short y,
+                                    unsigned char character)
 {
-    static const unsigned short glyphs[10] = {
-        0x7b6f, 0x2492, 0x73e7, 0x73cf, 0x5bc9,
-        0x79cf, 0x79ef, 0x7249, 0x7bef, 0x7bcf
-    };
-    unsigned short bits = glyphs[digit % 10];
+    unsigned short glyph;
+    unsigned short pixel_at = 0;
     unsigned short row;
     unsigned short column;
-    for (row = 0; row < 5; ++row)
-        for (column = 0; column < 3; ++column)
-            if (bits & (1U << (14 - row * 3 - column)))
+    for (glyph = 0; glyph < font->glyph_count; ++glyph) {
+        if (font->codes[glyph] == character)
+            break;
+        pixel_at += font->widths[glyph] * font->height;
+    }
+    if (glyph >= font->glyph_count)
+        return 0;
+    for (row = 0; row < font->height; ++row)
+        for (column = 0; column < font->widths[glyph]; ++column)
+            if (font->pixels[pixel_at + row * font->widths[glyph] + column])
                 write_pixel(logical, x + column, y + row,
                             SLICKS_TIMER_COLOUR);
+    return font->widths[glyph];
 }
 
 static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
@@ -433,13 +440,17 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
         unsigned short time = race->cars[car].elapsed_centiseconds;
         unsigned short seconds = time / 100;
         unsigned short hundredths = time % 100;
-        draw_digit(logical, x, 192, car + 1);
-        draw_digit(logical, x + 6, 192, (seconds / 10) % 10);
-        draw_digit(logical, x + 10, 192, seconds % 10);
-        write_pixel(logical, x + 14, 193, SLICKS_TIMER_COLOUR);
-        write_pixel(logical, x + 14, 195, SLICKS_TIMER_COLOUR);
-        draw_digit(logical, x + 17, 192, hundredths / 10);
-        draw_digit(logical, x + 21, 192, hundredths % 10);
+        x += draw_character(&race->font, logical, x, 192,
+                            (unsigned char)('1' + car)) + 3;
+        x += draw_character(&race->font, logical, x, 192,
+                            (unsigned char)('0' + (seconds / 10) % 10)) + 1;
+        x += draw_character(&race->font, logical, x, 192,
+                            (unsigned char)('0' + seconds % 10)) + 1;
+        x += draw_character(&race->font, logical, x, 192, ':') + 1;
+        x += draw_character(&race->font, logical, x, 192,
+                            (unsigned char)('0' + hundredths / 10)) + 1;
+        (void)draw_character(&race->font, logical, x, 192,
+                             (unsigned char)('0' + hundredths % 10));
     }
 }
 
@@ -499,11 +510,50 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
     return 0;
 }
 
+int slicks_race_add_font(struct SlicksRaceRuntime *race,
+                         const unsigned char *resource,
+                         unsigned long resource_size)
+{
+    struct SlicksRaceFont *font;
+    unsigned short glyph;
+    unsigned short pixel_count = 0;
+    unsigned long data_at;
+    if (!race || !resource || resource_size < 12)
+        return -1;
+    font = &race->font;
+    font->glyph_count = resource[4];
+    font->height = resource[6];
+    if (!font->glyph_count || font->glyph_count > SLICKS_FONT_GLYPH_MAX ||
+        !font->height)
+        return -1;
+    data_at = 12UL + (unsigned long)font->glyph_count * 2UL;
+    if (data_at > resource_size)
+        return -1;
+    for (glyph = 0; glyph < font->glyph_count; ++glyph) {
+        unsigned short glyph_pixels;
+        font->codes[glyph] = resource[12 + glyph];
+        font->widths[glyph] = resource[12 + font->glyph_count + glyph];
+        glyph_pixels = font->widths[glyph] * font->height;
+        if ((unsigned long)pixel_count + glyph_pixels >
+            SLICKS_FONT_PIXEL_MAX)
+            return -1;
+        pixel_count += glyph_pixels;
+    }
+    if (data_at + pixel_count != resource_size)
+        return -1;
+    for (glyph = 0; glyph < pixel_count; ++glyph)
+        font->pixels[glyph] = resource[data_at + glyph];
+    font->pixel_count = pixel_count;
+    font->ready = 1;
+    return 0;
+}
+
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical)
 {
     unsigned short car;
     unsigned short direction;
-    if (!race || !logical || !race->navigation.zone_count)
+    if (!race || !logical || !race->navigation.zone_count ||
+        !race->font.ready)
         return -1;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if (!race->properties[car].ready)

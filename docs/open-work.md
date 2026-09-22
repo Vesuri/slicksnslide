@@ -21,9 +21,9 @@
    weight, separate overlapping cars, exchange momentum, and are asserted by
    the live gate; replace the provisional native impulse with the exact DOS
    fixed-point response as that routine is recovered. Keep the translated
-   path free of a generated-C CPU-context
-   layer. Recover the original font resource to replace the compact 5x7 title
-   renderer.
+   path free of a generated-C CPU-context layer. The race timer now decodes and
+   draws digits from the original `pieni.@f` archive font; the title renderer's
+   separate compact font remains a visual-fidelity item.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;

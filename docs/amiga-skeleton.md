@@ -82,7 +82,10 @@ orientations to 233 track records, installs `peli.@p`, and presents the result.
 The strict race gate reports logical checksum `815c70ca` and display checksum
 `024f572b`. No captured DOS frame is linked or loaded.
 
-The diagnostic does not yet run the repeating car/update loop. The six-entry loop
+The diagnostic now runs a repeating four-car race/update loop after the title.
+Its HUD timer decodes `pieni.@f` directly from the original archive: the font's
+character map, variable widths, fixed five-pixel glyph height, and raw bitmap
+payload are consumed without converted or captured assets. The six-entry loop
 at `19719h..19825h` is represented by native bevel and text rendering. The
 observed BASIC-path status slice at `19828h..199F9h` now follows it: four exact
 call-time planar indicator sprites are drawn at their measured positions and
@@ -91,9 +94,8 @@ are proved inactive on this path. The observed shared update suffix at
 `19E4Ah..19EFEh` is native as well: it advances the title phase, updates the
 pulsing colour slot, skips the inactive optional text, and maps the final VGA
 start-address update to an Amiga no-op. The renderer at `199FAh` is the
-wrapper's alternate, unreached branch. The current 5x7 title and numeric font
-is intentionally compact; replacing it with the recovered original font
-remains a visual-fidelity task.
+wrapper's alternate, unreached branch. The title renderer still uses its
+compact native font and remains a separate visual-fidelity task.
 
 The title screen's host input boundary now feeds Amiga raw keys through the
 native eight-key DOS scan-code classifier. Escape/F10 and

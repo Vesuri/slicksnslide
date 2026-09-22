@@ -163,6 +163,7 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     unsigned char *track = 0;
     unsigned char *arena = 0;
     unsigned char *car_resource = 0;
+    unsigned char *font_resource = 0;
     unsigned char race_palette[768];
     long dat_size;
     long track_size;
@@ -176,7 +177,9 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     navigation = (struct SlicksTrackNavigation *)
         AllocMem(sizeof(*navigation), MEMF_ANY);
     car_resource = (unsigned char *)AllocMem(128UL, MEMF_ANY);
-    if (!dat || !track || !arena || !navigation || !car_resource) {
+    font_resource = (unsigned char *)AllocMem(2048UL, MEMF_ANY);
+    if (!dat || !track || !arena || !navigation || !car_resource ||
+        !font_resource) {
         g_slicks_diag_race_error = 1;
         goto cleanup;
     }
@@ -209,6 +212,16 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
     race_checkpoint(5);
 
     slicks_race_initialize(race, navigation);
+    {
+        long font_size = slicks_resource_archive_load(
+            &archive, "pieni.@f", font_resource, 2048UL);
+        if (font_size <= 0 ||
+            slicks_race_add_font(race, font_resource,
+                                 (unsigned long)font_size) != 0) {
+            g_slicks_diag_race_error = 6;
+            goto cleanup;
+        }
+    }
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         char property_name[11] = "auto00.omi";
         long property_size;
@@ -262,6 +275,8 @@ static int enter_basic_race(struct Screen *screen, unsigned long *palette,
 
 cleanup:
     slicks_resource_archive_close(&archive);
+    if (font_resource)
+        FreeMem(font_resource, 2048UL);
     if (car_resource)
         FreeMem(car_resource, 128UL);
     if (navigation)
