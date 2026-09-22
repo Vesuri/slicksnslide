@@ -37,6 +37,7 @@ volatile unsigned long g_slicks_diag_dirty_c2p_rows;
 volatile unsigned short g_slicks_diag_restore_status;
 volatile unsigned short g_slicks_diag_force_exit;
 volatile unsigned short g_slicks_diag_track_zones;
+volatile unsigned long g_slicks_diag_material_checksum;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
@@ -194,6 +195,15 @@ static unsigned long checksum_bitmap(const struct BitMap *bitmap)
     return checksum;
 }
 
+static unsigned long checksum_material_map(const unsigned char *material_map)
+{
+    unsigned long checksum = 0x4d41544cUL;
+    unsigned long at;
+    for (at = 0; at < SLICKS_TRACK_MATERIAL_SIZE; ++at)
+        checksum = (checksum << 5) ^ (checksum >> 27) ^ material_map[at];
+    return checksum;
+}
+
 static long load_plain_file(const char *path, void *destination,
                             unsigned long capacity)
 {
@@ -281,6 +291,12 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_error = 1;
         goto cleanup;
     }
+    {
+        unsigned long at;
+        for (at = 0; at < sizeof(*navigation); ++at)
+            ((unsigned char *)navigation)[at] = 0;
+    }
+    slicks_race_initialize(race, navigation);
     race_checkpoint(1);
     dat_size = load_plain_file("SLICKS.DAT", dat, 65536UL);
     track_size = load_plain_file(track_path, track, 8192UL);
@@ -302,7 +318,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
     race_checkpoint(4);
-    if (slicks_build_track_scene(logical, dat, (unsigned long)dat_size, track,
+    if (slicks_build_track_scene(logical, race->material_map, dat,
+                                 (unsigned long)dat_size, track,
                                  (unsigned long)track_size, arena, 65536UL,
                                  navigation) <= 0) {
         g_slicks_diag_race_error = 5;
@@ -310,8 +327,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     race_checkpoint(5);
 
-    slicks_race_initialize(race, navigation);
+    race->navigation = *navigation;
     g_slicks_diag_track_zones = navigation->zone_count;
+    g_slicks_diag_material_checksum =
+        checksum_material_map(race->material_map);
     {
         long font_size = slicks_resource_archive_load(
             &archive, "pieni.@f", font_resource, 2048UL);

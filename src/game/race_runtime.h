@@ -109,7 +109,6 @@ struct SlicksRaceCar {
     unsigned char ai_probe_counter;
     unsigned char finished;
     unsigned char finish_position;
-    unsigned char surface_group;
     unsigned char touching_solid;
     unsigned char old_x;
     unsigned char old_y;

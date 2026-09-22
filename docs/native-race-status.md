@@ -30,10 +30,18 @@ from the original files at run time.
   checkpoint comparisons, 150-tick stationary watch, and 40-tick recovery
   interval are recovered from `e204` and `f09d`.
 - Car contacts use the recovered `.omi` extents and weight ratios. Track
-  contacts preserve tangential velocity and reflect or stop the blocked axis.
-- The immutable material map selects the `.omi` surface group and the original
-  32-entry trail-velocity table. Grass, dirt, turning skids, and transient
-  `savu` particles are produced by live movement.
+  contacts walk every integer centre pixel from the old to proposed position,
+  snap to the last clear pixel at the original 100-unit scale, apply the
+  four-neighbour `c63e` velocity transform, and then use the original fixed
+  centre clamps. Class 2 takes the original non-contact dispatch; the animated
+  classes 22–26 remain to be exercised by a track fixture.
+- The immutable mode-zero `b089` material map is reconstructed independently
+  of the visible track pixels. Its four classes match the captured DOS
+  `BASIC.SS` map at all 60,800 pixels; the strict A1200 gate fixes its checksum
+  at `80f1987a`. The classes feed the original 32-entry
+  trail-velocity table. Turning skids and transient `savu` particles are
+  produced by live movement; the original per-car effect-state transitions
+  still need recovery.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.
@@ -65,7 +73,7 @@ bit-exact:
   `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
-- the complete DOS boundary-contact resolver and secondary car-contact state;
+- animated boundary classes 22–26 and the secondary car-contact state;
 - exact sound-event selection, priority, pitch, and duration rather than the
   current native event mapping.
 
@@ -88,5 +96,6 @@ car-state word `+29h` bypasses the normal integrator and multiplies both
 velocity components by the zero-extended Q15 factor 7. Its countdown/target
 maintenance and the event that enters this state are mapped, but the entering
 event still needs a natural DOS capture. The native runtime now uses the
-recovered normal-state block; dynamic setup choices, contact/reverse braking,
-and that special-state trigger remain to recover.
+recovered normal-state block, including two-quantum throttle and braking at
+the native 50 Hz cadence; dynamic setup choices, contact/reverse braking, and
+that special-state trigger remain to recover.

@@ -10,7 +10,7 @@ commands
       printf "SLICKS_GAMEPLAY_START_FAILED VISIBLE=%u LIGHTS=%u CHECKSUM=%08x\n", g_slicks_diag_start_light_visible, g_slicks_diag_start_light_stage_mask, g_slicks_diag_checksum
       quit 1
     end
-    printf "SLICKS_GAMEPLAY_START FRAME=%u SKIDS=%u TIMER=%u LIGHTS=%u X=%d Y=%d CHECKSUM=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_start_light_stage_mask, g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_checksum
+    printf "SLICKS_GAMEPLAY_START FRAME=%u SKIDS=%u TIMER=%u LIGHTS=%u X=%d Y=%d MATERIAL=%08x CHECKSUM=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_start_light_stage_mask, g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_material_checksum, g_slicks_diag_checksum
     disable 1
   end
   continue

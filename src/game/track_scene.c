@@ -112,9 +112,11 @@ static void put_pixel(unsigned char *logical, unsigned short x,
 }
 
 static void draw_sprite(unsigned char *logical,
+                        unsigned char *material_map,
                         const struct TrackSprite *sprite,
                         unsigned short origin_x, unsigned short origin_y,
-                        unsigned char rotation)
+                        unsigned char rotation,
+                        unsigned char type)
 {
     unsigned short source_y;
     rotation &= 3;
@@ -140,11 +142,35 @@ static void draw_sprite(unsigned char *logical,
                 y = origin_y + source_y;
             }
             put_pixel(logical, x, y, pixel);
+            if (x < 320 && y < 190) {
+                unsigned char write_material = pixel != 0;
+                unsigned char material = 0;
+
+                /* b225 builds the mode-zero b089 buffer independently of
+                 * the visible VGA page. Most opaque DAT pixels clear its
+                 * five-bit class. The bridge pieces are the exceptions:
+                 * type 85 deliberately writes through transparent pixels,
+                 * type 87 splits its two source colours, and the two visual
+                 * overlays preserve the class already underneath them. */
+                if (type == 85) {
+                    write_material = 1;
+                    material = pixel ? 31 : 1;
+                } else if (type == 44 || type == 68) {
+                    write_material = 0;
+                } else if (type == 49 || type == 90) {
+                    material = 2;
+                } else if (type == 87) {
+                    material = pixel == 217 ? 1 : 0;
+                }
+                if (write_material)
+                    material_map[(unsigned long)y * 320UL + x] = material;
+            }
         }
     }
 }
 
 int slicks_build_track_scene(unsigned char *logical,
+                             unsigned char *material_map,
                              const unsigned char *dat,
                              unsigned long dat_size,
                              const unsigned char *track,
@@ -159,12 +185,16 @@ int slicks_build_track_scene(unsigned char *logical,
     unsigned short object;
     unsigned short object_count;
 
-    if (!logical || !dat || !track || !sprite_arena || !navigation ||
+    if (!logical || !material_map || !dat || !track || !sprite_arena ||
+        !navigation ||
         track_size < 6 ||
         track[4] != 0x7e || track[5] != 2 ||
         decode_dat_images(dat, dat_size, sprite_arena, arena_size,
                           sprites) != 0)
         return -1;
+
+    for (at = 0; at < 320UL * 190UL; ++at)
+        material_map[at] = 0;
 
     /* The original loader seeks forward 165h after consuming the two-byte
      * file signature, reads its two compatibility words and flags byte, then
@@ -197,7 +227,8 @@ int slicks_build_track_scene(unsigned char *logical,
         if (type >= SLICKS_SPRITE_COUNT)
             return -1;
         if (!is_control_object(type))
-            draw_sprite(logical, &sprites[type], x, y, rotation);
+            draw_sprite(logical, material_map, &sprites[type], x, y, rotation,
+                        type);
     }
 
     /* Six-byte auxiliary line records follow the placed objects. */

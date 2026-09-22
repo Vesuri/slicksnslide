@@ -4,6 +4,7 @@
 #define SLICKS_TRACK_HEIGHT 190
 #define SLICKS_SCREEN_HEIGHT 200
 #define SLICKS_STRIDE 100U
+
 #define SLICKS_PLANE_SIZE 0x10000UL
 #define SLICKS_HEADING_STEP 0x4b0
 #define SLICKS_HEADING_FULL 0x4b00
@@ -450,48 +451,114 @@ static unsigned char material_at(const struct SlicksRaceRuntime *race,
 {
     if (x < 0 || x >= SLICKS_SCREEN_WIDTH ||
         y < 0 || y >= SLICKS_TRACK_HEIGHT)
-        return 31;
+        return 0;
     return race->material_map[(unsigned long)y * SLICKS_SCREEN_WIDTH + x];
 }
 
-static int material_is_driveable(unsigned char material)
+static int material_blocks_car(unsigned char material)
 {
-    /* The original collision reader returns palette_index >> 3.  BASIC.SS
-     * uses 0 for tarmac, 14/15 for dirt, 20/21 for grass and 27 for the
-     * bridge deck.  Codes 2/3/5/6 are track and start-line markings, 12
-     * alternates with zero across the bridge texture, and 22 occurs beneath
-     * the starting grid. Other classes are scenery or raised track boundaries.
-     * Surface-specific friction is applied separately as its .omi triplets
-     * are recovered. */
-    return material == 0 || material == 2 || material == 3 ||
-           material == 5 || material == 6 || material == 12 ||
-           material == 14 || material == 15 || material == 20 ||
-           material == 21 || material == 22 || material == 27;
+    /* 1000:c5a0 compares palette_index >> 3 with the six-word table at
+     * CS:2db6. Its literal entries are 2,22,23,24,25,26. Material 2 takes the
+     * non-contact return used by the start/finish and bridge markings. The
+     * latter five compare material-22 with the animated boundary-level word;
+     * every other class is also non-blocking. */
+    return material >= 22 && material <= 26;
 }
 
-static unsigned char surface_group_for_material(unsigned char material)
+static long collision_decay(long velocity)
 {
-    if (material == 14 || material == 15)
-        return 3;
-    if (material == 20 || material == 21)
-        return 2;
-    if (material == 27)
-        return 4;
+    return velocity * 10L / 16L;
+}
+
+static void resolve_track_velocity(const struct SlicksRaceRuntime *race,
+                                   struct SlicksRaceCar *car,
+                                   short x, short y)
+{
+    unsigned char left = (unsigned char)material_blocks_car(
+        material_at(race, (short)(x - 1), y));
+    unsigned char up = (unsigned char)material_blocks_car(
+        material_at(race, x, (short)(y - 1)));
+    unsigned char right = (unsigned char)material_blocks_car(
+        material_at(race, (short)(x + 1), y));
+    unsigned char down = (unsigned char)material_blocks_car(
+        material_at(race, x, (short)(y + 1)));
+    long old_x = car->velocity_x;
+    long old_y = car->velocity_y;
+
+    /* 1000:c63e classifies the four neighbouring collision samples.  Its
+     * multiply/divide sequences are signed component * 10 / 16. */
+    if (left && right) {
+        car->velocity_x = -collision_decay(old_x);
+        car->velocity_y = collision_decay(old_y);
+    } else if (up && down) {
+        car->velocity_x = collision_decay(old_x);
+        car->velocity_y = -collision_decay(old_y);
+    } else if ((left && up) || (right && down)) {
+        car->velocity_x = -collision_decay(old_y);
+        car->velocity_y = collision_decay(old_x);
+    } else if ((up && right) || (left && down)) {
+        car->velocity_x = collision_decay(old_y);
+        car->velocity_y = -collision_decay(old_x);
+    } else if (up || down) {
+        car->velocity_x = collision_decay(old_x);
+        car->velocity_y = -collision_decay(old_y);
+    } else if (left || right) {
+        car->velocity_x = -collision_decay(old_x);
+        car->velocity_y = collision_decay(old_y);
+    } else {
+        car->velocity_x = -collision_decay(old_x);
+        car->velocity_y = -collision_decay(old_y);
+    }
+}
+
+static int move_car_through_track(const struct SlicksRaceRuntime *race,
+                                  struct SlicksRaceCar *car,
+                                  long previous_x, long previous_y)
+{
+    short old_x = (short)(previous_x / 100L);
+    short old_y = (short)(previous_y / 100L);
+    short new_x = (short)(car->x / 100L);
+    short new_y = (short)(car->y / 100L);
+    short delta_x = (short)(old_x - new_x);
+    short delta_y = (short)(old_y - new_y);
+    short abs_x = delta_x < 0 ? (short)-delta_x : delta_x;
+    short abs_y = delta_y < 0 ? (short)-delta_y : delta_y;
+    short sign_x = delta_x < 0 ? 1 : -1;
+    short sign_y = delta_y < 0 ? 1 : -1;
+    short clear_x = old_x;
+    short clear_y = old_y;
+    unsigned short step;
+    unsigned short count = abs_y > abs_x ? (unsigned short)abs_y :
+                                           (unsigned short)abs_x;
+    unsigned char saw_clear = 0;
+
+    for (step = 0; step <= count; ++step) {
+        short x;
+        short y;
+        if (abs_y > abs_x) {
+            x = (short)(old_x -
+                (abs_y ? (short)((long)step * delta_x / abs_y) : 0));
+            y = (short)(old_y + sign_y * (short)step);
+        } else if (abs_x) {
+            x = (short)(old_x + sign_x * (short)step);
+            y = (short)(old_y - (short)((long)step * delta_y / abs_x));
+        } else {
+            x = old_x;
+            y = old_y;
+        }
+        if (material_blocks_car(material_at(race, x, y))) {
+            if (!saw_clear)
+                continue;
+            car->x = (long)clear_x * 100L + 50L;
+            car->y = (long)clear_y * 100L + 50L;
+            resolve_track_velocity(race, car, clear_x, clear_y);
+            return 1;
+        }
+        clear_x = x;
+        clear_y = y;
+        saw_clear = 1;
+    }
     return 0;
-}
-
-static int position_touches_solid(const struct SlicksRaceRuntime *race,
-                                  const struct SlicksCarProperties *properties,
-                                  long car_x, long car_y)
-{
-    short x = (short)(car_x / 100);
-    short y = (short)(car_y / 100);
-    short rx = properties->body_radius_x;
-    short ry = properties->body_radius_y;
-    return !material_is_driveable(material_at(race, x - rx, y)) ||
-           !material_is_driveable(material_at(race, x + rx, y)) ||
-           !material_is_driveable(material_at(race, x, y - ry)) ||
-           !material_is_driveable(material_at(race, x, y + ry));
 }
 
 static void interpolate_drive_coefficients(struct SlicksRaceCar *car)
@@ -664,9 +731,8 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
 static void update_car(struct SlicksRaceRuntime *race,
                        unsigned short car_index)
 {
+    const unsigned short timestep = 2;
     struct SlicksRaceCar *car = &race->cars[car_index];
-    const struct SlicksCarProperties *properties =
-        &race->properties[car->vehicle];
     unsigned char controls =
         car_index == 0 && race->human_control
             ? race->controls
@@ -688,17 +754,13 @@ static void update_car(struct SlicksRaceRuntime *race,
 
     if (car->finished)
         controls = 0;
-    car->surface_group = surface_group_for_material(
-        material_at(race, (short)(car->x / 100),
-                    (short)(car->y / 100)));
-
     /* The DOS car state stores speed as a signed 32-bit fixed quantity.
      * Throttle adds 0xa0 per simulation quantum and .omi byte four supplies
      * the limit in hundreds; neither value is a C-era tuning estimate. */
     active_drive = controls & (SLICKS_CONTROL_ACCELERATE |
                                SLICKS_CONTROL_BRAKE);
     if (controls & SLICKS_CONTROL_ACCELERATE) {
-        car->speed_fixed += 0xa0L;
+        car->speed_fixed += (long)timestep * 0xa0L;
         if (car->speed_fixed / 100L > car->maximum_speed)
             car->speed_fixed = (long)car->maximum_speed * 100L;
     } else if (!active_drive && car->speed_fixed > 0) {
@@ -711,11 +773,14 @@ static void update_car(struct SlicksRaceRuntime *race,
     }
     if (controls & SLICKS_CONTROL_BRAKE) {
         /* The ordinary 2000:05b2 brake path first damps both velocity
-         * components with Q15 factor 8, once per normal time quantum, and
-         * then clears the longitudinal drive scalar. */
+         * components with Q15 factor 8 in a loop bounded by the elapsed
+         * simulation quanta, then clears the longitudinal drive scalar. */
         long brake_factor = 0x7db5L - car->drive_bias;
-        car->velocity_x = car->velocity_x * brake_factor >> 15;
-        car->velocity_y = car->velocity_y * brake_factor >> 15;
+        unsigned short quantum;
+        for (quantum = 0; quantum < timestep; ++quantum) {
+            car->velocity_x = car->velocity_x * brake_factor >> 15;
+            car->velocity_y = car->velocity_y * brake_factor >> 15;
+        }
         car->speed_fixed = 0;
     }
     car->speed = (short)(car->speed_fixed / 100L);
@@ -766,44 +831,28 @@ static void update_car(struct SlicksRaceRuntime *race,
      * scale of 100 and divides by 2000. */
     car->x += car->velocity_x / 20L;
     car->y += car->velocity_y / 20L;
-    if (position_touches_solid(race, properties, car->x, car->y)) {
-        long proposed_x = car->x;
-        long proposed_y = car->y;
-        if (!position_touches_solid(race, properties,
-                                    proposed_x, previous_y)) {
-            car->y = previous_y;
-            car->speed_fixed = car->speed_fixed * 3L / 4L;
-            car->velocity_y = -car->velocity_y / 2L;
-        } else if (!position_touches_solid(race, properties,
-                                           previous_x, proposed_y)) {
-            car->x = previous_x;
-            car->speed_fixed = car->speed_fixed * 3L / 4L;
-            car->velocity_x = -car->velocity_x / 2L;
-        } else {
-            car->x = previous_x;
-            car->y = previous_y;
-            car->speed_fixed /= 2;
-            car->velocity_x = -car->velocity_x / 2L;
-            car->velocity_y = -car->velocity_y / 2L;
-            if ((car_index + race->frame_count) & 1)
-                car->heading += SLICKS_HEADING_FULL / 8;
-            else
-                car->heading -= SLICKS_HEADING_FULL / 8;
-        }
+    if (move_car_through_track(race, car, previous_x, previous_y)) {
         if (!car->touching_solid)
             ++race->track_collision_count;
         car->touching_solid = 1;
     } else
         car->touching_solid = 0;
+    /* 2000:1357..146b applies these fixed-point centre clamps after the
+     * material and car-contact walker and deliberately leaves velocity alone. */
+    if (car->x < 300L)
+        car->x = 300L;
+    else if (car->x > 31700L)
+        car->x = 31700L;
+    if (car->y < 300L)
+        car->y = 300L;
+    else if (car->y > 17900L)
+        car->y = 17900L;
     car->speed = (short)(car->speed_fixed / 100L);
     while (car->heading < 0)
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)
         car->heading -= SLICKS_HEADING_FULL;
     if (turning && car->speed > 65 && !(race->frame_count & 1))
-        add_trail_particle(race, car);
-    else if ((car->surface_group == 2 || car->surface_group == 3) &&
-             car->speed > 20 && !(race->frame_count & 3))
         add_trail_particle(race, car);
     if (!car->finished) {
         car->elapsed_centiseconds += 2;
@@ -1183,16 +1232,10 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     };
     unsigned short car;
     unsigned short direction;
-    unsigned short x;
-    unsigned short y;
     if (!race || !logical || !chunky || !race->navigation.zone_count ||
         !race->font.ready)
         return -1;
     race->chunky = chunky;
-    for (y = 0; y < SLICKS_TRACK_HEIGHT; ++y)
-        for (x = 0; x < SLICKS_SCREEN_WIDTH; ++x)
-            race->material_map[(unsigned long)y * SLICKS_SCREEN_WIDTH + x] =
-                read_pixel(logical, x, y) >> 3;
     for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car)
         if (!race->properties[car].ready)
             return -1;
