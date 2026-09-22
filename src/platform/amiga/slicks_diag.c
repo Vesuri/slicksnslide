@@ -157,6 +157,47 @@ static long load_plain_file(const char *path, void *destination,
 
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 
+static void prepare_race_palette(unsigned char *palette)
+{
+    static const unsigned char car_ramps[4][2][3] = {
+        {{32, 0, 0}, {63, 45, 0}},
+        {{20, 8, 45}, {40, 48, 60}},
+        {{20, 8, 45}, {40, 48, 60}},
+        {{20, 8, 45}, {40, 48, 60}}
+    };
+    static const unsigned char yellow_ramp[5][3] = {
+        {63, 61, 1}, {63, 59, 11}, {63, 57, 21},
+        {63, 55, 31}, {63, 53, 41}
+    };
+    unsigned short car;
+    unsigned short shade;
+
+    /* The DOS race setup rewrites four five-shade car slots after loading
+     * peli.@p.  Recreate the interpolation rather than displaying the raw
+     * resource palette, whose first twenty entries are placeholders. */
+    for (car = 0; car < 4; ++car) {
+        for (shade = 0; shade < 5; ++shade) {
+            unsigned short colour;
+            unsigned short index = 1 + car * 5 + shade;
+            for (colour = 0; colour < 3; ++colour) {
+                unsigned short first = car_ramps[car][0][colour];
+                unsigned short last = car_ramps[car][1][colour];
+                palette[index * 3 + colour] =
+                    (unsigned char)(first +
+                        ((long)(last - first) * shade) / 4L);
+            }
+        }
+    }
+    palette[183 * 3] = 39;
+    palette[183 * 3 + 1] = 43;
+    palette[183 * 3 + 2] = 10;
+    for (shade = 0; shade < 5; ++shade) {
+        palette[(199 + shade) * 3] = yellow_ramp[shade][0];
+        palette[(199 + shade) * 3 + 1] = yellow_ramp[shade][1];
+        palette[(199 + shade) * 3 + 2] = yellow_ramp[shade][2];
+    }
+}
+
 static int prepare_race(struct SlicksAmigaPlatform *platform,
                       unsigned char *logical, unsigned char *chunky,
                       unsigned short *mode_state,
@@ -203,6 +244,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_error = 3;
         goto cleanup;
     }
+    prepare_race_palette(race_palette);
     race_checkpoint(3);
     if (slicks_setup_basic_mode(logical, mode_state) != 0) {
         g_slicks_diag_race_error = 4;
@@ -238,6 +280,19 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         if (light_size <= 0 ||
             slicks_race_add_start_light(race, car, font_resource,
                                         (unsigned long)light_size) != 0) {
+            g_slicks_diag_race_error = 6;
+            goto cleanup;
+        }
+    }
+    for (car = 0; car < SLICKS_TRAIL_SPRITE_COUNT; ++car) {
+        char name[7] = "savu.1";
+        long trail_size;
+        name[5] = (char)('1' + car);
+        trail_size = slicks_resource_archive_load(
+            &archive, name, car_resource, 128UL);
+        if (trail_size <= 0 ||
+            slicks_race_add_trail_sprite(race, car, car_resource,
+                                         (unsigned long)trail_size) != 0) {
             g_slicks_diag_race_error = 6;
             goto cleanup;
         }

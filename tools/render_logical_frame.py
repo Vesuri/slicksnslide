@@ -23,19 +23,58 @@ def archive_resource(archive: bytes, wanted: bytes) -> bytes:
     raise ValueError(f"resource {wanted.decode()} not found")
 
 
+def prepare_race_palette(palette: bytearray) -> None:
+    """Apply the palette rewrites performed by the original race setup."""
+    car_ramps = (
+        ((32, 0, 0), (63, 45, 0)),
+        ((20, 8, 45), (40, 48, 60)),
+        ((20, 8, 45), (40, 48, 60)),
+        ((20, 8, 45), (40, 48, 60)),
+    )
+    for car, (first, last) in enumerate(car_ramps):
+        for shade in range(5):
+            index = 1 + car * 5 + shade
+            for component in range(3):
+                palette[index * 3 + component] = (
+                    first[component]
+                    + (last[component] - first[component]) * shade // 4
+                )
+
+    palette[183 * 3 : 183 * 3 + 3] = bytes((39, 43, 10))
+    yellow_ramp = (
+        (63, 61, 1),
+        (63, 59, 11),
+        (63, 57, 21),
+        (63, 55, 31),
+        (63, 53, 41),
+    )
+    for shade, colour in enumerate(yellow_ramp):
+        start = (199 + shade) * 3
+        palette[start : start + 3] = bytes(colour)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("logical", type=Path)
     parser.add_argument("archive", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument(
+        "--race-palette",
+        action="store_true",
+        help="apply the DOS race-time palette rewrites",
+    )
     args = parser.parse_args()
 
     logical = args.logical.read_bytes()
     if len(logical) != 0x40000:
         raise ValueError(f"expected 262144 logical bytes, got {len(logical)}")
-    palette_data = archive_resource(args.archive.read_bytes(), b"peli.@p")
+    palette_data = bytearray(
+        archive_resource(args.archive.read_bytes(), b"peli.@p")
+    )
     if len(palette_data) != 768:
         raise ValueError("peli.@p does not contain a 256-colour palette")
+    if args.race_palette:
+        prepare_race_palette(palette_data)
     palette = [((value << 2) | (value >> 4)) for value in palette_data]
 
     pixels = bytearray(320 * 200)

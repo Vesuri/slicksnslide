@@ -261,15 +261,18 @@ race engine. Each car decodes four original `autoXX.000` directional sprites
 from `SLICKS.000`; quarter-turn composition supplies all sixteen headings.
 Entering each record's original rectangular trigger selects the next target
 point and speed. The repeating target loop restores sprites in reverse layer
-order, advances state, leaves persistent skidmarks in the logical course,
-draws four live timers, and presents through the Kalms converter. Cursor keys
-take over car one, while the diagnostic path leaves all four under navigation
-control. A strict stock-A1200 gate runs 200 frames and proves that all cars
-moved, navigation reached regions 3--4, the timers reached 400 centiseconds,
-230 skid pixels were emitted, and the logical/display checksums became
-`35bb8f32` and `0068404e`. A debugger dump of that exact target framebuffer was
-visually checked; it contains original course and car assets, route-following
-trails, and all four timer slots, with no captured DOS frame in the program.
+order, advances state, animates the original three `savu` dust/smoke frames
+over grass and mud, draws four live timers, and presents through the Kalms
+converter. Cursor keys take over car one, while the diagnostic path leaves all
+four under navigation
+control. The race-time palette interpolation also relocates each sprite's
+five body shades into the DOS car-colour slots. A strict stock-A1200 gate runs
+200 frames and proves that all cars moved, navigation reached regions 2--3,
+the timers reached 218 centiseconds, 41 surface particles were emitted, and
+the logical/display checksums became `525e3357` and `a5bfc936`. A debugger dump
+of that exact target framebuffer was visually checked; it contains original
+course and car assets, route-following cars, transient surface effects, and all
+four timer slots, with no captured DOS frame in the program.
 
 ## Intended pipeline
 

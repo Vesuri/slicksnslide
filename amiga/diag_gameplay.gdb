@@ -6,7 +6,7 @@ commands
     quit
   end
   if g_slicks_diag_ingame
-    if g_slicks_diag_checksum != 0x28917ee0 || !g_slicks_diag_start_light_visible || g_slicks_diag_start_light_stage_mask != 1
+    if g_slicks_diag_checksum != 0x97b2d2e3 || !g_slicks_diag_start_light_visible || g_slicks_diag_start_light_stage_mask != 1
       printf "SLICKS_GAMEPLAY_START_FAILED VISIBLE=%u LIGHTS=%u CHECKSUM=%08x\n", g_slicks_diag_start_light_visible, g_slicks_diag_start_light_stage_mask, g_slicks_diag_checksum
       quit 1
     end

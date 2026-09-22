@@ -3,10 +3,11 @@
 1. Extend the live `BASIC.SS` race from its first complete native update loop.
    Four persistent cars now decode their original directional archive sprites,
    initialize from the track start pose, steer through the track's original
-   ten-byte navigation regions, leave persistent skidmarks, and update four
+   ten-byte navigation regions, emit the original transient `savu` surface
+   particles, and update four
    on-screen timers. Cursor keys can take over car one; otherwise the original
    navigation records drive all four cars. The strict 2 MiB A1200 gate proves
-   movement, route-region progress, skid output, timers, and two distinct
+   movement, route-region progress, surface-particle output, timers, and two distinct
    rendered checksums after 200 frames. The runtime now loads each original
    34-byte `.omi` record; recovered acceleration and steering fields drive the
    cars independently, and the collision dimensions/weight are retained for
@@ -30,10 +31,10 @@
    painters add half-open row intervals to a fixed 16-entry list; overlapping
    or touching intervals are unioned, and overflow conservatively collapses to
    one bounding interval. Unchanged frames skip C2P entirely. The strict
-   200-frame BASIC run converts 3,418 row-widths instead of 40,000, a 91.5%
-   reduction, while preserving both logical and displayed checksums.
+   200-frame BASIC run converts 3,572 row-widths instead of 40,000, a 91.1%
+   reduction, with both logical and displayed checksums covered by the gate.
    An immutable material map now preserves the original five-bit track classes
-   beneath cars and skidmarks. Native boundary response slides or deflects a
+   beneath cars and surface particles. Native boundary response slides or deflects a
    car instead of letting it pass through scenery, while retaining the five
    three-value `.omi` surface groups for exact friction recovery. A separate
    strict 700-frame gate proves a complete checkpoint wrap, lap 2, lap-time
@@ -42,7 +43,8 @@
    regions. A second strict gate runs the original 262-object `BASICTRK.SS`
    editor/template course with all 25 regions. Its zero speed hints use the
    normal cruise fallback; after 200 frames all cars have advanced through
-   multiple regions, emitted skidmarks, and registered no boundary contacts.
+   multiple regions, emitted surface particles, and registered no boundary
+   contacts.
    Continue by exposing track choice in the native menu and testing a broader
    representative set of user tracks.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a

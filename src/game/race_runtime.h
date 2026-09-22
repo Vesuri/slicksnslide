@@ -14,6 +14,9 @@
 #define SLICKS_START_LIGHT_COUNT 4
 #define SLICKS_START_LIGHT_PIXEL_COUNT (23U * 38U)
 #define SLICKS_DIRTY_ROW_MAX 16
+#define SLICKS_TRAIL_SPRITE_COUNT 3
+#define SLICKS_TRAIL_PIXEL_MAX 16
+#define SLICKS_TRAIL_PARTICLE_MAX 32
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -80,6 +83,18 @@ struct SlicksRaceCar {
     unsigned char saved_valid;
 };
 
+struct SlicksTrailParticle {
+    long x;
+    long y;
+    short velocity_x;
+    short velocity_y;
+    short old_x;
+    short old_y;
+    unsigned char saved_under[SLICKS_TRAIL_PIXEL_MAX];
+    unsigned char lifetime;
+    unsigned char saved_valid;
+};
+
 struct SlicksRaceRuntime {
     struct SlicksTrackNavigation navigation;
     struct SlicksCarSprite
@@ -87,7 +102,9 @@ struct SlicksRaceRuntime {
     struct SlicksCarProperties properties[SLICKS_RACE_CAR_COUNT];
     struct SlicksRaceFont font;
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
+    struct SlicksCarSprite trail_sprites[SLICKS_TRAIL_SPRITE_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
+    struct SlicksTrailParticle trail_particles[SLICKS_TRAIL_PARTICLE_MAX];
     struct SlicksDirtyRows dirty_rows[SLICKS_DIRTY_ROW_MAX];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
@@ -104,6 +121,7 @@ struct SlicksRaceRuntime {
     unsigned char start_light_visible;
     unsigned char start_light_stage_mask;
     unsigned char dirty_row_count;
+    unsigned char trail_particle_count;
     unsigned char started;
 };
 
@@ -125,6 +143,10 @@ int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
                                 unsigned short light,
                                 const unsigned char *resource,
                                 unsigned long resource_size);
+int slicks_race_add_trail_sprite(struct SlicksRaceRuntime *race,
+                                 unsigned short frame,
+                                 const unsigned char *resource,
+                                 unsigned long resource_size);
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky);
 void slicks_race_set_controls(struct SlicksRaceRuntime *race,

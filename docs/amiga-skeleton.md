@@ -103,8 +103,8 @@ The diagnostic now runs a repeating four-car race/update loop after the title.
 During live racing, each painter records its touched row interval in a fixed
 list. Overlapping intervals are merged and only those full-width spans are
 passed to Kalms; no shadow framebuffer or 200-row flag array is used. The
-200-frame BASIC gate converts 3,418 row-widths rather than 40,000 while
-retaining the exact prior display checksum.
+200-frame BASIC gate converts 3,572 row-widths rather than 40,000 while its
+logical and displayed checksums remain covered by the strict gate.
 Its pre-race sequence displays the four original `lahto*.@I` start-light
 frames at `(164,31)` using the cadence measured from the DOS capture, then
 restores the underlying course before cars move.
@@ -112,8 +112,8 @@ The same loader and runtime also run the original `BASICTRK.SS` editor/template
 course: all 262 scene objects and 25 navigation regions are consumed, and its
 zero-valued optional speed hints fall back to the normal cruise speed.  The
 strict alternate-track gate proves all four cars advance through multiple
-regions, produce skidmarks, and avoid spurious boundary contacts for 200
-frames on the 2 MiB A1200 configuration.
+regions, produce the original short-lived dust/smoke sprites, and avoid
+spurious boundary contacts for 200 frames on the 2 MiB A1200 configuration.
 Its HUD timer decodes `pieni.@f` directly from the original archive: the font's
 character map, variable widths, fixed five-pixel glyph height, and raw bitmap
 payload are consumed without converted or captured assets. The six-entry loop
