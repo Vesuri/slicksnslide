@@ -253,6 +253,38 @@ static unsigned char ai_controls(const struct SlicksRaceRuntime *race,
     return controls;
 }
 
+static unsigned char material_at(const struct SlicksRaceRuntime *race,
+                                 short x, short y)
+{
+    if (x < 0 || x >= SLICKS_SCREEN_WIDTH ||
+        y < 0 || y >= SLICKS_TRACK_HEIGHT)
+        return 31;
+    return race->material_map[(unsigned long)y * SLICKS_SCREEN_WIDTH + x];
+}
+
+static int material_is_driveable(unsigned char material)
+{
+    /* The original collision reader returns palette_index >> 3.  BASIC.SS
+     * uses 0 for tarmac, 14/15 for dirt, 20/21 for grass and 27 for the
+     * bridge deck.  Codes 2/3/6 are start-line markings, 12 alternates with
+     * zero across the bridge texture, and 22 occurs beneath the starting
+     * grid. Other classes are scenery or raised track boundaries.
+     * Surface-specific friction is applied separately as its .omi triplets
+     * are recovered. */
+    return material == 0 || material == 2 || material == 3 ||
+           material == 6 || material == 12 ||
+           material == 14 || material == 15 || material == 20 ||
+           material == 21 || material == 22 || material == 27;
+}
+
+static int position_touches_solid(const struct SlicksRaceRuntime *race,
+                                  long car_x, long car_y)
+{
+    short x = (short)(car_x / 100);
+    short y = (short)(car_y / 100);
+    return !material_is_driveable(material_at(race, x, y));
+}
+
 static void advance_waypoint(struct SlicksRaceRuntime *race,
                              struct SlicksRaceCar *car)
 {
@@ -308,6 +340,8 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     unsigned char turning = controls & (SLICKS_CONTROL_LEFT |
                                         SLICKS_CONTROL_RIGHT);
     unsigned short direction;
+    long previous_x = car->x;
+    long previous_y = car->y;
 
     if ((controls & SLICKS_CONTROL_ACCELERATE) && car->speed < 150) {
         unsigned short acceleration =
@@ -336,6 +370,30 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
     car->x += (long)direction_x[direction] * car->speed / 100;
     car->y += (long)direction_y[direction] * car->speed / 100;
+    if (position_touches_solid(race, car->x, car->y)) {
+        long proposed_x = car->x;
+        long proposed_y = car->y;
+        if (!position_touches_solid(race, proposed_x, previous_y)) {
+            car->y = previous_y;
+            car->speed = car->speed * 3 / 4;
+        } else if (!position_touches_solid(race, previous_x, proposed_y)) {
+            car->x = previous_x;
+            car->speed = car->speed * 3 / 4;
+        } else {
+            car->x = previous_x;
+            car->y = previous_y;
+            car->speed /= 2;
+            if ((car_index + race->frame_count) & 1)
+                car->heading += SLICKS_HEADING_FULL / 8;
+            else
+                car->heading -= SLICKS_HEADING_FULL / 8;
+        }
+        ++race->track_collision_count;
+    }
+    while (car->heading < 0)
+        car->heading += SLICKS_HEADING_FULL;
+    while (car->heading >= SLICKS_HEADING_FULL)
+        car->heading -= SLICKS_HEADING_FULL;
     if (turning && car->speed > 65 && !(race->frame_count & 1))
         leave_skidmark(race, logical, car);
     car->elapsed_centiseconds += 2;
@@ -514,6 +572,12 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
     properties->acceleration = resource[4];
     properties->steering = resource[6];
     properties->collision_weight = resource[22];
+    for (at = 0; at < SLICKS_SURFACE_GROUP_COUNT; ++at) {
+        unsigned short source_at = 7 + at * 3;
+        properties->surface[at][0] = resource[source_at];
+        properties->surface[at][1] = resource[source_at + 2];
+        properties->surface[at][2] = resource[source_at + 1];
+    }
     if (!properties->acceleration || !properties->steering ||
         !properties->collision_weight)
         return -1;
@@ -564,10 +628,16 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
 {
     unsigned short car;
     unsigned short direction;
+    unsigned short x;
+    unsigned short y;
     if (!race || !logical || !chunky || !race->navigation.zone_count ||
         !race->font.ready)
         return -1;
     race->chunky = chunky;
+    for (y = 0; y < SLICKS_TRACK_HEIGHT; ++y)
+        for (x = 0; x < SLICKS_SCREEN_WIDTH; ++x)
+            race->material_map[(unsigned long)y * SLICKS_SCREEN_WIDTH + x] =
+                read_pixel(logical, x, y) >> 3;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if (!race->properties[car].ready)
             return -1;

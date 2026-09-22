@@ -29,6 +29,7 @@ volatile unsigned long g_slicks_diag_display_checksum;
 volatile unsigned long g_slicks_diag_race_frame;
 volatile unsigned long g_slicks_diag_skidmarks;
 volatile unsigned long g_slicks_diag_collisions;
+volatile unsigned long g_slicks_diag_track_collisions;
 volatile unsigned char g_slicks_diag_countdown_stage;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
@@ -39,6 +40,7 @@ volatile unsigned char g_slicks_diag_waypoint[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char *g_slicks_diag_logical;
+volatile unsigned long g_slicks_diag_target_frame = 200;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
@@ -300,6 +302,7 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
     g_slicks_diag_race_frame = race->frame_count;
     g_slicks_diag_skidmarks = race->skidmark_count;
     g_slicks_diag_collisions = race->collision_count;
+    g_slicks_diag_track_collisions = race->track_collision_count;
     g_slicks_diag_countdown_stage = race->countdown_stage;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         g_slicks_diag_car_x[car] = race->cars[car].x;
@@ -419,7 +422,10 @@ int main(int argc, char **argv)
     g_slicks_diag_ready = 1;
     slicks_diag_frame_ready();
 
-    (void)argv;
+    /* The no-stdlib Amiga entry passes the CLI byte count in d0 and its raw
+     * argument string in a0, rather than constructing a Unix argv array. */
+    if (argc > 0 && ((const char *)argv)[0] == 'L')
+        g_slicks_diag_target_frame = 700;
     if (argc > 1 &&
         enter_basic_race(screen, palette, logical, chunky, mode_state,
                          race) != 0)
@@ -464,7 +470,7 @@ int main(int argc, char **argv)
             slicks_race_step(race, logical);
             slicks_chunky_to_amiga(chunky, screen->RastPort.BitMap);
             update_race_diagnostics(race);
-            if (race->frame_count == 200) {
+            if (race->frame_count == g_slicks_diag_target_frame) {
                 g_slicks_diag_checksum = checksum_planes(logical);
                 g_slicks_diag_display_checksum =
                     checksum_bitmap(screen->RastPort.BitMap);

@@ -14,7 +14,9 @@ SETPATCH="${SETPATCH:-../tmp/SetPatch}"
 
 RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
+if [ "${SLICKS_LAP_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LAP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"
 else
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"

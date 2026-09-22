@@ -9,6 +9,8 @@
 #define SLICKS_CAR_PROPERTY_SIZE 34
 #define SLICKS_FONT_GLYPH_MAX 195
 #define SLICKS_FONT_PIXEL_MAX 1600
+#define SLICKS_TRACK_MATERIAL_SIZE (320U * 190U)
+#define SLICKS_SURFACE_GROUP_COUNT 5
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -30,6 +32,7 @@ struct SlicksCarProperties {
     unsigned char acceleration;
     unsigned char steering;
     unsigned char collision_weight;
+    unsigned char surface[SLICKS_SURFACE_GROUP_COUNT][3];
     unsigned char ready;
 };
 
@@ -71,9 +74,11 @@ struct SlicksRaceRuntime {
     struct SlicksCarProperties properties[SLICKS_RACE_CAR_COUNT];
     struct SlicksRaceFont font;
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
+    unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned long frame_count;
     unsigned long skidmark_count;
     unsigned long collision_count;
+    unsigned long track_collision_count;
     short countdown_ticks;
     unsigned char countdown_stage;
     unsigned char racing;

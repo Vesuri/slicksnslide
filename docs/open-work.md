@@ -25,6 +25,12 @@
    separate compact font remains a visual-fidelity item. The live display path
    mirrors changed pixels into chunky storage and calls Kalms directly each
    frame, removing its former redundant full-screen VGA deinterleave.
+   An immutable material map now preserves the original five-bit track classes
+   beneath cars and skidmarks. Native boundary response slides or deflects a
+   car instead of letting it pass through scenery, while retaining the five
+   three-value `.omi` surface groups for exact friction recovery. A separate
+   strict 700-frame gate proves a complete checkpoint wrap, lap 2, lap-time
+   rollover, and continued motion after hundreds of boundary contacts.
 2. Convert the recovered contracts for all 12 live-named VGA functions into a
    native 68020 graphics ABI and differential test corpus. The plane-selected
    pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;
