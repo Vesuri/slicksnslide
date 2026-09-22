@@ -130,7 +130,7 @@
 +	state.drive_branch = mem_readb(SegPhys(ss) + reg_bp - 0x5e + car);
 +	for (uint8_t i = 0; i < 7; ++i)
 +		state.drive_properties[i] = static_cast<int16_t>(
-+		        mem_readw(data + 0x6ae0 + car * 0x0e + i * 2));
++		        mem_readw(data + 0x6ae2 + car * 0x0e + i * 2));
 +	for (uint8_t i = 0; i < 10; ++i)
 +		state.q15[i] = static_cast<int16_t>(
 +		        mem_readw(data + 0x53d6 + car * 2 + i * 8));

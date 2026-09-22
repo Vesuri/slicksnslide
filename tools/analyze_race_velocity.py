@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import struct
 import sys
 from collections import Counter
 from pathlib import Path
@@ -39,9 +40,26 @@ def scalar(state: bytes) -> int:
     return int.from_bytes(state[0x10:0x14], "little", signed=True)
 
 
+def interpolated_coefficients(data: bytes, car: int) -> tuple[int, ...]:
+    indexes = struct.unpack_from("<7b", data, 0x1175)
+    table = struct.unpack_from("<42h", data, 0x117C)
+    inputs = struct.unpack_from("<13h", data, 0x6A7A + car * 26)
+    result = []
+    for coefficient, source_index in enumerate(indexes):
+        source = inputs[source_index]
+        quotient = div0(source, 4)
+        remainder = source - quotient * 4
+        base = coefficient * 6 + quotient
+        result.append(
+            div0(table[base] * (4 - remainder) +
+                 table[base + 1] * remainder, 4)
+        )
+    return tuple(result)
+
+
 def force_expression(row: dict[str, str], direction: int, constant: int) -> int:
     state = bytes.fromhex(row["car_state_hex"])
-    value = mul32(int(row["drive4"]), int(row["drive1"]))
+    value = mul32(int(row["drive3"]), int(row["drive0"]))
     value = mul32(value, div0(word(state, 0x20), 70) + 10)
     value = mul32(value, constant)
     value = mul32(value, direction)
@@ -50,7 +68,7 @@ def force_expression(row: dict[str, str], direction: int, constant: int) -> int:
 
 def force_operands(row: dict[str, str], direction: int, constant: int) -> tuple[int, int]:
     state = bytes.fromhex(row["car_state_hex"])
-    divisor = mul32(int(row["drive4"]), int(row["drive1"]))
+    divisor = mul32(int(row["drive3"]), int(row["drive0"]))
     divisor = mul32(divisor, div0(word(state, 0x20), 70) + 10)
     divisor = mul32(divisor, constant)
     drive_scalar = scalar(state)
@@ -76,15 +94,29 @@ def main() -> int:
     force_division_mismatches = 0
     force_operand_matches = 0
     force_operand_mismatches = 0
+    brake_matches = 0
+    brake_mismatches = 0
     for row in rows:
         car = int(row["car"])
         old = previous.get(car)
         previous[car] = row
         if old is None or old["sample"] == row["sample"]:
             continue
+        if int(row["brake"]) and not int(row["contact"]):
+            state = bytes.fromhex(row["car_state_hex"])
+            expected_x = s32(mul32(int(old["velocity_x"]),
+                                   int(row["q15_8"]))) >> 15
+            expected_y = s32(mul32(int(old["velocity_y"]),
+                                   int(row["q15_8"]))) >> 15
+            if (expected_x == int(row["velocity_before_x"]) and
+                    expected_y == int(row["velocity_before_y"]) and
+                    scalar(state) == 0):
+                brake_matches += 1
+            else:
+                brake_mismatches += 1
         branch = int(row["drive_branch"])
         q15 = int(row["q15_4"] if branch else row["q15_3"])
-        divisor = 0x8000 + int(row["drive2"])
+        divisor = 0x8000 + int(row["drive1"])
         constant = 23 if branch else 38
         heading = int(row["heading"]) % 0x4B00
         direction = heading // 0x4B0
@@ -143,6 +175,20 @@ def main() -> int:
     print(f"force division mismatches: {force_division_mismatches}")
     print(f"force operand matches: {force_operand_matches}")
     print(f"force operand mismatches: {force_operand_mismatches}")
+    print(f"ordinary brake transitions: {brake_matches}")
+    print(f"ordinary brake mismatches: {brake_mismatches}")
+    data_path = path.with_name("slicks-race-data.bin")
+    coefficient_mismatches = 0
+    if data_path.exists():
+        data = data_path.read_bytes()
+        first_by_car = {int(row["car"]): row for row in rows[:4]}
+        for car in range(4):
+            expected = interpolated_coefficients(data, car)
+            observed = tuple(int(first_by_car[car][f"drive{i}"])
+                             for i in range(7))
+            coefficient_mismatches += expected != observed
+        print("coefficient interpolation matches: "
+              f"{4 - coefficient_mismatches}/4")
     for name, count in matches.most_common():
         print(f"{name}: {count}")
     for (branch, name), count in sorted(branch_matches.items()):
@@ -151,6 +197,8 @@ def main() -> int:
         closed_mismatches != 0
         or force_division_mismatches != 0
         or force_operand_mismatches != 0
+        or brake_mismatches != 0
+        or coefficient_mismatches != 0
     )
 
 

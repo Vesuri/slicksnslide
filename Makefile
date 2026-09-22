@@ -80,7 +80,7 @@ reference-trace: prepare-fixed-reference
 		$(abspath $(DOSBOX_X_TRACE)) \
 		-conf $(ABS_ROOT)/reference/dosbox-x-286.conf \
 		-set "cpu cycles=12000" -set "log logfile=basic-trace.log" \
-		-nogui -nomenu -silent -fastlaunch -time-limit 36 \
+		-nogui -nomenu -silent -fastlaunch -time-limit 75 \
 		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
 		-c "autotype -w 15 -p 0.2 down enter , enter , enter , esc , up enter" \
 		-c "dx-capture /v /-a /-d slicks.exe"

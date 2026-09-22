@@ -683,9 +683,13 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->speed_fixed = car->speed_fixed * coast_factor / 0x8000L;
     }
     if (controls & SLICKS_CONTROL_BRAKE) {
-        car->speed_fixed -= 0x21L * properties->top_speed;
-        if (car->speed_fixed < 0)
-            car->speed_fixed = 0;
+        /* The ordinary 2000:05b2 brake path first damps both velocity
+         * components with Q15 factor 8, once per normal time quantum, and
+         * then clears the longitudinal drive scalar. */
+        long brake_factor = 0x7db5L - car->drive_bias;
+        car->velocity_x = car->velocity_x * brake_factor >> 15;
+        car->velocity_y = car->velocity_y * brake_factor >> 15;
+        car->speed_fixed = 0;
     }
     car->speed = (short)(car->speed_fixed / 100L);
 
@@ -715,8 +719,8 @@ static void update_car(struct SlicksRaceRuntime *race,
      * The paired DOS hooks prove every operand and result across 27,030
      * component updates.  The 23 branch is coasting; longitudinal input uses
      * 38.  Integer division truncates toward zero, as the 286 helper does. */
-    force_divisor = (long)car->drive_coefficients[4] *
-        car->drive_coefficients[1];
+    force_divisor = (long)car->drive_coefficients[3] *
+        car->drive_coefficients[0];
     force_divisor *= car->tyre_load / 70 + 10;
     force_divisor *= active_drive ? 38L : 23L;
     force_x = (long)direction_x[direction] * car->speed_fixed * 200L /
@@ -725,7 +729,7 @@ static void update_car(struct SlicksRaceRuntime *race,
         force_divisor;
     velocity_factor = (short)((active_drive ? 0x7dc2L : 0x7bd7L) -
                               car->drive_bias);
-    velocity_divisor = 0x8000L + car->drive_coefficients[2];
+    velocity_divisor = 0x8000L + car->drive_coefficients[1];
     car->velocity_x = force_x +
         car->velocity_x * velocity_factor / velocity_divisor;
     car->velocity_y = force_y +
@@ -1152,7 +1156,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         0, -8, 0, 0
     };
     static const short default_drive_coefficients[7] = {
-        104, 103, 18, 100, 99, 100, 100
+        103, 18, 100, 99, 100, 100, 104
     };
     unsigned short car;
     unsigned short direction;
@@ -1212,8 +1216,6 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         for (direction = 0; direction < 7; ++direction)
             state->drive_coefficients[direction] =
                 default_drive_coefficients[direction];
-        if (!car)
-            state->drive_coefficients[0] = 0;
         state->tyre_load = 0;
         state->maximum_speed = 100;
         state->ai_last_x = state->x;

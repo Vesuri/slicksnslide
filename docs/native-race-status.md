@@ -15,7 +15,8 @@ from the original files at run time.
   block uses the recovered signed 32-bit numerator, four-factor divisor,
   branch-specific Q15 velocity decay, and `velocity / 20` position step.
   Coasting first applies its recovered per-driver Q15 multiplier to the drive
-  scalar.
+  scalar. Ordinary braking applies the recovered Q15 factor 8 to both velocity
+  components and clears that scalar before the active-force update.
   Steering now preserves the original four-stage signed integer recurrence,
   including the traced human/AI input strengths and per-driver scales; the
   semantic trace proves 9,329 literal heading transitions.
@@ -53,8 +54,9 @@ The implementation is playable and complete as a race loop, but these details
 still require instruction-level recovery before calling the simulation
 bit-exact:
 
-- the dynamic interpolation of all seven tyre coefficients, exact braking,
-  the special car-state path, and the remaining `.omi` property semantics;
+- non-default setup values for the recovered seven-coefficient interpolation,
+  the contact/reverse brake branches, the special car-state path, and the
+  remaining `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
 - the complete DOS boundary-contact resolver and secondary car-contact state;
@@ -70,8 +72,8 @@ the force hooks now also preserve both signed division operands and results.
 Across 27,030 traced X/Y updates, `tools/analyze_race_velocity.py` proves the
 closed recurrence with no mismatches: the force numerator is the low 32 bits
 of `direction * drive_scalar * 200`; its divisor is the low 32 bits of
-`drive4 * drive1 * (state20 / 70 + 10) * (23 or 38)`; and the previous
-velocity is decayed by branch Q15 factor 4 or 3 over `32768 + drive2` before
+`drive3 * drive0 * (state20 / 70 + 10) * (23 or 38)`; and the previous
+velocity is decayed by branch Q15 factor 4 or 3 over `32768 + drive1` before
 the force is added. The coast branch first applies Q15 factor 5 to the drive
 scalar. The native runtime now uses this recovered normal-state block; dynamic
-coefficient interpolation, braking, and the special state remain to recover.
+setup choices, contact/reverse braking, and the special state remain to recover.
