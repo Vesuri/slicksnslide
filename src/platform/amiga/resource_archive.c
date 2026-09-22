@@ -1,7 +1,9 @@
 #include "resource_archive.h"
 
+#include <exec/memory.h>
 #include <dos/dos.h>
 #include <proto/dos.h>
+#include <proto/exec.h>
 
 static int resource_name_matches(const unsigned char *field, const char *name)
 {
@@ -26,8 +28,10 @@ int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
                                  const char *path)
 {
     unsigned char header[5];
+    unsigned long directory_size;
     archive->file = Open((CONST_STRPTR)path, MODE_OLDFILE);
     archive->count = 0;
+    archive->directory = 0;
     if (!archive->file)
         return -1;
     if (Read(archive->file, header, sizeof(header)) != sizeof(header) ||
@@ -36,41 +40,59 @@ int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
         return -1;
     }
     archive->count = ((unsigned short)header[3] << 8) | header[4];
-    return archive->count ? 0 : -1;
+    if (!archive->count) {
+        slicks_resource_archive_close(archive);
+        return -1;
+    }
+    directory_size = (unsigned long)archive->count * 19UL;
+    archive->directory = (unsigned char *)AllocMem(directory_size, MEMF_ANY);
+    if (!archive->directory ||
+        Read(archive->file, archive->directory, (LONG)directory_size) !=
+            (LONG)directory_size) {
+        slicks_resource_archive_close(archive);
+        return -1;
+    }
+    return 0;
 }
 
 void slicks_resource_archive_close(struct SlicksResourceArchive *archive)
 {
+    if (archive->directory)
+        FreeMem(archive->directory, (unsigned long)archive->count * 19UL);
     if (archive->file)
         Close(archive->file);
     archive->file = 0;
     archive->count = 0;
+    archive->directory = 0;
 }
 
 long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
                                   const char *name, void *destination,
                                   unsigned long capacity)
 {
-    unsigned char entry[19];
-    unsigned char next_entry[19];
     unsigned short index;
 
-    if (!archive->file || Seek(archive->file, 5, OFFSET_BEGINNING) < 0)
+    if (!archive->file || !archive->directory)
         return -1;
     for (index = 0; index < archive->count; ++index) {
+        const unsigned char *entry = archive->directory +
+            (unsigned long)index * 19UL;
+        const unsigned char *next_entry;
         unsigned long start;
         unsigned long end;
         unsigned long size;
-        if (Read(archive->file, entry, sizeof(entry)) != sizeof(entry))
-            return -1;
         if (!resource_name_matches(entry, name))
             continue;
-        if (index + 1 >= archive->count ||
-            Read(archive->file, next_entry, sizeof(next_entry)) !=
-                sizeof(next_entry))
+        if (index + 1 >= archive->count)
             return -1;
+        next_entry = entry + 19;
         start = read_u24_be(entry + 16);
         end = read_u24_be(next_entry + 16);
+        /* Marker entries such as the first duplicate "car9" deliberately
+         * have zero length.  Keep looking for a later data entry of the same
+         * name instead of treating the marker as the requested resource. */
+        if (end == start)
+            continue;
         if (end < start || end - start > capacity)
             return -1;
         size = end - start;

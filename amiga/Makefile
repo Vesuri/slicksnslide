@@ -25,7 +25,7 @@ LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 OBJECTS = obj/slicks_diag.o obj/amiga_platform.o obj/framework_runtime.o \
 	obj/framework_amiga_hardware.o obj/framework_bitmap.o \
 	obj/framework_copper_list.o obj/framework_palette24.o \
-	obj/resource_archive.o obj/track_scene.o \
+	obj/resource_archive.o obj/amiga_audio.o obj/track_scene.o \
 	obj/race_runtime.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
@@ -73,6 +73,10 @@ obj/framework_palette24.o: \
 
 obj/resource_archive.o: $(REPO)/src/platform/amiga/resource_archive.c \
 		$(REPO)/src/platform/amiga/resource_archive.h | obj
+	$(CC) $(CCFLAGS) -c -o $@ $<
+
+obj/amiga_audio.o: $(REPO)/src/platform/amiga/amiga_audio.c \
+		$(REPO)/src/platform/amiga/amiga_audio.h | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/track_scene.o: $(REPO)/src/game/track_scene.c \

@@ -7,6 +7,7 @@
 struct SlicksResourceArchive {
     BPTR file;
     unsigned short count;
+    unsigned char *directory;
 };
 
 int slicks_resource_archive_open(struct SlicksResourceArchive *archive,

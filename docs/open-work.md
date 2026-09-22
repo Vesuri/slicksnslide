@@ -1,5 +1,9 @@
 # Open work
 
+The current native race implementation and its remaining instruction-level
+fidelity gaps are summarized in [native-race-status.md](native-race-status.md).
+The historical detail below records how the port reached that state.
+
 1. Extend the live `BASIC.SS` race from its first complete native update loop.
    Four persistent cars now decode their original directional archive sprites,
    initialize from the track start pose, steer through the track's original

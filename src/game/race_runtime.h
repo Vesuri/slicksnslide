@@ -4,6 +4,7 @@
 #include "track_scene.h"
 
 #define SLICKS_RACE_CAR_COUNT 4
+#define SLICKS_VEHICLE_COUNT 10
 #define SLICKS_CAR_BASE_DIRECTIONS 4
 #define SLICKS_CAR_PIXEL_MAX 100
 #define SLICKS_CAR_PROPERTY_SIZE 34
@@ -35,10 +36,22 @@ struct SlicksCarProperties {
     unsigned char body_radius_x;
     unsigned char body_radius_y;
     unsigned char collision_radius;
-    unsigned char acceleration;
+    unsigned char model_class;
+    unsigned char top_speed;
+    unsigned char drive_response;
     unsigned char steering;
     unsigned char collision_weight;
-    unsigned char surface[SLICKS_SURFACE_GROUP_COUNT][3];
+    signed char surface[SLICKS_SURFACE_GROUP_COUNT][3];
+    short balance_bias;
+    unsigned char effect_profile;
+    signed char engine_sound;
+    unsigned char collision_sound;
+    unsigned char surface_sound;
+    unsigned char smoke_profile;
+    unsigned char engine_volume;
+    signed char auxiliary_accumulator;
+    unsigned char ai_speed;
+    unsigned char ai_aggression;
     unsigned char ready;
 };
 
@@ -65,6 +78,11 @@ struct SlicksDirtyRows {
 struct SlicksRaceCar {
     long x;
     long y;
+    long speed_fixed;
+    long velocity_x;
+    long velocity_y;
+    long ai_last_x;
+    long ai_last_y;
     short heading;
     short speed;
     unsigned short elapsed_centiseconds;
@@ -73,8 +91,19 @@ struct SlicksRaceCar {
     unsigned short best_lap_centiseconds;
     unsigned short acceleration_remainder;
     unsigned short lap;
+    unsigned short finish_time_centiseconds;
+    unsigned short ai_stuck_ticks;
+    unsigned short ai_recovery_ticks;
     unsigned char waypoint;
+    unsigned char vehicle;
     unsigned char style;
+    unsigned char steering_amount;
+    unsigned char ai_recovery_right;
+    unsigned char ai_probe_counter;
+    unsigned char finished;
+    unsigned char finish_position;
+    unsigned char surface_group;
+    unsigned char touching_solid;
     unsigned char old_x;
     unsigned char old_y;
     unsigned char old_width;
@@ -98,8 +127,8 @@ struct SlicksTrailParticle {
 struct SlicksRaceRuntime {
     struct SlicksTrackNavigation navigation;
     struct SlicksCarSprite
-        sprites[SLICKS_RACE_CAR_COUNT][SLICKS_CAR_BASE_DIRECTIONS];
-    struct SlicksCarProperties properties[SLICKS_RACE_CAR_COUNT];
+        sprites[SLICKS_VEHICLE_COUNT][SLICKS_CAR_BASE_DIRECTIONS];
+    struct SlicksCarProperties properties[SLICKS_VEHICLE_COUNT];
     struct SlicksRaceFont font;
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     struct SlicksCarSprite trail_sprites[SLICKS_TRAIL_SPRITE_COUNT];
@@ -122,18 +151,23 @@ struct SlicksRaceRuntime {
     unsigned char start_light_stage_mask;
     unsigned char dirty_row_count;
     unsigned char trail_particle_count;
+    unsigned char laps_to_run;
+    unsigned char finished_count;
+    unsigned char race_complete;
+    unsigned char results_drawn;
+    unsigned char active_collision_pairs;
     unsigned char started;
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,
                             const struct SlicksTrackNavigation *navigation);
 int slicks_race_add_car_sprite(struct SlicksRaceRuntime *race,
-                               unsigned short car,
+                               unsigned short vehicle,
                                unsigned short base_direction,
                                const unsigned char *resource,
                                unsigned long resource_size);
 int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
-                                   unsigned short car,
+                                   unsigned short vehicle,
                                    const unsigned char *resource,
                                    unsigned long resource_size);
 int slicks_race_add_font(struct SlicksRaceRuntime *race,
@@ -152,6 +186,10 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
 void slicks_race_set_controls(struct SlicksRaceRuntime *race,
                               unsigned char controls,
                               unsigned char human_control);
+void slicks_race_set_vehicle(struct SlicksRaceRuntime *race,
+                            unsigned short car, unsigned short vehicle);
+void slicks_race_set_laps(struct SlicksRaceRuntime *race,
+                         unsigned short laps);
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical);
 void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race);
 

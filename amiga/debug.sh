@@ -16,6 +16,8 @@ RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
 if [ "${SLICKS_RESTORE_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag EXIT\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_RESULTS_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag RESULTS\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_TRACK_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACK\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_LAP_RACE:-0}" = 1 ]; then

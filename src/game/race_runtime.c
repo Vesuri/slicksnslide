@@ -277,7 +277,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     unsigned char base_direction = direction & 3;
     unsigned char rotation = direction >> 2;
     const struct SlicksCarSprite *sprite =
-        &race->sprites[car_index][base_direction];
+        &race->sprites[car->vehicle][base_direction];
     unsigned char width;
     unsigned char height;
     unsigned short x;
@@ -346,9 +346,40 @@ static short heading_difference(short target, short current)
     return difference;
 }
 
-static unsigned char ai_controls(const struct SlicksRaceRuntime *race,
-                                 const struct SlicksRaceCar *car)
+static long absolute_long(long value);
+
+static unsigned char predicted_car_contact(struct SlicksRaceRuntime *race,
+                                           unsigned short car_index)
 {
+    struct SlicksRaceCar *car = &race->cars[car_index];
+    unsigned short direction;
+    unsigned short step;
+    long x;
+    long y;
+    if (++car->ai_probe_counter <= 10)
+        return 0;
+    car->ai_probe_counter = 0;
+    direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
+    x = car->x;
+    y = car->y;
+    for (step = 0; step < 12; ++step) {
+        unsigned short other;
+        x += (long)direction_x[direction] * 3L;
+        y += (long)direction_y[direction] * 3L;
+        for (other = 0; other < SLICKS_RACE_CAR_COUNT; ++other) {
+            if (other != car_index &&
+                absolute_long(x - race->cars[other].x) < 700L &&
+                absolute_long(y - race->cars[other].y) < 700L)
+                return (unsigned char)(other + 1);
+        }
+    }
+    return 0;
+}
+
+static unsigned char ai_controls(struct SlicksRaceRuntime *race,
+                                 unsigned short car_index)
+{
+    struct SlicksRaceCar *car = &race->cars[car_index];
     const struct SlicksTrackZone *zone =
         &race->navigation.zones[car->waypoint];
     long dx = (long)zone->x[2] * 100 - car->x;
@@ -356,21 +387,61 @@ static unsigned char ai_controls(const struct SlicksRaceRuntime *race,
     short target_heading =
         (short)nearest_direction(dx, dy) * SLICKS_HEADING_STEP;
     short difference = heading_difference(target_heading, car->heading);
-    /* Editor/template tracks can provide a complete navigation path while
-     * leaving every optional speed hint at zero.  Treat that as the normal
-     * cruise value used by the original BASIC course, not as an instruction
-     * for computer cars to remain parked on the grid. */
-    short target_speed = (short)(zone->speed ? zone->speed : 40) * 2;
     unsigned char controls = 0;
+    unsigned char contact = predicted_car_contact(race, car_index);
 
-    if (difference < -SLICKS_HEADING_STEP / 3)
+    /* f09d's stationary-position watchdog enters a timed recovery turn.
+     * Keep the recovered 150/40 tick cadence; the original random side is
+     * made deterministic from frame and racer so diagnostics remain stable. */
+    if (car->x / 100 == car->ai_last_x / 100 &&
+        car->y / 100 == car->ai_last_y / 100) {
+        if (car->ai_stuck_ticks)
+            --car->ai_stuck_ticks;
+    } else {
+        car->ai_last_x = car->x;
+        car->ai_last_y = car->y;
+        car->ai_stuck_ticks = 150;
+    }
+    if (!car->ai_recovery_ticks && car->ai_stuck_ticks == 0) {
+        car->ai_recovery_ticks = 40;
+        car->ai_recovery_right =
+            (unsigned char)((race->frame_count + car_index) & 1);
+        car->ai_stuck_ticks = 150;
+    }
+    if (car->ai_recovery_ticks) {
+        --car->ai_recovery_ticks;
+        controls = SLICKS_CONTROL_ACCELERATE |
+            (car->ai_recovery_right ? SLICKS_CONTROL_RIGHT :
+                                      SLICKS_CONTROL_LEFT);
+        return controls;
+    }
+
+    if (contact) {
+        const struct SlicksRaceCar *other = &race->cars[contact - 1];
+        short away = heading_difference(car->heading, other->heading);
+        if (away >= 0)
+            difference = -SLICKS_HEADING_STEP * 3;
+        else
+            difference = SLICKS_HEADING_STEP * 3;
+    }
+
+    if (difference < 0)
         controls |= SLICKS_CONTROL_LEFT;
-    if (difference > SLICKS_HEADING_STEP / 3)
+    if (difference > 0)
         controls |= SLICKS_CONTROL_RIGHT;
-    if (car->speed < target_speed)
+    if (!contact) {
+        /* e204 unconditionally restores throttle when its avoidance angle is
+         * zero, even while the route-heading correction is steering. */
         controls |= SLICKS_CONTROL_ACCELERATE;
-    if (car->speed > target_speed + 12)
-        controls |= SLICKS_CONTROL_BRAKE;
+        controls &= (unsigned char)~SLICKS_CONTROL_BRAKE;
+    } else if (difference >= -SLICKS_HEADING_STEP &&
+               difference <= SLICKS_HEADING_STEP) {
+        controls |= SLICKS_CONTROL_ACCELERATE;
+    } else if (difference < -5 * SLICKS_HEADING_STEP ||
+               difference > 5 * SLICKS_HEADING_STEP) {
+        if (car->speed_fixed >= 700L)
+            controls |= SLICKS_CONTROL_BRAKE;
+    }
     return controls;
 }
 
@@ -398,12 +469,29 @@ static int material_is_driveable(unsigned char material)
            material == 21 || material == 22 || material == 27;
 }
 
+static unsigned char surface_group_for_material(unsigned char material)
+{
+    if (material == 14 || material == 15)
+        return 3;
+    if (material == 20 || material == 21)
+        return 2;
+    if (material == 27)
+        return 4;
+    return 0;
+}
+
 static int position_touches_solid(const struct SlicksRaceRuntime *race,
+                                  const struct SlicksCarProperties *properties,
                                   long car_x, long car_y)
 {
     short x = (short)(car_x / 100);
     short y = (short)(car_y / 100);
-    return !material_is_driveable(material_at(race, x, y));
+    short rx = properties->body_radius_x;
+    short ry = properties->body_radius_y;
+    return !material_is_driveable(material_at(race, x - rx, y)) ||
+           !material_is_driveable(material_at(race, x + rx, y)) ||
+           !material_is_driveable(material_at(race, x, y - ry)) ||
+           !material_is_driveable(material_at(race, x, y + ry));
 }
 
 static void advance_waypoint(struct SlicksRaceRuntime *race,
@@ -414,9 +502,8 @@ static void advance_waypoint(struct SlicksRaceRuntime *race,
     short x = (short)(car->x / 100);
     short y = (short)(car->y / 100);
 
-    /* Each original ten-byte navigation record contains a rectangular
-     * trigger followed by the point and speed to use while approaching it.
-     * Entering that region selects the following record. */
+    /* f1eb..f277 compares the centre coordinates against the four recovered
+     * navigation arrays before advancing DS:6902. */
     if (x >= (short)zone->x[0] && x <= (short)zone->x[1] &&
         y >= (short)zone->y[0] && y <= (short)zone->y[1]) {
         ++car->waypoint;
@@ -428,6 +515,13 @@ static void advance_waypoint(struct SlicksRaceRuntime *race,
                 car->best_lap_centiseconds = car->last_lap_centiseconds;
             car->current_lap_centiseconds = 0;
             ++car->lap;
+            if (!car->finished && car->lap > race->laps_to_run) {
+                car->finished = 1;
+                car->finish_position = ++race->finished_count;
+                car->finish_time_centiseconds = car->elapsed_centiseconds;
+                if (race->finished_count >= SLICKS_RACE_CAR_COUNT)
+                    race->race_complete = 1;
+            }
         }
     }
 }
@@ -545,29 +639,41 @@ static void update_car(struct SlicksRaceRuntime *race,
 {
     struct SlicksRaceCar *car = &race->cars[car_index];
     const struct SlicksCarProperties *properties =
-        &race->properties[car_index];
+        &race->properties[car->vehicle];
     unsigned char controls =
         car_index == 0 && race->human_control
             ? race->controls
-            : ai_controls(race, car);
+            : ai_controls(race, car_index);
     unsigned char turning = controls & (SLICKS_CONTROL_LEFT |
                                         SLICKS_CONTROL_RIGHT);
     unsigned short direction;
+    short velocity_response;
+    long target_velocity_x;
+    long target_velocity_y;
     long previous_x = car->x;
     long previous_y = car->y;
 
-    if ((controls & SLICKS_CONTROL_ACCELERATE) && car->speed < 150) {
-        unsigned short acceleration =
-            car->acceleration_remainder + properties->acceleration * 2U;
-        car->speed += acceleration / 100U;
-        car->acceleration_remainder = acceleration % 100U;
-        if (car->speed > 150)
-            car->speed = 150;
+    if (car->finished)
+        controls = 0;
+    car->surface_group = surface_group_for_material(
+        material_at(race, (short)(car->x / 100),
+                    (short)(car->y / 100)));
+
+    /* The DOS car state stores speed as a signed 32-bit fixed quantity.
+     * Throttle adds 0xa0 per simulation quantum and .omi byte four supplies
+     * the limit in hundreds; neither value is a C-era tuning estimate. */
+    if ((controls & SLICKS_CONTROL_ACCELERATE) &&
+        car->speed_fixed < (long)properties->top_speed * 100L) {
+        car->speed_fixed += 0xa0L;
+    } else if (car->speed_fixed > 0) {
+        car->speed_fixed -= 2;
     }
-    else if (!(controls & SLICKS_CONTROL_ACCELERATE) && car->speed > 0)
-        --car->speed;
-    if ((controls & SLICKS_CONTROL_BRAKE) && car->speed > 0)
-        car->speed -= car->speed > 3 ? 3 : car->speed;
+    if (controls & SLICKS_CONTROL_BRAKE) {
+        car->speed_fixed -= 0x21L * properties->top_speed;
+        if (car->speed_fixed < 0)
+            car->speed_fixed = 0;
+    }
+    car->speed = (short)(car->speed_fixed / 100L);
 
     if ((controls & SLICKS_CONTROL_LEFT) && car->speed > 5)
         car->heading -=
@@ -581,37 +687,67 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->heading -= SLICKS_HEADING_FULL;
 
     direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
-    car->x += (long)direction_x[direction] * car->speed / 100;
-    car->y += (long)direction_y[direction] * car->speed / 100;
-    if (position_touches_solid(race, car->x, car->y)) {
+    target_velocity_x =
+        (long)direction_x[direction] * car->speed_fixed / 100L;
+    target_velocity_y =
+        (long)direction_y[direction] * car->speed_fixed / 100L;
+    velocity_response = (short)(
+        properties->drive_response *
+        (short)properties->surface[car->surface_group][0] / 100);
+    if (velocity_response < 10)
+        velocity_response = 10;
+    if (velocity_response > 100)
+        velocity_response = 100;
+    car->velocity_x +=
+        (target_velocity_x - car->velocity_x) * velocity_response / 100L;
+    car->velocity_y +=
+        (target_velocity_y - car->velocity_y) * velocity_response / 100L;
+    car->x += car->velocity_x / 100L;
+    car->y += car->velocity_y / 100L;
+    if (position_touches_solid(race, properties, car->x, car->y)) {
         long proposed_x = car->x;
         long proposed_y = car->y;
-        if (!position_touches_solid(race, proposed_x, previous_y)) {
+        if (!position_touches_solid(race, properties,
+                                    proposed_x, previous_y)) {
             car->y = previous_y;
-            car->speed = car->speed * 3 / 4;
-        } else if (!position_touches_solid(race, previous_x, proposed_y)) {
+            car->speed_fixed = car->speed_fixed * 3L / 4L;
+            car->velocity_y = -car->velocity_y / 2L;
+        } else if (!position_touches_solid(race, properties,
+                                           previous_x, proposed_y)) {
             car->x = previous_x;
-            car->speed = car->speed * 3 / 4;
+            car->speed_fixed = car->speed_fixed * 3L / 4L;
+            car->velocity_x = -car->velocity_x / 2L;
         } else {
             car->x = previous_x;
             car->y = previous_y;
-            car->speed /= 2;
+            car->speed_fixed /= 2;
+            car->velocity_x = -car->velocity_x / 2L;
+            car->velocity_y = -car->velocity_y / 2L;
             if ((car_index + race->frame_count) & 1)
                 car->heading += SLICKS_HEADING_FULL / 8;
             else
                 car->heading -= SLICKS_HEADING_FULL / 8;
         }
-        ++race->track_collision_count;
-    }
+        if (!car->touching_solid)
+            ++race->track_collision_count;
+        car->touching_solid = 1;
+    } else
+        car->touching_solid = 0;
+    car->speed = (short)(car->speed_fixed / 100L);
     while (car->heading < 0)
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)
         car->heading -= SLICKS_HEADING_FULL;
     if (turning && car->speed > 65 && !(race->frame_count & 1))
         add_trail_particle(race, car);
-    car->elapsed_centiseconds += 2;
-    car->current_lap_centiseconds += 2;
-    advance_waypoint(race, car);
+    else if ((car->surface_group == 2 || car->surface_group == 3) &&
+             car->speed > 20 && !(race->frame_count & 3))
+        add_trail_particle(race, car);
+    if (!car->finished) {
+        car->elapsed_centiseconds += 2;
+        car->current_lap_centiseconds += 2;
+        advance_waypoint(race, car);
+    }
 }
 
 static long absolute_long(long value)
@@ -622,29 +758,42 @@ static long absolute_long(long value)
 static void resolve_car_collisions(struct SlicksRaceRuntime *race)
 {
     unsigned short first;
+    unsigned char pair_bit = 1;
+    unsigned char next_pairs = 0;
     for (first = 0; first < SLICKS_RACE_CAR_COUNT; ++first) {
         unsigned short second;
         for (second = first + 1; second < SLICKS_RACE_CAR_COUNT; ++second) {
             struct SlicksRaceCar *a = &race->cars[first];
             struct SlicksRaceCar *b = &race->cars[second];
-            const struct SlicksCarProperties *pa = &race->properties[first];
-            const struct SlicksCarProperties *pb = &race->properties[second];
+            const struct SlicksCarProperties *pa =
+                &race->properties[a->vehicle];
+            const struct SlicksCarProperties *pb =
+                &race->properties[b->vehicle];
             long dx = b->x - a->x;
             long dy = b->y - a->y;
             long minimum =
-                (long)(pa->collision_radius + pb->collision_radius) * 45L;
-            long distance_squared = dx * dx + dy * dy;
-            short heading_delta;
-            unsigned short total_weight;
-            unsigned short common_speed;
+                (long)(pa->collision_radius + pb->collision_radius) * 50L;
+            long delta_vx;
+            long delta_vy;
 
-            if (distance_squared >= minimum * minimum)
+            /* Finished entrants no longer participate in the race contact
+             * set; otherwise a stopped winner can permanently blockade the
+             * checkpoint line for the remaining cars. */
+            if (a->finished || b->finished) {
+                pair_bit <<= 1;
                 continue;
+            }
 
-            /* Property 5 supplies the contact extent and property 25 the
-             * weighting in the original resolver.  The exact DOS fixed-point
-             * impulse remains to be transliterated; this native pass already
-             * preserves those recovered inputs and prevents overlap. */
+            /* The DOS resolver performs two extent comparisons, not a radial
+             * distance test. Its impulse then transfers each relative vector
+             * component using the other car's .omi weight divided by this
+             * car's weight. */
+            if (absolute_long(dx) >= minimum || absolute_long(dy) >= minimum) {
+                pair_bit <<= 1;
+                continue;
+            }
+            next_pairs |= pair_bit;
+
             if (absolute_long(dx) >= absolute_long(dy)) {
                 long overlap = minimum - absolute_long(dx);
                 long direction = dx < 0 ? -1 : 1;
@@ -657,24 +806,33 @@ static void resolve_car_collisions(struct SlicksRaceRuntime *race)
                 b->y += direction * (overlap / 2);
             }
 
-            heading_delta = heading_difference(a->heading, b->heading);
-            if (heading_delta < 0)
-                heading_delta = -heading_delta;
-            if (heading_delta > SLICKS_HEADING_FULL / 4) {
-                a->speed /= 3;
-                b->speed /= 3;
-            } else {
-                total_weight =
-                    pa->collision_weight + pb->collision_weight;
-                common_speed =
-                    (a->speed * pa->collision_weight +
-                     b->speed * pb->collision_weight) / total_weight;
-                a->speed = (a->speed + common_speed) / 2;
-                b->speed = (b->speed + common_speed) / 2;
+            if (!(race->active_collision_pairs & pair_bit)) {
+                delta_vx = a->velocity_x - b->velocity_x;
+                delta_vy = a->velocity_y - b->velocity_y;
+                a->velocity_x -= delta_vx * pb->collision_weight /
+                                 pa->collision_weight;
+                a->velocity_y -= delta_vy * pb->collision_weight /
+                                 pa->collision_weight;
+                b->velocity_x += delta_vx * pa->collision_weight /
+                                 pb->collision_weight;
+                b->velocity_y += delta_vy * pa->collision_weight /
+                                 pb->collision_weight;
+                a->speed_fixed =
+                    (absolute_long(a->velocity_x) +
+                     absolute_long(a->velocity_y)) * 55L;
+                b->speed_fixed =
+                    (absolute_long(b->velocity_x) +
+                     absolute_long(b->velocity_y)) * 55L;
+                if (a->speed_fixed > (long)pa->top_speed * 100L)
+                    a->speed_fixed = (long)pa->top_speed * 100L;
+                if (b->speed_fixed > (long)pb->top_speed * 100L)
+                    b->speed_fixed = (long)pb->top_speed * 100L;
+                ++race->collision_count;
             }
-            ++race->collision_count;
+            pair_bit <<= 1;
         }
     }
+    race->active_collision_pairs = next_pairs;
 }
 
 static void clear_timer_strip(struct SlicksRaceRuntime *race,
@@ -732,9 +890,75 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
                             x, 192, ':') + 1;
         x += draw_character(&race->font, logical, race->chunky, x, 192,
                             (unsigned char)('0' + hundredths / 10)) + 1;
-        (void)draw_character(&race->font, logical, race->chunky, x, 192,
-                             (unsigned char)('0' + hundredths % 10));
+        x += draw_character(&race->font, logical, race->chunky, x, 192,
+                            (unsigned char)('0' + hundredths % 10)) + 2;
+        if (race->cars[car].finished) {
+            x += draw_character(&race->font, logical, race->chunky, x, 192,
+                                '#') + 1;
+            (void)draw_character(
+                &race->font, logical, race->chunky, x, 192,
+                (unsigned char)('0' + race->cars[car].finish_position));
+        } else {
+            x += draw_character(
+                &race->font, logical, race->chunky, x, 192,
+                (unsigned char)('0' + race->cars[car].lap)) + 1;
+            x += draw_character(&race->font, logical, race->chunky, x, 192,
+                                '/') + 1;
+            (void)draw_character(
+                &race->font, logical, race->chunky, x, 192,
+                (unsigned char)('0' + race->laps_to_run));
+        }
     }
+}
+
+static void draw_results(struct SlicksRaceRuntime *race,
+                         unsigned char *logical)
+{
+    static const char heading[] = "RESULTS";
+    unsigned short at;
+    unsigned short x;
+    unsigned short y;
+    mark_dirty_rows(race, 68, 133);
+    for (y = 68; y < 133; ++y)
+        for (x = 105; x < 215; ++x)
+            write_pixel(logical, race->chunky, x, y, 0);
+    x = 139;
+    for (at = 0; heading[at]; ++at)
+        x += draw_character(&race->font, logical, race->chunky, x, 73,
+                            (unsigned char)heading[at]) + 1;
+    for (at = 0; at < SLICKS_RACE_CAR_COUNT; ++at) {
+        unsigned short car;
+        unsigned short row = 88 + at * 10;
+        for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+            if (race->cars[car].finish_position == at + 1) {
+                unsigned short time = race->cars[car].finish_time_centiseconds;
+                x = 130;
+                x += draw_character(&race->font, logical, race->chunky, x,
+                                    row, (unsigned char)('1' + at)) + 5;
+                x += draw_character(&race->font, logical, race->chunky, x,
+                                    row, (unsigned char)('1' + car)) + 8;
+                x += draw_character(&race->font, logical, race->chunky, x,
+                                    row,
+                                    (unsigned char)('0' +
+                                        (time / 1000) % 10)) + 1;
+                x += draw_character(&race->font, logical, race->chunky, x,
+                                    row,
+                                    (unsigned char)('0' +
+                                        (time / 100) % 10)) + 1;
+                x += draw_character(&race->font, logical, race->chunky, x,
+                                    row, ':') + 1;
+                x += draw_character(&race->font, logical, race->chunky, x,
+                                    row,
+                                    (unsigned char)('0' +
+                                        (time / 10) % 10)) + 1;
+                (void)draw_character(&race->font, logical, race->chunky, x,
+                                     row,
+                                     (unsigned char)('0' + time % 10));
+                break;
+            }
+        }
+    }
+    race->results_drawn = 1;
 }
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,
@@ -750,29 +974,29 @@ void slicks_race_initialize(struct SlicksRaceRuntime *race,
 }
 
 int slicks_race_add_car_sprite(struct SlicksRaceRuntime *race,
-                               unsigned short car,
+                               unsigned short vehicle,
                                unsigned short base_direction,
                                const unsigned char *resource,
                                unsigned long resource_size)
 {
-    if (!race || car >= SLICKS_RACE_CAR_COUNT ||
+    if (!race || vehicle >= SLICKS_VEHICLE_COUNT ||
         base_direction >= SLICKS_CAR_BASE_DIRECTIONS)
         return -1;
-    return decode_sprite(&race->sprites[car][base_direction], resource,
+    return decode_sprite(&race->sprites[vehicle][base_direction], resource,
                          resource_size);
 }
 
 int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
-                                   unsigned short car,
+                                   unsigned short vehicle,
                                    const unsigned char *resource,
                                    unsigned long resource_size)
 {
     struct SlicksCarProperties *properties;
     unsigned short at;
-    if (!race || !resource || car >= SLICKS_RACE_CAR_COUNT ||
+    if (!race || !resource || vehicle >= SLICKS_VEHICLE_COUNT ||
         resource_size != SLICKS_CAR_PROPERTY_SIZE)
         return -1;
-    properties = &race->properties[car];
+    properties = &race->properties[vehicle];
     for (at = 0; at < SLICKS_CAR_PROPERTY_SIZE; ++at)
         properties->raw[at] = resource[at];
 
@@ -783,16 +1007,28 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
     properties->body_radius_x = resource[0];
     properties->body_radius_y = resource[1];
     properties->collision_radius = resource[2];
-    properties->acceleration = resource[4];
+    properties->model_class = resource[3];
+    properties->top_speed = resource[4];
+    properties->drive_response = resource[5];
     properties->steering = resource[6];
     properties->collision_weight = resource[22];
     for (at = 0; at < SLICKS_SURFACE_GROUP_COUNT; ++at) {
         unsigned short source_at = 7 + at * 3;
-        properties->surface[at][0] = resource[source_at];
-        properties->surface[at][1] = resource[source_at + 2];
-        properties->surface[at][2] = resource[source_at + 1];
+        properties->surface[at][0] = (signed char)resource[source_at];
+        properties->surface[at][1] = (signed char)resource[source_at + 2];
+        properties->surface[at][2] = (signed char)resource[source_at + 1];
     }
-    if (!properties->acceleration || !properties->steering ||
+    properties->balance_bias = (short)((resource[23] - 100) * 2);
+    properties->effect_profile = resource[24];
+    properties->engine_sound = (signed char)resource[25];
+    properties->collision_sound = resource[26];
+    properties->surface_sound = resource[27];
+    properties->smoke_profile = resource[28];
+    properties->engine_volume = resource[29];
+    properties->auxiliary_accumulator = (signed char)resource[31];
+    properties->ai_speed = resource[32];
+    properties->ai_aggression = resource[33];
+    if (!properties->top_speed || !properties->steering ||
         !properties->collision_weight)
         return -1;
     properties->ready = 1;
@@ -875,6 +1111,9 @@ int slicks_race_add_trail_sprite(struct SlicksRaceRuntime *race,
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky)
 {
+    static const unsigned char default_vehicle[SLICKS_RACE_CAR_COUNT] = {
+        5, 2, 0, 0
+    };
     unsigned short car;
     unsigned short direction;
     unsigned short x;
@@ -887,7 +1126,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         for (x = 0; x < SLICKS_SCREEN_WIDTH; ++x)
             race->material_map[(unsigned long)y * SLICKS_SCREEN_WIDTH + x] =
                 read_pixel(logical, x, y) >> 3;
-    for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
+    for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car)
         if (!race->properties[car].ready)
             return -1;
     for (car = 0; car < SLICKS_START_LIGHT_COUNT; ++car)
@@ -896,7 +1135,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     for (car = 0; car < SLICKS_TRAIL_SPRITE_COUNT; ++car)
         if (!race->trail_sprites[car].ready)
             return -1;
-    for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
+    for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car)
         for (direction = 0; direction < SLICKS_CAR_BASE_DIRECTIONS;
              ++direction)
             if (!race->sprites[car][direction].ready)
@@ -904,8 +1143,8 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
 
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         struct SlicksRaceCar *state = &race->cars[car];
-        short lane = (car & 1) ? 4 : -4;
-        short row = (short)(car / 2) * 8;
+        short side = car < 2 ? 426 : -426;
+        short forward = (car == 0 || car == 3) ? -426 : 426;
         unsigned short start_direction;
         state->heading =
             (short)race->navigation.start_heading * 0x78;
@@ -914,15 +1153,20 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         start_direction =
             (unsigned short)state->heading / SLICKS_HEADING_STEP;
         state->x = (long)race->navigation.start_x * 100L +
-            (long)lane * direction_y[start_direction] -
-            (long)row * direction_x[start_direction];
+            (long)side * direction_y[start_direction] / 100L +
+            (long)forward * direction_x[start_direction] / 100L;
         state->y = (long)race->navigation.start_y * 100L -
-            (long)lane * direction_x[start_direction] -
-            (long)row * direction_y[start_direction];
+            (long)side * direction_x[start_direction] / 100L +
+            (long)forward * direction_y[start_direction] / 100L;
         state->style = (unsigned char)car;
+        state->vehicle = default_vehicle[car];
         state->waypoint = 0;
         state->lap = 1;
         state->speed = 0;
+        state->speed_fixed = 0;
+        state->ai_last_x = state->x;
+        state->ai_last_y = state->y;
+        state->ai_stuck_ticks = 150;
         draw_car(race, logical, car);
     }
     draw_timers(race, logical);
@@ -930,6 +1174,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->countdown_ticks = 0x78;
     race->countdown_stage = 0;
     race->racing = 0;
+    race->laps_to_run = 4;
     race->started = 1;
     return 0;
 }
@@ -940,6 +1185,21 @@ void slicks_race_set_controls(struct SlicksRaceRuntime *race,
 {
     race->controls = controls;
     race->human_control = human_control;
+}
+
+void slicks_race_set_vehicle(struct SlicksRaceRuntime *race,
+                            unsigned short car, unsigned short vehicle)
+{
+    if (race && car < SLICKS_RACE_CAR_COUNT &&
+        vehicle < SLICKS_VEHICLE_COUNT)
+        race->cars[car].vehicle = (unsigned char)vehicle;
+}
+
+void slicks_race_set_laps(struct SlicksRaceRuntime *race,
+                         unsigned short laps)
+{
+    if (race)
+        race->laps_to_run = (unsigned char)(laps ? laps : 1);
 }
 
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
@@ -975,6 +1235,8 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     draw_trail_particles(race, logical);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         draw_car(race, logical, car);
+    if (race->race_complete && !race->results_drawn)
+        draw_results(race, logical);
     ++race->frame_count;
 }
 

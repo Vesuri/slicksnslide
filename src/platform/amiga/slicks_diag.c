@@ -10,6 +10,7 @@
 #include "../../game/race_runtime.h"
 #include "../../game/track_scene.h"
 #include "amiga_platform.h"
+#include "amiga_audio.h"
 #include "resource_archive.h"
 
 struct ExecBase *SysBase;
@@ -44,6 +45,13 @@ volatile unsigned char g_slicks_diag_material[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_lap[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_lap_timer[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_waypoint[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_finished[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_finish_position[SLICKS_RACE_CAR_COUNT];
+volatile unsigned char g_slicks_diag_race_complete;
+volatile unsigned char g_slicks_diag_results_drawn;
+volatile unsigned char g_slicks_diag_audio_ready;
+volatile unsigned char g_slicks_diag_engine_started;
+volatile unsigned char g_slicks_diag_music_started;
 volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char *g_slicks_diag_logical;
@@ -60,6 +68,11 @@ __attribute__((noinline)) void slicks_diag_gameplay_ready(void)
 }
 
 __attribute__((noinline)) void slicks_diag_system_restored(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_results_ready(void)
 {
     __asm volatile("" ::: "memory");
 }
@@ -81,6 +94,12 @@ __attribute__((constructor)) static void initialize_sysbase(void)
 extern void slicks_draw_title_pages(unsigned char *planes,
                                     const unsigned char *frame,
                                     const unsigned char *palette);
+extern void slicks_draw_title_menu_selection(unsigned char *planes,
+                                             const unsigned char *palette,
+                                             unsigned short selection);
+extern void slicks_draw_title_text(unsigned char *planes, const char *text,
+                                  unsigned short x, unsigned short y,
+                                  unsigned short colour);
 extern int slicks_prepare_title_frame(const unsigned char *asset,
                                       unsigned char *frame);
 extern unsigned short slicks_dispatch_title_key(unsigned short scan_code);
@@ -112,6 +131,38 @@ static void make_title_surface(unsigned char *planes,
                                const unsigned char *palette)
 {
     slicks_draw_title_pages(planes, frame, palette);
+}
+
+static void clear_title_rectangle(unsigned char *logical,
+                                  unsigned short left, unsigned short top,
+                                  unsigned short right, unsigned short bottom)
+{
+    unsigned short x;
+    unsigned short y;
+    for (y = top; y < bottom; ++y)
+        for (x = left; x < right; ++x)
+            logical[(unsigned long)y * 100UL + (x >> 2) +
+                    (unsigned long)(x & 3) * 65536UL] = 0;
+}
+
+static void redraw_title_configuration(
+    struct SlicksAmigaPlatform *platform, unsigned char *logical,
+    unsigned char *chunky, const unsigned char *palette,
+    unsigned short selection, unsigned short vehicle,
+    unsigned short track, unsigned short laps)
+{
+    char vehicle_text[] = "CAR AUTO 01";
+    char laps_text[] = "LAPS 4";
+    const char *track_text = track ? "TRACK BASICTRK" : "TRACK BASIC";
+    vehicle_text[9] = (char)('0' + (vehicle + 1) / 10);
+    vehicle_text[10] = (char)('0' + (vehicle + 1) % 10);
+    laps_text[5] = (char)('0' + laps);
+    slicks_draw_title_menu_selection(logical, palette, selection);
+    clear_title_rectangle(logical, 105, 164, 235, 191);
+    slicks_draw_title_text(logical, vehicle_text, 160, 166, 15);
+    slicks_draw_title_text(logical, track_text, 160, 174, 15);
+    slicks_draw_title_text(logical, laps_text, 160, 182, 15);
+    slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
 }
 
 static unsigned long checksum_planes(const unsigned char *planes)
@@ -205,7 +256,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
                       const char *track_path,
                       unsigned char *race_palette)
 {
-    struct SlicksResourceArchive archive = {0, 0};
+    struct SlicksResourceArchive archive = {0, 0, 0};
     struct SlicksTrackNavigation *navigation = 0;
     unsigned char *dat = 0;
     unsigned char *track = 0;
@@ -297,7 +348,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             goto cleanup;
         }
     }
-    for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+    for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car) {
         char property_name[11] = "auto00.omi";
         long property_size;
         property_name[5] = (char)('0' + car);
@@ -315,6 +366,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             long car_size;
             name[5] = (char)('0' + car);
             name[9] = (char)('0' + direction);
+            if (car == 9 && direction == 0) {
+                name[0] = 'c'; name[1] = 'a'; name[2] = 'r'; name[3] = '9';
+                name[4] = 0;
+            }
             car_size = slicks_resource_archive_load(
                 &archive, name, car_resource, 128UL);
             if (car_size <= 0 ||
@@ -404,10 +459,16 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
         g_slicks_diag_lap_timer[car] =
             race->cars[car].current_lap_centiseconds;
         g_slicks_diag_waypoint[car] = race->cars[car].waypoint;
+        g_slicks_diag_finished[car] = race->cars[car].finished;
+        g_slicks_diag_finish_position[car] =
+            race->cars[car].finish_position;
         g_slicks_diag_acceleration[car] =
-            race->properties[car].acceleration;
-        g_slicks_diag_steering[car] = race->properties[car].steering;
+            race->properties[race->cars[car].vehicle].top_speed;
+        g_slicks_diag_steering[car] =
+            race->properties[race->cars[car].vehicle].steering;
     }
+    g_slicks_diag_race_complete = race->race_complete;
+    g_slicks_diag_results_drawn = race->results_drawn;
 }
 
 static int update_race_key(struct SlicksRaceRuntime *race,
@@ -436,18 +497,25 @@ int main(int argc, char **argv)
     static unsigned char source_palette[768];
     static unsigned char race_palette[768];
     static unsigned short mode_state[11];
-    struct SlicksResourceArchive archive = {0, 0};
+    struct SlicksResourceArchive archive = {0, 0, 0};
     struct SlicksAmigaPlatform platform = {0};
+    struct SlicksAmigaAudio audio = {0};
     unsigned char *logical = 0;
     unsigned char *chunky = 0;
     unsigned char *title_asset = 0;
     unsigned char *title_frame = 0;
     struct SlicksRaceRuntime *race = 0;
+    unsigned char *sample_resource = 0;
     unsigned long title_checksum = 0;
     unsigned long title_display_checksum = 0;
     unsigned char left_was_down = 0;
     unsigned char auto_race;
     unsigned char restore_test;
+    unsigned char race_prepared = 0;
+    unsigned short menu_selection = 0;
+    unsigned short selected_vehicle = 5;
+    unsigned short selected_track = 0;
+    unsigned short selected_laps = 4;
     const char *track_path;
     int result = 20;
 
@@ -486,15 +554,26 @@ int main(int argc, char **argv)
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
     make_title_surface(logical, title_frame, source_palette);
+    redraw_title_configuration(&platform, logical, chunky, source_palette,
+                               menu_selection, selected_vehicle,
+                               selected_track, selected_laps);
     title_checksum = checksum_planes(logical);
     slicks_convert_to_amiga(logical, chunky, platform.views[0].bitmap);
     if (slicks_amiga_platform_set_view(&platform, 0, source_palette) != 0)
         goto cleanup;
     title_display_checksum = checksum_bitmap(platform.views[0].bitmap);
-    FreeMem(title_frame, 64002UL);
-    title_frame = 0;
-    FreeMem(title_asset, 64003UL);
-    title_asset = 0;
+    sample_resource = (unsigned char *)AllocMem(131691UL, MEMF_ANY);
+    if (!sample_resource ||
+        slicks_resource_archive_load(&archive, "samples.dat", sample_resource,
+                                     131691UL) != 131691L ||
+        slicks_amiga_audio_create(&audio, sample_resource, 131691UL) != 0 ||
+        slicks_resource_archive_load(&archive, "intermed.wav", sample_resource,
+                                     131691UL) != 18852L ||
+        slicks_amiga_audio_add_music(&audio, sample_resource, 18852UL) != 0)
+        goto cleanup;
+    g_slicks_diag_audio_ready = audio.ready;
+    FreeMem(sample_resource, 131691UL);
+    sample_resource = 0;
     slicks_resource_archive_close(&archive);
 
     /* The no-stdlib Amiga entry passes the CLI byte count in d0 and its raw
@@ -504,15 +583,23 @@ int main(int argc, char **argv)
     auto_race = (unsigned char)(argc > 1 && !restore_test);
     if (argc > 0 && ((const char *)argv)[0] == 'L')
         g_slicks_diag_target_frame = 700;
+    if (argc > 0 && ((const char *)argv)[0] == 'R')
+        g_slicks_diag_target_frame = 1800;
     track_path = argc > 0 && ((const char *)argv)[0] == 'T'
                      ? "TRACKS/BASICTRK.SS"
                      : "TRACKS/BASIC.SS";
 
-    /* All DOS reads and allocations finish before the OS display/VERTB
-     * takeover. The prepared race lives in the second hardware bitmap. */
-    if (prepare_race(&platform, logical, chunky, mode_state, race,
-                     track_path, race_palette) != 0)
-        goto cleanup;
+    /* Automated gates prepare before takeover. Interactive play deliberately
+     * waits until GO so the native menu can choose the track, car and laps;
+     * its loader temporarily runs with AmigaOS restored. */
+    if (auto_race) {
+        if (prepare_race(&platform, logical, chunky, mode_state, race,
+                         track_path, race_palette) != 0)
+            goto cleanup;
+        race_prepared = 1;
+        if (argc > 0 && ((const char *)argv)[0] == 'R')
+            slicks_race_set_laps(race, 1);
+    }
 
     g_slicks_diag_checksum = title_checksum;
     g_slicks_diag_display_checksum = title_display_checksum;
@@ -525,8 +612,12 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-    if (auto_race)
+    if (auto_race) {
         enter_prepared_race(&platform, logical, race);
+        slicks_amiga_audio_start_engine(
+            &audio, race->cars[0].vehicle,
+            race->properties[race->cars[0].vehicle].engine_volume);
+    }
 
     for (;;) {
         unsigned short code;
@@ -542,22 +633,95 @@ int main(int argc, char **argv)
         }
         while (slicks_amiga_platform_poll_key(&platform, &code)) {
             if (g_slicks_diag_ingame) {
-                if (!(code & 0x80) && (code & 0x7f) == 0x45) {
-                    result = 0;
-                    goto cleanup;
+                if (!(code & 0x80) &&
+                    ((code & 0x7f) == 0x45 ||
+                     (race->race_complete && (code & 0x7f) == 0x44))) {
+                    slicks_amiga_audio_stop(&audio);
+                    if (slicks_setup_basic_mode(logical, mode_state) != 0)
+                        goto cleanup;
+                    make_title_surface(logical, title_frame, source_palette);
+                    redraw_title_configuration(
+                        &platform, logical, chunky, source_palette,
+                        menu_selection, selected_vehicle, selected_track,
+                        selected_laps);
+                    slicks_amiga_platform_show(&platform, 0);
+                    g_slicks_diag_ingame = 0;
+                    race_prepared = 0;
+                    continue;
                 }
                 (void)update_race_key(race, code);
                 continue;
             }
             {
+                unsigned char pressed = (unsigned char)!(code & 0x80);
+                unsigned short raw = code & 0x7f;
+                unsigned char redraw = 0;
+                if (!pressed)
+                    continue;
+                if (raw == 0x4c) {
+                    menu_selection = (unsigned short)(
+                        menu_selection ? menu_selection - 1 : 5);
+                    redraw = 1;
+                } else if (raw == 0x4d) {
+                    menu_selection = (unsigned short)(
+                        menu_selection < 5 ? menu_selection + 1 : 0);
+                    redraw = 1;
+                } else if (raw == 0x4f || raw == 0x4e) {
+                    int delta = raw == 0x4e ? 1 : -1;
+                    if (menu_selection == 1) {
+                        selected_vehicle = (unsigned short)(
+                            (selected_vehicle + SLICKS_VEHICLE_COUNT + delta) %
+                            SLICKS_VEHICLE_COUNT);
+                        redraw = 1;
+                    } else if (menu_selection == 2) {
+                        selected_track ^= 1;
+                        redraw = 1;
+                    } else if (menu_selection == 3) {
+                        selected_laps = (unsigned short)(
+                            selected_laps + delta);
+                        if (selected_laps < 1)
+                            selected_laps = 9;
+                        if (selected_laps > 9)
+                            selected_laps = 1;
+                        redraw = 1;
+                    }
+                }
+                if (redraw) {
+                    redraw_title_configuration(
+                        &platform, logical, chunky, source_palette,
+                        menu_selection, selected_vehicle, selected_track,
+                        selected_laps);
+                    continue;
+                }
                 unsigned short action = slicks_dispatch_title_key(
                     amiga_raw_to_dos_scan(code));
                 if (action == 1) {
                     result = 0;
                     goto cleanup;
                 }
-                if (action == 2)
+                if (action == 2 && menu_selection == 5) {
+                    result = 0;
+                    goto cleanup;
+                }
+                if (action == 2 && menu_selection == 0) {
+                    g_slicks_diag_ready = 0;
+                    slicks_amiga_platform_end(&platform);
+                    track_path = selected_track ? "TRACKS/BASICTRK.SS" :
+                                                  "TRACKS/BASIC.SS";
+                    if (prepare_race(&platform, logical, chunky, mode_state,
+                                     race, track_path, race_palette) != 0)
+                        goto cleanup;
+                    race_prepared = 1;
+                    slicks_race_set_vehicle(race, 0, selected_vehicle);
+                    slicks_race_set_laps(race, selected_laps);
+                    if (slicks_amiga_platform_begin(&platform, 1) != 0)
+                        goto cleanup;
+                    g_slicks_diag_ready = 1;
                     enter_prepared_race(&platform, logical, race);
+                    slicks_amiga_audio_start_engine(
+                        &audio, race->cars[0].vehicle,
+                        race->properties[race->cars[0].vehicle].engine_volume);
+                }
             }
         }
         left_down = (unsigned char)slicks_amiga_platform_left_mouse();
@@ -567,13 +731,43 @@ int main(int argc, char **argv)
                 result = 0;
                 goto cleanup;
             }
-            if (action == 2)
+            if (action == 2 && menu_selection == 0) {
+                if (!race_prepared) {
+                    g_slicks_diag_ready = 0;
+                    slicks_amiga_platform_end(&platform);
+                    track_path = selected_track ? "TRACKS/BASICTRK.SS" :
+                                                  "TRACKS/BASIC.SS";
+                    if (prepare_race(&platform, logical, chunky, mode_state,
+                                     race, track_path, race_palette) != 0)
+                        goto cleanup;
+                    race_prepared = 1;
+                    slicks_race_set_vehicle(race, 0, selected_vehicle);
+                    slicks_race_set_laps(race, selected_laps);
+                    if (slicks_amiga_platform_begin(&platform, 1) != 0)
+                        goto cleanup;
+                    g_slicks_diag_ready = 1;
+                }
                 enter_prepared_race(&platform, logical, race);
+                slicks_amiga_audio_start_engine(
+                    &audio, race->cars[0].vehicle,
+                    race->properties[race->cars[0].vehicle].engine_volume);
+            }
         }
         left_was_down = left_down;
         if (g_slicks_diag_ingame) {
             unsigned short dirty;
+            unsigned char completed_now = 0;
             slicks_race_step(race, logical);
+            if (race->race_complete && audio.engine_started) {
+                slicks_amiga_audio_stop(&audio);
+                slicks_amiga_audio_start_music(&audio);
+                completed_now = 1;
+            }
+            slicks_amiga_audio_update(
+                &audio, race->cars[0].speed, race->collision_count,
+                race->skidmark_count);
+            g_slicks_diag_engine_started = audio.engine_started;
+            g_slicks_diag_music_started = audio.music_started;
             g_slicks_diag_dirty_ranges = race->dirty_row_count;
             g_slicks_diag_dirty_rows = 0;
             for (dirty = 0; dirty < race->dirty_row_count; ++dirty) {
@@ -587,6 +781,12 @@ int main(int argc, char **argv)
             }
             slicks_race_clear_dirty_rows(race);
             update_race_diagnostics(race);
+            if (completed_now) {
+                g_slicks_diag_checksum = checksum_planes(logical);
+                g_slicks_diag_display_checksum =
+                    checksum_bitmap(platform.views[1].bitmap);
+                slicks_diag_results_ready();
+            }
             if (race->frame_count == g_slicks_diag_target_frame) {
                 g_slicks_diag_checksum = checksum_planes(logical);
                 g_slicks_diag_display_checksum =
@@ -601,6 +801,7 @@ cleanup:
     g_slicks_diag_ready = 0;
     g_slicks_diag_ingame = 0;
     slicks_resource_archive_close(&archive);
+    slicks_amiga_audio_stop(&audio);
     slicks_amiga_platform_end(&platform);
     if (platform.gfx_base) {
         g_slicks_diag_restore_status =
@@ -608,6 +809,9 @@ cleanup:
         slicks_diag_system_restored();
     }
     slicks_amiga_platform_destroy(&platform);
+    slicks_amiga_audio_destroy(&audio);
+    if (sample_resource)
+        FreeMem(sample_resource, 131691UL);
     if (chunky)
         FreeMem(chunky, 320UL * 200UL);
     if (race)
