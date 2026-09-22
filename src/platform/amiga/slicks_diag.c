@@ -33,6 +33,10 @@ volatile unsigned long g_slicks_diag_track_collisions;
 volatile unsigned char g_slicks_diag_countdown_stage;
 volatile unsigned char g_slicks_diag_start_light_visible;
 volatile unsigned char g_slicks_diag_start_light_stage_mask;
+volatile unsigned short g_slicks_diag_dirty_ranges;
+volatile unsigned short g_slicks_diag_dirty_rows;
+volatile unsigned long g_slicks_diag_dirty_c2p_calls;
+volatile unsigned long g_slicks_diag_dirty_c2p_rows;
 volatile unsigned short g_slicks_diag_track_zones;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
@@ -81,8 +85,10 @@ extern int slicks_setup_basic_mode(unsigned char *logical,
 extern void slicks_convert_to_amiga(const unsigned char *logical,
                                     unsigned char *chunky,
                                     struct BitMap *bitmap);
-extern void slicks_chunky_to_amiga(const unsigned char *chunky,
-                                   struct BitMap *bitmap);
+extern void slicks_chunky_rows_to_amiga(const unsigned char *chunky,
+                                        struct BitMap *bitmap,
+                                        unsigned long top,
+                                        unsigned long bottom);
 
 static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
 {
@@ -285,6 +291,7 @@ static int enter_race(struct Screen *screen, unsigned long *palette,
     load_palette(screen, palette, race_palette);
     race_checkpoint(8);
     slicks_convert_to_amiga(logical, chunky, screen->RastPort.BitMap);
+    slicks_race_clear_dirty_rows(race);
     race_checkpoint(9);
     g_slicks_diag_checksum = checksum_planes(logical);
     g_slicks_diag_display_checksum =
@@ -501,8 +508,20 @@ int main(int argc, char **argv)
                 goto cleanup;
         }
         if (g_slicks_diag_ingame) {
+            unsigned short dirty;
             slicks_race_step(race, logical);
-            slicks_chunky_to_amiga(chunky, screen->RastPort.BitMap);
+            g_slicks_diag_dirty_ranges = race->dirty_row_count;
+            g_slicks_diag_dirty_rows = 0;
+            for (dirty = 0; dirty < race->dirty_row_count; ++dirty) {
+                const struct SlicksDirtyRows *rows = &race->dirty_rows[dirty];
+                slicks_chunky_rows_to_amiga(
+                    chunky, screen->RastPort.BitMap,
+                    rows->top, rows->bottom);
+                g_slicks_diag_dirty_rows += rows->bottom - rows->top;
+                g_slicks_diag_dirty_c2p_rows += rows->bottom - rows->top;
+                ++g_slicks_diag_dirty_c2p_calls;
+            }
+            slicks_race_clear_dirty_rows(race);
             update_race_diagnostics(race);
             if (race->frame_count == g_slicks_diag_target_frame) {
                 g_slicks_diag_checksum = checksum_planes(logical);

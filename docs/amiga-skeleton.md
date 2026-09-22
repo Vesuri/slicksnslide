@@ -87,6 +87,11 @@ The strict race gate reports logical checksum `815c70ca` and display checksum
 `024f572b`. No captured DOS frame is linked or loaded.
 
 The diagnostic now runs a repeating four-car race/update loop after the title.
+During live racing, each painter records its touched row interval in a fixed
+list. Overlapping intervals are merged and only those full-width spans are
+passed to Kalms; no shadow framebuffer or 200-row flag array is used. The
+200-frame BASIC gate converts 3,418 row-widths rather than 40,000 while
+retaining the exact prior display checksum.
 Its pre-race sequence displays the four original `lahto*.@I` start-light
 frames at `(164,31)` using the cadence measured from the DOS capture, then
 restores the underlying course before cars move.

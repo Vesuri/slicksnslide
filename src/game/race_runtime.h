@@ -13,6 +13,7 @@
 #define SLICKS_SURFACE_GROUP_COUNT 5
 #define SLICKS_START_LIGHT_COUNT 4
 #define SLICKS_START_LIGHT_PIXEL_COUNT (23U * 38U)
+#define SLICKS_DIRTY_ROW_MAX 16
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -53,6 +54,11 @@ struct SlicksStartLight {
     unsigned char ready;
 };
 
+struct SlicksDirtyRows {
+    unsigned short top;
+    unsigned short bottom;
+};
+
 struct SlicksRaceCar {
     long x;
     long y;
@@ -82,6 +88,7 @@ struct SlicksRaceRuntime {
     struct SlicksRaceFont font;
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
+    struct SlicksDirtyRows dirty_rows[SLICKS_DIRTY_ROW_MAX];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
     unsigned long frame_count;
@@ -96,6 +103,7 @@ struct SlicksRaceRuntime {
     unsigned char human_control;
     unsigned char start_light_visible;
     unsigned char start_light_stage_mask;
+    unsigned char dirty_row_count;
     unsigned char started;
 };
 
@@ -123,5 +131,6 @@ void slicks_race_set_controls(struct SlicksRaceRuntime *race,
                               unsigned char controls,
                               unsigned char human_control);
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical);
+void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race);
 
 #endif

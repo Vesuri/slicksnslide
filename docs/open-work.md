@@ -26,14 +26,18 @@
    path free of a generated-C CPU-context layer. The race timer now decodes and
    draws digits from the original `pieni.@f` archive font; the title renderer's
    separate compact font remains a visual-fidelity item. The live display path
-   mirrors changed pixels into chunky storage and calls Kalms directly each
-   frame, removing its former redundant full-screen VGA deinterleave.
+   mirrors changed pixels into chunky storage and calls Kalms directly. Live
+   painters add half-open row intervals to a fixed 16-entry list; overlapping
+   or touching intervals are unioned, and overflow conservatively collapses to
+   one bounding interval. Unchanged frames skip C2P entirely. The strict
+   200-frame BASIC run converts 3,418 row-widths instead of 40,000, a 91.5%
+   reduction, while preserving both logical and displayed checksums.
    An immutable material map now preserves the original five-bit track classes
    beneath cars and skidmarks. Native boundary response slides or deflects a
    car instead of letting it pass through scenery, while retaining the five
    three-value `.omi` surface groups for exact friction recovery. A separate
    strict 700-frame gate proves a complete checkpoint wrap, lap 2, lap-time
-   rollover, and continued motion after hundreds of boundary contacts.
+   rollover, and continued motion around the course.
    Track loading is no longer fixed to BASIC's 233 objects or nine navigation
    regions. A second strict gate runs the original 262-object `BASICTRK.SS`
    editor/template course with all 25 regions. Its zero speed hints use the

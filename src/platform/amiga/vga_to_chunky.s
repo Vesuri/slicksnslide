@@ -1,6 +1,7 @@
 	section	code,code
 	xdef	slicks_convert_to_amiga
 	xdef	slicks_chunky_to_amiga
+	xdef	slicks_chunky_rows_to_amiga
 	xref	c2p1x1_8_c5_bm
 
 ; Convert the visible 320x200 pixels from the original four-bank VGA
@@ -66,5 +67,27 @@ slicks_chunky_to_amiga:
 	movea.l	48(sp),a0
 	movea.l	52(sp),a1
 	jsr	c2p1x1_8_c5_bm
+	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; Convert one half-open full-width row interval from an already synchronized
+; chunky surface. C ABI arguments are chunky, bitmap, top, bottom; bounds are
+; passed as 32-bit unsigned longs to keep their stack layout unambiguous.
+slicks_chunky_rows_to_amiga:
+	movem.l	d2-d7/a2-a6,-(sp)
+	move.l	56(sp),d3
+	move.l	60(sp),d1
+	sub.w	d3,d1
+	ble.s	.rows_done
+	moveq	#0,d4
+	move.w	d3,d4
+	mulu.w	#320,d4
+	movea.l	48(sp),a0
+	adda.l	d4,a0
+	movea.l	52(sp),a1
+	move.w	#320,d0
+	moveq	#0,d2
+	jsr	c2p1x1_8_c5_bm
+.rows_done:
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

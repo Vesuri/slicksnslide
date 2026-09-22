@@ -7,8 +7,9 @@ cd "$(dirname "$0")"
 trap fsuae_stop_previous EXIT
 
 LOG=.run/diag-lap.log
+EXPECTED='SLICKS_LAP_OK FRAME=700 LAP=2 LTIME=392 TIMER=1218 WAYPOINT=4 TRACKCOLL=0 X=15116 Y=7586 CHECKSUM=3452e985 DISPLAY=b7ead088'
 mkdir -p .run
 SLICKS_AUTO_RACE=1 SLICKS_LAP_RACE=1 \
   ./debug.sh "$KICKSTART" diag_lap.gdb | tee "$LOG"
-grep -Fq 'SLICKS_LAP_OK FRAME=700 ' "$LOG"
-echo "A1200 full-lap gameplay passed"
+grep -Fqx "$EXPECTED" "$LOG"
+echo "A1200 full-lap gameplay passed: $EXPECTED"

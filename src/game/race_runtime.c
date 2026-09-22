@@ -47,6 +47,55 @@ static void write_pixel(unsigned char *logical, unsigned char *chunky,
         chunky[(unsigned long)y * SLICKS_SCREEN_WIDTH + x] = colour;
 }
 
+static void mark_dirty_rows(struct SlicksRaceRuntime *race,
+                            short top, short bottom)
+{
+    struct SlicksDirtyRows rows;
+    unsigned short at;
+    if (top < 0)
+        top = 0;
+    if (bottom > SLICKS_SCREEN_HEIGHT)
+        bottom = SLICKS_SCREEN_HEIGHT;
+    if (top >= bottom)
+        return;
+    rows.top = (unsigned short)top;
+    rows.bottom = (unsigned short)bottom;
+
+    /* Repeatedly fold overlapping or touching half-open intervals.  Removing
+     * a match can expose another overlap, so restart after every union. */
+    for (;;) {
+        unsigned char merged = 0;
+        for (at = 0; at < race->dirty_row_count; ++at) {
+            struct SlicksDirtyRows *existing = &race->dirty_rows[at];
+            if (rows.bottom < existing->top || rows.top > existing->bottom)
+                continue;
+            if (existing->top < rows.top)
+                rows.top = existing->top;
+            if (existing->bottom > rows.bottom)
+                rows.bottom = existing->bottom;
+            *existing = race->dirty_rows[--race->dirty_row_count];
+            merged = 1;
+            break;
+        }
+        if (!merged)
+            break;
+    }
+    if (race->dirty_row_count < SLICKS_DIRTY_ROW_MAX) {
+        race->dirty_rows[race->dirty_row_count++] = rows;
+        return;
+    }
+
+    /* Correctness fallback for an unexpectedly fragmented frame. */
+    for (at = 0; at < race->dirty_row_count; ++at) {
+        if (race->dirty_rows[at].top < rows.top)
+            rows.top = race->dirty_rows[at].top;
+        if (race->dirty_rows[at].bottom > rows.bottom)
+            rows.bottom = race->dirty_rows[at].bottom;
+    }
+    race->dirty_rows[0] = rows;
+    race->dirty_row_count = 1;
+}
+
 static int decode_sprite(struct SlicksCarSprite *sprite,
                          const unsigned char *source,
                          unsigned long source_size)
@@ -117,6 +166,8 @@ static void draw_start_light(struct SlicksRaceRuntime *race,
     unsigned short x;
     unsigned short y;
     unsigned short at = 0;
+    mark_dirty_rows(race, SLICKS_START_LIGHT_Y,
+                    SLICKS_START_LIGHT_Y + SLICKS_START_LIGHT_HEIGHT);
     if (!race->start_light_visible) {
         for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
             for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
@@ -143,6 +194,8 @@ static void restore_start_light(struct SlicksRaceRuntime *race,
     unsigned short at = 0;
     if (!race->start_light_visible)
         return;
+    mark_dirty_rows(race, SLICKS_START_LIGHT_Y,
+                    SLICKS_START_LIGHT_Y + SLICKS_START_LIGHT_HEIGHT);
     for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
         for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
             write_pixel(logical, race->chunky,
@@ -196,6 +249,7 @@ static void restore_car(struct SlicksRaceRuntime *race,
     unsigned short at = 0;
     if (!car->saved_valid)
         return;
+    mark_dirty_rows(race, car->old_y, car->old_y + car->old_height);
     for (y = 0; y < car->old_height; ++y) {
         for (x = 0; x < car->old_width; ++x)
             write_pixel(logical, race->chunky,
@@ -229,6 +283,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
         origin_x + width > SLICKS_SCREEN_WIDTH ||
         origin_y + height > SLICKS_TRACK_HEIGHT)
         return;
+    mark_dirty_rows(race, origin_y, origin_y + height);
 
     car->old_x = (unsigned char)origin_x;
     car->old_y = (unsigned char)origin_y;
@@ -370,6 +425,11 @@ static void leave_skidmark(struct SlicksRaceRuntime *race,
     short y = (short)(car->y / 100);
     short across_x = direction_y[direction] / 25;
     short across_y = -direction_x[direction] / 25;
+    short first_y = y + across_y;
+    short second_y = y - across_y;
+    mark_dirty_rows(race,
+                    first_y < second_y ? first_y : second_y,
+                    (first_y > second_y ? first_y : second_y) + 1);
     write_pixel(logical, race->chunky,
                 x + across_x, y + across_y, SLICKS_SKID_COLOUR);
     write_pixel(logical, race->chunky,
@@ -519,6 +579,7 @@ static void clear_timer_strip(struct SlicksRaceRuntime *race,
 {
     unsigned short x;
     unsigned short y;
+    mark_dirty_rows(race, SLICKS_TRACK_HEIGHT, SLICKS_SCREEN_HEIGHT);
     for (y = SLICKS_TRACK_HEIGHT; y < SLICKS_SCREEN_HEIGHT; ++y)
         for (x = 0; x < SLICKS_SCREEN_WIDTH; ++x)
             write_pixel(logical, race->chunky, x, y, 0);
@@ -788,4 +849,10 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         draw_car(race, logical, car);
     ++race->frame_count;
+}
+
+void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race)
+{
+    if (race)
+        race->dirty_row_count = 0;
 }
