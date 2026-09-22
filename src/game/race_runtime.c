@@ -648,11 +648,14 @@ static void update_car(struct SlicksRaceRuntime *race,
                                         SLICKS_CONTROL_RIGHT);
     unsigned char steering_input =
         (unsigned char)(car_index == 0 && race->human_control ? 100 : 140);
+    unsigned char active_drive;
     long steering_step;
+    long force_divisor;
+    long force_x;
+    long force_y;
+    long velocity_divisor;
+    short velocity_factor;
     unsigned short direction;
-    short velocity_response;
-    long target_velocity_x;
-    long target_velocity_y;
     long previous_x = car->x;
     long previous_y = car->y;
 
@@ -665,15 +668,18 @@ static void update_car(struct SlicksRaceRuntime *race,
     /* The DOS car state stores speed as a signed 32-bit fixed quantity.
      * Throttle adds 0xa0 per simulation quantum and .omi byte four supplies
      * the limit in hundreds; neither value is a C-era tuning estimate. */
-    if ((controls & SLICKS_CONTROL_ACCELERATE) &&
-        car->speed_fixed < (long)properties->top_speed * 100L) {
+    active_drive = controls & (SLICKS_CONTROL_ACCELERATE |
+                               SLICKS_CONTROL_BRAKE);
+    if (controls & SLICKS_CONTROL_ACCELERATE) {
         car->speed_fixed += 0xa0L;
-    } else if (car->speed_fixed > 0) {
+        if (car->speed_fixed / 100L > car->maximum_speed)
+            car->speed_fixed = (long)car->maximum_speed * 100L;
+    } else if (!active_drive && car->speed_fixed > 0) {
         /* 2000:0e5e multiplies car-state +10h by the Q15 factor held in
-         * DS:53fe.  aeb6 constructs that factor as 7bddh minus twice the
-         * signed displacement of .omi byte 23 from 100.  This reproduces
-         * captured coast sequences such as 10000, 9676, 9363 exactly. */
-        long coast_factor = 0x7bddL - properties->balance_bias;
+         * DS:53fe.  aeb6 constructs the per-driver table by subtracting the
+         * signed setup bias from 7bddh.  This reproduces captured coast
+         * sequences such as 10000, 9676, 9363 exactly. */
+        long coast_factor = 0x7bddL - car->drive_bias;
         car->speed_fixed = car->speed_fixed * coast_factor / 0x8000L;
     }
     if (controls & SLICKS_CONTROL_BRAKE) {
@@ -705,23 +711,30 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->heading -= SLICKS_HEADING_FULL;
 
     direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
-    target_velocity_x =
-        (long)direction_x[direction] * car->speed_fixed / 100L;
-    target_velocity_y =
-        (long)direction_y[direction] * car->speed_fixed / 100L;
-    velocity_response = (short)(
-        properties->drive_response *
-        (short)properties->surface[car->surface_group][0] / 100);
-    if (velocity_response < 10)
-        velocity_response = 10;
-    if (velocity_response > 100)
-        velocity_response = 100;
-    car->velocity_x +=
-        (target_velocity_x - car->velocity_x) * velocity_response / 100L;
-    car->velocity_y +=
-        (target_velocity_y - car->velocity_y) * velocity_response / 100L;
-    car->x += car->velocity_x / 100L;
-    car->y += car->velocity_y / 100L;
+    /* 2000:0ea2..121c is a pair of signed 32-bit force and decay updates.
+     * The paired DOS hooks prove every operand and result across 27,030
+     * component updates.  The 23 branch is coasting; longitudinal input uses
+     * 38.  Integer division truncates toward zero, as the 286 helper does. */
+    force_divisor = (long)car->drive_coefficients[4] *
+        car->drive_coefficients[1];
+    force_divisor *= car->tyre_load / 70 + 10;
+    force_divisor *= active_drive ? 38L : 23L;
+    force_x = (long)direction_x[direction] * car->speed_fixed * 200L /
+        force_divisor;
+    force_y = (long)direction_y[direction] * car->speed_fixed * 200L /
+        force_divisor;
+    velocity_factor = (short)((active_drive ? 0x7dc2L : 0x7bd7L) -
+                              car->drive_bias);
+    velocity_divisor = 0x8000L + car->drive_coefficients[2];
+    car->velocity_x = force_x +
+        car->velocity_x * velocity_factor / velocity_divisor;
+    car->velocity_y = force_y +
+        car->velocity_y * velocity_factor / velocity_divisor;
+
+    /* The original position step multiplies velocity by a normal-game time
+     * scale of 100 and divides by 2000. */
+    car->x += car->velocity_x / 20L;
+    car->y += car->velocity_y / 20L;
     if (position_touches_solid(race, properties, car->x, car->y)) {
         long proposed_x = car->x;
         long proposed_y = car->y;
@@ -1135,6 +1148,12 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     static const short default_steering_scale[SLICKS_RACE_CAR_COUNT] = {
         700, 1000, 850, 1000
     };
+    static const short default_drive_bias[SLICKS_RACE_CAR_COUNT] = {
+        0, -8, 0, 0
+    };
+    static const short default_drive_coefficients[7] = {
+        104, 103, 18, 100, 99, 100, 100
+    };
     unsigned short car;
     unsigned short direction;
     unsigned short x;
@@ -1189,6 +1208,14 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         state->steering_scale = default_steering_scale[car];
         state->steering_penalty = 0;
         state->steering_property = 104;
+        state->drive_bias = default_drive_bias[car];
+        for (direction = 0; direction < 7; ++direction)
+            state->drive_coefficients[direction] =
+                default_drive_coefficients[direction];
+        if (!car)
+            state->drive_coefficients[0] = 0;
+        state->tyre_load = 0;
+        state->maximum_speed = 100;
         state->ai_last_x = state->x;
         state->ai_last_y = state->y;
         state->ai_stuck_ticks = 150;

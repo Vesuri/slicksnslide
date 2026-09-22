@@ -11,9 +11,11 @@ from the original files at run time.
   from `SLICKS.000`. The default DOS lineup is vehicles 5, 2, 0, and 0.
 - The start grid is derived from each track's recorded position and heading.
 - Four cars use persistent fixed-point position, velocity, speed, and heading
-  state. Throttle uses the traced `0xa0` increment and `.omi` top-speed value.
-  Coasting applies the recovered Q15 multiplier
-  `0x7bdd - ((omi[23] - 100) * 2)` to the drive scalar.
+  state. Throttle uses the traced `0xa0` increment. The normal tyre-force
+  block uses the recovered signed 32-bit numerator, four-factor divisor,
+  branch-specific Q15 velocity decay, and `velocity / 20` position step.
+  Coasting first applies its recovered per-driver Q15 multiplier to the drive
+  scalar.
   Steering now preserves the original four-stage signed integer recurrence,
   including the traced human/AI input strengths and per-driver scales; the
   semantic trace proves 9,329 literal heading transitions.
@@ -51,8 +53,8 @@ The implementation is playable and complete as a race loop, but these details
 still require instruction-level recovery before calling the simulation
 bit-exact:
 
-- the complete fixed-point tyre/velocity integrator and every use of the three
-  values in each `.omi` surface group;
+- the dynamic interpolation of all seven tyre coefficients, exact braking,
+  the special car-state path, and the remaining `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
 - the complete DOS boundary-contact resolver and secondary car-contact state;
@@ -71,5 +73,5 @@ of `direction * drive_scalar * 200`; its divisor is the low 32 bits of
 `drive4 * drive1 * (state20 / 70 + 10) * (23 or 38)`; and the previous
 velocity is decayed by branch Q15 factor 4 or 3 over `32768 + drive2` before
 the force is added. The coast branch first applies Q15 factor 5 to the drive
-scalar. This closes the helper operand ordering without collision-state
-contamination; the native runtime still needs to adopt the recovered block.
+scalar. The native runtime now uses this recovered normal-state block; dynamic
+coefficient interpolation, braking, and the special state remain to recover.
