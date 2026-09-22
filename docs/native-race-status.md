@@ -64,5 +64,12 @@ trace used to compare controls, navigation state, positions, headings, and raw
 54-byte per-car state without introducing an emulated CPU into the Amiga build.
 Its paired integrator hooks also preserve the velocity entering and leaving
 each update together with the seven drive coefficients and ten Q15 factors;
-`tools/analyze_race_velocity.py` uses that closed state to recover the remaining
-tyre-force helper ordering without collision-state contamination.
+the force hooks now also preserve both signed division operands and results.
+Across 27,030 traced X/Y updates, `tools/analyze_race_velocity.py` proves the
+closed recurrence with no mismatches: the force numerator is the low 32 bits
+of `direction * drive_scalar * 200`; its divisor is the low 32 bits of
+`drive4 * drive1 * (state20 / 70 + 10) * (23 or 38)`; and the previous
+velocity is decayed by branch Q15 factor 4 or 3 over `32768 + drive2` before
+the force is added. The coast branch first applies Q15 factor 5 to the drive
+scalar. This closes the helper operand ordering without collision-state
+contamination; the native runtime still needs to adopt the recovered block.

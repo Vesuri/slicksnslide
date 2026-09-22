@@ -48,6 +48,19 @@ def force_expression(row: dict[str, str], direction: int, constant: int) -> int:
     return mul32(value, scalar(state))
 
 
+def force_operands(row: dict[str, str], direction: int, constant: int) -> tuple[int, int]:
+    state = bytes.fromhex(row["car_state_hex"])
+    divisor = mul32(int(row["drive4"]), int(row["drive1"]))
+    divisor = mul32(divisor, div0(word(state, 0x20), 70) + 10)
+    divisor = mul32(divisor, constant)
+    drive_scalar = scalar(state)
+    if int(row["drive_branch"]):
+        drive_scalar = s32(mul32(drive_scalar, int(row["q15_5"]))) >> 15
+    numerator = mul32(direction, drive_scalar)
+    numerator = mul32(numerator, 200)
+    return numerator, divisor
+
+
 def main() -> int:
     path = Path(sys.argv[1])
     with path.open(newline="") as source:
@@ -57,6 +70,12 @@ def main() -> int:
     branch_matches: Counter[tuple[int, str]] = Counter()
     examples = 0
     tested = 0
+    closed_matches = 0
+    closed_mismatches = 0
+    force_division_matches = 0
+    force_division_mismatches = 0
+    force_operand_matches = 0
+    force_operand_mismatches = 0
     for row in rows:
         car = int(row["car"])
         old = previous.get(car)
@@ -74,6 +93,30 @@ def main() -> int:
             observed = int(row[f"velocity_{axis}"])
             expression = force_expression(row, table[direction], constant)
             decay = div0(mul32(old_velocity, q15), divisor)
+            force = int(row[f"force_{axis}"])
+            expected_numerator, expected_divisor = force_operands(
+                row, table[direction], constant
+            )
+            if (
+                expected_numerator == int(row[f"force_numerator_{axis}"])
+                and expected_divisor == int(row[f"force_divisor_{axis}"])
+            ):
+                force_operand_matches += 1
+            else:
+                force_operand_mismatches += 1
+            force_from_operands = div0(
+                int(row[f"force_numerator_{axis}"]),
+                int(row[f"force_divisor_{axis}"]),
+            )
+            if force_from_operands == force:
+                force_division_matches += 1
+            else:
+                force_division_mismatches += 1
+            closed = s32(decay + force)
+            if closed == observed:
+                closed_matches += 1
+            else:
+                closed_mismatches += 1
             candidates = {
                 "expression_over_200": s32(div0(expression, 200) + decay),
                 "200_over_expression": s32(div0(200, expression) + decay),
@@ -94,11 +137,21 @@ def main() -> int:
                 examples += 1
             tested += 1
     print(f"velocity transitions tested: {tested}")
+    print(f"closed update matches: {closed_matches}")
+    print(f"closed update mismatches: {closed_mismatches}")
+    print(f"force division matches: {force_division_matches}")
+    print(f"force division mismatches: {force_division_mismatches}")
+    print(f"force operand matches: {force_operand_matches}")
+    print(f"force operand mismatches: {force_operand_mismatches}")
     for name, count in matches.most_common():
         print(f"{name}: {count}")
     for (branch, name), count in sorted(branch_matches.items()):
         print(f"branch {branch} {name}: {count}")
-    return 0
+    return int(
+        closed_mismatches != 0
+        or force_division_mismatches != 0
+        or force_operand_mismatches != 0
+    )
 
 
 if __name__ == "__main__":
