@@ -33,6 +33,8 @@ volatile unsigned char g_slicks_diag_countdown_stage;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
+volatile unsigned short g_slicks_diag_lap[SLICKS_RACE_CAR_COUNT];
+volatile unsigned short g_slicks_diag_lap_timer[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_waypoint[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
@@ -286,6 +288,9 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;
         g_slicks_diag_timer[car] = race->cars[car].elapsed_centiseconds;
+        g_slicks_diag_lap[car] = race->cars[car].lap;
+        g_slicks_diag_lap_timer[car] =
+            race->cars[car].current_lap_centiseconds;
         g_slicks_diag_waypoint[car] = race->cars[car].waypoint;
         g_slicks_diag_acceleration[car] =
             race->properties[car].acceleration;

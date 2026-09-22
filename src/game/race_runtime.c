@@ -263,6 +263,11 @@ static void advance_waypoint(struct SlicksRaceRuntime *race,
         ++car->waypoint;
         if (car->waypoint >= race->navigation.zone_count) {
             car->waypoint = 0;
+            car->last_lap_centiseconds = car->current_lap_centiseconds;
+            if (!car->best_lap_centiseconds ||
+                car->last_lap_centiseconds < car->best_lap_centiseconds)
+                car->best_lap_centiseconds = car->last_lap_centiseconds;
+            car->current_lap_centiseconds = 0;
             ++car->lap;
         }
     }
@@ -325,8 +330,9 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     car->y += (long)direction_y[direction] * car->speed / 100;
     if (turning && car->speed > 65 && !(race->frame_count & 1))
         leave_skidmark(race, logical, car);
-    advance_waypoint(race, car);
     car->elapsed_centiseconds += 2;
+    car->current_lap_centiseconds += 2;
+    advance_waypoint(race, car);
 }
 
 static long absolute_long(long value)
@@ -527,6 +533,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical)
             (long)row * direction_y[start_direction];
         state->style = (unsigned char)car;
         state->waypoint = 0;
+        state->lap = 1;
         state->speed = 0;
         draw_car(race, logical, car);
     }

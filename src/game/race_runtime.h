@@ -37,6 +37,9 @@ struct SlicksRaceCar {
     short heading;
     short speed;
     unsigned short elapsed_centiseconds;
+    unsigned short current_lap_centiseconds;
+    unsigned short last_lap_centiseconds;
+    unsigned short best_lap_centiseconds;
     unsigned short acceleration_remainder;
     unsigned short lap;
     unsigned char waypoint;

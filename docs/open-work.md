@@ -14,7 +14,10 @@
    the remaining car-property interpretation, and the remaining race
    services. The starting grid is now oriented from each track's start heading
    and the recovered 120-tick, five-stage start sequence gates movement and
-   race timing. Car-to-car contacts now use the recovered collision extent and
+   race timing. Navigation regions are consumed in track order; wrapping the
+   final region advances the lap and records current, last, and best lap
+   times independently of total race time. Car-to-car contacts now use the
+   recovered collision extent and
    weight, separate overlapping cars, exchange momentum, and are asserted by
    the live gate; replace the provisional native impulse with the exact DOS
    fixed-point response as that routine is recovered. Keep the translated
