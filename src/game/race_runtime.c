@@ -9,6 +9,10 @@
 #define SLICKS_HEADING_FULL 0x4b00
 #define SLICKS_SKID_COLOUR 128
 #define SLICKS_TIMER_COLOUR 254
+#define SLICKS_START_LIGHT_X 164
+#define SLICKS_START_LIGHT_Y 31
+#define SLICKS_START_LIGHT_WIDTH 23
+#define SLICKS_START_LIGHT_HEIGHT 38
 
 /* These are the signed tables used by the original race engine at DS:06c3
  * and DS:06d3.  Position is kept in the original 100-units-per-pixel scale. */
@@ -104,6 +108,48 @@ static int decode_sprite(struct SlicksCarSprite *sprite,
     sprite->height = (unsigned char)height;
     sprite->ready = 1;
     return 0;
+}
+
+static void draw_start_light(struct SlicksRaceRuntime *race,
+                             unsigned char *logical,
+                             unsigned short light)
+{
+    unsigned short x;
+    unsigned short y;
+    unsigned short at = 0;
+    if (!race->start_light_visible) {
+        for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
+            for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
+                race->start_light_saved_under[at++] =
+                    read_pixel(logical, SLICKS_START_LIGHT_X + x,
+                               SLICKS_START_LIGHT_Y + y);
+        race->start_light_visible = 1;
+    }
+    at = 0;
+    for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
+        for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
+            write_pixel(logical, race->chunky,
+                        SLICKS_START_LIGHT_X + x,
+                        SLICKS_START_LIGHT_Y + y,
+                        race->start_lights[light].pixels[at++]);
+    race->start_light_stage_mask |= (unsigned char)(1U << light);
+}
+
+static void restore_start_light(struct SlicksRaceRuntime *race,
+                                unsigned char *logical)
+{
+    unsigned short x;
+    unsigned short y;
+    unsigned short at = 0;
+    if (!race->start_light_visible)
+        return;
+    for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
+        for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
+            write_pixel(logical, race->chunky,
+                        SLICKS_START_LIGHT_X + x,
+                        SLICKS_START_LIGHT_Y + y,
+                        race->start_light_saved_under[at++]);
+    race->start_light_visible = 0;
 }
 
 static void rotated_size(const struct SlicksCarSprite *sprite,
@@ -627,6 +673,23 @@ int slicks_race_add_font(struct SlicksRaceRuntime *race,
     return 0;
 }
 
+int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
+                                unsigned short light,
+                                const unsigned char *resource,
+                                unsigned long resource_size)
+{
+    unsigned short at;
+    if (!race || !resource || light >= SLICKS_START_LIGHT_COUNT ||
+        resource_size != 3UL + SLICKS_START_LIGHT_PIXEL_COUNT ||
+        resource[0] != 0 || resource[1] != SLICKS_START_LIGHT_WIDTH ||
+        resource[2] != SLICKS_START_LIGHT_HEIGHT)
+        return -1;
+    for (at = 0; at < SLICKS_START_LIGHT_PIXEL_COUNT; ++at)
+        race->start_lights[light].pixels[at] = resource[3 + at];
+    race->start_lights[light].ready = 1;
+    return 0;
+}
+
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky)
 {
@@ -644,6 +707,9 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                 read_pixel(logical, x, y) >> 3;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if (!race->properties[car].ready)
+            return -1;
+    for (car = 0; car < SLICKS_START_LIGHT_COUNT; ++car)
+        if (!race->start_lights[car].ready)
             return -1;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         for (direction = 0; direction < SLICKS_CAR_BASE_DIRECTIONS;
@@ -675,6 +741,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         draw_car(race, logical, car);
     }
     draw_timers(race, logical);
+    draw_start_light(race, logical, 0);
     race->countdown_ticks = 0x78;
     race->countdown_stage = 0;
     race->racing = 0;
@@ -700,6 +767,10 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
         if (race->countdown_ticks < 0) {
             ++race->countdown_stage;
             race->countdown_ticks = 10;
+            if (race->countdown_stage < SLICKS_START_LIGHT_COUNT)
+                draw_start_light(race, logical, race->countdown_stage);
+            else if (race->countdown_stage == SLICKS_START_LIGHT_COUNT)
+                restore_start_light(race, logical);
             if (race->countdown_stage > 5)
                 race->racing = 1;
         }

@@ -11,6 +11,8 @@
 #define SLICKS_FONT_PIXEL_MAX 1600
 #define SLICKS_TRACK_MATERIAL_SIZE (320U * 190U)
 #define SLICKS_SURFACE_GROUP_COUNT 5
+#define SLICKS_START_LIGHT_COUNT 4
+#define SLICKS_START_LIGHT_PIXEL_COUNT (23U * 38U)
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -46,6 +48,11 @@ struct SlicksRaceFont {
     unsigned char ready;
 };
 
+struct SlicksStartLight {
+    unsigned char pixels[SLICKS_START_LIGHT_PIXEL_COUNT];
+    unsigned char ready;
+};
+
 struct SlicksRaceCar {
     long x;
     long y;
@@ -73,8 +80,10 @@ struct SlicksRaceRuntime {
         sprites[SLICKS_RACE_CAR_COUNT][SLICKS_CAR_BASE_DIRECTIONS];
     struct SlicksCarProperties properties[SLICKS_RACE_CAR_COUNT];
     struct SlicksRaceFont font;
+    struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
+    unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
     unsigned long frame_count;
     unsigned long skidmark_count;
     unsigned long collision_count;
@@ -85,6 +94,8 @@ struct SlicksRaceRuntime {
     unsigned char *chunky;
     unsigned char controls;
     unsigned char human_control;
+    unsigned char start_light_visible;
+    unsigned char start_light_stage_mask;
     unsigned char started;
 };
 
@@ -102,6 +113,10 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
 int slicks_race_add_font(struct SlicksRaceRuntime *race,
                          const unsigned char *resource,
                          unsigned long resource_size);
+int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
+                                unsigned short light,
+                                const unsigned char *resource,
+                                unsigned long resource_size);
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky);
 void slicks_race_set_controls(struct SlicksRaceRuntime *race,

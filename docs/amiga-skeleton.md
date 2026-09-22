@@ -87,6 +87,9 @@ The strict race gate reports logical checksum `815c70ca` and display checksum
 `024f572b`. No captured DOS frame is linked or loaded.
 
 The diagnostic now runs a repeating four-car race/update loop after the title.
+Its pre-race sequence displays the four original `lahto*.@I` start-light
+frames at `(164,31)` using the cadence measured from the DOS capture, then
+restores the underlying course before cars move.
 The same loader and runtime also run the original `BASICTRK.SS` editor/template
 course: all 262 scene objects and 25 navigation regions are consumed, and its
 zero-valued optional speed hints fall back to the normal cruise speed.  The

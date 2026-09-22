@@ -31,6 +31,8 @@ volatile unsigned long g_slicks_diag_skidmarks;
 volatile unsigned long g_slicks_diag_collisions;
 volatile unsigned long g_slicks_diag_track_collisions;
 volatile unsigned char g_slicks_diag_countdown_stage;
+volatile unsigned char g_slicks_diag_start_light_visible;
+volatile unsigned char g_slicks_diag_start_light_stage_mask;
 volatile unsigned short g_slicks_diag_track_zones;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
@@ -231,6 +233,19 @@ static int enter_race(struct Screen *screen, unsigned long *palette,
             goto cleanup;
         }
     }
+    for (car = 0; car < SLICKS_START_LIGHT_COUNT; ++car) {
+        char name[10] = "lahto1.@I";
+        long light_size;
+        name[5] = (char)('1' + car);
+        light_size = slicks_resource_archive_load(
+            &archive, name, font_resource, 2048UL);
+        if (light_size <= 0 ||
+            slicks_race_add_start_light(race, car, font_resource,
+                                        (unsigned long)light_size) != 0) {
+            g_slicks_diag_race_error = 6;
+            goto cleanup;
+        }
+    }
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         char property_name[11] = "auto00.omi";
         long property_size;
@@ -309,6 +324,8 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
     g_slicks_diag_collisions = race->collision_count;
     g_slicks_diag_track_collisions = race->track_collision_count;
     g_slicks_diag_countdown_stage = race->countdown_stage;
+    g_slicks_diag_start_light_visible = race->start_light_visible;
+    g_slicks_diag_start_light_stage_mask = race->start_light_stage_mask;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;

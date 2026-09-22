@@ -13,7 +13,10 @@
    the collision pass. Continue with the remaining car-property interpretation
    and race services. The starting grid is now oriented from each track's start heading
    and the recovered 120-tick, five-stage start sequence gates movement and
-   race timing. Navigation regions are consumed in track order; wrapping the
+   race timing. The four original `lahto*.@I` start-light images are now loaded
+   from the archive and drawn at the position and cadence measured from the
+   DOS capture; saved-under restoration removes them before movement starts.
+   Navigation regions are consumed in track order; wrapping the
    final region advances the lap and records current, last, and best lap
    times independently of total race time. Car-to-car contacts now use the
    recovered collision extent and

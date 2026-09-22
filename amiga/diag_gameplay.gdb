@@ -6,7 +6,11 @@ commands
     quit
   end
   if g_slicks_diag_ingame
-    printf "SLICKS_GAMEPLAY_START FRAME=%u SKIDS=%u TIMER=%u X=%d Y=%d CHECKSUM=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_checksum
+    if g_slicks_diag_checksum != 0x28917ee0 || !g_slicks_diag_start_light_visible || g_slicks_diag_start_light_stage_mask != 1
+      printf "SLICKS_GAMEPLAY_START_FAILED VISIBLE=%u LIGHTS=%u CHECKSUM=%08x\n", g_slicks_diag_start_light_visible, g_slicks_diag_start_light_stage_mask, g_slicks_diag_checksum
+      quit 1
+    end
+    printf "SLICKS_GAMEPLAY_START FRAME=%u SKIDS=%u TIMER=%u LIGHTS=%u X=%d Y=%d CHECKSUM=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_skidmarks, g_slicks_diag_timer[0], g_slicks_diag_start_light_stage_mask, g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_checksum
     disable 1
   end
   continue
@@ -17,6 +21,8 @@ commands
   set $ok = g_slicks_diag_race_frame == 200 && g_slicks_diag_timer[0] == 218 && g_slicks_diag_skidmarks > 0
   set $ok = $ok && g_slicks_diag_collisions > 0
   set $ok = $ok && g_slicks_diag_countdown_stage == 6
+  set $ok = $ok && !g_slicks_diag_start_light_visible
+  set $ok = $ok && g_slicks_diag_start_light_stage_mask == 15
   set $ok = $ok && g_slicks_diag_lap[0] == 1 && g_slicks_diag_lap_timer[0] == 218
   set $ok = $ok && (g_slicks_diag_car_x[0] != 25500 || g_slicks_diag_car_y[0] != 5700)
   set $ok = $ok && (g_slicks_diag_car_x[1] != 26300 || g_slicks_diag_car_y[1] != 5700)
