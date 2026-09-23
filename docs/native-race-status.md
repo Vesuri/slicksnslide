@@ -55,8 +55,10 @@ from the original files at run time.
   contacts walk every integer centre pixel from the old to proposed position,
   snap to the last clear pixel at the original 100-unit scale, apply the
   four-neighbour `c63e` velocity transform, and then use the original fixed
-  centre clamps. Class 2 takes the original non-contact dispatch; the animated
-  classes 22–26 remain to be exercised by a track fixture.
+  centre clamps. Class 2 takes the original non-contact dispatch. A complete
+  scan of all 195 supplied tracks proves that none persists animated classes
+  22–26 in its static material map; those classes must be introduced by the
+  still-unrecovered runtime actor path rather than by a missing track fixture.
 - The immutable mode-zero `b089` material map is reconstructed independently
   of the visible track pixels. Its four classes match the captured DOS
   `BASIC.SS` map at all 60,800 pixels; the strict A1200 gate fixes its checksum
@@ -78,8 +80,10 @@ from the original files at run time.
   when all four cars finish and draws an ordered results panel.
 - The title menu selects the player car, every `.SS` file discovered in the
   `TRACKS` directory, and one through nine laps. The bundled run/debug setup
-  exposes all 195 supplied tracks. Escape returns from a race and Return
-  returns after results.
+  exposes all 195 supplied tracks. Their navigation tables contain 7 through
+  46 regions; the native decoder accepts and renders every one, with
+  `make verify-native-tracks` providing an exhaustive host gate. Escape
+  returns from a race and Return returns after results.
 - Title-menu redraws retain the ordinary and selected colours produced by the
   recovered palette matcher. The C/assembly bridge no longer inherits
   undefined `d0`/`d1` values from its caller, so unrelated code layout cannot
@@ -106,9 +110,11 @@ from the original files at run time.
 ## Evidence and remaining fidelity work
 
 The strict 2 MiB A1200 gates cover title startup, 200 live race frames, a full
-lap, the 25-region alternate track, all four finishers, the displayed results
-frame, engine audio, results music, and clean system restoration. Host-side
-differential tests cover the native graphics primitives.
+lap, the 25-region alternate track, the object-heavy `ICE.SS`, the maximum
+46-region `HEIKKI30.SS`, all four finishers, the displayed results frame,
+engine audio, results music, and clean system restoration. Host-side
+differential tests cover the native graphics primitives and exhaustively
+decode all 195 supplied tracks.
 
 The implementation is playable and complete as a race loop, but these details
 still require instruction-level recovery before calling the simulation

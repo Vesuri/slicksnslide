@@ -36,11 +36,11 @@ ABS_ROOT := $(abspath .)
 	analyze-race-velocity \
 	analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
-	verify-car-collision \
+	verify-car-collision verify-native-tracks \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	amiga amiga-run amiga-debug amiga-check amiga-race-check \
 	amiga-track-check amiga-lap-check amiga-results-check \
-	amiga-restore-check todo clean
+	amiga-ice-check amiga-zone-check amiga-restore-check todo clean
 
 inspect:
 	$(PYTHON) tools/mz_info.py $(SOURCE)
@@ -171,6 +171,15 @@ build/verify_car_collision: tools/verify_car_collision.c \
 
 verify-car-collision: build/verify_car_collision
 	build/verify_car_collision
+
+build/scan_track_materials: tools/scan_track_materials.c \
+		src/game/track_scene.c src/game/track_scene.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		tools/scan_track_materials.c src/game/track_scene.c -o $@
+
+verify-native-tracks: build/scan_track_materials
+	build/scan_track_materials ref/SLICKS.DAT ref/TRACKS/*.SS
 
 build/sgfx_plot.bin: src/graphics/sgfx_plot.s
 	@mkdir -p build
@@ -359,6 +368,12 @@ amiga-race-check: amiga
 
 amiga-track-check: amiga
 	cd amiga && . ./env.sh && ./diag_track.sh
+
+amiga-ice-check: amiga
+	cd amiga && . ./env.sh && ./diag_ice.sh
+
+amiga-zone-check: amiga
+	cd amiga && . ./env.sh && ./diag_zone.sh
 
 amiga-lap-check: amiga
 	cd amiga && . ./env.sh && ./diag_lap.sh

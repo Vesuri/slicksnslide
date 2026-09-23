@@ -20,6 +20,10 @@ elif [ "${SLICKS_RESULTS_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag RESULTS\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_TRACK_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACK\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_ICE_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag ICE\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_ZONE_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HIGHZONES\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_LAP_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LAP\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then

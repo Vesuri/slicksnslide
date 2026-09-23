@@ -1,7 +1,10 @@
 #ifndef SLICKS_TRACK_SCENE_H
 #define SLICKS_TRACK_SCENE_H
 
-#define SLICKS_TRACK_ZONE_MAX 32
+/* The supplied version-2 tracks use as many as 46 navigation regions.
+ * Keep a power-of-two ceiling above the observed files while retaining the
+ * on-disk word count validation in the decoder. */
+#define SLICKS_TRACK_ZONE_MAX 64
 
 struct SlicksTrackZone {
     unsigned short x[3];

@@ -42,6 +42,7 @@ volatile char g_slicks_diag_first_track[12];
 volatile char g_slicks_diag_second_track[12];
 volatile unsigned long g_slicks_diag_material_checksum;
 volatile unsigned long g_slicks_diag_surface_checksum;
+volatile unsigned long g_slicks_diag_material_count[32];
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_vx[SLICKS_RACE_CAR_COUNT];
@@ -462,6 +463,14 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     g_slicks_diag_surface_checksum =
         checksum_surface_map(race->surface_map);
     {
+        unsigned short material;
+        unsigned long pixel;
+        for (material = 0; material < 32; ++material)
+            g_slicks_diag_material_count[material] = 0;
+        for (pixel = 0; pixel < SLICKS_TRACK_MATERIAL_SIZE; ++pixel)
+            ++g_slicks_diag_material_count[race->material_map[pixel] & 31];
+    }
+    {
         long font_size = slicks_resource_archive_load(
             &archive, "pieni.@f", font_resource, 2048UL);
         if (font_size <= 0 ||
@@ -753,9 +762,14 @@ int main(int argc, char **argv)
         g_slicks_diag_target_frame = 700;
     if (argc > 0 && ((const char *)argv)[0] == 'R')
         g_slicks_diag_target_frame = 1800;
-    track_path = argc > 0 && ((const char *)argv)[0] == 'T'
-                     ? "TRACKS/BASICTRK.SS"
-                     : "TRACKS/BASIC.SS";
+    if (argc > 0 && ((const char *)argv)[0] == 'T')
+        track_path = "TRACKS/BASICTRK.SS";
+    else if (argc > 0 && ((const char *)argv)[0] == 'I')
+        track_path = "TRACKS/ICE.SS";
+    else if (argc > 0 && ((const char *)argv)[0] == 'H')
+        track_path = "TRACKS/HEIKKI30.SS";
+    else
+        track_path = "TRACKS/BASIC.SS";
 
     /* Automated gates prepare before takeover. Interactive play deliberately
      * waits until GO so the native menu can choose the track, car and laps;
