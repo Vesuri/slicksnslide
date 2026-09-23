@@ -180,15 +180,14 @@ static void start_one_shot_channel(struct SlicksAmigaAudio *audio,
                                    unsigned short period,
                                    unsigned short volume)
 {
-    unsigned short base = AUDIO_BASE(channel);
     start_looping_channel(channel, sample, period, volume);
-    /* Paula has no non-looping DMA mode.  Once it has latched the attack's
-     * initial location and length, replace the reload registers with one
-     * silent word.  The complete sample plays once; subsequent reloads are
-     * silent rather than repeating the attack until the frame timer fires. */
-    wait_audio_dma();
-    CUSTOM_LONG(base) = (unsigned long)audio->silence;
-    CUSTOM_WORD(base + 4) = 1;
+    /* Paula has no non-looping DMA mode.  Do not rewrite AUDxLC/AUDxLEN after
+     * a fixed number of raster lines: at period 322 the first audio DMA
+     * requests can occur later than that, leaving the original sample as the
+     * reload body.  Defer the silent reload until the frame updates below.
+     * Two updates are still shorter than the smallest samples.dat effect. */
+    if (channel >= 1 && channel <= SLICKS_AUDIO_ONE_SHOT_CHANNELS)
+        audio->silent_reload_ticks[channel - 1] = 2;
 }
 
 int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
@@ -240,12 +239,21 @@ void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
 void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
                                long velocity_x, long velocity_y)
 {
+    unsigned short channel;
     unsigned short effect;
     if (!audio || !audio->ready)
         return;
     if (audio->engine_started)
         CUSTOM_WORD(AUDIO_BASE(0) + 6) =
             engine_period(audio, velocity_x, velocity_y);
+    for (channel = 1; channel <= SLICKS_AUDIO_ONE_SHOT_CHANNELS; ++channel) {
+        unsigned char *ticks = &audio->silent_reload_ticks[channel - 1];
+        if (*ticks && !--*ticks) {
+            unsigned short base = AUDIO_BASE(channel);
+            CUSTOM_LONG(base) = (unsigned long)audio->silence;
+            CUSTOM_WORD(base + 4) = 1;
+        }
+    }
     for (effect = 0; effect < SLICKS_AUDIO_EFFECT_CHANNELS; ++effect) {
         if (audio->effect_ticks[effect] &&
             !--audio->effect_ticks[effect]) {
@@ -312,6 +320,8 @@ void slicks_amiga_audio_stop(struct SlicksAmigaAudio *audio)
             audio->effect_ticks[effect] = 0;
             audio->effect_priority[effect] = 0;
         }
+        for (effect = 0; effect < SLICKS_AUDIO_ONE_SHOT_CHANNELS; ++effect)
+            audio->silent_reload_ticks[effect] = 0;
     }
 }
 

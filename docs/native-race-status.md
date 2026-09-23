@@ -120,8 +120,11 @@ they are by the original race routine.
   priority 19, and the first finisher uses block 9 with flag 2 at priority 30.
   Paula reloads forever while DMA remains enabled, so each effect and the
   channel-3 `intermed.wav` results cue repoint its reload registers to a
-  two-byte chip-RAM silent word after the initial body has been latched. They
-  therefore play once; only the engine intentionally reloads its full sample.
+  two-byte chip-RAM silent word after the initial body has been latched. The
+  handoff is deferred for two audio updates: a fixed two-raster-line delay is
+  shorter than the first DMA-request interval at the samples' period and can
+  accidentally leave the sample itself armed as the reload body. Effects and
+  the results cue therefore play once; only the engine intentionally loops.
   Chip allocations and DMA are released before AmigaOS is restored.
 - Live painters merge changed scanlines into a fixed interval list. Kalms C2P
   converts only those intervals; unchanged rows are skipped.

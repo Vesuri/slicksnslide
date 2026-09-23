@@ -4,6 +4,7 @@
 #define SLICKS_AUDIO_ENGINE_COUNT 10
 #define SLICKS_AUDIO_SAMPLE_COUNT 26
 #define SLICKS_AUDIO_EFFECT_CHANNELS 2
+#define SLICKS_AUDIO_ONE_SHOT_CHANNELS 3
 
 struct SlicksAmigaSample {
     signed char *data;
@@ -16,6 +17,7 @@ struct SlicksAmigaAudio {
     struct SlicksAmigaSample music;
     signed char *silence;
     unsigned short effect_ticks[SLICKS_AUDIO_EFFECT_CHANNELS];
+    unsigned char silent_reload_ticks[SLICKS_AUDIO_ONE_SHOT_CHANNELS];
     unsigned short engine_frequency;
     unsigned short engine_period;
     unsigned char effect_priority[SLICKS_AUDIO_EFFECT_CHANNELS];
