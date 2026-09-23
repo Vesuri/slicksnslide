@@ -41,6 +41,9 @@ int main(void)
                 "unequal-weight current velocity differs from DOS oracle");
     ok &= check(other->velocity_x == -863 && other->velocity_y == 889,
                 "unequal-weight other velocity differs from DOS oracle");
+    ok &= check(current->collision_impact == 81 &&
+                other->collision_impact == 65 && race.collision_impact == 81,
+                "secondary impact magnitudes differ from DOS oracle");
     ok &= check(current->x == 20335 && current->y == 14683 &&
                 other->x == 20235 && other->y == 14683,
                 "contact must not separate car positions");

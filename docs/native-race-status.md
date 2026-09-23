@@ -38,7 +38,9 @@ from the original files at run time.
   impulse until that car completes a scan with no overlap. A forced DOS overlap
   gives current velocity `(-885,172)` and other velocity `(-863,889)` for
   weights 18 and 20; `make verify-car-collision` fixes that oracle independently
-  of the full race. Track
+  of the full race. The same oracle covers the per-car secondary impact values
+  81 and 65 recovered from `2000:30b0..317f`; the maximum is exposed as the
+  current frame's collision-effect strength. Track
   contacts walk every integer centre pixel from the old to proposed position,
   snap to the last clear pixel at the original 100-unit scale, apply the
   four-neighbour `c63e` velocity transform, and then use the original fixed
@@ -91,7 +93,8 @@ bit-exact:
   `.omi` property semantics;
 - the optional opponent-avoidance branches and special AI modes beyond the
   recovered normal path and stationary recovery cadence;
-- animated boundary classes 22–26 and the secondary collision-effect state;
+- animated boundary classes 22–26 and rendering the recovered collision-effect
+  strength through the original actor system;
 - exact sound-event selection, priority, pitch, and duration rather than the
   current native event mapping.
 

@@ -80,6 +80,7 @@ struct SlicksRaceCar {
     long speed_fixed;
     long velocity_x;
     long velocity_y;
+    long collision_impact;
     long ai_last_x;
     long ai_last_y;
     short heading;
@@ -150,6 +151,7 @@ struct SlicksRaceRuntime {
     unsigned long frame_count;
     unsigned long skidmark_count;
     unsigned long collision_count;
+    unsigned long collision_impact;
     unsigned long track_collision_count;
     unsigned long random_state;
     short countdown_ticks;

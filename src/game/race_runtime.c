@@ -976,8 +976,10 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
             continue;
         hit = 1;
         if (!a->touching_car) {
+            long magnitude;
             delta_vx = a->velocity_x - b->velocity_x;
             delta_vy = a->velocity_y - b->velocity_y;
+            magnitude = absolute_long(delta_vx) + absolute_long(delta_vy);
             ratio = (long)pb->collision_weight * 100L /
                     pa->collision_weight;
             a->velocity_x -= delta_vx * ratio / 100L;
@@ -986,6 +988,19 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
                     pb->collision_weight;
             b->velocity_x += delta_vx * ratio / 100L;
             b->velocity_y += delta_vy * ratio / 100L;
+            /* 2000:30b0..317f stores a one-update impact magnitude for both
+             * cars. Keep the three signed divisions separate: their
+             * truncation points are part of the DOS result. */
+            a->collision_impact = magnitude * pb->collision_weight / 2L;
+            a->collision_impact /= pa->collision_weight;
+            a->collision_impact /= 5L;
+            b->collision_impact = magnitude * pa->collision_weight / 2L;
+            b->collision_impact /= pb->collision_weight;
+            b->collision_impact /= 5L;
+            if ((unsigned long)a->collision_impact > race->collision_impact)
+                race->collision_impact = (unsigned long)a->collision_impact;
+            if ((unsigned long)b->collision_impact > race->collision_impact)
+                race->collision_impact = (unsigned long)b->collision_impact;
             ++race->collision_count;
         }
         a->touching_car = 1;
@@ -1377,6 +1392,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     unsigned short car;
     if (!race || !logical || !race->started)
         return;
+    race->collision_impact = 0;
     if (!race->racing) {
         race->countdown_ticks -= 2;
         if (race->countdown_ticks < 0) {
