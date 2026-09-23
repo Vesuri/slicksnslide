@@ -42,13 +42,13 @@ static unsigned long read_le32(const unsigned char *source)
            ((unsigned long)source[3] << 24);
 }
 
-static int copy_block(struct SlicksAmigaSample *sample,
-                      const unsigned char *source, unsigned long size,
-                      unsigned short wanted)
+static int copy_blocks(struct SlicksAmigaAudio *audio,
+                       const unsigned char *source, unsigned long size)
 {
     unsigned long at = 0;
     unsigned short block = 0;
-    while (at + 8 <= size) {
+    while (block < SLICKS_AUDIO_SAMPLE_COUNT && at + 8 <= size) {
+        struct SlicksAmigaSample *sample = &audio->samples[block];
         unsigned short bytes;
         unsigned short header;
         unsigned long next;
@@ -60,7 +60,7 @@ static int copy_block(struct SlicksAmigaSample *sample,
             source[at + 7] == 100 ? 10 : 8);
         if (at + header + bytes > size)
             return -1;
-        if (block == wanted) {
+        {
             unsigned short allocated = (unsigned short)((bytes + 1) & ~1U);
             unsigned short i;
             sample->data = (signed char *)AllocMem(
@@ -68,10 +68,10 @@ static int copy_block(struct SlicksAmigaSample *sample,
             if (!sample->data)
                 return -1;
             for (i = 0; i < bytes; ++i)
-                sample->data[i] = (signed char)(source[at + header + i] ^ 0x80);
+                sample->data[i] =
+                    (signed char)(source[at + header + i] ^ 0x80);
             sample->bytes = allocated;
             sample->period = 322;
-            return 0;
         }
         next = at + header + bytes;
         while (next + 1 < size &&
@@ -80,7 +80,7 @@ static int copy_block(struct SlicksAmigaSample *sample,
         at = next;
         ++block;
     }
-    return -1;
+    return block == SLICKS_AUDIO_SAMPLE_COUNT ? 0 : -1;
 }
 
 int slicks_amiga_audio_add_music(struct SlicksAmigaAudio *audio,
@@ -101,7 +101,7 @@ int slicks_amiga_audio_add_music(struct SlicksAmigaAudio *audio,
             sample_rate = read_le32(wave + at + 12);
         if (wave[at] == 'd' && wave[at + 1] == 'a' &&
             wave[at + 2] == 't' && wave[at + 3] == 'a') {
-            struct SlicksAmigaSample *sample = &audio->samples[12];
+            struct SlicksAmigaSample *sample = &audio->music;
             unsigned short bytes;
             unsigned short i;
             if (size > 65534UL)
@@ -147,13 +147,7 @@ int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
         return -1;
     for (i = 0; i < sizeof(*audio); ++i)
         ((unsigned char *)audio)[i] = 0;
-    for (i = 0; i < SLICKS_AUDIO_ENGINE_COUNT; ++i) {
-        unsigned short block = engine_sample_block[i];
-        if (copy_block(&audio->samples[i], resource, resource_size, block) != 0)
-            goto fail;
-    }
-    if (copy_block(&audio->samples[10], resource, resource_size, 13) != 0 ||
-        copy_block(&audio->samples[11], resource, resource_size, 12) != 0)
+    if (copy_blocks(audio, resource, resource_size) != 0)
         goto fail;
     audio->ready = 1;
     return 0;
@@ -164,32 +158,32 @@ fail:
 
 void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
                                      unsigned short vehicle,
-                                     unsigned short volume)
+                                     unsigned short priority)
 {
+    unsigned short block;
     if (!audio || !audio->ready || vehicle >= SLICKS_AUDIO_ENGINE_COUNT)
         return;
-    volume /= 2;
-    if (volume > 64)
-        volume = 64;
+    (void)priority;
+    block = engine_sample_block[vehicle];
     audio->engine_vehicle = (unsigned char)vehicle;
-    audio->engine_sample_block = engine_sample_block[vehicle];
-    start_channel(0, &audio->samples[vehicle], 420, volume);
+    audio->engine_sample_block = (unsigned char)block;
+    start_channel(0, &audio->samples[block], 420, 64);
     audio->engine_started = 1;
 }
 
 void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
 {
-    if (!audio || !audio->ready || !audio->samples[12].data)
+    if (!audio || !audio->ready || !audio->music.data)
         return;
-    start_channel(3, &audio->samples[12], audio->samples[12].period, 32);
+    start_channel(3, &audio->music, audio->music.period, 32);
     audio->music_started = 1;
 }
 
 void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
-                               short speed, unsigned long contact_events,
-                               unsigned long trails)
+                               short speed)
 {
     unsigned short period;
+    unsigned short effect;
     if (!audio || !audio->ready)
         return;
     if (audio->engine_started) {
@@ -198,21 +192,58 @@ void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
         period = (unsigned short)(420 - (speed > 100 ? 200 : speed * 2));
         CUSTOM_WORD(AUDIO_BASE(0) + 6) = period;
     }
-    if (contact_events != audio->previous_contact_events &&
-        !audio->collision_ticks) {
-        start_channel(1, &audio->samples[10], 322, 48);
-        audio->collision_ticks = 3;
-    } else if (audio->collision_ticks && !--audio->collision_ticks) {
-        CUSTOM_WORD(REG_DMACON) = DMA_AUD0 << 1;
+    for (effect = 0; effect < SLICKS_AUDIO_EFFECT_CHANNELS; ++effect) {
+        if (audio->effect_ticks[effect] &&
+            !--audio->effect_ticks[effect]) {
+            CUSTOM_WORD(REG_DMACON) =
+                (unsigned short)(DMA_AUD0 << (effect + 1));
+            audio->effect_priority[effect] = 0;
+        }
     }
-    audio->previous_contact_events = contact_events;
-    if (trails != audio->previous_trails && !audio->trail_ticks) {
-        start_channel(2, &audio->samples[11], 322, 30);
-        audio->trail_ticks = 3;
-    } else if (audio->trail_ticks && !--audio->trail_ticks) {
-        CUSTOM_WORD(REG_DMACON) = DMA_AUD0 << 2;
+}
+
+void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
+                                    unsigned short sample_block,
+                                    unsigned short flags,
+                                    unsigned short priority)
+{
+    const struct SlicksAmigaSample *sample;
+    unsigned short effect;
+    unsigned short selected = SLICKS_AUDIO_EFFECT_CHANNELS;
+    unsigned long duration;
+    if (!audio || !audio->ready ||
+        sample_block >= SLICKS_AUDIO_SAMPLE_COUNT)
+        return;
+    if (!priority)
+        priority = 1;
+    if (flags & 2) {
+        for (effect = 0; effect < SLICKS_AUDIO_EFFECT_CHANNELS; ++effect)
+            if (audio->effect_ticks[effect] &&
+                audio->effect_priority[effect] == priority)
+                return;
     }
-    audio->previous_trails = trails;
+    for (effect = 0; effect < SLICKS_AUDIO_EFFECT_CHANNELS; ++effect) {
+        if (!audio->effect_ticks[effect]) {
+            selected = effect;
+            break;
+        }
+        if (selected == SLICKS_AUDIO_EFFECT_CHANNELS &&
+            audio->effect_priority[effect] <= priority)
+            selected = effect;
+    }
+    if (selected == SLICKS_AUDIO_EFFECT_CHANNELS)
+        return;
+    sample = &audio->samples[sample_block];
+    start_channel((unsigned short)(selected + 1), sample,
+                  sample->period, 64);
+    duration = (unsigned long)sample->bytes * sample->period * 50UL;
+    audio->effect_ticks[selected] = (unsigned short)(
+        (duration + 3546894UL) / 3546895UL);
+    if (!audio->effect_ticks[selected])
+        audio->effect_ticks[selected] = 1;
+    audio->effect_priority[selected] = (unsigned char)priority;
+    audio->last_effect_sample_block = (unsigned char)sample_block;
+    audio->last_effect_priority = (unsigned char)priority;
 }
 
 void slicks_amiga_audio_stop(struct SlicksAmigaAudio *audio)
@@ -222,8 +253,11 @@ void slicks_amiga_audio_stop(struct SlicksAmigaAudio *audio)
     if (audio) {
         audio->engine_started = 0;
         audio->music_started = 0;
-        audio->collision_ticks = 0;
-        audio->trail_ticks = 0;
+        unsigned short effect;
+        for (effect = 0; effect < SLICKS_AUDIO_EFFECT_CHANNELS; ++effect) {
+            audio->effect_ticks[effect] = 0;
+            audio->effect_priority[effect] = 0;
+        }
     }
 }
 
@@ -238,5 +272,9 @@ void slicks_amiga_audio_destroy(struct SlicksAmigaAudio *audio)
         audio->samples[i].data = 0;
         audio->samples[i].bytes = 0;
     }
+    if (audio->music.data)
+        FreeMem(audio->music.data, audio->music.bytes);
+    audio->music.data = 0;
+    audio->music.bytes = 0;
     audio->ready = 0;
 }

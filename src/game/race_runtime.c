@@ -25,6 +25,13 @@ static const signed char direction_y[16] = {
     0, -38, -71, -92, -100, -92, -71, -38
 };
 
+/* DS:0196: samples.dat block selected by the current 16-way car image when
+ * 2000:0808..0828 reports a track-boundary impact. */
+static const unsigned char track_impact_sample[16] = {
+    10, 11, 12, 13, 14, 15, 15, 13,
+    16, 16, 16, 16, 16, 16, 16, 16
+};
+
 /* DS:0166: forward look-ahead length selected by the current vehicle.  A
  * negative value makes ebbb scan behind the car. */
 static const signed char ai_probe_steps[SLICKS_VEHICLE_COUNT] = {
@@ -33,6 +40,10 @@ static const signed char ai_probe_steps[SLICKS_VEHICLE_COUNT] = {
 
 static long absolute_long(long value);
 static unsigned short next_random(struct SlicksRaceRuntime *race);
+static void emit_sound_event(struct SlicksRaceRuntime *race,
+                             unsigned char sample_block,
+                             unsigned char flags,
+                             unsigned char priority);
 
 /* DS:4ca4/4d24: the two wheel sample points generated for each of the four
  * entrants and sixteen headings.  Coordinates are relative to the original
@@ -955,8 +966,10 @@ static void update_car(struct SlicksRaceRuntime *race,
     car->x += car->velocity_x / 20L;
     car->y += car->velocity_y / 20L;
     if (move_car_through_track(race, car, previous_x, previous_y)) {
-        if (!car->touching_solid)
+        if (!car->touching_solid) {
             ++race->track_collision_count;
+            emit_sound_event(race, track_impact_sample[direction], 2, 14);
+        }
         car->touching_solid = 1;
     } else
         car->touching_solid = 0;
@@ -987,6 +1000,20 @@ static void update_car(struct SlicksRaceRuntime *race,
 static long absolute_long(long value)
 {
     return value < 0 ? -value : value;
+}
+
+static void emit_sound_event(struct SlicksRaceRuntime *race,
+                             unsigned char sample_block,
+                             unsigned char flags,
+                             unsigned char priority)
+{
+    struct SlicksSoundEvent *event;
+    if (race->sound_event_count >= SLICKS_SOUND_EVENT_MAX)
+        return;
+    event = &race->sound_events[race->sound_event_count++];
+    event->sample_block = sample_block;
+    event->flags = flags;
+    event->priority = priority;
 }
 
 void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
@@ -1050,6 +1077,11 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
             if ((unsigned long)b->collision_impact > race->collision_impact)
                 race->collision_impact = (unsigned long)b->collision_impact;
             ++race->collision_count;
+            /* 2000:3af1..3b07 indexes the loaded sample-handle table at
+             * DS:4c4f with the newly-set DS:4dae contact latch.  A new
+             * car-to-car contact therefore plays samples.dat block 6 with
+             * flag 2 (suppress equal-priority duplicates) at priority 14. */
+            emit_sound_event(race, 6, 2, 14);
         }
         a->touching_car = 1;
         b->touching_car = 1;
@@ -1442,6 +1474,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     unsigned short car;
     if (!race || !logical || !race->started)
         return;
+    race->sound_event_count = 0;
     race->collision_impact = 0;
     if (!race->racing) {
         race->countdown_ticks -= 2;

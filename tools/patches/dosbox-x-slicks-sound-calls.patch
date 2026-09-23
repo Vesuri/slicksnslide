@@ -1,0 +1,73 @@
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -150,4 +150,13 @@ struct SlicksTrackSurfaceProbe {
+ 	uint8_t surface;
+ };
+ 
++struct SlicksSoundCall {
++	uint32_t frame;
++	uint32_t return_offset;
++	uint16_t sample_handle;
++	int16_t sample_block;
++	uint16_t flags;
++	uint16_t priority;
++};
++
+ std::map<SlicksPrimitiveCall, uint64_t> slicks_primitive_calls;
+@@ -163,3 +172,4 @@ std::vector<SlicksSurfaceEvent> slicks_surface_events;
+ std::vector<SlicksTrackSurfaceWrite> slicks_track_surface_writes;
+ std::vector<SlicksTrackSurfaceProbe> slicks_track_surface_probes;
++std::vector<SlicksSoundCall> slicks_sound_calls;
+ uint16_t slicks_track_object = UINT16_MAX;
+@@ -177,3 +187,31 @@ bool slicks_race_data_valid = false;
+ bool slicks_track_material_written = false;
+ 
++void Slicks_RecordSoundCall()
++{
++	if (slicks_sound_calls.size() >= 65536)
++		return;
++	const auto stack = SegPhys(ss) + reg_sp;
++	const auto data = SegPhys(ds);
++	SlicksSoundCall call = {};
++	call.frame = slicks_race_frame;
++	const auto return_address =
++	        (static_cast<PhysPt>(mem_readw(stack + 2)) << 4) +
++	        mem_readw(stack);
++	call.return_offset = return_address >= slicks_runtime_base
++	                             ? static_cast<uint32_t>(return_address - slicks_runtime_base)
++	                             : UINT32_MAX;
++	call.sample_handle = mem_readw(stack + 4);
++	call.sample_block = -1;
++	for (int16_t block = 0; block < 27; ++block) {
++		if (mem_readb(data + 0x4c4a + block) ==
++		    static_cast<uint8_t>(call.sample_handle)) {
++			call.sample_block = block;
++			break;
++		}
++	}
++	call.flags = mem_readw(stack + 6);
++	call.priority = mem_readw(stack + 8);
++	slicks_sound_calls.push_back(call);
++}
++
+ void Slicks_RecordTrackObject()
+@@ -735,3 +770,12 @@ void Slicks_WriteTrace()
+ 		fclose(output);
+ 	}
++	if (auto *output = fopen("slicks-sound-calls.csv", "w")) {
++		fputs("frame,return_offset,sample_handle,sample_block,flags,priority\n",
++		      output);
++		for (const auto &call : slicks_sound_calls)
++			fprintf(output, "%u,0x%05x,%u,%d,%u,%u\n", call.frame,
++			        call.return_offset, call.sample_handle, call.sample_block,
++			        call.flags, call.priority);
++		fclose(output);
++	}
+ 	if (auto *output = fopen("slicks-race-state.csv", "w")) {
+@@ -844,4 +888,6 @@ static void CPU_Core_Normal_Trap_Run(void)
+ 	}
+ 
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if (offset == 0x3167b)
++		Slicks_RecordSoundCall();
+ 	if (offset == 0x103f7)

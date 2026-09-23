@@ -23,6 +23,8 @@ commands
   set $ok = $ok && g_slicks_diag_countdown_stage == 6
   set $ok = $ok && g_slicks_diag_audio_ready && g_slicks_diag_engine_started
   set $ok = $ok && g_slicks_diag_engine_sample_block == 18
+  set $ok = $ok && g_slicks_diag_effect_sample_block == 6
+  set $ok = $ok && g_slicks_diag_effect_priority == 14
   set $ok = $ok && !g_slicks_diag_start_light_visible
   set $ok = $ok && g_slicks_diag_start_light_stage_mask == 15
   set $ok = $ok && g_slicks_diag_dirty_ranges > 0

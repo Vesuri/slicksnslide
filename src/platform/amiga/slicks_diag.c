@@ -54,6 +54,8 @@ volatile unsigned char g_slicks_diag_results_drawn;
 volatile unsigned char g_slicks_diag_audio_ready;
 volatile unsigned char g_slicks_diag_engine_started;
 volatile unsigned char g_slicks_diag_engine_sample_block;
+volatile unsigned char g_slicks_diag_effect_sample_block;
+volatile unsigned char g_slicks_diag_effect_priority;
 volatile unsigned char g_slicks_diag_music_started;
 volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
@@ -791,6 +793,7 @@ int main(int argc, char **argv)
         left_was_down = left_down;
         if (g_slicks_diag_ingame) {
             unsigned short dirty;
+            unsigned short sound;
             unsigned char completed_now = 0;
             slicks_race_step(race, logical);
             if (race->race_complete && audio.engine_started) {
@@ -798,10 +801,17 @@ int main(int argc, char **argv)
                 slicks_amiga_audio_start_music(&audio);
                 completed_now = 1;
             }
-            slicks_amiga_audio_update(
-                &audio, race->cars[0].speed,
-                race->collision_count + race->track_collision_count,
-                race->skidmark_count);
+            slicks_amiga_audio_update(&audio, race->cars[0].speed);
+            for (sound = 0; sound < race->sound_event_count; ++sound) {
+                const struct SlicksSoundEvent *event =
+                    &race->sound_events[sound];
+                slicks_amiga_audio_play_effect(
+                    &audio, event->sample_block, event->flags,
+                    event->priority);
+            }
+            g_slicks_diag_effect_sample_block =
+                audio.last_effect_sample_block;
+            g_slicks_diag_effect_priority = audio.last_effect_priority;
             g_slicks_diag_engine_started = audio.engine_started;
             g_slicks_diag_music_started = audio.music_started;
             g_slicks_diag_dirty_ranges = race->dirty_row_count;

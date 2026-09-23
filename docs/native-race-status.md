@@ -80,12 +80,13 @@ from the original files at run time.
   Escape returns from a race and Return returns after results.
 - Paula channel 0 loops the engine sample selected by the original ten-entry
   vehicle-to-sample table (blocks 17, 17, 21, 22, 19, 18, 20, 18, 23, and
-  24) at the recovered startup volume of 100, with speed-dependent period.
-  Channels 1 and 2 play contact and surface effects; contact playback
-  now follows both first-frame car contacts and first-frame track contacts,
-  matching the shared DOS contact-event edge. Channel 3 plays `intermed.wav`
-  after the race. Chip allocations and DMA are released before AmigaOS is
-  restored.
+  24) at DOS priority 100, with speed-dependent period. The full 26-block
+  bank is indexed in one pass. Channels 1 and 2 play natural-length effects:
+  a new car contact dispatches block 6, while track impacts select blocks
+  10--16 from the current 16-way heading through the original DS:0196 table.
+  Both use DOS flag-2 duplicate suppression and priority 14. Channel 3 plays
+  `intermed.wav` after the race. Chip allocations and DMA are released before
+  AmigaOS is restored.
 - Live painters merge changed scanlines into a fixed interval list. Kalms C2P
   converts only those intervals; unchanged rows are skipped.
 - The archive directory is read once per open. A BASIC session now reads about
