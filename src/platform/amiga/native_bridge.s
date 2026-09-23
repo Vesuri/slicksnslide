@@ -18,6 +18,8 @@
 	xref	slicks_title_render_state
 	xref	slicks_title_fallback_color
 	xref	slicks_title_phase
+	xref	slicks_title_ordinary_color
+	xref	slicks_title_selected_color
 
 ; C ABI: slicks_prepare_title_frame(asset, frame)
 slicks_prepare_title_frame:
@@ -43,6 +45,8 @@ slicks_draw_title_pages:
 	lea	slicks_title_third_color,a4
 	moveq	#0,d7
 	jsr	sui_title_step
+	move.w	d0,slicks_title_ordinary_color
+	move.w	d1,slicks_title_selected_color
 	movea.l	56(sp),a1
 	moveq	#0,d2
 	moveq	#0,d7
@@ -61,6 +65,8 @@ slicks_draw_title_menu_selection:
 	movea.l	48(sp),a0
 	movea.l	52(sp),a1
 	move.w	56(sp),d2
+	move.w	slicks_title_ordinary_color,d0
+	move.w	slicks_title_selected_color,d1
 	moveq	#0,d7
 	jsr	sui_title_menu
 	movem.l	(sp)+,d2-d7/a2-a6

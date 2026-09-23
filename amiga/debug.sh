@@ -32,8 +32,7 @@ cp -f out/SlicksDiag.exe "$DH1/SlicksDiag"
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
 cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
 mkdir -p "$DH1/TRACKS"
-cp -f ../ref/TRACKS/BASIC.SS "$DH1/TRACKS/BASIC.SS"
-cp -f ../ref/TRACKS/BASICTRK.SS "$DH1/TRACKS/BASICTRK.SS"
+cp -f ../ref/TRACKS/*.SS "$DH1/TRACKS/"
 
 fsuae_claim_port
 "$FSUAE" \

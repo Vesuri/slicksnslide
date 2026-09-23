@@ -76,8 +76,14 @@ from the original files at run time.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.
-- The title menu selects player car, BASIC/BASICTRK, and one through nine laps.
-  Escape returns from a race and Return returns after results.
+- The title menu selects the player car, every `.SS` file discovered in the
+  `TRACKS` directory, and one through nine laps. The bundled run/debug setup
+  exposes all 195 supplied tracks. Escape returns from a race and Return
+  returns after results.
+- Title-menu redraws retain the ordinary and selected colours produced by the
+  recovered palette matcher. The C/assembly bridge no longer inherits
+  undefined `d0`/`d1` values from its caller, so unrelated code layout cannot
+  change menu colours.
 - Paula channel 0 loops the engine sample selected by the original ten-entry
   vehicle-to-sample table (blocks 17, 17, 21, 22, 19, 18, 20, 18, 23, and
   24) at DOS priority 100. Its frequency uses the original per-vehicle base

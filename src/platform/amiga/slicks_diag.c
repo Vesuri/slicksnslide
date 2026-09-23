@@ -37,6 +37,9 @@ volatile unsigned long g_slicks_diag_dirty_c2p_rows;
 volatile unsigned short g_slicks_diag_restore_status;
 volatile unsigned short g_slicks_diag_force_exit;
 volatile unsigned short g_slicks_diag_track_zones;
+volatile unsigned short g_slicks_diag_track_files;
+volatile char g_slicks_diag_first_track[12];
+volatile char g_slicks_diag_second_track[12];
 volatile unsigned long g_slicks_diag_material_checksum;
 volatile unsigned long g_slicks_diag_surface_checksum;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
@@ -124,6 +127,104 @@ extern void slicks_chunky_rows_to_amiga(const unsigned char *chunky,
                                         unsigned long top,
                                         unsigned long bottom);
 
+#define SLICKS_TRACK_FILE_MAX 256
+#define SLICKS_TRACK_NAME_SIZE 12
+
+static unsigned short discover_tracks(
+    char names[SLICKS_TRACK_FILE_MAX][SLICKS_TRACK_NAME_SIZE])
+{
+    struct FileInfoBlock *info =
+        (struct FileInfoBlock *)AllocDosObject(DOS_FIB, 0);
+    BPTR lock = Lock((CONST_STRPTR)"TRACKS", ACCESS_READ);
+    unsigned short count = 0;
+    unsigned short at;
+    if (!info || !lock)
+        goto cleanup;
+    if (!Examine(lock, info))
+        goto cleanup;
+    while (count < SLICKS_TRACK_FILE_MAX && ExNext(lock, info)) {
+        const char *source = (const char *)info->fib_FileName;
+        unsigned short length = 0;
+        if (info->fib_DirEntryType >= 0)
+            continue;
+        while (source[length] && length < SLICKS_TRACK_NAME_SIZE)
+            ++length;
+        if (length < 4 || length >= SLICKS_TRACK_NAME_SIZE ||
+            source[length - 3] != '.' ||
+            (source[length - 2] != 'S' && source[length - 2] != 's') ||
+            (source[length - 1] != 'S' && source[length - 1] != 's'))
+            continue;
+        for (at = 0; at <= length; ++at)
+            names[count][at] = source[at];
+        ++count;
+    }
+cleanup:
+    if (lock)
+        UnLock(lock);
+    if (info)
+        FreeDosObject(DOS_FIB, info);
+    if (!count) {
+        static const char fallback[] = "BASIC.SS";
+        for (at = 0; at < sizeof(fallback); ++at)
+            names[0][at] = fallback[at];
+        count = 1;
+    }
+    /* AmigaDOS directory order is filesystem-dependent.  Keep the menu
+     * deterministic and make BASIC.SS the initial selection when present. */
+    {
+        unsigned short left;
+        for (left = 0; left + 1 < count; ++left) {
+            unsigned short right;
+            for (right = left + 1; right < count; ++right) {
+                unsigned short character = 0;
+                while (names[left][character] == names[right][character] &&
+                       names[left][character])
+                    ++character;
+                if ((unsigned char)names[right][character] <
+                    (unsigned char)names[left][character]) {
+                    char temporary[SLICKS_TRACK_NAME_SIZE];
+                    for (at = 0; at < SLICKS_TRACK_NAME_SIZE; ++at) {
+                        temporary[at] = names[left][at];
+                        names[left][at] = names[right][at];
+                        names[right][at] = temporary[at];
+                    }
+                }
+            }
+        }
+    }
+    for (at = 0; at < count; ++at) {
+        static const char basic[] = "BASIC.SS";
+        unsigned short character = 0;
+        while (basic[character] == names[at][character] && basic[character])
+            ++character;
+        if (!basic[character] && !names[at][character]) {
+            char temporary[SLICKS_TRACK_NAME_SIZE];
+            unsigned short byte;
+            unsigned short position;
+            for (byte = 0; byte < SLICKS_TRACK_NAME_SIZE; ++byte)
+                temporary[byte] = names[at][byte];
+            for (position = at; position > 0; --position)
+                for (byte = 0; byte < SLICKS_TRACK_NAME_SIZE; ++byte)
+                    names[position][byte] = names[position - 1][byte];
+            for (byte = 0; byte < SLICKS_TRACK_NAME_SIZE; ++byte)
+                names[0][byte] = temporary[byte];
+            break;
+        }
+    }
+    return count;
+}
+
+static void make_track_path(char *path, const char *name)
+{
+    static const char prefix[] = "TRACKS/";
+    unsigned short at;
+    for (at = 0; at < sizeof(prefix) - 1; ++at)
+        path[at] = prefix[at];
+    while (*name)
+        path[at++] = *name++;
+    path[at] = 0;
+}
+
 static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
 {
     switch (raw & 0x7fu) {
@@ -160,11 +261,18 @@ static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
     unsigned short selection, unsigned short vehicle,
-    unsigned short track, unsigned short laps)
+    const char *track_name, unsigned short laps)
 {
     char vehicle_text[] = "CAR AUTO 01";
     char laps_text[] = "LAPS 4";
-    const char *track_text = track ? "TRACK BASICTRK" : "TRACK BASIC";
+    static char track_text[19];
+    static const char prefix[] = "TRACK ";
+    unsigned short at;
+    for (at = 0; at < sizeof(prefix) - 1; ++at)
+        track_text[at] = prefix[at];
+    while (*track_name && *track_name != '.' && at < sizeof(track_text) - 1)
+        track_text[at++] = *track_name++;
+    track_text[at] = 0;
     vehicle_text[9] = (char)('0' + (vehicle + 1) / 10);
     vehicle_text[10] = (char)('0' + (vehicle + 1) % 10);
     laps_text[5] = (char)('0' + laps);
@@ -544,6 +652,7 @@ int main(int argc, char **argv)
     static unsigned char source_palette[768];
     static unsigned char race_palette[768];
     static unsigned short mode_state[11];
+    static char track_names[SLICKS_TRACK_FILE_MAX][SLICKS_TRACK_NAME_SIZE];
     struct SlicksResourceArchive archive = {0, 0, 0};
     struct SlicksAmigaPlatform platform = {0};
     struct SlicksAmigaAudio audio = {0};
@@ -562,8 +671,10 @@ int main(int argc, char **argv)
     unsigned short menu_selection = 0;
     unsigned short selected_vehicle = 5;
     unsigned short selected_track = 0;
+    unsigned short track_count;
     unsigned short selected_laps = 4;
     const char *track_path;
+    char selected_track_path[19];
     int result = 20;
 
     DOSBase = (struct DosLibrary *)OpenLibrary(
@@ -603,12 +714,22 @@ int main(int argc, char **argv)
     make_title_surface(logical, title_frame, source_palette);
     redraw_title_configuration(&platform, logical, chunky, source_palette,
                                menu_selection, selected_vehicle,
-                               selected_track, selected_laps);
+                               "BASIC.SS", selected_laps);
     title_checksum = checksum_planes(logical);
     slicks_convert_to_amiga(logical, chunky, platform.views[0].bitmap);
     if (slicks_amiga_platform_set_view(&platform, 0, source_palette) != 0)
         goto cleanup;
     title_display_checksum = checksum_bitmap(platform.views[0].bitmap);
+    track_count = discover_tracks(track_names);
+    g_slicks_diag_track_files = track_count;
+    {
+        unsigned short at;
+        for (at = 0; at < sizeof(g_slicks_diag_first_track); ++at)
+            g_slicks_diag_first_track[at] = track_names[0][at];
+        if (track_count > 1)
+            for (at = 0; at < sizeof(g_slicks_diag_second_track); ++at)
+                g_slicks_diag_second_track[at] = track_names[1][at];
+    }
     sample_resource = (unsigned char *)AllocMem(131691UL, MEMF_ANY);
     if (!sample_resource ||
         slicks_resource_archive_load(&archive, "samples.dat", sample_resource,
@@ -689,7 +810,8 @@ int main(int argc, char **argv)
                     make_title_surface(logical, title_frame, source_palette);
                     redraw_title_configuration(
                         &platform, logical, chunky, source_palette,
-                        menu_selection, selected_vehicle, selected_track,
+                        menu_selection, selected_vehicle,
+                        track_names[selected_track],
                         selected_laps);
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
@@ -721,7 +843,9 @@ int main(int argc, char **argv)
                             SLICKS_VEHICLE_COUNT);
                         redraw = 1;
                     } else if (menu_selection == 2) {
-                        selected_track ^= 1;
+                        selected_track = (unsigned short)(
+                            (selected_track + track_count + delta) %
+                            track_count);
                         redraw = 1;
                     } else if (menu_selection == 3) {
                         selected_laps = (unsigned short)(
@@ -736,8 +860,8 @@ int main(int argc, char **argv)
                 if (redraw) {
                     redraw_title_configuration(
                         &platform, logical, chunky, source_palette,
-                        menu_selection, selected_vehicle, selected_track,
-                        selected_laps);
+                        menu_selection, selected_vehicle,
+                        track_names[selected_track], selected_laps);
                     continue;
                 }
                 unsigned short action = slicks_dispatch_title_key(
@@ -753,8 +877,9 @@ int main(int argc, char **argv)
                 if (action == 2 && menu_selection == 0) {
                     g_slicks_diag_ready = 0;
                     slicks_amiga_platform_end(&platform);
-                    track_path = selected_track ? "TRACKS/BASICTRK.SS" :
-                                                  "TRACKS/BASIC.SS";
+                    make_track_path(selected_track_path,
+                                    track_names[selected_track]);
+                    track_path = selected_track_path;
                     if (prepare_race(&platform, logical, chunky, mode_state,
                                      race, track_path, race_palette) != 0)
                         goto cleanup;
@@ -783,8 +908,9 @@ int main(int argc, char **argv)
                 if (!race_prepared) {
                     g_slicks_diag_ready = 0;
                     slicks_amiga_platform_end(&platform);
-                    track_path = selected_track ? "TRACKS/BASICTRK.SS" :
-                                                  "TRACKS/BASIC.SS";
+                    make_track_path(selected_track_path,
+                                    track_names[selected_track]);
+                    track_path = selected_track_path;
                     if (prepare_race(&platform, logical, chunky, mode_state,
                                      race, track_path, race_palette) != 0)
                         goto cleanup;

@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
 trap fsuae_stop_previous EXIT
 
-EXPECTED='SLICKS_DIAG_READY=1 CHECKSUM=20255ca3 DISPLAY=52c2bd12'
+EXPECTED='SLICKS_DIAG_READY=1 TRACKS=195 NAME=BASIC.SS NEXT=1WAY.SS CHECKSUM=5e6f694d DISPLAY=4f3e0320'
 LOG=.run/diag-ready.log
 mkdir -p .run
 
