@@ -329,7 +329,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
         return;
     mark_dirty_rows(race, origin_y, origin_y + height);
 
-    car->old_x = (unsigned char)origin_x;
+    car->old_x = origin_x;
     car->old_y = (unsigned char)origin_y;
     car->old_width = width;
     car->old_height = height;
@@ -745,7 +745,7 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
         if (particle.lifetime)
             race->trail_particles[destination++] = particle;
     }
-    race->trail_particle_count = (unsigned char)destination;
+    race->trail_particle_count = destination;
 }
 
 static unsigned short next_random(struct SlicksRaceRuntime *race)

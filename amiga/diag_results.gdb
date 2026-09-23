@@ -27,8 +27,8 @@ commands
   set $ok = $ok && g_slicks_diag_finish_position[2] == 4
   set $ok = $ok && g_slicks_diag_finish_position[3] == 1
   set $ok = $ok && g_slicks_diag_sound_event_totals[9] == 1
-  set $ok = $ok && g_slicks_diag_checksum == 0x40dc531c
-  set $ok = $ok && g_slicks_diag_display_checksum == 0x6cac18c7
+  set $ok = $ok && g_slicks_diag_checksum == 0xde4391a0
+  set $ok = $ok && g_slicks_diag_display_checksum == 0x15e8baf5
   if !$ok
     printf "SLICKS_RESULTS_FAILED FRAME=%u COMPLETE=%u DRAWN=%u FINISHED=%u,%u,%u,%u POS=%u,%u,%u,%u LAPS=%u,%u,%u,%u WAYPOINTS=%u,%u,%u,%u CHECKSUM=%08x DISPLAY=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_race_complete, g_slicks_diag_results_drawn, g_slicks_diag_finished[0], g_slicks_diag_finished[1], g_slicks_diag_finished[2], g_slicks_diag_finished[3], g_slicks_diag_finish_position[0], g_slicks_diag_finish_position[1], g_slicks_diag_finish_position[2], g_slicks_diag_finish_position[3], g_slicks_diag_lap[0], g_slicks_diag_lap[1], g_slicks_diag_lap[2], g_slicks_diag_lap[3], g_slicks_diag_waypoint[0], g_slicks_diag_waypoint[1], g_slicks_diag_waypoint[2], g_slicks_diag_waypoint[3], g_slicks_diag_checksum, g_slicks_diag_display_checksum
     quit 1

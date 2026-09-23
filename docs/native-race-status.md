@@ -28,6 +28,9 @@ from the original files at run time.
   Steering now preserves the original four-stage signed integer recurrence,
   including the traced human/AI input strengths and per-driver scales; the
   semantic trace proves 9,329 literal heading transitions.
+- Saved-under restoration retains the full 0--319 car X coordinate.  This is
+  covered by the strict BASIC A1200 checksum: the two cars initially beyond
+  x=255 no longer restore their old pixels at the wrapped x=7 position.
 - The normal computer-control path follows the original ten-byte navigation
   records. Its 16-sector vector quantizer, steering thresholds, aligned-
   velocity throttle restoration, ordinary coast, greater-than-five-sector
@@ -75,6 +78,8 @@ from the original files at run time.
   22 through 26. The native generator is the original 32-bit
   `state * 0x015a4e35 + 1` recurrence. Selection of the alternate actor sprite
   group and its draw-priority details still need instruction-level recovery.
+  The active-particle count also remains 16-bit at the 256-entry capacity, so
+  filling the pool no longer wraps the count to zero and makes all smoke vanish.
 - Each wheel on road-like material classes 0, 1, 17, 19, and 31 now uses
   the separate DOS slip-sound path. Above speed 100 it draws one of sample
   blocks 2--4 from the shared random generator and submits it with flag 2 and

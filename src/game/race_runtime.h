@@ -120,7 +120,10 @@ struct SlicksRaceCar {
     unsigned char finish_position;
     unsigned char touching_solid;
     unsigned char touching_car;
-    unsigned char old_x;
+    /* The playfield is 320 pixels wide.  This must not be narrowed: the
+     * BASIC grid starts at x=263, and an 8-bit saved coordinate restores its
+     * background at x=7, leaving a car ghost at both edges. */
+    unsigned short old_x;
     unsigned char old_y;
     unsigned char old_width;
     unsigned char old_height;
