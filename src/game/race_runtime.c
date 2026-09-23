@@ -26,6 +26,7 @@ static const signed char direction_y[16] = {
 };
 
 static long absolute_long(long value);
+static unsigned short next_random(struct SlicksRaceRuntime *race);
 
 /* DS:4ca4/4d24: the two wheel sample points generated for each of the four
  * entrants and sixteen headings.  Coordinates are relative to the original
@@ -428,9 +429,10 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
     unsigned char controls = 0;
     unsigned char contact = predicted_car_contact(race, car_index);
 
-    /* f09d's stationary-position watchdog enters a timed recovery turn.
-     * Keep the recovered 150/40 tick cadence; the original random side is
-     * made deterministic from frame and racer so diagnostics remain stable. */
+    /* f09d's stationary-position watchdog enters state 2 for a 40-tick
+     * accelerating turn.  Movement reloads the watch with 150 ticks; the
+     * original start-up grace is 700 ticks.  While state 2 is active f09d
+     * holds the watch at 100, so another escape cannot start immediately. */
     if (car->x / 100 == car->ai_last_x / 100 &&
         car->y / 100 == car->ai_last_y / 100) {
         if (car->ai_stuck_ticks)
@@ -442,12 +444,12 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
     }
     if (!car->ai_recovery_ticks && car->ai_stuck_ticks == 0) {
         car->ai_recovery_ticks = 40;
-        car->ai_recovery_right =
-            (unsigned char)((race->frame_count + car_index) & 1);
-        car->ai_stuck_ticks = 150;
+        car->ai_recovery_right = (unsigned char)(next_random(race) & 1U);
+        car->ai_stuck_ticks = 100;
     }
     if (car->ai_recovery_ticks) {
         --car->ai_recovery_ticks;
+        car->ai_stuck_ticks = 100;
         controls = SLICKS_CONTROL_ACCELERATE |
             (car->ai_recovery_right ? SLICKS_CONTROL_RIGHT :
                                       SLICKS_CONTROL_LEFT);
@@ -1397,7 +1399,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         state->maximum_speed = 100;
         state->ai_last_x = state->x;
         state->ai_last_y = state->y;
-        state->ai_stuck_ticks = 150;
+        state->ai_stuck_ticks = 700;
         draw_car(race, logical, car);
     }
     draw_timers(race, logical);

@@ -32,7 +32,9 @@ from the original files at run time.
   records. Its 16-sector vector quantizer, steering thresholds, aligned-
   velocity throttle restoration, ordinary coast, greater-than-five-sector
   braking, centre checkpoint comparisons, 150-tick stationary watch, and
-  40-tick recovery interval are recovered from `e204` and `f09d`. The
+  700-tick initial grace, 150-tick stationary watch, 40-tick accelerating
+  escape turn, randomized turn side, and 100-tick post-escape watch are
+  recovered from `e204` and `f09d`. The
   `analyze_ai_controls.py` replay reconstructs each pre-turn heading and
   matches the recovered normal drive decision on 98.81% of 12,287 traced AI
   samples; the remaining trace rows include the
