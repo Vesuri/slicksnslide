@@ -26,9 +26,13 @@ from the original files at run time.
   including the traced human/AI input strengths and per-driver scales; the
   semantic trace proves 9,329 literal heading transitions.
 - The normal computer-control path follows the original ten-byte navigation
-  records. Its steering thresholds, unconditional no-obstacle throttle, centre
-  checkpoint comparisons, 150-tick stationary watch, and 40-tick recovery
-  interval are recovered from `e204` and `f09d`.
+  records. Its 16-sector vector quantizer, steering thresholds, aligned-
+  velocity throttle restoration, ordinary coast, greater-than-five-sector
+  braking, centre checkpoint comparisons, 150-tick stationary watch, and
+  40-tick recovery interval are recovered from `e204` and `f09d`. The
+  `analyze_ai_controls.py` replay matches the recovered normal drive decision
+  on 97.91% of 12,287 traced AI samples; the remaining trace rows include the
+  optional recovery/avoidance states still listed below.
 - Car contacts use the recovered `.omi` extent and weight ratios. For each
   updated car, `2000:2d27..31bd` projects a point ten fixed units along its
   velocity using `(abs(vx) + abs(vy)) / 2`, tests that point against the other
