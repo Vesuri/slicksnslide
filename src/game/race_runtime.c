@@ -337,21 +337,6 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     car->saved_valid = 1;
 }
 
-static unsigned char nearest_direction(long dx, long dy)
-{
-    unsigned short direction;
-    unsigned char best = 0;
-    long best_dot = -2147483647L;
-    for (direction = 0; direction < 16; ++direction) {
-        long dot = dx * direction_x[direction] + dy * direction_y[direction];
-        if (dot > best_dot) {
-            best_dot = dot;
-            best = (unsigned char)direction;
-        }
-    }
-    return best;
-}
-
 static unsigned char dos_vector_direction(long dx, long dy)
 {
     long ratio;
@@ -435,10 +420,10 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
     struct SlicksRaceCar *car = &race->cars[car_index];
     const struct SlicksTrackZone *zone =
         &race->navigation.zones[car->waypoint];
-    long dx = (long)zone->x[2] * 100 - car->x;
-    long dy = (long)zone->y[2] * 100 - car->y;
+    long dx = (long)zone->x[2] - (car->x / 100L - 3L);
+    long dy = (long)zone->y[2] - (car->y / 100L - 3L);
     short target_heading =
-        (short)nearest_direction(dx, dy) * SLICKS_HEADING_STEP;
+        (short)dos_vector_direction(dx, dy) * SLICKS_HEADING_STEP;
     short difference = heading_difference(target_heading, car->heading);
     unsigned char controls = 0;
     unsigned char contact = predicted_car_contact(race, car_index);
