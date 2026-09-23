@@ -39,6 +39,15 @@ static const signed char ai_probe_steps[SLICKS_VEHICLE_COUNT] = {
 };
 
 static long absolute_long(long value);
+
+static long multiply_q15_unsigned(long value, unsigned short factor)
+{
+    /* The 286 helper clears the factor's high word and retains only the low
+     * 32 bits of the signed multiply before its arithmetic 15-bit shift. */
+    unsigned int product = (unsigned int)(signed int)value *
+        (unsigned int)factor;
+    return (long)((signed int)product >> 15);
+}
 static unsigned short next_random(struct SlicksRaceRuntime *race);
 static void emit_sound_event(struct SlicksRaceRuntime *race,
                              unsigned char sample_block,
@@ -300,6 +309,17 @@ static void restore_car(struct SlicksRaceRuntime *race,
     if (!car->saved_valid)
         return;
     mark_dirty_rows(race, car->old_y, car->old_y + car->old_height);
+    if (!logical) {
+        unsigned char *destination = race->chunky +
+            (unsigned long)car->old_y * SLICKS_SCREEN_WIDTH + car->old_x;
+        for (y = 0; y < car->old_height; ++y) {
+            for (x = 0; x < car->old_width; ++x)
+                destination[x] = car->saved_under[at++];
+            destination += SLICKS_SCREEN_WIDTH;
+        }
+        car->saved_valid = 0;
+        return;
+    }
     for (y = 0; y < car->old_height; ++y) {
         for (x = 0; x < car->old_width; ++x)
             write_pixel(logical, race->chunky,
@@ -339,6 +359,57 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     car->old_y = (unsigned char)origin_y;
     car->old_width = width;
     car->old_height = height;
+    if (!logical) {
+        const unsigned char *source_row;
+        short source_dx;
+        short source_dy;
+        unsigned char *destination = race->chunky +
+            (unsigned long)(unsigned short)origin_y * SLICKS_SCREEN_WIDTH +
+            (unsigned short)origin_x;
+        for (y = 0; y < height; ++y) {
+            for (x = 0; x < width; ++x)
+                car->saved_under[at++] = destination[x];
+            destination += SLICKS_SCREEN_WIDTH;
+        }
+        destination = race->chunky +
+            (unsigned long)(unsigned short)origin_y * SLICKS_SCREEN_WIDTH +
+            (unsigned short)origin_x;
+        if (rotation == 1) {
+            source_row = sprite->pixels +
+                (unsigned short)(sprite->height - 1) * sprite->width;
+            source_dx = (short)-sprite->width;
+            source_dy = 1;
+        } else if (rotation == 2) {
+            source_row = sprite->pixels +
+                (unsigned short)sprite->width * sprite->height - 1;
+            source_dx = -1;
+            source_dy = (short)-sprite->width;
+        } else if (rotation == 3) {
+            source_row = sprite->pixels + sprite->width - 1;
+            source_dx = sprite->width;
+            source_dy = -1;
+        } else {
+            source_row = sprite->pixels;
+            source_dx = 1;
+            source_dy = sprite->width;
+        }
+        for (y = 0; y < height; ++y) {
+            const unsigned char *source = source_row;
+            for (x = 0; x < width; ++x) {
+                unsigned char pixel = *source;
+                if (pixel) {
+                    if (pixel >= 1 && pixel <= 5)
+                        pixel += car->style * 5;
+                    destination[x] = pixel;
+                }
+                source += source_dx;
+            }
+            source_row += source_dy;
+            destination += SLICKS_SCREEN_WIDTH;
+        }
+        car->saved_valid = 1;
+        return;
+    }
     for (y = 0; y < height; ++y) {
         for (x = 0; x < width; ++x)
             car->saved_under[at++] =
@@ -1077,25 +1148,37 @@ static void update_car(struct SlicksRaceRuntime *race,
         car->heading -= SLICKS_HEADING_FULL;
 
     direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
-    /* 2000:0ea2..121c is a pair of signed 32-bit force and decay updates.
-     * The paired DOS hooks prove every operand and result across 27,030
-     * component updates.  The 23 branch is coasting; longitudinal input uses
-     * 38.  Integer division truncates toward zero, as the 286 helper does. */
-    force_divisor = (long)car->drive_coefficients[3] *
-        car->drive_coefficients[0];
-    force_divisor *= car->tyre_load / 70 + 10;
-    force_divisor *= active_drive ? 38L : 23L;
-    force_x = (long)direction_x[direction] * car->speed_fixed * 200L /
-        force_divisor;
-    force_y = (long)direction_y[direction] * car->speed_fixed * 200L /
-        force_divisor;
-    velocity_factor = (short)((active_drive ? 0x7dc2L : 0x7bd7L) -
-                              car->drive_bias);
-    velocity_divisor = 0x8000L + car->drive_coefficients[1];
-    car->velocity_x = force_x +
-        car->velocity_x * velocity_factor / velocity_divisor;
-    car->velocity_y = force_y +
-        car->velocity_y * velocity_factor / velocity_divisor;
+    if (car->special_drive_state > 0) {
+        /* 2000:0dd9..0e4c bypasses both normal force branches. Factor seven
+         * is unsigned after the helper clears CX, which matters when the
+         * per-driver bias raises it beyond 7fffh. */
+        unsigned short special_factor = (unsigned short)(
+            0x7ffc - car->drive_bias);
+        car->velocity_x = multiply_q15_unsigned(
+            car->velocity_x, special_factor);
+        car->velocity_y = multiply_q15_unsigned(
+            car->velocity_y, special_factor);
+    } else {
+        /* 2000:0ea2..121c is a pair of signed 32-bit force and decay updates.
+         * The paired DOS hooks prove every operand and result across 27,030
+         * component updates. The 23 branch is coasting; longitudinal input
+         * uses 38. Integer division truncates toward zero, as on the 286. */
+        force_divisor = (long)car->drive_coefficients[3] *
+            car->drive_coefficients[0];
+        force_divisor *= car->tyre_load / 70 + 10;
+        force_divisor *= active_drive ? 38L : 23L;
+        force_x = (long)direction_x[direction] *
+            car->speed_fixed * 200L / force_divisor;
+        force_y = (long)direction_y[direction] *
+            car->speed_fixed * 200L / force_divisor;
+        velocity_factor = (short)(
+            (active_drive ? 0x7dc2L : 0x7bd7L) - car->drive_bias);
+        velocity_divisor = 0x8000L + car->drive_coefficients[1];
+        car->velocity_x = force_x +
+            car->velocity_x * velocity_factor / velocity_divisor;
+        car->velocity_y = force_y +
+            car->velocity_y * velocity_factor / velocity_divisor;
+    }
 
     /* The original position step multiplies velocity by a normal-game time
      * scale of 100 and divides by 2000. */
@@ -1293,6 +1376,39 @@ static void clear_timer_range(struct SlicksRaceRuntime *race,
     }
 }
 
+static void replace_timer_glyph(struct SlicksRaceRuntime *race,
+                                unsigned char *logical,
+                                unsigned short left,
+                                unsigned char character)
+{
+    unsigned short glyph = race->font.lookup[character];
+    unsigned short width;
+    const unsigned char *source;
+    unsigned short row;
+    unsigned short column;
+    if (glyph >= race->font.glyph_count)
+        return;
+    width = race->font.widths[glyph];
+    source = race->font.pixels + race->font.offsets[glyph];
+    mark_dirty_rows(race, 192, 192 + race->font.height);
+    if (!logical && race->chunky) {
+        unsigned char *destination = race->chunky +
+            192UL * SLICKS_SCREEN_WIDTH + left;
+        for (row = 0; row < race->font.height; ++row) {
+            for (column = 0; column < width; ++column)
+                destination[column] = *source++
+                    ? SLICKS_TIMER_COLOUR : 0;
+            destination += SLICKS_SCREEN_WIDTH;
+        }
+        return;
+    }
+    for (row = 0; row < race->font.height; ++row) {
+        for (column = 0; column < width; ++column)
+            write_pixel(logical, race->chunky, left + column, 192 + row,
+                        *source++ ? SLICKS_TIMER_COLOUR : 0);
+    }
+}
+
 static unsigned char draw_character(const struct SlicksRaceFont *font,
                                     unsigned char *logical,
                                     unsigned char *chunky,
@@ -1306,6 +1422,18 @@ static unsigned char draw_character(const struct SlicksRaceFont *font,
     if (glyph >= font->glyph_count)
         return 0;
     pixel_at = font->offsets[glyph];
+    if (!logical && chunky) {
+        const unsigned char *source = font->pixels + pixel_at;
+        unsigned char *destination = chunky +
+            (unsigned long)y * SLICKS_SCREEN_WIDTH + x;
+        for (row = 0; row < font->height; ++row) {
+            for (column = 0; column < font->widths[glyph]; ++column)
+                if (*source++)
+                    destination[column] = SLICKS_TIMER_COLOUR;
+            destination += SLICKS_SCREEN_WIDTH;
+        }
+        return font->widths[glyph];
+    }
     for (row = 0; row < font->height; ++row)
         for (column = 0; column < font->widths[glyph]; ++column)
             if (font->pixels[pixel_at + row * font->widths[glyph] + column])
@@ -1348,6 +1476,35 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
             text[7] = '/';
             text[8] = (unsigned char)('0' + race->laps_to_run);
             length = 9;
+        }
+
+        if (race->hud_valid[car] &&
+            race->hud_text_length[car] == length) {
+            unsigned char same_width = 1;
+            for (character = 0; character < length; ++character) {
+                unsigned char old_character =
+                    race->hud_text[car][character];
+                if (old_character != text[character] &&
+                    race->font.widths[race->font.lookup[old_character]] !=
+                    race->font.widths[race->font.lookup[text[character]]]) {
+                    same_width = 0;
+                    break;
+                }
+            }
+            if (same_width) {
+                x = left;
+                for (character = 0; character < length; ++character) {
+                    if (race->hud_text[car][character] != text[character]) {
+                        replace_timer_glyph(
+                            race, logical, x, text[character]);
+                        race->hud_text[car][character] = text[character];
+                    }
+                    x += race->font.widths[
+                            race->font.lookup[text[character]]] +
+                        spacing[character];
+                }
+                continue;
+            }
         }
 
         first_changed = 0;
@@ -1677,11 +1834,16 @@ void slicks_race_use_chunky_surface(struct SlicksRaceRuntime *race)
 
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
 {
+    unsigned char profile;
     unsigned short car;
     if (!race || !logical || !race->started)
         return;
     if (race->chunky_authoritative)
         logical = 0;
+    profile = (unsigned char)(race->profile_marker &&
+        race->frame_count + 1 == race->profile_frame);
+    if (profile)
+        race->profile_marker(0);
     race->sound_event_count = 0;
     race->collision_impact = 0;
     if (!race->racing) {
@@ -1707,16 +1869,26 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
         restore_car(race, logical, &race->cars[car - 1]);
     restore_trail_particles(race, logical, 3, 3);
     restore_trail_particles(race, logical, 0, 0);
+    if (profile)
+        race->profile_marker(1);
     advance_trail_particles(race);
+    if (profile)
+        race->profile_marker(2);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         update_car(race, car);
+    if (profile)
+        race->profile_marker(3);
     draw_timers(race, logical);
+    if (profile)
+        race->profile_marker(4);
     draw_trail_particles(race, logical, 0, 0);
     draw_trail_particles(race, logical, 3, 3);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         draw_car(race, logical, car);
     draw_trail_particles(race, logical, 5, 5);
     draw_trail_particles(race, logical, 6, 6);
+    if (profile)
+        race->profile_marker(5);
     if (race->race_complete && !race->results_drawn)
         draw_results(race, logical);
     ++race->frame_count;

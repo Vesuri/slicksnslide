@@ -134,8 +134,14 @@ they are by the original race routine.
   source was tested on the strict 68020 target: pixel painting was within one
   millisecond of the linear path, but gathering banked rows before an
   unmodified Kalms transpose added roughly ten milliseconds at the busy
-  700-frame checkpoint. A competitive single-buffer version must fuse the
-  bank permutation into the pipelined C2P transpose.
+  700-frame checkpoint. A fused banked-source transpose was subsequently
+  proved pixel-exact, but its per-word bank permutation made C2P alone take
+  624 raster lines on the 68020, so the linear surface remains substantially
+  faster. The ordinary 200-frame checkpoint now updates only changed HUD
+  glyph cells and uses pointer-stepped car save/restore and rotation on that
+  surface. Its complete measured update fell from 474 raster lines (about
+  30.4 ms) to 288 lines (about 18.5 ms), including diagnostic phase probes;
+  the strict A1200 gate enforces the 312-line PAL-frame ceiling.
 - The strict FS-UAE target is a stock 2 MiB A1200 (`fast_memory=0`). The race
   runtime—including its embedded particle array—and both CPU-side surfaces
   use `MEMF_ANY`, so they necessarily reside in Chip RAM on this target; only

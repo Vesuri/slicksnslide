@@ -107,6 +107,7 @@ struct SlicksRaceCar {
     short steering_penalty;
     short steering_property;
     short drive_bias;
+    short special_drive_state;
     short drive_setup[13];
     short drive_coefficients[7];
     short tyre_load;
@@ -186,6 +187,8 @@ struct SlicksRaceRuntime {
     unsigned char race_complete;
     unsigned char results_drawn;
     unsigned char chunky_authoritative;
+    unsigned long profile_frame;
+    void (*profile_marker)(unsigned char phase);
     unsigned char hud_text[SLICKS_RACE_CAR_COUNT][9];
     unsigned char hud_text_length[SLICKS_RACE_CAR_COUNT];
     unsigned char hud_valid[SLICKS_RACE_CAR_COUNT];

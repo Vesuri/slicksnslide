@@ -88,7 +88,13 @@ volatile unsigned long g_slicks_diag_profile_audio_lines;
 volatile unsigned long g_slicks_diag_profile_c2p_lines;
 volatile unsigned long g_slicks_diag_profile_diag_lines;
 volatile unsigned long g_slicks_diag_profile_total_lines;
+volatile unsigned long g_slicks_diag_profile_restore_lines;
+volatile unsigned long g_slicks_diag_profile_advance_lines;
+volatile unsigned long g_slicks_diag_profile_update_lines;
+volatile unsigned long g_slicks_diag_profile_hud_lines;
+volatile unsigned long g_slicks_diag_profile_draw_lines;
 static const struct SlicksAmigaPlatform *g_slicks_diag_profile_platform;
+static unsigned long g_slicks_diag_profile_race_at;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
@@ -131,6 +137,31 @@ unsigned long slicks_diag_profile_raster_time(void)
         frame_after = platform->vblank_count;
     } while (frame_before != frame_after);
     return frame_before * PAL_RASTER_LINES + line;
+}
+
+static void slicks_diag_profile_race(unsigned char phase)
+{
+    unsigned long now = slicks_diag_profile_raster_time();
+    if (!phase) {
+        g_slicks_diag_profile_race_at = now;
+        return;
+    }
+    if (phase == 1)
+        g_slicks_diag_profile_restore_lines =
+            now - g_slicks_diag_profile_race_at;
+    else if (phase == 2)
+        g_slicks_diag_profile_advance_lines =
+            now - g_slicks_diag_profile_race_at;
+    else if (phase == 3)
+        g_slicks_diag_profile_update_lines =
+            now - g_slicks_diag_profile_race_at;
+    else if (phase == 4)
+        g_slicks_diag_profile_hud_lines =
+            now - g_slicks_diag_profile_race_at;
+    else if (phase == 5)
+        g_slicks_diag_profile_draw_lines =
+            now - g_slicks_diag_profile_race_at;
+    g_slicks_diag_profile_race_at = now;
 }
 
 __attribute__((constructor)) static void initialize_sysbase(void)
@@ -566,6 +597,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_error = 7;
         goto cleanup;
     }
+    race->profile_frame = g_slicks_diag_target_frame;
+    race->profile_marker = slicks_diag_profile_race;
     race_checkpoint(7);
 
     if (slicks_amiga_platform_set_view(platform, 1, race_palette) != 0) {

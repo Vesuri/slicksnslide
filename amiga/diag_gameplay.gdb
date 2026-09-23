@@ -42,6 +42,7 @@ commands
   set $ok = $ok && g_slicks_diag_dirty_ranges > 0
   set $ok = $ok && g_slicks_diag_dirty_rows > 0 && g_slicks_diag_dirty_rows < 200
   set $ok = $ok && g_slicks_diag_dirty_c2p_rows < 40000
+  set $ok = $ok && g_slicks_diag_profile_total_lines <= 312
   set $ok = $ok && g_slicks_diag_lap[0] == 1 && g_slicks_diag_lap_timer[0] == 218
   set $ok = $ok && (g_slicks_diag_car_x[0] != 25500 || g_slicks_diag_car_y[0] != 5700)
   set $ok = $ok && (g_slicks_diag_car_x[1] != 26300 || g_slicks_diag_car_y[1] != 5700)
@@ -58,6 +59,7 @@ commands
   printf "SLICKS_DIRTY RANGES=%u ROWS=%u TOTAL_CALLS=%u TOTAL_ROWS=%u\n", g_slicks_diag_dirty_ranges, g_slicks_diag_dirty_rows, g_slicks_diag_dirty_c2p_calls, g_slicks_diag_dirty_c2p_rows
   printf "SLICKS_PROFILE STEP=%u AUDIO=%u C2P=%u DIAG=%u TOTAL=%u\n", g_slicks_diag_profile_step_vblanks, g_slicks_diag_profile_audio_vblanks, g_slicks_diag_profile_c2p_vblanks, g_slicks_diag_profile_diag_vblanks, g_slicks_diag_profile_total_vblanks
   printf "SLICKS_PROFILE_LINES STEP=%u AUDIO=%u C2P=%u DIAG=%u TOTAL=%u\n", g_slicks_diag_profile_step_lines, g_slicks_diag_profile_audio_lines, g_slicks_diag_profile_c2p_lines, g_slicks_diag_profile_diag_lines, g_slicks_diag_profile_total_lines
+  printf "SLICKS_RACE_PHASES RESTORE=%u ADVANCE=%u UPDATE=%u HUD=%u DRAW=%u\n", g_slicks_diag_profile_restore_lines, g_slicks_diag_profile_advance_lines, g_slicks_diag_profile_update_lines, g_slicks_diag_profile_hud_lines, g_slicks_diag_profile_draw_lines
   printf "SLICKS_GAMEPLAY_OK FRAME=%u STAGE=%u SKIDS=%u COLLISIONS=%u TRACKCOLL=%u TIMER=%u LAP=%u LTIME=%u WAYPOINTS=%u,%u,%u,%u X=%d Y=%d C1X=%d C1Y=%d C2X=%d C2Y=%d C3X=%d C3Y=%d CHECKSUM=%08x DISPLAY=%08x\n", g_slicks_diag_race_frame, g_slicks_diag_countdown_stage, g_slicks_diag_skidmarks, g_slicks_diag_collisions, g_slicks_diag_track_collisions, g_slicks_diag_timer[0], g_slicks_diag_lap[0], g_slicks_diag_lap_timer[0], g_slicks_diag_waypoint[0], g_slicks_diag_waypoint[1], g_slicks_diag_waypoint[2], g_slicks_diag_waypoint[3], g_slicks_diag_car_x[0], g_slicks_diag_car_y[0], g_slicks_diag_car_x[1], g_slicks_diag_car_y[1], g_slicks_diag_car_x[2], g_slicks_diag_car_y[2], g_slicks_diag_car_x[3], g_slicks_diag_car_y[3], g_slicks_diag_checksum, g_slicks_diag_display_checksum
   quit
 end
