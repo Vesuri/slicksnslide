@@ -11,7 +11,10 @@ from the original files at run time.
   from `SLICKS.000`. The default DOS lineup is vehicles 5, 2, 0, and 0.
   Unproved bytes 4–6 remain explicitly numbered rather than carrying the old
   speculative top-speed/response/steering names; the live speed limit and
-  steering recurrence use their separately traced per-driver values.
+  steering recurrence use their separately traced per-driver values. Byte 32
+  is now identified as the divisor in `1000:ed64`'s four-channel impact/damage
+  update rather than the former speculative AI-speed field; byte 33 remains
+  explicitly unlabelled.
 - The start grid is derived from each track's recorded position and heading.
 - Four cars use persistent fixed-point position, velocity, speed, and heading
   state. Throttle uses the traced `0xa0` increment. The normal tyre-force

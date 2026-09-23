@@ -49,8 +49,8 @@ struct SlicksCarProperties {
     unsigned char smoke_profile;
     unsigned char engine_volume;
     signed char auxiliary_accumulator;
-    unsigned char ai_speed;
-    unsigned char ai_aggression;
+    unsigned char impact_resistance;
+    unsigned char property_33;
     unsigned char ready;
 };
 
