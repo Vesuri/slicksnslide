@@ -23,6 +23,17 @@ commands
   set $ok = $ok && g_slicks_diag_countdown_stage == 6
   set $ok = $ok && g_slicks_diag_audio_ready && g_slicks_diag_engine_started
   set $ok = $ok && g_slicks_diag_engine_sample_block == 18
+  set $vx = g_slicks_diag_car_vx[0]
+  set $vy = g_slicks_diag_car_vy[0]
+  if $vx < 0
+    set $vx = -$vx
+  end
+  if $vy < 0
+    set $vy = -$vy
+  end
+  set $magnitude = ($vx + $vy) / 2
+  set $ok = $ok && g_slicks_diag_engine_frequency == 2000 + 4 * $magnitude
+  set $ok = $ok && g_slicks_diag_engine_period == 3546895 / g_slicks_diag_engine_frequency
   set $ok = $ok && g_slicks_diag_effect_sample_block == 6
   set $ok = $ok && g_slicks_diag_effect_priority == 14
   set $ok = $ok && !g_slicks_diag_start_light_visible

@@ -80,7 +80,9 @@ from the original files at run time.
   Escape returns from a race and Return returns after results.
 - Paula channel 0 loops the engine sample selected by the original ten-entry
   vehicle-to-sample table (blocks 17, 17, 21, 22, 19, 18, 20, 18, 23, and
-  24) at DOS priority 100, with speed-dependent period. The full 26-block
+  24) at DOS priority 100. Its frequency uses the original per-vehicle base
+  and slope tables applied to `(abs(vx) + abs(vy)) / 2`; the result is
+  converted to a PAL Paula period. The full 26-block
   bank is indexed in one pass. Channels 1 and 2 play natural-length effects:
   a new car contact dispatches block 6, while track impacts select blocks
   10--16 from the current 16-way heading through the original DS:0196 table.

@@ -41,6 +41,8 @@ volatile unsigned long g_slicks_diag_material_checksum;
 volatile unsigned long g_slicks_diag_surface_checksum;
 volatile long g_slicks_diag_car_x[SLICKS_RACE_CAR_COUNT];
 volatile long g_slicks_diag_car_y[SLICKS_RACE_CAR_COUNT];
+volatile long g_slicks_diag_car_vx[SLICKS_RACE_CAR_COUNT];
+volatile long g_slicks_diag_car_vy[SLICKS_RACE_CAR_COUNT];
 volatile unsigned short g_slicks_diag_timer[SLICKS_RACE_CAR_COUNT];
 volatile short g_slicks_diag_speed[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_material[SLICKS_RACE_CAR_COUNT];
@@ -54,6 +56,8 @@ volatile unsigned char g_slicks_diag_results_drawn;
 volatile unsigned char g_slicks_diag_audio_ready;
 volatile unsigned char g_slicks_diag_engine_started;
 volatile unsigned char g_slicks_diag_engine_sample_block;
+volatile unsigned short g_slicks_diag_engine_frequency;
+volatile unsigned short g_slicks_diag_engine_period;
 volatile unsigned char g_slicks_diag_effect_sample_block;
 volatile unsigned char g_slicks_diag_effect_priority;
 volatile unsigned char g_slicks_diag_music_started;
@@ -479,6 +483,8 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;
+        g_slicks_diag_car_vx[car] = race->cars[car].velocity_x;
+        g_slicks_diag_car_vy[car] = race->cars[car].velocity_y;
         g_slicks_diag_timer[car] = race->cars[car].elapsed_centiseconds;
         g_slicks_diag_speed[car] = race->cars[car].speed;
         {
@@ -801,7 +807,8 @@ int main(int argc, char **argv)
                 slicks_amiga_audio_start_music(&audio);
                 completed_now = 1;
             }
-            slicks_amiga_audio_update(&audio, race->cars[0].speed);
+            slicks_amiga_audio_update(&audio, race->cars[0].velocity_x,
+                                      race->cars[0].velocity_y);
             for (sound = 0; sound < race->sound_event_count; ++sound) {
                 const struct SlicksSoundEvent *event =
                     &race->sound_events[sound];
@@ -813,6 +820,8 @@ int main(int argc, char **argv)
                 audio.last_effect_sample_block;
             g_slicks_diag_effect_priority = audio.last_effect_priority;
             g_slicks_diag_engine_started = audio.engine_started;
+            g_slicks_diag_engine_frequency = audio.engine_frequency;
+            g_slicks_diag_engine_period = audio.engine_period;
             g_slicks_diag_music_started = audio.music_started;
             g_slicks_diag_dirty_ranges = race->dirty_row_count;
             g_slicks_diag_dirty_rows = 0;

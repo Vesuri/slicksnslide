@@ -15,6 +15,8 @@ struct SlicksAmigaAudio {
     struct SlicksAmigaSample samples[SLICKS_AUDIO_SAMPLE_COUNT];
     struct SlicksAmigaSample music;
     unsigned short effect_ticks[SLICKS_AUDIO_EFFECT_CHANNELS];
+    unsigned short engine_frequency;
+    unsigned short engine_period;
     unsigned char effect_priority[SLICKS_AUDIO_EFFECT_CHANNELS];
     unsigned char engine_vehicle;
     unsigned char engine_sample_block;
@@ -36,7 +38,7 @@ void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
                                      unsigned short vehicle,
                                      unsigned short priority);
 void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
-                               short speed);
+                               long velocity_x, long velocity_y);
 void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
                                     unsigned short sample_block,
                                     unsigned short flags,

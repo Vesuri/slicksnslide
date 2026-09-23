@@ -16,6 +16,41 @@ static const unsigned char engine_sample_block[SLICKS_AUDIO_ENGINE_COUNT] = {
     17, 17, 21, 22, 19, 18, 20, 18, 23, 24
 };
 
+/* DS:05ca and DS:05d4.  The DOS engine update passes this frequency to the
+ * sample driver: base * 100 + slope * ((abs(vx) + abs(vy)) / 2). */
+static const unsigned char engine_frequency_base[SLICKS_AUDIO_ENGINE_COUNT] = {
+    22, 30, 15, 15, 20, 20, 33, 20, 20, 40
+};
+
+static const unsigned char engine_frequency_slope[SLICKS_AUDIO_ENGINE_COUNT] = {
+    7, 9, 2, 3, 4, 4, 5, 3, 10, 7
+};
+
+static unsigned long absolute_velocity(long value)
+{
+    return value < 0 ? (unsigned long)-value : (unsigned long)value;
+}
+
+static unsigned short engine_period(struct SlicksAmigaAudio *audio,
+                                    long velocity_x, long velocity_y)
+{
+    unsigned short vehicle = audio->engine_vehicle;
+    unsigned long magnitude =
+        (absolute_velocity(velocity_x) + absolute_velocity(velocity_y)) / 2UL;
+    unsigned long frequency =
+        (unsigned long)engine_frequency_base[vehicle] * 100UL +
+        (unsigned long)engine_frequency_slope[vehicle] * magnitude;
+    unsigned long period;
+    if (frequency > 65535UL)
+        frequency = 65535UL;
+    period = 3546895UL / frequency;
+    if (!period)
+        period = 1;
+    audio->engine_frequency = (unsigned short)frequency;
+    audio->engine_period = (unsigned short)period;
+    return (unsigned short)period;
+}
+
 static void wait_audio_dma(void)
 {
     unsigned short line = CUSTOM_WORD(0x006) & 0xff00;
@@ -167,7 +202,8 @@ void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
     block = engine_sample_block[vehicle];
     audio->engine_vehicle = (unsigned char)vehicle;
     audio->engine_sample_block = (unsigned char)block;
-    start_channel(0, &audio->samples[block], 420, 64);
+    start_channel(0, &audio->samples[block],
+                  engine_period(audio, 0, 0), 64);
     audio->engine_started = 1;
 }
 
@@ -180,18 +216,14 @@ void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
 }
 
 void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
-                               short speed)
+                               long velocity_x, long velocity_y)
 {
-    unsigned short period;
     unsigned short effect;
     if (!audio || !audio->ready)
         return;
-    if (audio->engine_started) {
-        if (speed < 0)
-            speed = (short)-speed;
-        period = (unsigned short)(420 - (speed > 100 ? 200 : speed * 2));
-        CUSTOM_WORD(AUDIO_BASE(0) + 6) = period;
-    }
+    if (audio->engine_started)
+        CUSTOM_WORD(AUDIO_BASE(0) + 6) =
+            engine_period(audio, velocity_x, velocity_y);
     for (effect = 0; effect < SLICKS_AUDIO_EFFECT_CHANNELS; ++effect) {
         if (audio->effect_ticks[effect] &&
             !--audio->effect_ticks[effect]) {
