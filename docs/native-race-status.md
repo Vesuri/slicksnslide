@@ -78,8 +78,10 @@ from the original files at run time.
   when all four cars finish and draws an ordered results panel.
 - The title menu selects player car, BASIC/BASICTRK, and one through nine laps.
   Escape returns from a race and Return returns after results.
-- Paula channel 0 loops the selected car's engine sample with speed-dependent
-  period. Channels 1 and 2 play contact and surface effects; contact playback
+- Paula channel 0 loops the engine sample selected by the original ten-entry
+  vehicle-to-sample table (blocks 17, 17, 21, 22, 19, 18, 20, 18, 23, and
+  24) at the recovered startup volume of 100, with speed-dependent period.
+  Channels 1 and 2 play contact and surface effects; contact playback
   now follows both first-frame car contacts and first-frame track contacts,
   matching the shared DOS contact-event edge. Channel 3 plays `intermed.wav`
   after the race. Chip allocations and DMA are released before AmigaOS is

@@ -17,6 +17,7 @@ struct SlicksAmigaAudio {
     unsigned short collision_ticks;
     unsigned short trail_ticks;
     unsigned char engine_vehicle;
+    unsigned char engine_sample_block;
     unsigned char engine_started;
     unsigned char music_started;
     unsigned char ready;

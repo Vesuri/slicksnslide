@@ -53,6 +53,7 @@ volatile unsigned char g_slicks_diag_race_complete;
 volatile unsigned char g_slicks_diag_results_drawn;
 volatile unsigned char g_slicks_diag_audio_ready;
 volatile unsigned char g_slicks_diag_engine_started;
+volatile unsigned char g_slicks_diag_engine_sample_block;
 volatile unsigned char g_slicks_diag_music_started;
 volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
@@ -647,8 +648,8 @@ int main(int argc, char **argv)
     if (auto_race) {
         enter_prepared_race(&platform, logical, race);
         slicks_amiga_audio_start_engine(
-            &audio, race->cars[0].vehicle,
-            race->properties[race->cars[0].vehicle].engine_volume);
+            &audio, race->cars[0].vehicle, 100);
+        g_slicks_diag_engine_sample_block = audio.engine_sample_block;
     }
 
     for (;;) {
@@ -751,8 +752,9 @@ int main(int argc, char **argv)
                     g_slicks_diag_ready = 1;
                     enter_prepared_race(&platform, logical, race);
                     slicks_amiga_audio_start_engine(
-                        &audio, race->cars[0].vehicle,
-                        race->properties[race->cars[0].vehicle].engine_volume);
+                        &audio, race->cars[0].vehicle, 100);
+                    g_slicks_diag_engine_sample_block =
+                        audio.engine_sample_block;
                 }
             }
         }
@@ -781,8 +783,9 @@ int main(int argc, char **argv)
                 }
                 enter_prepared_race(&platform, logical, race);
                 slicks_amiga_audio_start_engine(
-                    &audio, race->cars[0].vehicle,
-                    race->properties[race->cars[0].vehicle].engine_volume);
+                    &audio, race->cars[0].vehicle, 100);
+                g_slicks_diag_engine_sample_block =
+                    audio.engine_sample_block;
             }
         }
         left_was_down = left_down;

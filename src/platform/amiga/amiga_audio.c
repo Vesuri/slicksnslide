@@ -10,6 +10,12 @@
 #define DMA_AUD0 0x0001
 #define AUDIO_BASE(channel) (0x0a0 + (channel) * 0x10)
 
+/* DS:05c0: sample.dat block selected for each of the ten vehicles by the
+ * original race startup.  Blocks are numbered in archive order. */
+static const unsigned char engine_sample_block[SLICKS_AUDIO_ENGINE_COUNT] = {
+    17, 17, 21, 22, 19, 18, 20, 18, 23, 24
+};
+
 static void wait_audio_dma(void)
 {
     unsigned short line = CUSTOM_WORD(0x006) & 0xff00;
@@ -142,7 +148,7 @@ int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
     for (i = 0; i < sizeof(*audio); ++i)
         ((unsigned char *)audio)[i] = 0;
     for (i = 0; i < SLICKS_AUDIO_ENGINE_COUNT; ++i) {
-        unsigned short block = (unsigned short)(i < 9 ? 16 + i : 25);
+        unsigned short block = engine_sample_block[i];
         if (copy_block(&audio->samples[i], resource, resource_size, block) != 0)
             goto fail;
     }
@@ -166,6 +172,7 @@ void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
     if (volume > 64)
         volume = 64;
     audio->engine_vehicle = (unsigned char)vehicle;
+    audio->engine_sample_block = engine_sample_block[vehicle];
     start_channel(0, &audio->samples[vehicle], 420, volume);
     audio->engine_started = 1;
 }

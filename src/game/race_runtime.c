@@ -1246,7 +1246,7 @@ int slicks_race_add_car_properties(struct SlicksRaceRuntime *race,
     properties->collision_sound = resource[26];
     properties->surface_sound = resource[27];
     properties->smoke_profile = resource[28];
-    properties->engine_volume = resource[29];
+    properties->property_29 = resource[29];
     properties->auxiliary_accumulator = (signed char)resource[31];
     /* 1000:ed92..ede9 divides collision impulse by byte 32 before applying
      * the selected driver's impact coefficient to all four damage channels. */

@@ -47,7 +47,7 @@ struct SlicksCarProperties {
     unsigned char collision_sound;
     unsigned char surface_sound;
     unsigned char smoke_profile;
-    unsigned char engine_volume;
+    unsigned char property_29;
     signed char auxiliary_accumulator;
     unsigned char impact_resistance;
     unsigned char property_33;
