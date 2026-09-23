@@ -683,10 +683,21 @@ static void advance_waypoint(struct SlicksRaceRuntime *race,
                 car->best_lap_centiseconds = car->last_lap_centiseconds;
             car->current_lap_centiseconds = 0;
             ++car->lap;
+            /* 2000:2b17..2b4d announces an ordinary new lap with block 25
+             * at priority 18, and the final lap with block 8 at priority 19.
+             * The DOS lap counter starts one lower than this public HUD
+             * value, hence these comparisons follow the increment above. */
+            if (car->lap == race->laps_to_run)
+                emit_sound_event(race, 8, 0, 19);
+            else if (car->lap < race->laps_to_run)
+                emit_sound_event(race, 25, 0, 18);
             if (!car->finished && car->lap > race->laps_to_run) {
                 car->finished = 1;
                 car->finish_position = ++race->finished_count;
                 car->finish_time_centiseconds = car->elapsed_centiseconds;
+                /* 2000:2bdf..2bfa plays this only for finishing position 1. */
+                if (car->finish_position == 1)
+                    emit_sound_event(race, 9, 2, 30);
                 if (race->finished_count >= SLICKS_RACE_CAR_COUNT)
                     race->race_complete = 1;
             }
@@ -1014,6 +1025,8 @@ static void emit_sound_event(struct SlicksRaceRuntime *race,
     event->sample_block = sample_block;
     event->flags = flags;
     event->priority = priority;
+    if (sample_block < SLICKS_SOUND_SAMPLE_COUNT)
+        ++race->sound_event_totals[sample_block];
 }
 
 void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,

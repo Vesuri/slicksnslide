@@ -86,7 +86,10 @@ from the original files at run time.
   bank is indexed in one pass. Channels 1 and 2 play natural-length effects:
   a new car contact dispatches block 6, while track impacts select blocks
   10--16 from the current 16-way heading through the original DS:0196 table.
-  Both use DOS flag-2 duplicate suppression and priority 14. Channel 3 plays
+  Both use DOS flag-2 duplicate suppression and priority 14. Ordinary lap
+  wraps use block 25 at priority 18, entering the final lap uses block 8 at
+  priority 19, and the first finisher uses block 9 with flag 2 at priority 30.
+  Channel 3 plays
   `intermed.wav` after the race. Chip allocations and DMA are released before
   AmigaOS is restored.
 - Live painters merge changed scanlines into a fixed interval list. Kalms C2P

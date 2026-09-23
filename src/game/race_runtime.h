@@ -19,6 +19,7 @@
 #define SLICKS_TRAIL_PIXEL_MAX 16
 #define SLICKS_TRAIL_PARTICLE_MAX 256
 #define SLICKS_SOUND_EVENT_MAX 8
+#define SLICKS_SOUND_SAMPLE_COUNT 26
 
 #define SLICKS_CONTROL_ACCELERATE 1
 #define SLICKS_CONTROL_BRAKE 2
@@ -161,6 +162,7 @@ struct SlicksRaceRuntime {
     unsigned long collision_count;
     unsigned long collision_impact;
     unsigned long track_collision_count;
+    unsigned long sound_event_totals[SLICKS_SOUND_SAMPLE_COUNT];
     unsigned long random_state;
     short countdown_ticks;
     unsigned char countdown_stage;

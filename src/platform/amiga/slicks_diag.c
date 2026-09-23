@@ -60,6 +60,8 @@ volatile unsigned short g_slicks_diag_engine_frequency;
 volatile unsigned short g_slicks_diag_engine_period;
 volatile unsigned char g_slicks_diag_effect_sample_block;
 volatile unsigned char g_slicks_diag_effect_priority;
+volatile unsigned long
+    g_slicks_diag_sound_event_totals[SLICKS_SOUND_SAMPLE_COUNT];
 volatile unsigned char g_slicks_diag_music_started;
 volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
@@ -473,6 +475,7 @@ static void enter_prepared_race(struct SlicksAmigaPlatform *platform,
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
 {
     unsigned short car;
+    unsigned short sample;
     g_slicks_diag_race_frame = race->frame_count;
     g_slicks_diag_skidmarks = race->skidmark_count;
     g_slicks_diag_collisions = race->collision_count;
@@ -480,6 +483,9 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
     g_slicks_diag_countdown_stage = race->countdown_stage;
     g_slicks_diag_start_light_visible = race->start_light_visible;
     g_slicks_diag_start_light_stage_mask = race->start_light_stage_mask;
+    for (sample = 0; sample < SLICKS_SOUND_SAMPLE_COUNT; ++sample)
+        g_slicks_diag_sound_event_totals[sample] =
+            race->sound_event_totals[sample];
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;

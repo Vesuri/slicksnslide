@@ -26,6 +26,7 @@ commands
   set $ok = $ok && g_slicks_diag_finish_position[1] == 3
   set $ok = $ok && g_slicks_diag_finish_position[2] == 4
   set $ok = $ok && g_slicks_diag_finish_position[3] == 1
+  set $ok = $ok && g_slicks_diag_sound_event_totals[9] == 1
   set $ok = $ok && g_slicks_diag_checksum == 0x1fcdf011
   set $ok = $ok && g_slicks_diag_display_checksum == 0x39847177
   if !$ok
