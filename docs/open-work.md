@@ -31,12 +31,13 @@ The historical detail below records how the port reached that state.
    the translated
    path free of a generated-C CPU-context layer. The race timer now decodes and
    draws digits from the original `pieni.@f` archive font; the title renderer's
-   separate compact font remains a visual-fidelity item. The live display path
-   mirrors changed pixels into chunky storage and calls Kalms directly. Live
+   separate compact font remains a visual-fidelity item. After the initial
+   VGA-page conversion, the live display path paints its authoritative chunky
+   surface and calls Kalms directly. Live
    painters add half-open row intervals to a fixed 16-entry list; overlapping
    or touching intervals are unioned, and overflow conservatively collapses to
    one bounding interval. Unchanged frames skip C2P entirely. The strict
-   200-frame BASIC run converts 3,572 row-widths instead of 40,000, a 91.1%
+   200-frame BASIC run converts 3,666 row-widths instead of 40,000, a 90.8%
    reduction, with both logical and displayed checksums covered by the gate.
    An immutable material map now preserves the original five-bit track classes
    beneath cars and surface particles. Native boundary response slides or deflects a

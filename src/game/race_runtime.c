@@ -70,23 +70,29 @@ static const signed char wheel_y[4][2][16] = {
 };
 
 static unsigned char read_pixel(const unsigned char *logical,
+                                const unsigned char *chunky,
                                 unsigned short x, unsigned short y)
 {
+    if (chunky)
+        return chunky[(unsigned long)y * SLICKS_SCREEN_WIDTH + x];
     unsigned long offset = (unsigned long)y * SLICKS_STRIDE + (x >> 2);
     offset += (unsigned long)(x & 3) * SLICKS_PLANE_SIZE;
     return logical[offset];
 }
 
 static void write_pixel(unsigned char *logical, unsigned char *chunky,
-                        unsigned short x, unsigned short y,
+                        unsigned short x,
+                        unsigned short y,
                         unsigned char colour)
 {
-    unsigned long offset;
     if (x >= SLICKS_SCREEN_WIDTH || y >= SLICKS_SCREEN_HEIGHT)
         return;
-    offset = (unsigned long)y * SLICKS_STRIDE + (x >> 2);
-    offset += (unsigned long)(x & 3) * SLICKS_PLANE_SIZE;
-    logical[offset] = colour;
+    if (logical) {
+        unsigned long offset =
+            (unsigned long)y * SLICKS_STRIDE + (x >> 2);
+        offset += (unsigned long)(x & 3) * SLICKS_PLANE_SIZE;
+        logical[offset] = colour;
+    }
     if (chunky)
         chunky[(unsigned long)y * SLICKS_SCREEN_WIDTH + x] = colour;
 }
@@ -216,15 +222,16 @@ static void draw_start_light(struct SlicksRaceRuntime *race,
         for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
             for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
                 race->start_light_saved_under[at++] =
-                    read_pixel(logical, SLICKS_START_LIGHT_X + x,
+                    read_pixel(logical, race->chunky_authoritative
+                                    ? race->chunky : 0,
+                               SLICKS_START_LIGHT_X + x,
                                SLICKS_START_LIGHT_Y + y);
         race->start_light_visible = 1;
     }
     at = 0;
     for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
         for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
-            write_pixel(logical, race->chunky,
-                        SLICKS_START_LIGHT_X + x,
+            write_pixel(logical, race->chunky, SLICKS_START_LIGHT_X + x,
                         SLICKS_START_LIGHT_Y + y,
                         race->start_lights[light].pixels[at++]);
     race->start_light_stage_mask |= (unsigned char)(1U << light);
@@ -242,8 +249,7 @@ static void restore_start_light(struct SlicksRaceRuntime *race,
                     SLICKS_START_LIGHT_Y + SLICKS_START_LIGHT_HEIGHT);
     for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
         for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
-            write_pixel(logical, race->chunky,
-                        SLICKS_START_LIGHT_X + x,
+            write_pixel(logical, race->chunky, SLICKS_START_LIGHT_X + x,
                         SLICKS_START_LIGHT_Y + y,
                         race->start_light_saved_under[at++]);
     race->start_light_visible = 0;
@@ -336,7 +342,9 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     for (y = 0; y < height; ++y) {
         for (x = 0; x < width; ++x)
             car->saved_under[at++] =
-                read_pixel(logical, origin_x + x, origin_y + y);
+                read_pixel(logical, race->chunky_authoritative
+                                        ? race->chunky : 0,
+                           origin_x + x, origin_y + y);
     }
     for (y = 0; y < height; ++y) {
         for (x = 0; x < width; ++x) {
@@ -710,18 +718,37 @@ static void restore_trail_particles(struct SlicksRaceRuntime *race,
                                     unsigned char minimum_priority,
                                     unsigned char maximum_priority)
 {
-    unsigned short at = race->trail_particle_count;
+    unsigned short bucket;
+    unsigned short at;
+    if (minimum_priority != maximum_priority)
+        return;
+    if (minimum_priority == 0)
+        bucket = 0;
+    else if (minimum_priority == 3)
+        bucket = 1;
+    else if (minimum_priority == 5)
+        bucket = 2;
+    else if (minimum_priority == 6)
+        bucket = 3;
+    else
+        return;
+    at = race->trail_priority_counts[bucket];
     while (at) {
         struct SlicksTrailParticle *particle =
-            &race->trail_particles[--at];
-        if (particle->saved_valid &&
-            particle->priority >= minimum_priority &&
-            particle->priority <= maximum_priority) {
+            &race->trail_particles[
+                race->trail_priority_indices[bucket][--at]];
+        if (particle->saved_valid) {
+            unsigned long pixel_at =
+                (unsigned long)(unsigned short)particle->old_y *
+                    SLICKS_SCREEN_WIDTH +
+                (unsigned short)particle->old_x;
             mark_dirty_rows(race, particle->old_y, particle->old_y + 1);
-            write_pixel(logical, race->chunky,
-                        (unsigned short)particle->old_x,
-                        (unsigned short)particle->old_y,
-                        particle->saved_under);
+            race->chunky[pixel_at] = particle->saved_under;
+            if (logical)
+                write_pixel(logical, 0,
+                            (unsigned short)particle->old_x,
+                            (unsigned short)particle->old_y,
+                            particle->saved_under);
             particle->saved_valid = 0;
         }
     }
@@ -731,15 +758,33 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
 {
     unsigned short source;
     unsigned short destination = 0;
+    unsigned short bucket;
+    for (bucket = 0; bucket < SLICKS_TRAIL_PRIORITY_COUNT; ++bucket)
+        race->trail_priority_counts[bucket] = 0;
     for (source = 0; source < race->trail_particle_count; ++source) {
-        struct SlicksTrailParticle particle = race->trail_particles[source];
-        if (!particle.lifetime)
+        struct SlicksTrailParticle *particle =
+            &race->trail_particles[source];
+        if (!particle->lifetime)
             continue;
-        particle.x += particle.velocity_x;
-        particle.y += particle.velocity_y;
-        --particle.lifetime;
-        if (particle.lifetime)
-            race->trail_particles[destination++] = particle;
+        particle->x += particle->velocity_x;
+        particle->y += particle->velocity_y;
+        --particle->lifetime;
+        if (particle->lifetime) {
+            if (particle->priority == 0)
+                bucket = 0;
+            else if (particle->priority == 3)
+                bucket = 1;
+            else if (particle->priority == 5)
+                bucket = 2;
+            else
+                bucket = 3;
+            if (destination != source)
+                race->trail_particles[destination] = *particle;
+            race->trail_priority_indices[bucket]
+                [race->trail_priority_counts[bucket]++] =
+                    (unsigned char)destination;
+            ++destination;
+        }
     }
     race->trail_particle_count = destination;
 }
@@ -764,9 +809,12 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
                                 short velocity_y, unsigned char lifetime)
 {
     struct SlicksTrailParticle *particle;
+    unsigned short bucket;
+    unsigned short particle_index;
     if (race->trail_particle_count >= SLICKS_TRAIL_PARTICLE_MAX)
         return;
-    particle = &race->trail_particles[race->trail_particle_count++];
+    particle_index = race->trail_particle_count++;
+    particle = &race->trail_particles[particle_index];
     particle->x = (long)x * 64L;
     particle->y = (long)y * 64L;
     particle->velocity_x = velocity_x;
@@ -775,6 +823,17 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
     particle->colour = colour;
     particle->priority = priority;
     particle->saved_valid = 0;
+    if (priority == 0)
+        bucket = 0;
+    else if (priority == 3)
+        bucket = 1;
+    else if (priority == 5)
+        bucket = 2;
+    else
+        bucket = 3;
+    race->trail_priority_indices[bucket]
+        [race->trail_priority_counts[bucket]++] =
+            (unsigned char)particle_index;
     ++race->skidmark_count;
 }
 
@@ -898,22 +957,44 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
                                  unsigned char minimum_priority,
                                  unsigned char maximum_priority)
 {
+    unsigned short bucket;
     unsigned short at;
-    for (at = 0; at < race->trail_particle_count; ++at) {
-        struct SlicksTrailParticle *particle = &race->trail_particles[at];
-        short x = (short)(particle->x / 64L);
-        short y = (short)(particle->y / 64L);
-        if (particle->priority < minimum_priority ||
-            particle->priority > maximum_priority ||
-            x < 0 || x >= SLICKS_SCREEN_WIDTH ||
+    if (minimum_priority != maximum_priority)
+        return;
+    if (minimum_priority == 0)
+        bucket = 0;
+    else if (minimum_priority == 3)
+        bucket = 1;
+    else if (minimum_priority == 5)
+        bucket = 2;
+    else if (minimum_priority == 6)
+        bucket = 3;
+    else
+        return;
+    for (at = 0; at < race->trail_priority_counts[bucket]; ++at) {
+        struct SlicksTrailParticle *particle = &race->trail_particles[
+            race->trail_priority_indices[bucket][at]];
+        short x = particle->x < 0
+            ? (short)-((-particle->x) >> 6)
+            : (short)(particle->x >> 6);
+        short y = particle->y < 0
+            ? (short)-((-particle->y) >> 6)
+            : (short)(particle->y >> 6);
+        if (x < 0 || x >= SLICKS_SCREEN_WIDTH ||
             y < 0 || y >= SLICKS_TRACK_HEIGHT)
             continue;
-        particle->old_x = x;
-        particle->old_y = y;
-        particle->saved_under = read_pixel(
-            logical, (unsigned short)x, (unsigned short)y);
-        write_pixel(logical, race->chunky, (unsigned short)x,
-                    (unsigned short)y, particle->colour);
+        {
+            unsigned long pixel_at =
+                (unsigned long)(unsigned short)y * SLICKS_SCREEN_WIDTH +
+                (unsigned short)x;
+            particle->old_x = x;
+            particle->old_y = y;
+            particle->saved_under = race->chunky[pixel_at];
+            race->chunky[pixel_at] = particle->colour;
+            if (logical)
+                write_pixel(logical, 0, (unsigned short)x,
+                            (unsigned short)y, particle->colour);
+        }
         particle->saved_valid = 1;
         mark_dirty_rows(race, y, y + 1);
     }
@@ -1164,12 +1245,52 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
 static void clear_timer_strip(struct SlicksRaceRuntime *race,
                               unsigned char *logical)
 {
-    unsigned short x;
+    unsigned short plane;
     unsigned short y;
     mark_dirty_rows(race, SLICKS_TRACK_HEIGHT, SLICKS_SCREEN_HEIGHT);
-    for (y = SLICKS_TRACK_HEIGHT; y < SLICKS_SCREEN_HEIGHT; ++y)
-        for (x = 0; x < SLICKS_SCREEN_WIDTH; ++x)
-            write_pixel(logical, race->chunky, x, y, 0);
+    for (y = SLICKS_TRACK_HEIGHT; y < SLICKS_SCREEN_HEIGHT; ++y) {
+        unsigned short word;
+        if (race->chunky) {
+            unsigned long *destination = (unsigned long *)(
+                race->chunky + (unsigned long)y * SLICKS_SCREEN_WIDTH);
+            for (word = 0; word < SLICKS_SCREEN_WIDTH / 4; ++word)
+                destination[word] = 0;
+        }
+        if (logical)
+            for (plane = 0; plane < 4; ++plane) {
+                unsigned long *destination = (unsigned long *)(
+                    logical + (unsigned long)plane * SLICKS_PLANE_SIZE +
+                    (unsigned long)y * SLICKS_STRIDE);
+                for (word = 0;
+                     word < (SLICKS_SCREEN_WIDTH / 4) / 4; ++word)
+                    destination[word] = 0;
+            }
+    }
+}
+
+static void clear_timer_range(struct SlicksRaceRuntime *race,
+                              unsigned char *logical,
+                              unsigned short left,
+                              unsigned short right)
+{
+    unsigned short x;
+    unsigned short y;
+    if (right > SLICKS_SCREEN_WIDTH)
+        right = SLICKS_SCREEN_WIDTH;
+    if (left >= right)
+        return;
+    mark_dirty_rows(race, SLICKS_TRACK_HEIGHT, SLICKS_SCREEN_HEIGHT);
+    for (y = SLICKS_TRACK_HEIGHT; y < SLICKS_SCREEN_HEIGHT; ++y) {
+        if (race->chunky) {
+            unsigned char *destination = race->chunky +
+                (unsigned long)y * SLICKS_SCREEN_WIDTH + left;
+            for (x = left; x < right; ++x)
+                *destination++ = 0;
+        }
+        if (logical)
+            for (x = left; x < right; ++x)
+                write_pixel(logical, 0, x, y, 0);
+    }
 }
 
 static unsigned char draw_character(const struct SlicksRaceFont *font,
@@ -1178,17 +1299,13 @@ static unsigned char draw_character(const struct SlicksRaceFont *font,
                                     unsigned short x, unsigned short y,
                                     unsigned char character)
 {
-    unsigned short glyph;
-    unsigned short pixel_at = 0;
+    unsigned short glyph = font->lookup[character];
+    unsigned short pixel_at;
     unsigned short row;
     unsigned short column;
-    for (glyph = 0; glyph < font->glyph_count; ++glyph) {
-        if (font->codes[glyph] == character)
-            break;
-        pixel_at += font->widths[glyph] * font->height;
-    }
     if (glyph >= font->glyph_count)
         return 0;
+    pixel_at = font->offsets[glyph];
     for (row = 0; row < font->height; ++row)
         for (column = 0; column < font->widths[glyph]; ++column)
             if (font->pixels[pixel_at + row * font->widths[glyph] + column])
@@ -1199,41 +1316,68 @@ static unsigned char draw_character(const struct SlicksRaceFont *font,
 
 static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
 {
+    static const unsigned char spacing[9] = {3, 1, 1, 1, 1, 2, 1, 1, 0};
+    unsigned char initial_draw = !race->hud_valid[0] &&
+        !race->hud_valid[1] && !race->hud_valid[2] && !race->hud_valid[3];
     unsigned short car;
-    clear_timer_strip(race, logical);
+    if (initial_draw)
+        clear_timer_strip(race, logical);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
-        unsigned short x = 4 + car * 80;
+        unsigned char text[9];
+        unsigned char length;
+        unsigned char first_changed;
+        unsigned char character;
+        unsigned short x;
+        unsigned short left = 4 + car * 80;
         unsigned short time = race->cars[car].elapsed_centiseconds;
         unsigned short seconds = time / 100;
         unsigned short hundredths = time % 100;
-        x += draw_character(&race->font, logical, race->chunky, x, 192,
-                            (unsigned char)('1' + car)) + 3;
-        x += draw_character(&race->font, logical, race->chunky, x, 192,
-                            (unsigned char)('0' + (seconds / 10) % 10)) + 1;
-        x += draw_character(&race->font, logical, race->chunky, x, 192,
-                            (unsigned char)('0' + seconds % 10)) + 1;
-        x += draw_character(&race->font, logical, race->chunky,
-                            x, 192, ':') + 1;
-        x += draw_character(&race->font, logical, race->chunky, x, 192,
-                            (unsigned char)('0' + hundredths / 10)) + 1;
-        x += draw_character(&race->font, logical, race->chunky, x, 192,
-                            (unsigned char)('0' + hundredths % 10)) + 2;
+        text[0] = (unsigned char)('1' + car);
+        text[1] = (unsigned char)('0' + (seconds / 10) % 10);
+        text[2] = (unsigned char)('0' + seconds % 10);
+        text[3] = ':';
+        text[4] = (unsigned char)('0' + hundredths / 10);
+        text[5] = (unsigned char)('0' + hundredths % 10);
         if (race->cars[car].finished) {
-            x += draw_character(&race->font, logical, race->chunky, x, 192,
-                                '#') + 1;
-            (void)draw_character(
-                &race->font, logical, race->chunky, x, 192,
-                (unsigned char)('0' + race->cars[car].finish_position));
+            text[6] = '#';
+            text[7] = (unsigned char)(
+                '0' + race->cars[car].finish_position);
+            length = 8;
         } else {
-            x += draw_character(
-                &race->font, logical, race->chunky, x, 192,
-                (unsigned char)('0' + race->cars[car].lap)) + 1;
-            x += draw_character(&race->font, logical, race->chunky, x, 192,
-                                '/') + 1;
-            (void)draw_character(
-                &race->font, logical, race->chunky, x, 192,
-                (unsigned char)('0' + race->laps_to_run));
+            text[6] = (unsigned char)('0' + race->cars[car].lap);
+            text[7] = '/';
+            text[8] = (unsigned char)('0' + race->laps_to_run);
+            length = 9;
         }
+
+        first_changed = 0;
+        if (race->hud_valid[car]) {
+            unsigned char common = race->hud_text_length[car] < length
+                ? race->hud_text_length[car] : length;
+            while (first_changed < common &&
+                   race->hud_text[car][first_changed] ==
+                       text[first_changed])
+                ++first_changed;
+            if (first_changed == length &&
+                race->hud_text_length[car] == length)
+                continue;
+        }
+
+        x = left;
+        for (character = 0; character < first_changed; ++character)
+            x += race->font.widths[
+                    race->font.lookup[text[character]]] +
+                spacing[character];
+        if (!initial_draw)
+            clear_timer_range(race, logical, x, left + 80);
+        for (character = first_changed; character < length; ++character)
+            x += draw_character(&race->font, logical, race->chunky, x, 192,
+                                text[character]) +
+                spacing[character];
+        for (character = 0; character < length; ++character)
+            race->hud_text[car][character] = text[character];
+        race->hud_text_length[car] = length;
+        race->hud_valid[car] = 1;
     }
 }
 
@@ -1259,10 +1403,12 @@ static void draw_results(struct SlicksRaceRuntime *race,
             if (race->cars[car].finish_position == at + 1) {
                 unsigned short time = race->cars[car].finish_time_centiseconds;
                 x = 130;
-                x += draw_character(&race->font, logical, race->chunky, x,
-                                    row, (unsigned char)('1' + at)) + 5;
-                x += draw_character(&race->font, logical, race->chunky, x,
-                                    row, (unsigned char)('1' + car)) + 8;
+                x += draw_character(&race->font, logical, race->chunky,
+                                    x, row,
+                                    (unsigned char)('1' + at)) + 5;
+                x += draw_character(&race->font, logical, race->chunky,
+                                    x, row,
+                                    (unsigned char)('1' + car)) + 8;
                 x += draw_character(&race->font, logical, race->chunky, x,
                                     row,
                                     (unsigned char)('0' +
@@ -1271,14 +1417,14 @@ static void draw_results(struct SlicksRaceRuntime *race,
                                     row,
                                     (unsigned char)('0' +
                                         (time / 100) % 10)) + 1;
-                x += draw_character(&race->font, logical, race->chunky, x,
-                                    row, ':') + 1;
+                x += draw_character(&race->font, logical, race->chunky,
+                                    x, row, ':') + 1;
                 x += draw_character(&race->font, logical, race->chunky, x,
                                     row,
                                     (unsigned char)('0' +
                                         (time / 10) % 10)) + 1;
-                (void)draw_character(&race->font, logical, race->chunky, x,
-                                     row,
+                (void)draw_character(&race->font, logical, race->chunky,
+                                     x, row,
                                      (unsigned char)('0' + time % 10));
                 break;
             }
@@ -1373,6 +1519,8 @@ int slicks_race_add_font(struct SlicksRaceRuntime *race,
     if (!race || !resource || resource_size < 12)
         return -1;
     font = &race->font;
+    for (glyph = 0; glyph < 256; ++glyph)
+        font->lookup[glyph] = 0xff;
     font->glyph_count = resource[4];
     font->height = resource[6];
     if (!font->glyph_count || font->glyph_count > SLICKS_FONT_GLYPH_MAX ||
@@ -1385,6 +1533,8 @@ int slicks_race_add_font(struct SlicksRaceRuntime *race,
         unsigned short glyph_pixels;
         font->codes[glyph] = resource[12 + glyph];
         font->widths[glyph] = resource[12 + font->glyph_count + glyph];
+        font->offsets[glyph] = pixel_count;
+        font->lookup[font->codes[glyph]] = (unsigned char)glyph;
         glyph_pixels = font->widths[glyph] * font->height;
         if ((unsigned long)pixel_count + glyph_pixels >
             SLICKS_FONT_PIXEL_MAX)
@@ -1513,10 +1663,16 @@ void slicks_race_set_vehicle(struct SlicksRaceRuntime *race,
 }
 
 void slicks_race_set_laps(struct SlicksRaceRuntime *race,
-                         unsigned short laps)
+                          unsigned short laps)
 {
     if (race)
         race->laps_to_run = (unsigned char)(laps ? laps : 1);
+}
+
+void slicks_race_use_chunky_surface(struct SlicksRaceRuntime *race)
+{
+    if (race && race->chunky)
+        race->chunky_authoritative = 1;
 }
 
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
@@ -1524,6 +1680,8 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     unsigned short car;
     if (!race || !logical || !race->started)
         return;
+    if (race->chunky_authoritative)
+        logical = 0;
     race->sound_event_count = 0;
     race->collision_impact = 0;
     if (!race->racing) {

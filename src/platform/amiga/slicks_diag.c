@@ -17,6 +17,12 @@ struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
 
+#define CUSTOM_WORD(offset) \
+    (*(volatile unsigned short *)(0xdff000UL + (offset)))
+#define REG_VPOSR 0x004
+#define REG_VHPOSR 0x006
+#define PAL_RASTER_LINES 312UL
+
 volatile unsigned short g_slicks_diag_ready;
 volatile unsigned short g_slicks_diag_ingame;
 volatile unsigned short g_slicks_diag_race_error;
@@ -25,6 +31,7 @@ volatile unsigned long g_slicks_diag_checksum;
 volatile unsigned long g_slicks_diag_display_checksum;
 volatile unsigned long g_slicks_diag_race_frame;
 volatile unsigned long g_slicks_diag_skidmarks;
+volatile unsigned short g_slicks_diag_particles;
 volatile unsigned long g_slicks_diag_collisions;
 volatile unsigned long g_slicks_diag_track_collisions;
 volatile unsigned char g_slicks_diag_countdown_stage;
@@ -71,6 +78,17 @@ volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char *g_slicks_diag_logical;
 volatile unsigned long g_slicks_diag_target_frame = 200;
+volatile unsigned long g_slicks_diag_profile_step_vblanks;
+volatile unsigned long g_slicks_diag_profile_audio_vblanks;
+volatile unsigned long g_slicks_diag_profile_c2p_vblanks;
+volatile unsigned long g_slicks_diag_profile_diag_vblanks;
+volatile unsigned long g_slicks_diag_profile_total_vblanks;
+volatile unsigned long g_slicks_diag_profile_step_lines;
+volatile unsigned long g_slicks_diag_profile_audio_lines;
+volatile unsigned long g_slicks_diag_profile_c2p_lines;
+volatile unsigned long g_slicks_diag_profile_diag_lines;
+volatile unsigned long g_slicks_diag_profile_total_lines;
+static const struct SlicksAmigaPlatform *g_slicks_diag_profile_platform;
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
@@ -97,6 +115,22 @@ static void race_checkpoint(unsigned short stage)
     g_slicks_diag_race_stage = stage;
     if (g_slicks_diag_ready)
         slicks_diag_frame_ready();
+}
+
+unsigned long slicks_diag_profile_raster_time(void)
+{
+    const struct SlicksAmigaPlatform *platform =
+        g_slicks_diag_profile_platform;
+    unsigned long frame_before;
+    unsigned long frame_after;
+    unsigned short line;
+    do {
+        frame_before = platform->vblank_count;
+        line = (unsigned short)(((CUSTOM_WORD(REG_VPOSR) & 7) << 8) |
+                                (CUSTOM_WORD(REG_VHPOSR) >> 8));
+        frame_after = platform->vblank_count;
+    } while (frame_before != frame_after);
+    return frame_before * PAL_RASTER_LINES + line;
 }
 
 __attribute__((constructor)) static void initialize_sysbase(void)
@@ -261,7 +295,8 @@ static void clear_title_rectangle(unsigned char *logical,
 static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
-    unsigned short selection, unsigned short vehicle,
+    unsigned short selection,
+    unsigned short vehicle,
     const char *track_name, unsigned short laps)
 {
     char vehicle_text[] = "CAR AUTO 01";
@@ -539,6 +574,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     race_checkpoint(8);
     slicks_convert_to_amiga(logical, chunky, platform->views[1].bitmap);
+    slicks_race_use_chunky_surface(race);
     slicks_race_clear_dirty_rows(race);
     race_checkpoint(9);
     result = 0;
@@ -576,12 +612,32 @@ static void enter_prepared_race(struct SlicksAmigaPlatform *platform,
     slicks_diag_frame_ready();
 }
 
+static void sync_chunky_to_logical(const unsigned char *chunky,
+                                   unsigned char *logical)
+{
+    unsigned short y;
+    for (y = 0; y < 200; ++y) {
+        unsigned short group;
+        for (group = 0; group < 80; ++group) {
+            unsigned long chunky_at =
+                (unsigned long)y * 320UL + (unsigned long)group * 4UL;
+            unsigned long logical_at =
+                (unsigned long)y * 100UL + group;
+            logical[logical_at] = chunky[chunky_at];
+            logical[0x10000UL + logical_at] = chunky[chunky_at + 1];
+            logical[0x20000UL + logical_at] = chunky[chunky_at + 2];
+            logical[0x30000UL + logical_at] = chunky[chunky_at + 3];
+        }
+    }
+}
+
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
 {
     unsigned short car;
     unsigned short sample;
     g_slicks_diag_race_frame = race->frame_count;
     g_slicks_diag_skidmarks = race->skidmark_count;
+    g_slicks_diag_particles = race->trail_particle_count;
     g_slicks_diag_collisions = race->collision_count;
     g_slicks_diag_track_collisions = race->track_collision_count;
     g_slicks_diag_countdown_stage = race->countdown_stage;
@@ -672,6 +728,8 @@ int main(int argc, char **argv)
     const char *track_path;
     char selected_track_path[19];
     int result = 20;
+
+    g_slicks_diag_profile_platform = &platform;
 
     DOSBase = (struct DosLibrary *)OpenLibrary(
         (CONST_STRPTR)"dos.library", 37);
@@ -934,7 +992,21 @@ int main(int argc, char **argv)
             unsigned short dirty;
             unsigned short sound;
             unsigned char completed_now = 0;
+            unsigned char profile =
+                (unsigned char)(race->frame_count + 1 ==
+                                g_slicks_diag_target_frame);
+            unsigned long profile_at = platform.vblank_count;
+            unsigned long profile_line_at =
+                profile ? slicks_diag_profile_raster_time() : 0;
             slicks_race_step(race, logical);
+            if (profile) {
+                unsigned long now = slicks_diag_profile_raster_time();
+                g_slicks_diag_profile_step_vblanks =
+                    platform.vblank_count - profile_at;
+                g_slicks_diag_profile_step_lines = now - profile_line_at;
+                profile_at = platform.vblank_count;
+                profile_line_at = now;
+            }
             if (race->race_complete && audio.engine_started) {
                 slicks_amiga_audio_stop(&audio);
                 slicks_amiga_audio_start_music(&audio);
@@ -948,6 +1020,14 @@ int main(int argc, char **argv)
                 slicks_amiga_audio_play_effect(
                     &audio, event->sample_block, event->flags,
                     event->priority);
+            }
+            if (profile) {
+                unsigned long now = slicks_diag_profile_raster_time();
+                g_slicks_diag_profile_audio_vblanks =
+                    platform.vblank_count - profile_at;
+                g_slicks_diag_profile_audio_lines = now - profile_line_at;
+                profile_at = platform.vblank_count;
+                profile_line_at = now;
             }
             g_slicks_diag_effect_sample_block =
                 audio.last_effect_sample_block;
@@ -967,15 +1047,41 @@ int main(int argc, char **argv)
                 g_slicks_diag_dirty_c2p_rows += rows->bottom - rows->top;
                 ++g_slicks_diag_dirty_c2p_calls;
             }
+            if (profile) {
+                unsigned long now = slicks_diag_profile_raster_time();
+                g_slicks_diag_profile_c2p_vblanks =
+                    platform.vblank_count - profile_at;
+                g_slicks_diag_profile_c2p_lines = now - profile_line_at;
+                profile_at = platform.vblank_count;
+                profile_line_at = now;
+            }
             slicks_race_clear_dirty_rows(race);
             update_race_diagnostics(race);
+            if (profile) {
+                unsigned long now = slicks_diag_profile_raster_time();
+                g_slicks_diag_profile_diag_vblanks =
+                    platform.vblank_count - profile_at;
+                g_slicks_diag_profile_diag_lines = now - profile_line_at;
+                g_slicks_diag_profile_total_vblanks =
+                    g_slicks_diag_profile_step_vblanks +
+                    g_slicks_diag_profile_audio_vblanks +
+                    g_slicks_diag_profile_c2p_vblanks +
+                    g_slicks_diag_profile_diag_vblanks;
+                g_slicks_diag_profile_total_lines =
+                    g_slicks_diag_profile_step_lines +
+                    g_slicks_diag_profile_audio_lines +
+                    g_slicks_diag_profile_c2p_lines +
+                    g_slicks_diag_profile_diag_lines;
+            }
             if (completed_now) {
+                sync_chunky_to_logical(chunky, logical);
                 g_slicks_diag_checksum = checksum_planes(logical);
                 g_slicks_diag_display_checksum =
                     checksum_bitmap(platform.views[1].bitmap);
                 slicks_diag_results_ready();
             }
             if (race->frame_count == g_slicks_diag_target_frame) {
+                sync_chunky_to_logical(chunky, logical);
                 g_slicks_diag_checksum = checksum_planes(logical);
                 g_slicks_diag_display_checksum =
                     checksum_bitmap(platform.views[1].bitmap);

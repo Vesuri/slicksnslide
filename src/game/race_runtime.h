@@ -16,6 +16,7 @@
 #define SLICKS_START_LIGHT_PIXEL_COUNT (23U * 38U)
 #define SLICKS_DIRTY_ROW_MAX 16
 #define SLICKS_TRAIL_PARTICLE_MAX 256
+#define SLICKS_TRAIL_PRIORITY_COUNT 4
 #define SLICKS_SOUND_EVENT_MAX 8
 #define SLICKS_SOUND_SAMPLE_COUNT 26
 
@@ -57,6 +58,8 @@ struct SlicksCarProperties {
 struct SlicksRaceFont {
     unsigned char codes[SLICKS_FONT_GLYPH_MAX];
     unsigned char widths[SLICKS_FONT_GLYPH_MAX];
+    unsigned short offsets[SLICKS_FONT_GLYPH_MAX];
+    unsigned char lookup[256];
     unsigned char pixels[SLICKS_FONT_PIXEL_MAX];
     unsigned short pixel_count;
     unsigned char glyph_count;
@@ -152,6 +155,9 @@ struct SlicksRaceRuntime {
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
     struct SlicksTrailParticle trail_particles[SLICKS_TRAIL_PARTICLE_MAX];
+    unsigned char trail_priority_indices
+        [SLICKS_TRAIL_PRIORITY_COUNT][SLICKS_TRAIL_PARTICLE_MAX];
+    unsigned short trail_priority_counts[SLICKS_TRAIL_PRIORITY_COUNT];
     struct SlicksDirtyRows dirty_rows[SLICKS_DIRTY_ROW_MAX];
     struct SlicksSoundEvent sound_events[SLICKS_SOUND_EVENT_MAX];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
@@ -179,6 +185,10 @@ struct SlicksRaceRuntime {
     unsigned char finished_count;
     unsigned char race_complete;
     unsigned char results_drawn;
+    unsigned char chunky_authoritative;
+    unsigned char hud_text[SLICKS_RACE_CAR_COUNT][9];
+    unsigned char hud_text_length[SLICKS_RACE_CAR_COUNT];
+    unsigned char hud_valid[SLICKS_RACE_CAR_COUNT];
     unsigned char started;
 };
 
@@ -209,6 +219,7 @@ void slicks_race_set_vehicle(struct SlicksRaceRuntime *race,
                             unsigned short car, unsigned short vehicle);
 void slicks_race_set_laps(struct SlicksRaceRuntime *race,
                          unsigned short laps);
+void slicks_race_use_chunky_surface(struct SlicksRaceRuntime *race);
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical);
 void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
                                         unsigned short current);

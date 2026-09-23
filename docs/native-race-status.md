@@ -127,7 +127,20 @@ they are by the original race routine.
   the results cue therefore play once; only the engine intentionally loops.
   Chip allocations and DMA are released before AmigaOS is restored.
 - Live painters merge changed scanlines into a fixed interval list. Kalms C2P
-  converts only those intervals; unchanged rows are skipped.
+  converts only those intervals; unchanged rows are skipped. The live race
+  has one authoritative 64,000-byte linear painting surface after setup; the
+  four-bank VGA store is retained for translated setup code and synchronized
+  only when a diagnostic logical checksum is requested. A direct four-bank
+  source was tested on the strict 68020 target: pixel painting was within one
+  millisecond of the linear path, but gathering banked rows before an
+  unmodified Kalms transpose added roughly ten milliseconds at the busy
+  700-frame checkpoint. A competitive single-buffer version must fuse the
+  bank permutation into the pipelined C2P transpose.
+- The strict FS-UAE target is a stock 2 MiB A1200 (`fast_memory=0`). The race
+  runtime—including its embedded particle array—and both CPU-side surfaces
+  use `MEMF_ANY`, so they necessarily reside in Chip RAM on this target; only
+  display bitmaps, copper lists, and Paula sample bodies explicitly require
+  `MEMF_CHIP`.
 - The archive directory is read once per open. A BASIC session now reads about
   269 KiB in total instead of performing thousands of 19-byte directory reads.
 

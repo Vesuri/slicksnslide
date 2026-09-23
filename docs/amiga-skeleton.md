@@ -20,10 +20,12 @@ AGA playfield.
 The conversion is native 68020 assembly: a small staging pass interleaves the
 visible pixels from the four VGA banks into a 64,000-byte chunky buffer, then
 Mikael Kalms' Public Domain `c2p1x1_8_c5_bm` CPU5 routine writes directly to
-the plane pointers in a 320-byte-row interleaved `BitMap` adapter. The initial scene uses
-that full staging pass once. Live race writes mirror changed pixels into the
-chunky surface, allowing later frames to call Kalms directly without another
-64,000-pixel VGA deinterleave. The target-side GDB
+the plane pointers in a 320-byte-row interleaved `BitMap` adapter. The initial
+scene uses that full staging pass once. After race setup, the 64,000-byte
+linear surface becomes authoritative: live painters update it without also
+paying for VGA-bank address calculation, and later frames call Kalms directly
+for only the dirty row intervals. The VGA-compatible store is synchronized
+only at diagnostic checkpoints. The target-side GDB
 check stops at a named post-display marker and verifies logical checksum
 `93c8bea6` and planar display checksum `29592c57` after the currently translated
 title menu overlays are drawn.
