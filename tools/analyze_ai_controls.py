@@ -65,7 +65,18 @@ def route_controls(row, target):
     x = int(row["x"]) // 100 - 3
     y = int(row["y"]) // 100 - 3
     target_direction = direction(target[0] - x, target[1] - y)
-    heading_delta = wrap(int(row["heading"]) // 1200 + 4 -
+    heading = int(row["heading"])
+    steering_step = int(row["steering_input"]) * (
+        int(row["steering_scale"]) // 10)
+    steering_step = int(steering_step / 155)
+    steering_step = int(steering_step * 80 / 100)
+    steering_step = int(steering_step * int(row["steering_property"]) / 50)
+    if int(row["left"]):
+        heading += steering_step
+    if int(row["right"]):
+        heading -= steering_step
+    heading %= 0x4B00
+    heading_delta = wrap(heading // 1200 + 4 -
                          target_direction)
     vx = int(row["velocity_before_x"])
     vy = int(row["velocity_before_y"])

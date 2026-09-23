@@ -497,7 +497,7 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
         /* e204 coasts through ordinary corrections, brakes only beyond five
          * direction sectors, and restores throttle whenever the velocity is
          * already aligned with the route target.  The captured BASIC trace
-         * matches this drive decision on 97.91% of ordinary AI samples; the
+         * matches this drive decision on 98.81% of ordinary AI samples; the
          * remainder enter f09d's optional recovery/avoidance states. */
         if (speed <= 700L || velocity_direction == target_direction ||
             (difference >= -SLICKS_HEADING_STEP &&

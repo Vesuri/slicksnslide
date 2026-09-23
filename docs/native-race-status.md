@@ -30,8 +30,9 @@ from the original files at run time.
   velocity throttle restoration, ordinary coast, greater-than-five-sector
   braking, centre checkpoint comparisons, 150-tick stationary watch, and
   40-tick recovery interval are recovered from `e204` and `f09d`. The
-  `analyze_ai_controls.py` replay matches the recovered normal drive decision
-  on 97.91% of 12,287 traced AI samples; the remaining trace rows include the
+  `analyze_ai_controls.py` replay reconstructs each pre-turn heading and
+  matches the recovered normal drive decision on 98.81% of 12,287 traced AI
+  samples; the remaining trace rows include the
   optional recovery/avoidance states still listed below.
 - Car contacts use the recovered `.omi` extent and weight ratios. For each
   updated car, `2000:2d27..31bd` projects a point ten fixed units along its
