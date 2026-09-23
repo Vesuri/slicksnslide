@@ -796,7 +796,8 @@ int main(int argc, char **argv)
                 completed_now = 1;
             }
             slicks_amiga_audio_update(
-                &audio, race->cars[0].speed, race->collision_count,
+                &audio, race->cars[0].speed,
+                race->collision_count + race->track_collision_count,
                 race->skidmark_count);
             g_slicks_diag_engine_started = audio.engine_started;
             g_slicks_diag_music_started = audio.music_started;

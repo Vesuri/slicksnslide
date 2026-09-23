@@ -179,7 +179,7 @@ void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
 }
 
 void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
-                               short speed, unsigned long collisions,
+                               short speed, unsigned long contact_events,
                                unsigned long trails)
 {
     unsigned short period;
@@ -191,14 +191,14 @@ void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
         period = (unsigned short)(420 - (speed > 100 ? 200 : speed * 2));
         CUSTOM_WORD(AUDIO_BASE(0) + 6) = period;
     }
-    if (collisions != audio->previous_collisions &&
+    if (contact_events != audio->previous_contact_events &&
         !audio->collision_ticks) {
         start_channel(1, &audio->samples[10], 322, 48);
         audio->collision_ticks = 3;
     } else if (audio->collision_ticks && !--audio->collision_ticks) {
         CUSTOM_WORD(REG_DMACON) = DMA_AUD0 << 1;
     }
-    audio->previous_collisions = collisions;
+    audio->previous_contact_events = contact_events;
     if (trails != audio->previous_trails && !audio->trail_ticks) {
         start_channel(2, &audio->samples[11], 322, 30);
         audio->trail_ticks = 3;

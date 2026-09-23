@@ -73,9 +73,11 @@ from the original files at run time.
 - The title menu selects player car, BASIC/BASICTRK, and one through nine laps.
   Escape returns from a race and Return returns after results.
 - Paula channel 0 loops the selected car's engine sample with speed-dependent
-  period. Channels 1 and 2 play contact and surface effects. Channel 3 plays
-  `intermed.wav` after the race. Chip allocations and DMA are released before
-  AmigaOS is restored.
+  period. Channels 1 and 2 play contact and surface effects; contact playback
+  now follows both first-frame car contacts and first-frame track contacts,
+  matching the shared DOS contact-event edge. Channel 3 plays `intermed.wav`
+  after the race. Chip allocations and DMA are released before AmigaOS is
+  restored.
 - Live painters merge changed scanlines into a fixed interval list. Kalms C2P
   converts only those intervals; unchanged rows are skipped.
 - The archive directory is read once per open. A BASIC session now reads about

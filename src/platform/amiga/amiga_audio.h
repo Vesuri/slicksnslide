@@ -12,7 +12,7 @@ struct SlicksAmigaSample {
 
 struct SlicksAmigaAudio {
     struct SlicksAmigaSample samples[SLICKS_AUDIO_SAMPLE_COUNT];
-    unsigned long previous_collisions;
+    unsigned long previous_contact_events;
     unsigned long previous_trails;
     unsigned short collision_ticks;
     unsigned short trail_ticks;
@@ -33,7 +33,7 @@ void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
                                      unsigned short vehicle,
                                      unsigned short volume);
 void slicks_amiga_audio_update(struct SlicksAmigaAudio *audio,
-                               short speed, unsigned long collisions,
+                               short speed, unsigned long contact_events,
                                unsigned long trails);
 void slicks_amiga_audio_stop(struct SlicksAmigaAudio *audio);
 void slicks_amiga_audio_destroy(struct SlicksAmigaAudio *audio);
