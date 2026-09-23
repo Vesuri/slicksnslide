@@ -2,8 +2,9 @@
 
 The Amiga race path is native 68020 code. It does not execute a translated
 x86 CPU context and does not use captured DOS frames. Track graphics, cars,
-fonts, start lights, trails, palettes, sound samples, and music are decoded
-from the original files at run time.
+fonts, start lights, palettes, sound samples, and music are decoded from the
+original files at run time; surface trails are generated point actors just as
+they are by the original race routine.
 
 ## Implemented race services
 
@@ -70,27 +71,29 @@ from the original files at run time.
   `BASICTRK.SS` (`e472d3a7`). It retains the packed upper surface bits which
   cannot be recovered from the visible low-three-bit pixels alone.
 - Wheel effects use the original per-car/per-heading wheel offsets and the
-  recovered speed scalar `(abs(vx) + abs(vy)) / 2`. Classes 3 and 5 dispatch
-  the original three-way random `savu` choice: above 200 it scatters one
-  static component around each wheel, and above 250 it adds the moving
+  recovered speed scalar `(abs(vx) + abs(vy)) / 2`. The values 61--72 in the
+  live dispatch are palette indices, not archive sprite handles: the native
+  path now creates the same one-pixel actors instead of incorrectly expanding
+  every family into a 4x4 `savu` image. Classes 3/4 select colours 67--69;
+  5/6/9/10/13/14 select 61--63; and 11/12 select 64--66 with their recovered
+  30-through-49-tick first-actor lifetime. Above speed 200 the shared helper
+  scatters one component around each wheel, and above 250 it adds a moving
   component with the original random 15-through-24-tick lifetime and
-  -11-through-11 velocity components. Sampling suppresses classes 2, 15, and
-  22 through 26. The native generator is the original 32-bit
-  `state * 0x015a4e35 + 1` recurrence. Selection of the alternate actor sprite
-  group and its draw-priority details still need instruction-level recovery.
-  The active-particle count also remains 16-bit at the 256-entry capacity, so
-  filling the pool no longer wraps the count to zero and makes all smoke vanish.
-- Each wheel on road-like material classes 0, 1, 17, 19, and 31 now uses
-  the separate DOS slip-sound path. Above speed 100 it draws one of sample
-  blocks 2--4 from the shared random generator and submits it with flag 2 and
-  priority 10, before any grass/mud particle random draws.
-- The live 32-entry material jump table is also recovered. Classes 0, 1, 17,
-  19, and 31 enter the sprite-70--72 actor plus road-sound path; 3 and 4 use
-  sprites 67--69; 5, 6, 9, 10, 13, and 14 use sprites 61--63; 7 and 8 use the
-  separate moving actor path above speed 300; and 11 and 12 submit sprites
-  64--66 through the long-lived helper. Classes 2, 15, 16, 18, and 20--30
-  have no actor dispatch. Mapping those internal sprite IDs back to their
-  original archive assets remains before enabling every family natively.
+  -11-through-11 fixed velocity. Classes 7/8 use colour 55 above speed 300,
+  lifetime 20, and -10-through-9 velocity. Sampling suppresses classes 2, 15,
+  and 22 through 26. The active-particle count remains 16-bit at the 256-entry
+  capacity, so filling the pool cannot make all smoke vanish.
+- Each wheel on road-like material classes 0, 1, 17, 19, and 31 uses the DOS
+  acceleration/brake gate. Acceleration emits below the driver's DS:4ee0
+  threshold times ten; braking emits below twice that threshold. An emission
+  creates moving colour 218 for 5--19 ticks plus a three-tick colour 70--72
+  point. Above speed 100 it then selects sample block 2--4 with flag 2 and
+  priority 10. The native calls preserve this observed random-number order.
+- The live 32-entry material jump table is recovered and active. Classes 0,
+  1, 17, 19, and 31 use the road-point path; 3 and 4 use colours 67--69;
+  5, 6, 9, 10, 13, and 14 use 61--63; 7 and 8 use the separate moving point
+  path; and 11 and 12 use 64--66 through the long-lived helper. Classes 2,
+  15, 16, 18, and 20--30 have no actor dispatch.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.
@@ -115,9 +118,11 @@ from the original files at run time.
   Both use DOS flag-2 duplicate suppression and priority 14. Ordinary lap
   wraps use block 25 at priority 18, entering the final lap uses block 8 at
   priority 19, and the first finisher uses block 9 with flag 2 at priority 30.
-  Channel 3 plays
-  `intermed.wav` after the race. Chip allocations and DMA are released before
-  AmigaOS is restored.
+  Paula reloads forever while DMA remains enabled, so each effect and the
+  channel-3 `intermed.wav` results cue repoint its reload registers to a
+  two-byte chip-RAM silent word after the initial body has been latched. They
+  therefore play once; only the engine intentionally reloads its full sample.
+  Chip allocations and DMA are released before AmigaOS is restored.
 - Live painters merge changed scanlines into a fixed interval list. Kalms C2P
   converts only those intervals; unchanged rows are skipped.
 - The archive directory is read once per open. A BASIC session now reads about

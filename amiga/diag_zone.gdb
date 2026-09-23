@@ -14,6 +14,10 @@ break slicks_diag_gameplay_ready
 commands
   silent
   set $ok = g_slicks_diag_race_frame == 200 && g_slicks_diag_track_zones == 46
+  set $ok = $ok && g_slicks_diag_skidmarks == 1112
+  set $ok = $ok && g_slicks_diag_track_collisions == 0
+  set $ok = $ok && g_slicks_diag_checksum == 0xcc686167
+  set $ok = $ok && g_slicks_diag_display_checksum == 0x823431ce
   if !$ok
     printf "SLICKS_ZONE_FAILED FRAME=%u ZONES=%u\n", g_slicks_diag_race_frame, g_slicks_diag_track_zones
     quit 1

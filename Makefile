@@ -36,7 +36,7 @@ ABS_ROOT := $(abspath .)
 	analyze-race-velocity \
 	analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
-	verify-car-collision verify-native-tracks \
+	verify-car-collision verify-surface-effects verify-native-tracks \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
 	amiga amiga-run amiga-debug amiga-check amiga-race-check \
 	amiga-track-check amiga-lap-check amiga-results-check \
@@ -171,6 +171,15 @@ build/verify_car_collision: tools/verify_car_collision.c \
 
 verify-car-collision: build/verify_car_collision
 	build/verify_car_collision
+
+build/verify_surface_effects: tools/verify_surface_effects.c \
+		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip $< -o $@
+
+verify-surface-effects: build/verify_surface_effects
+	build/verify_surface_effects
 
 build/scan_track_materials: tools/scan_track_materials.c \
 		src/game/track_scene.c src/game/track_scene.h

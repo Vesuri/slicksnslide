@@ -14,6 +14,7 @@ struct SlicksAmigaSample {
 struct SlicksAmigaAudio {
     struct SlicksAmigaSample samples[SLICKS_AUDIO_SAMPLE_COUNT];
     struct SlicksAmigaSample music;
+    signed char *silence;
     unsigned short effect_ticks[SLICKS_AUDIO_EFFECT_CHANNELS];
     unsigned short engine_frequency;
     unsigned short engine_period;

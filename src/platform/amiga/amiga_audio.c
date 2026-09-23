@@ -158,9 +158,10 @@ int slicks_amiga_audio_add_music(struct SlicksAmigaAudio *audio,
     return -1;
 }
 
-static void start_channel(unsigned short channel,
-                          const struct SlicksAmigaSample *sample,
-                          unsigned short period, unsigned short volume)
+static void start_looping_channel(unsigned short channel,
+                                  const struct SlicksAmigaSample *sample,
+                                  unsigned short period,
+                                  unsigned short volume)
 {
     unsigned short base = AUDIO_BASE(channel);
     CUSTOM_WORD(REG_DMACON) = (unsigned short)(DMA_AUD0 << channel);
@@ -173,6 +174,23 @@ static void start_channel(unsigned short channel,
         (unsigned short)(DMA_SETCLR | (DMA_AUD0 << channel));
 }
 
+static void start_one_shot_channel(struct SlicksAmigaAudio *audio,
+                                   unsigned short channel,
+                                   const struct SlicksAmigaSample *sample,
+                                   unsigned short period,
+                                   unsigned short volume)
+{
+    unsigned short base = AUDIO_BASE(channel);
+    start_looping_channel(channel, sample, period, volume);
+    /* Paula has no non-looping DMA mode.  Once it has latched the attack's
+     * initial location and length, replace the reload registers with one
+     * silent word.  The complete sample plays once; subsequent reloads are
+     * silent rather than repeating the attack until the frame timer fires. */
+    wait_audio_dma();
+    CUSTOM_LONG(base) = (unsigned long)audio->silence;
+    CUSTOM_WORD(base + 4) = 1;
+}
+
 int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
                               const unsigned char *resource,
                               unsigned long resource_size)
@@ -183,6 +201,9 @@ int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
     for (i = 0; i < sizeof(*audio); ++i)
         ((unsigned char *)audio)[i] = 0;
     if (copy_blocks(audio, resource, resource_size) != 0)
+        goto fail;
+    audio->silence = (signed char *)AllocMem(2, MEMF_CHIP | MEMF_CLEAR);
+    if (!audio->silence)
         goto fail;
     audio->ready = 1;
     return 0;
@@ -202,8 +223,8 @@ void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
     block = engine_sample_block[vehicle];
     audio->engine_vehicle = (unsigned char)vehicle;
     audio->engine_sample_block = (unsigned char)block;
-    start_channel(0, &audio->samples[block],
-                  engine_period(audio, 0, 0), 64);
+    start_looping_channel(0, &audio->samples[block],
+                          engine_period(audio, 0, 0), 64);
     audio->engine_started = 1;
 }
 
@@ -211,7 +232,8 @@ void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
 {
     if (!audio || !audio->ready || !audio->music.data)
         return;
-    start_channel(3, &audio->music, audio->music.period, 32);
+    start_one_shot_channel(audio, 3, &audio->music,
+                           audio->music.period, 32);
     audio->music_started = 1;
 }
 
@@ -266,8 +288,8 @@ void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
     if (selected == SLICKS_AUDIO_EFFECT_CHANNELS)
         return;
     sample = &audio->samples[sample_block];
-    start_channel((unsigned short)(selected + 1), sample,
-                  sample->period, 64);
+    start_one_shot_channel(audio, (unsigned short)(selected + 1), sample,
+                           sample->period, 64);
     duration = (unsigned long)sample->bytes * sample->period * 50UL;
     audio->effect_ticks[selected] = (unsigned short)(
         (duration + 3546894UL) / 3546895UL);
@@ -308,5 +330,8 @@ void slicks_amiga_audio_destroy(struct SlicksAmigaAudio *audio)
         FreeMem(audio->music.data, audio->music.bytes);
     audio->music.data = 0;
     audio->music.bytes = 0;
+    if (audio->silence)
+        FreeMem(audio->silence, 2);
+    audio->silence = 0;
     audio->ready = 0;
 }

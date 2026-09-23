@@ -15,8 +15,6 @@
 #define SLICKS_START_LIGHT_COUNT 4
 #define SLICKS_START_LIGHT_PIXEL_COUNT (23U * 38U)
 #define SLICKS_DIRTY_ROW_MAX 16
-#define SLICKS_TRAIL_SPRITE_COUNT 3
-#define SLICKS_TRAIL_PIXEL_MAX 16
 #define SLICKS_TRAIL_PARTICLE_MAX 256
 #define SLICKS_SOUND_EVENT_MAX 8
 #define SLICKS_SOUND_SAMPLE_COUNT 26
@@ -138,10 +136,10 @@ struct SlicksTrailParticle {
     short velocity_y;
     short old_x;
     short old_y;
-    unsigned char saved_under[SLICKS_TRAIL_PIXEL_MAX];
+    unsigned char saved_under;
     unsigned char lifetime;
-    unsigned char sprite;
-    unsigned char surface;
+    unsigned char colour;
+    unsigned char priority;
     unsigned char saved_valid;
 };
 
@@ -152,7 +150,6 @@ struct SlicksRaceRuntime {
     struct SlicksCarProperties properties[SLICKS_VEHICLE_COUNT];
     struct SlicksRaceFont font;
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
-    struct SlicksCarSprite trail_sprites[SLICKS_TRAIL_SPRITE_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
     struct SlicksTrailParticle trail_particles[SLICKS_TRAIL_PARTICLE_MAX];
     struct SlicksDirtyRows dirty_rows[SLICKS_DIRTY_ROW_MAX];
@@ -203,10 +200,6 @@ int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
                                 unsigned short light,
                                 const unsigned char *resource,
                                 unsigned long resource_size);
-int slicks_race_add_trail_sprite(struct SlicksRaceRuntime *race,
-                                 unsigned short frame,
-                                 const unsigned char *resource,
-                                 unsigned long resource_size);
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky);
 void slicks_race_set_controls(struct SlicksRaceRuntime *race,

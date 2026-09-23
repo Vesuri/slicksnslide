@@ -17,6 +17,10 @@ commands
   set $animated = $animated + g_slicks_diag_material_count[24]
   set $animated = $animated + g_slicks_diag_material_count[25] + g_slicks_diag_material_count[26]
   set $ok = g_slicks_diag_race_frame == 200 && g_slicks_diag_track_zones > 0
+  set $ok = $ok && g_slicks_diag_skidmarks == 1040
+  set $ok = $ok && g_slicks_diag_track_collisions == 0
+  set $ok = $ok && g_slicks_diag_checksum == 0xed49462a
+  set $ok = $ok && g_slicks_diag_display_checksum == 0xb7c815dc
   if !$ok
     printf "SLICKS_ICE_FAILED FRAME=%u ZONES=%u\n", g_slicks_diag_race_frame, g_slicks_diag_track_zones
     quit 1

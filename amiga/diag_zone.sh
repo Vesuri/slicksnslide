@@ -7,8 +7,9 @@ cd "$(dirname "$0")"
 trap fsuae_stop_previous EXIT
 
 LOG=.run/diag-zone.log
+EXPECTED='SLICKS_ZONE_OK FRAME=200 ZONES=46 SKIDS=1112 TRACKCOLL=0 CHECKSUM=cc686167 DISPLAY=823431ce'
 mkdir -p .run
 
 SLICKS_ZONE_RACE=1 ./debug.sh "$KICKSTART" diag_zone.gdb | tee "$LOG"
-grep -Fq 'SLICKS_ZONE_OK ' "$LOG"
-echo "A1200 46-zone HEIKKI30.SS gameplay smoke test passed"
+grep -Fqx "$EXPECTED" "$LOG"
+echo "A1200 46-zone HEIKKI30.SS gameplay smoke test passed: $EXPECTED"

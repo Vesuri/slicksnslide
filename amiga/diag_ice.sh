@@ -7,8 +7,9 @@ cd "$(dirname "$0")"
 trap fsuae_stop_previous EXIT
 
 LOG=.run/diag-ice.log
+EXPECTED='SLICKS_ICE_OK FRAME=200 ZONES=11 ANIMATED=0 COUNTS=0,0,0,0,0 SKIDS=1040 TRACKCOLL=0 CHECKSUM=ed49462a DISPLAY=b7c815dc'
 mkdir -p .run
 
 SLICKS_ICE_RACE=1 ./debug.sh "$KICKSTART" diag_ice.gdb | tee "$LOG"
-grep -Fq 'SLICKS_ICE_OK ' "$LOG"
-echo "A1200 ICE.SS gameplay smoke test passed"
+grep -Fqx "$EXPECTED" "$LOG"
+echo "A1200 ICE.SS gameplay smoke test passed: $EXPECTED"

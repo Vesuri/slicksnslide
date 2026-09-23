@@ -493,19 +493,6 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             goto cleanup;
         }
     }
-    for (car = 0; car < SLICKS_TRAIL_SPRITE_COUNT; ++car) {
-        char name[7] = "savu.1";
-        long trail_size;
-        name[5] = (char)('1' + car);
-        trail_size = slicks_resource_archive_load(
-            &archive, name, car_resource, 128UL);
-        if (trail_size <= 0 ||
-            slicks_race_add_trail_sprite(race, car, car_resource,
-                                         (unsigned long)trail_size) != 0) {
-            g_slicks_diag_race_error = 6;
-            goto cleanup;
-        }
-    }
     for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car) {
         char property_name[11] = "auto00.omi";
         long property_size;
