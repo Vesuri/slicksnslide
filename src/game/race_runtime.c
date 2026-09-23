@@ -790,8 +790,6 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
     unsigned short direction = (unsigned short)car->heading /
                                SLICKS_HEADING_STEP;
     unsigned short wheel;
-    if (magnitude <= 200L)
-        return;
     for (wheel = 0; wheel < 2; ++wheel) {
         short x = (short)(car->x / 100L) - 3 +
                   wheel_x[car_index][wheel][direction];
@@ -807,6 +805,21 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
             y < 0 || y >= SLICKS_TRACK_HEIGHT)
             continue;
         surface = race->surface_map[(unsigned long)y * 320UL + x];
+
+        /* The material dispatch at 2000:2370 treats the ordinary road-like
+         * classes separately from the grass/mud actor cases below.  For
+         * each wheel above speed 100 it selects samples.dat block 2..4 with
+         * the original generator, flag-2 duplicate suppression, and DOS
+         * priority 10.  This random draw must happen before any particle
+         * draws to preserve the shared generator sequence. */
+        if (magnitude > 100L &&
+            (surface == 0 || surface == 1 || surface == 15 ||
+             surface == 17 || surface == 19 || surface == 31))
+            emit_sound_event(
+                race, (unsigned char)(2 + random_scaled(race, 3)), 2, 10);
+
+        if (magnitude <= 200L)
+            continue;
         if (surface == 5)
             sprite = (unsigned char)random_scaled(race, 3);
         else if (surface == 3)
@@ -1019,14 +1032,28 @@ static void emit_sound_event(struct SlicksRaceRuntime *race,
                              unsigned char priority)
 {
     struct SlicksSoundEvent *event;
-    if (race->sound_event_count >= SLICKS_SOUND_EVENT_MAX)
-        return;
-    event = &race->sound_events[race->sound_event_count++];
+    unsigned short at;
+    unsigned short selected = 0;
+    if (sample_block < SLICKS_SOUND_SAMPLE_COUNT)
+        ++race->sound_event_totals[sample_block];
+    if (race->sound_event_count < SLICKS_SOUND_EVENT_MAX) {
+        event = &race->sound_events[race->sound_event_count++];
+    } else {
+        /* DOS submits immediately to the mixer, where a higher-priority
+         * request can displace a lower-priority channel.  Preserve that
+         * property across this one-frame bridge instead of allowing eight
+         * tyre requests to hide a lap, finish, or collision event. */
+        for (at = 1; at < SLICKS_SOUND_EVENT_MAX; ++at)
+            if (race->sound_events[at].priority <
+                race->sound_events[selected].priority)
+                selected = at;
+        if (priority <= race->sound_events[selected].priority)
+            return;
+        event = &race->sound_events[selected];
+    }
     event->sample_block = sample_block;
     event->flags = flags;
     event->priority = priority;
-    if (sample_block < SLICKS_SOUND_SAMPLE_COUNT)
-        ++race->sound_event_totals[sample_block];
 }
 
 void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,

@@ -36,6 +36,7 @@ commands
   set $ok = $ok && g_slicks_diag_engine_period == 3546895 / g_slicks_diag_engine_frequency
   set $ok = $ok && g_slicks_diag_effect_sample_block == 6
   set $ok = $ok && g_slicks_diag_effect_priority == 14
+  set $ok = $ok && g_slicks_diag_sound_event_totals[2] + g_slicks_diag_sound_event_totals[3] + g_slicks_diag_sound_event_totals[4] > 0
   set $ok = $ok && !g_slicks_diag_start_light_visible
   set $ok = $ok && g_slicks_diag_start_light_stage_mask == 15
   set $ok = $ok && g_slicks_diag_dirty_ranges > 0

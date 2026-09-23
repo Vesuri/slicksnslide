@@ -68,6 +68,6 @@
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
-+	if (offset == 0x3167b)
++	if (offset == 0x2979b)
 +		Slicks_RecordSoundCall();
  	if (offset == 0x103f7)

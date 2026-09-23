@@ -75,6 +75,10 @@ from the original files at run time.
   22 through 26. The native generator is the original 32-bit
   `state * 0x015a4e35 + 1` recurrence. Selection of the alternate actor sprite
   group and its draw-priority details still need instruction-level recovery.
+- Each wheel on road-like material classes 0, 1, 15, 17, 19, and 31 now uses
+  the separate DOS slip-sound path. Above speed 100 it draws one of sample
+  blocks 2--4 from the shared random generator and submits it with flag 2 and
+  priority 10, before any grass/mud particle random draws.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.
@@ -128,8 +132,9 @@ bit-exact:
   opponent probe, and stationary recovery cadence;
 - animated boundary classes 22–26 and rendering the recovered collision-effect
   strength through the original actor system;
-- exact sound-event selection, priority, pitch, and duration rather than the
-  current native event mapping.
+- the remaining exact sound-event selection, priority, pitch, and duration
+  cases beyond the recovered engine, lap, finish, collision, impact, and
+  road-slip paths.
 
 `tools/patches/dosbox-x-slicks-race-state.patch` provides the semantic DOS
 trace used to compare controls, navigation state, positions, headings, and raw
