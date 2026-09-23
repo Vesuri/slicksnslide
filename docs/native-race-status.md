@@ -75,10 +75,17 @@ from the original files at run time.
   22 through 26. The native generator is the original 32-bit
   `state * 0x015a4e35 + 1` recurrence. Selection of the alternate actor sprite
   group and its draw-priority details still need instruction-level recovery.
-- Each wheel on road-like material classes 0, 1, 15, 17, 19, and 31 now uses
+- Each wheel on road-like material classes 0, 1, 17, 19, and 31 now uses
   the separate DOS slip-sound path. Above speed 100 it draws one of sample
   blocks 2--4 from the shared random generator and submits it with flag 2 and
   priority 10, before any grass/mud particle random draws.
+- The live 32-entry material jump table is also recovered. Classes 0, 1, 17,
+  19, and 31 enter the sprite-70--72 actor plus road-sound path; 3 and 4 use
+  sprites 67--69; 5, 6, 9, 10, 13, and 14 use sprites 61--63; 7 and 8 use the
+  separate moving actor path above speed 300; and 11 and 12 submit sprites
+  64--66 through the long-lived helper. Classes 2, 15, 16, 18, and 20--30
+  have no actor dispatch. Mapping those internal sprite IDs back to their
+  original archive assets remains before enabling every family natively.
 - Four original-font HUD rows show race time and lap/finishing position.
   Checkpoint wrap records current, previous, and best lap times. A race ends
   when all four cars finish and draws an ordered results panel.

@@ -813,8 +813,8 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
          * priority 10.  This random draw must happen before any particle
          * draws to preserve the shared generator sequence. */
         if (magnitude > 100L &&
-            (surface == 0 || surface == 1 || surface == 15 ||
-             surface == 17 || surface == 19 || surface == 31))
+            (surface == 0 || surface == 1 || surface == 17 ||
+             surface == 19 || surface == 31))
             emit_sound_event(
                 race, (unsigned char)(2 + random_scaled(race, 3)), 2, 10);
 

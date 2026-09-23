@@ -38,6 +38,7 @@
  std::map<uint64_t, std::vector<uint8_t>> slicks_sprite_blobs;
  std::map<uint64_t, std::array<uint8_t, 768>> slicks_palettes;
  bool slicks_title_dispatch_logged = false;
++bool slicks_surface_dispatch_logged = false;
  uint32_t slicks_title_event_samples = 0;
 +std::vector<SlicksRaceState> slicks_race_states;
 +std::array<SlicksRaceState, 4> slicks_pending_race_states = {};
@@ -196,7 +197,17 @@
 @@ -289,6 +463,19 @@
  	}
  
- 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
+	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if (offset == 0x12269 && !slicks_surface_dispatch_logged) {
++		const auto table = SegPhys(cs) + 0xa8fc;
++		LOG_MSG("SLICKS_SURFACE_DISPATCH_SITE cs=%04x ip=%04x site=%05x table=%05x",
++		        SegValue(cs), static_cast<uint16_t>(reg_eip), offset,
++		        static_cast<uint32_t>(table - slicks_runtime_base));
++		for (uint8_t i = 0; i < 32; ++i)
++			LOG_MSG("SLICKS_SURFACE_DISPATCH[%u]=%04x", i,
++			        mem_readw(table + static_cast<PhysPt>(i * 2)));
++		slicks_surface_dispatch_logged = true;
++	}
 +	/* Common post-control/steering path in the live per-car race loop. */
 +	if (offset == 0x10d59)
 +		Slicks_RecordRaceStatePre();
