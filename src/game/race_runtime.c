@@ -25,6 +25,12 @@ static const signed char direction_y[16] = {
     0, -38, -71, -92, -100, -92, -71, -38
 };
 
+/* DS:0166: forward look-ahead length selected by the current vehicle.  A
+ * negative value makes ebbb scan behind the car. */
+static const signed char ai_probe_steps[SLICKS_VEHICLE_COUNT] = {
+    10, 10, 15, -5, -10, 8, 7, -10, 25, 15
+};
+
 static long absolute_long(long value);
 static unsigned short next_random(struct SlicksRaceRuntime *race);
 
@@ -393,23 +399,30 @@ static unsigned char predicted_car_contact(struct SlicksRaceRuntime *race,
     struct SlicksRaceCar *car = &race->cars[car_index];
     unsigned short direction;
     unsigned short step;
+    short step_count;
+    short step_scale = 3;
     long x;
     long y;
     if (++car->ai_probe_counter <= 10)
         return 0;
     car->ai_probe_counter = 0;
     direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
+    step_count = ai_probe_steps[car->vehicle];
+    if (step_count < 0) {
+        step_count = (short)-step_count;
+        step_scale = -3;
+    }
     x = car->x;
     y = car->y;
-    for (step = 0; step < 12; ++step) {
+    for (step = 0; step < (unsigned short)step_count; ++step) {
         unsigned short other;
-        x += (long)direction_x[direction] * 3L;
-        y += (long)direction_y[direction] * 3L;
+        x += (long)direction_x[direction] * step_scale;
+        y += (long)direction_y[direction] * step_scale;
         for (other = 0; other < SLICKS_RACE_CAR_COUNT; ++other) {
             if (other != car_index &&
                 absolute_long(x - race->cars[other].x) < 700L &&
                 absolute_long(y - race->cars[other].y) < 700L)
-                return (unsigned char)(other + 1);
+                return 1;
         }
     }
     return 0;
@@ -456,20 +469,11 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
         return controls;
     }
 
-    if (contact) {
-        const struct SlicksRaceCar *other = &race->cars[contact - 1];
-        short away = heading_difference(car->heading, other->heading);
-        if (away >= 0)
-            difference = -SLICKS_HEADING_STEP * 3;
-        else
-            difference = SLICKS_HEADING_STEP * 3;
-    }
-
     if (difference < 0)
         controls |= SLICKS_CONTROL_LEFT;
     if (difference > 0)
         controls |= SLICKS_CONTROL_RIGHT;
-    if (!contact) {
+    {
         long speed = (absolute_long(car->velocity_x) +
                       absolute_long(car->velocity_y)) / 2L;
         unsigned char target_direction = dos_vector_direction(
@@ -496,14 +500,12 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
             controls |= SLICKS_CONTROL_BRAKE;
             controls &= (unsigned char)~SLICKS_CONTROL_ACCELERATE;
         }
-    } else if (difference >= -SLICKS_HEADING_STEP &&
-               difference <= SLICKS_HEADING_STEP) {
-        controls |= SLICKS_CONTROL_ACCELERATE;
-    } else if (difference < -5 * SLICKS_HEADING_STEP ||
-               difference > 5 * SLICKS_HEADING_STEP) {
-        if (car->speed_fixed >= 700L)
-            controls |= SLICKS_CONTROL_BRAKE;
     }
+    /* ebbb does not steer away from another entrant.  Its return value is a
+     * one-frame contact state which gates the ordinary brake block later in
+     * the DOS update. */
+    if (contact)
+        controls &= (unsigned char)~SLICKS_CONTROL_BRAKE;
     return controls;
 }
 

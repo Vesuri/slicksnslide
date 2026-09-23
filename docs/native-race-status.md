@@ -31,14 +31,15 @@ from the original files at run time.
 - The normal computer-control path follows the original ten-byte navigation
   records. Its 16-sector vector quantizer, steering thresholds, aligned-
   velocity throttle restoration, ordinary coast, greater-than-five-sector
-  braking, centre checkpoint comparisons, 150-tick stationary watch, and
-  700-tick initial grace, 150-tick stationary watch, 40-tick accelerating
+  braking, centre checkpoint comparisons, vehicle-specific opponent
+  look-ahead distances, opponent-triggered brake suppression, 700-tick
+  initial grace, 150-tick stationary watch, 40-tick accelerating
   escape turn, randomized turn side, and 100-tick post-escape watch are
   recovered from `e204` and `f09d`. The
   `analyze_ai_controls.py` replay reconstructs each pre-turn heading and
   matches the recovered normal drive decision on 98.81% of 12,287 traced AI
-  samples; the remaining trace rows include the
-  optional recovery/avoidance states still listed below.
+  samples; the remaining trace rows include the special destination states
+  still listed below.
 - Car contacts use the recovered `.omi` extent and weight ratios. For each
   updated car, `2000:2d27..31bd` projects a point ten fixed units along its
   velocity using `(abs(vx) + abs(vy)) / 2`, tests that point against the other
@@ -103,8 +104,8 @@ bit-exact:
   contact/reverse brake branches, the trigger for the special car-state path,
   and the remaining
   `.omi` property semantics;
-- the optional opponent-avoidance branches and special AI modes beyond the
-  recovered normal path and stationary recovery cadence;
+- the special destination AI modes beyond the recovered normal path,
+  opponent probe, and stationary recovery cadence;
 - animated boundary classes 22–26 and rendering the recovered collision-effect
   strength through the original actor system;
 - exact sound-event selection, priority, pitch, and duration rather than the
