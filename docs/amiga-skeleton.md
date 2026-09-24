@@ -1,5 +1,9 @@
 # First Amiga execution skeleton
 
+Historical bring-up record. The current runtime uses framework hardware
+takeover/copperlists, not the early Intuition display described below. For
+current completion status and validation limits see [open-work.md](open-work.md).
+
 The repository now builds a bootable Amiga HUNK and runs it in FS-UAE as an
 A1200 with a 68020, exactly 2 MiB of chip memory, and no fast memory. This is a
 platform diagnostic rather than a C transliteration of the DOS program. The
@@ -23,8 +27,9 @@ Mikael Kalms' Public Domain `c2p1x1_8_c5_bm` CPU5 routine writes directly to
 the plane pointers in a 320-byte-row interleaved `BitMap` adapter. The initial
 scene uses that full staging pass once. After race setup, the 64,000-byte
 linear surface becomes authoritative: live painters update it without also
-paying for VGA-bank address calculation, and later frames call Kalms directly
-for only the dirty row intervals. The VGA-compatible store is synchronized
+paying for VGA-bank address calculation. Later frames pack and convert only
+32-pixel-aligned dirty rectangles; changed particle and timer-glyph pixels are
+written directly to the eight interleaved planes. The VGA-compatible store is synchronized
 only at diagnostic checkpoints. The target-side GDB
 check stops at a named post-display marker and verifies logical checksum
 `93c8bea6` and planar display checksum `29592c57` after the currently translated

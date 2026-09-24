@@ -1,5 +1,8 @@
 # Phases and gates
 
+Architectural roadmap, not the day-to-day completion queue. Current native-port
+work and deferred checks live in [open-work.md](open-work.md).
+
 ## Phase 0 — scaffold and source proof
 
 - Record the exact source hash and MZ header.

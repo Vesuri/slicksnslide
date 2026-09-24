@@ -1,8 +1,26 @@
 # Slicks — DOS 286 to Amiga native static recompiler
 
-Translate the supplied DOS executable directly to native 68020 code for an
-A1200 with 2 MiB of memory. This is an ahead-of-time binary translator, not a
-C transliteration and not a whole-PC emulator.
+Port the supplied DOS executable to native code for an A1200 with 2 MiB of
+memory. The current implementation combines directly translated 68020
+assembly with recovered game/UI logic in native C and C++ platform support.
+It has no generated-C CPU-context emulation stage and is not a whole-PC emulator.
+
+## Current status (2026-09-25)
+
+The current queue is [docs/open-work.md](docs/open-work.md). Native player
+setup, CFG/PLR save/restart and correct race setup are complete, with manual
+joystick verification explicitly deferred by the user. Four-channel direct
+Paula audio now has VBI-based lifetimes and staged DMA restarts. Championship
+save/load has tested format, storage and resolution primitives, but its UI
+and live resume integration are still unfinished. The full game is not yet
+complete; further performance work is deferred.
+
+See [setup evidence](docs/player-setup-completion.md) and
+[audio evidence](docs/audio-channel-plan.md). The measured facts and staged
+implementation narrative below are historical: early Intuition screens,
+temporary fonts and intermediate control paths do not describe the current
+runtime. The general translator pipeline remains an architectural roadmap,
+not a claim that a complete automatic compiler already exists.
 
 ## Decisions (locked)
 
@@ -307,7 +325,7 @@ src/util/              shared low-level utilities
 amiga/                 build, run, debug, and diagnostic scripts
 ```
 
-## Status
+## Historical roadmap gates
 
 - [x] Phase 0a: repository initialized; source fingerprinted; direct-native
       architecture and source policy recorded.
@@ -327,8 +345,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Recover the remaining optional AI/contact branches, animated boundary classes,
-collision-effect state, and exact Paula event selection. Measure and optimize
-the remaining hot paths on the stock 68020. Resolve the screen-transition call
-that relies on 16-bit source wrap at caller level and broaden track/mode
-coverage beyond the current BASIC and BASICTRK fixtures.
+Connect championship save/load/resume through the native UI using the tested
+storage and original-code-derived resolution helpers. Follow
+[the current queue](docs/open-work.md) for the remaining priorities and deferred
+checks; do not restart performance or manual joystick work implicitly.

@@ -1,89 +1,56 @@
 # Open work
 
-The current native race implementation and its remaining instruction-level
-fidelity gaps are summarized in [native-race-status.md](native-race-status.md).
-The historical detail below records how the port reached that state.
+Updated 2026-09-25. Actionable open and deferred work only.
 
-1. Extend the live `BASIC.SS` race from its first complete native update loop.
-   Four persistent cars now decode their original directional archive sprites,
-   initialize from the track start pose, steer through the track's original
-   ten-byte navigation regions, emit the original palette-index point
-   particles, and update four
-   on-screen timers. Cursor keys can take over car one; otherwise the original
-   navigation records drive all four cars. The strict 2 MiB A1200 gate proves
-   movement, route-region progress, surface-particle output, timers, and two distinct
-   rendered checksums after 200 frames. The runtime now loads each original
-   34-byte `.omi` record; recovered acceleration and steering fields drive the
-   cars independently, and the collision dimensions/weight are retained for
-   the collision pass. Continue with the remaining car-property interpretation
-   and race services. The starting grid is now oriented from each track's start heading
-   and the recovered 120-tick, five-stage start sequence gates movement and
-   race timing. The four original `lahto*.@I` start-light images are now loaded
-   from the archive and drawn at the position and cadence measured from the
-   DOS capture; saved-under restoration removes them before movement starts.
-   Navigation regions are consumed in track order; wrapping the
-   final region advances the lap and records current, last, and best lap
-   times independently of total race time. Car-to-car contacts now use the
-   exact DOS point-ahead box test, integer-percent weight transfer, and
-   per-car contact latch. The original deliberately leaves overlapping
-   positions untouched; the native code does likewise. A focused unequal-
-   weight oracle and the live A1200 gates cover the recovered response. Keep
-   the translated
-   path free of a generated-C CPU-context layer. The race timer now decodes and
-   draws digits from the original `pieni.@f` archive font; the title renderer's
-   separate compact font remains a visual-fidelity item. After the initial
-   VGA-page conversion, the live display path paints its authoritative chunky
-   surface and calls Kalms directly. Live
-   painters add half-open row intervals to a fixed 16-entry list; overlapping
-   or touching intervals are unioned, and overflow conservatively collapses to
-   one bounding interval. Unchanged frames skip C2P entirely. The strict
-   200-frame BASIC run converts 3,666 row-widths instead of 40,000, a 90.8%
-   reduction, with both logical and displayed checksums covered by the gate.
-   An immutable material map now preserves the original five-bit track classes
-   beneath cars and surface particles. Native boundary response slides or deflects a
-   car instead of letting it pass through scenery, while retaining the five
-   three-value `.omi` surface groups for exact friction recovery. A separate
-   strict 700-frame gate proves a complete checkpoint wrap, lap 2, lap-time
-   rollover, and continued motion around the course.
-   Track loading is no longer fixed to BASIC's 233 objects or nine navigation
-   regions. A second strict gate runs the original 262-object `BASICTRK.SS`
-   editor/template course with all 25 regions. Its zero speed hints use the
-   normal cruise fallback; after 200 frames all cars have advanced through
-   multiple regions and registered no boundary contacts. Its road-class-zero
-   interval now also locks the recovered 1,196 point emissions and their
-   rendered checksum; the former zero-particle expectation was an artifact of
-   the missing road actor path.
-   Continue by exposing track choice in the native menu and testing a broader
-   representative set of user tracks.
-2. Convert the recovered contracts for all 12 live-named VGA functions into a
-   native 68020 graphics ABI and differential test corpus. The plane-selected
-   pixel read/write cores are complete and pass 2,040 x86-versus-68020 cases;
-   the opaque and transparent sprite blitters pass 256 whole-plane cases each.
-   Readback passes another 256 whole-segment cases, and sub-rectangle copy
-   passes 256 whole-plane cases. The direct plotter passes 512 cases across all
-   four caller-selected planes, and the half-open span filler passes 256
-   whole-framebuffer cases, and the composed title-wrapper tail passes 256
-   state-and-palette cases. The remapper now passes 256 whole-framebuffer
-   cases; the full-plane clear and observed mode-zero setup are native,
-   whole-framebuffer tested, and active in the A1200 path. The shared far-byte
-   fill's portable RAM semantics are native; its VGA and text-memory call sites
-   remain caller-level platform boundaries. The corrected race trace exposed one screen-transition
-   sub-rectangle call (`source_y=105`, `height=150`, declared height `200`) that
-   crosses the declared sprite and relies on 16-bit DOS offset wrap; either
-   translate that caller at a higher level or add a circular 64-KiB source
-   arena before claiming complete sub-rectangle coverage. The remaining
-   dynamic range and buffer checks cover the bounded calls. The rectangular span-fill layout is statically recovered and
-   traced, but the BASIC.SS fixture makes no calls; another mode must supply its
-   dynamic range checks.
-3. Turn the captured DOS/BIOS, port, and 16-writer VGA-memory inventories into
-   service and native drawing-replacement contracts. The BASIC path has no
-   writes overlapping executed instruction bytes; extend that proof to other
-   tracks and modes. Interrupt vectors `08h` and `09h` are proved to enter
-   `27A24h` and `26D29h`.
-4. Replace wall/video-time input with a guest-state-triggered Enter event.
-5. Define a compact application-state signature for race checkpoints so dynamic
-   AI/timer differences can be compared semantically.
-6. Classify the optional 386 Borland-runtime path and prove it remains dormant
-   under the selected CPU identity.
-7. Expand the normalized live-seeded Ghidra map with additional tracks and
-   modes, preserving common versus path-specific coverage provenance.
+## Current focus: championship save/load/resume
+
+1. Connect intermission Save Game to the original file picker and name-entry
+   flow, file enumeration, overwrite/delete confirmation and failure/retry UI.
+   Verify saving a real in-progress championship through native menus.
+2. Connect load selection to the file reader, decoder and track/profile/vehicle
+   resolver. Apply points, cash, inventory, participation, position scale and
+   next-track index without running new-game resets.
+3. Handle missing tracks/profiles, malformed saves, I/O errors and recovery
+   leftovers without partially changing the live session.
+4. Verify save, process exit, fresh restart and native-menu resume across a
+   multi-race championship, including repeated saves and cancellation.
+
+## Remaining game completion
+
+5. Verify natural fuel/damage-enabled race completion, finish deadlines/delays,
+   results and return/next-track flow against DOS; cover timed/Arcade modes.
+   Recheck the upper-pit AI stall on the current build.
+6. Port original weapon firing, cycling/depletion, weapons-enabled AI and shop
+   transactions; verify gameplay-driven inventory and HUD transitions.
+7. Compare full driving/AI/contact updates and sustained trajectories across
+   routes, recovery, pits, collisions and active-driver combinations.
+8. Complete animated boundaries, track-actor simulation/rendering/shared-pool
+   integration, other probing callers and collision-effect emission. Verify
+   actor ordering/reuse/capacity, foreground interaction, startup gating and
+   permanent-mark survival on representative tracks.
+9. Verify complete HUD/results sequencing across inactive/finished drivers,
+   option combinations and real weapon state transitions.
+10. Perform audio listening comparisons, check extreme engine frequencies
+    against Paula limits, and extend event/call-site and results/pause/restart
+    coverage. Keep direct playback without software mixing.
+
+## Integration and release
+
+11. Run applicable original-code oracles and muted 2 MiB/no-Fast-RAM A1200
+    regressions after integration changes: persistence, recovery, dirty-region
+    integrity, DMA blanking and clean system restoration. Broaden tracks/modes.
+    Refresh binary-specific debug fixtures before using them on new builds.
+12. Resolve executed source-wrap and unsupported platform-boundary cases.
+13. Audit dependencies, memory/startup behavior, launcher defaults and release
+    documentation. Package without original game data, captured frames,
+    generated reference bytes or emulator artifacts.
+14. Publish/push only when explicitly requested.
+
+## Deferred
+
+- Manual joystick press/steer/release verification: deferred by the user.
+  Do not restart it without agreement.
+- Further performance optimization: deferred by the user. Preserve existing
+  fast paths; do not assume all current frames meet the 20 ms target.
+- General-purpose translator expansion: exhaustive entry-point coverage,
+  semantic IR/backend completion and unexercised DOS/runtime paths.

@@ -7,6 +7,11 @@ ground truth.
 
 ## Standing rules
 
+- Commit each coherent, verified piece of work before moving to the next;
+  do not accumulate unrelated completed work in the working tree. Use the
+  repository's Vesuri identity, disable hooks/signing, and omit co-author
+  trailers. Keep current actionable work in `docs/open-work.md`; historical
+  evidence and completed-item reports belong in separate documents.
 - This file carries rules and pointers, never dated progress notes. Put measured
   findings and history in `docs/`.
 - `SLICKS.EXE`, runtime dumps, traces, screenshots, and other byte-derived game
