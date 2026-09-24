@@ -3,12 +3,11 @@
 	xref	sui_bevel
 	xref	sui_draw_text
 
-; Native title-menu slice corresponding to the observed six-entry loop at
-; 19719h..19825h. Index four is intentionally absent, matching the original.
+; Native title menu, including the original saved-game action at index four.
 ;
 ; In: a0 = logical planes, a1 = RGB palette
 ;     d0.b = ordinary label colour, d1.b = selected label colour
-;     d2.w = selected native entry (0..5)
+;     d2.w = selected native entry (0..6)
 ;     d7.w = guest page base
 ; Preserves: d0-d7/a0-a6
 sui_title_menu:
@@ -48,13 +47,17 @@ sui_title_menu:
 	moveq	#124,d1
 	moveq	#3,d6
 	bsr.s	.label
-	lea	.label_read,a1
+	lea	.label_load,a1
 	move.w	#137,d1
 	moveq	#4,d6
 	bsr.s	.label
-	lea	.label_quit,a1
+	lea	.label_read,a1
 	move.w	#150,d1
 	moveq	#5,d6
+	bsr.s	.label
+	lea	.label_quit,a1
+	move.w	#163,d1
+	moveq	#6,d6
 	bsr.s	.label
 	bra.s	.done
 
@@ -81,6 +84,7 @@ sui_title_menu:
 .label_players:	dc.b	"PLAYERS",0
 .label_tracks:	dc.b	"TRACKS",0
 .label_options:	dc.b	"OPTIONS",0
+.label_load:	dc.b	"LOAD GAME",0
 .label_read:	dc.b	"READ THIS",0
 .label_quit:	dc.b	"QUIT",0
 	even

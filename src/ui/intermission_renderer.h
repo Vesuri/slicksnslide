@@ -64,7 +64,9 @@ static inline int slicks_intermission_renderer_draw(struct SlicksIntermissionRen
     const struct SlicksPlayerMenuDrawOps ops={slicks_intermission_restore,slicks_intermission_bevel,
         slicks_intermission_car,slicks_intermission_label,r};
     slicks_intermission_car_rows(m,c->roles,c->vehicles,1,&ops);
-    slicks_intermission_action_rows(m,r->participants,1,c->labels,&ops);
+    /* The supplied DOS build hides these two implemented actions. Native
+     * championship support exposes Change Cars and Save Game explicitly. */
+    slicks_intermission_action_rows_from(m,r->participants,1,c->labels,&ops,0);
     return r->surface->error;
 }
 /* Owner loads all assets first and retains/restores its full parent page on

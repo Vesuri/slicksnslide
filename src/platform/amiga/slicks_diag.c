@@ -18,6 +18,9 @@
 #include "../../game/player_profiles.h"
 #include "../../game/profile_palette.h"
 #include "../../game/setup_session.h"
+#include "../../game/championship.h"
+#include "../../ui/saved_file_dialog.h"
+#include "amiga_saved_files.h"
 #include "../../game/arcade_setup.h"
 #include "../../game/race_timing.h"
 #include "../../gen/setup_defaults.h"
@@ -578,10 +581,10 @@ static void redraw_title_configuration(
     for(unsigned i=0;i<4;++i) { laps_text[5+i]=(char)lap_number[i]; if(!lap_number[i]) break; }
     laps_text[9]=0;
     slicks_draw_title_menu_selection(logical, palette, selection);
-    clear_title_rectangle(logical, 105, 164, 235, 191);
-    slicks_draw_title_text(logical, vehicle_text, 160, 166, 15);
-    slicks_draw_title_text(logical, track_text, 160, 174, 15);
-    slicks_draw_title_text(logical, laps_text, 160, 182, 15);
+    clear_title_rectangle(logical, 105, 172, 235, 200);
+    slicks_draw_title_text(logical, vehicle_text, 160, 174, 15);
+    slicks_draw_title_text(logical, track_text, 160, 182, 15);
+    slicks_draw_title_text(logical, laps_text, 160, 190, 15);
     slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
 }
 
@@ -595,6 +598,168 @@ static void present_menu_surface(struct SlicksAmigaPlatform *platform,struct Sli
 }
 static void present_player_menu(struct SlicksAmigaPlatform *platform)
 { present_menu_surface(platform,g_slicks_player_menu); }
+
+struct SlicksAmigaPlayerMenu *g_slicks_diag_saved_menu;
+volatile unsigned short g_slicks_diag_saved_phase;
+static unsigned char championship_test,championship_test_stage,championship_picker_count;
+void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
+static void championship_test_keys(struct SlicksAmigaPlatform *p,const unsigned char *keys,unsigned count)
+{
+    p->key_tail=0;
+    for(unsigned i=0;i<count;++i) p->keys[i]=keys[i];
+    p->key_head=(unsigned char)count;
+}
+static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
+{
+    slicks_diag_saved_ready();
+    if(!championship_test) return;
+    if(g_slicks_diag_saved_phase==1) {
+        static const unsigned char cancel[]={0x45,0x44},accept[]={0x44};
+        if(championship_test==1 && !championship_picker_count++) championship_test_keys(p,cancel,2);
+        else championship_test_keys(p,accept,1);
+    } else if(g_slicks_diag_saved_phase==2) {
+        static const unsigned char name[]={0x12,0x02,0x12,0x44};
+        championship_test_keys(p,name,4);
+    } else if(g_slicks_diag_saved_phase==3) {
+        static const unsigned char exit[]={0x44,0x59,0x45};
+        championship_test_keys(p,exit,3);
+    }
+}
+static int championship_notice(struct SlicksAmigaPlatform *p,struct SlicksAmigaPlayerMenu *m,
+    const unsigned char *text)
+{
+    slicks_amiga_platform_end(p);
+    if(slicks_amiga_message_open(m,text,slicks_original_players_footer_percent)) return -1;
+    present_menu_surface(p,m);
+    if(slicks_amiga_platform_begin(p,0)) return -1;
+    g_slicks_diag_saved_phase=3; championship_dialog_checkpoint(p);
+    int scan=0;
+    while(!scan && !g_slicks_diag_force_exit) {
+        unsigned short raw; slicks_amiga_platform_wait_vblank(p);
+        while(slicks_amiga_platform_poll_key(p,&raw))
+            if(!(raw&128) && (scan=amiga_raw_to_dos_scan(raw))) break;
+    }
+    slicks_amiga_platform_end(p);
+    if(slicks_amiga_message_close(m)) return -1;
+    return g_slicks_diag_force_exit?-1:scan;
+}
+
+/* The original .SSS list/name widgets, with native transactional disk I/O.
+ * Modal allocation/free and all filesystem calls happen outside takeover.
+ * Returns 1 accepted, 0 cancelled, -1 unrecoverable display/allocation error. */
+static int run_saved_game_dialog(struct SlicksAmigaPlatform *p,struct SlicksAmigaPlayerMenu *m,
+    struct SlicksSavedGame *game,unsigned char tracks[][8],unsigned char saving)
+{
+    unsigned char names[40][9],name[9]={0}; char path[13];
+    int result=-1;
+    g_slicks_diag_saved_menu=m;
+again:
+    slicks_amiga_platform_end(p);
+    int count=slicks_amiga_saved_files(names);
+    if(count<0 || (!count && !saving)) {
+        const unsigned char *message=count==-2?(const unsigned char *)"MORE THAN 40 SAVES - MANAGE FILES FIRST":
+            count<0?(const unsigned char *)"CANNOT READ SAVED GAMES":slicks_original_saved_empty;
+        if(championship_notice(p,m,message)<0) goto done;
+        result=0; goto done;
+    }
+    if(slicks_amiga_saved_files_picker(m,names,count,saving,
+        saving?slicks_original_saved_save:slicks_original_saved_load,slicks_original_players_footer_percent)) goto done;
+    g_slicks_diag_saved_phase=1;
+    for(;;) {
+        if(slicks_amiga_profile_picker_draw(m,p->vblank_count)) goto done;
+        present_menu_surface(p,m);
+        if(!p->active && slicks_amiga_platform_begin(p,0)) goto done;
+        championship_dialog_checkpoint(p);
+        slicks_amiga_platform_wait_vblank(p);
+        if(g_slicks_diag_force_exit) goto done;
+        unsigned short raw;
+        while(slicks_amiga_platform_poll_key(p,&raw)) {
+            (void)slicks_amiga_menu_character(m,(unsigned char)raw);
+            if(!(raw&128)) slicks_list_dialog_key(&m->picker->renderer.state,
+                (unsigned char)amiga_raw_to_dos_scan(raw));
+            if(m->picker->renderer.state.done) break;
+        }
+        if(m->picker->renderer.state.done) break;
+    }
+    slicks_amiga_platform_end(p);
+    struct SlicksSavedFileChoice choice=slicks_saved_file_choice(slicks_amiga_profile_picker_close(m),saving);
+    if(choice.action==SLICKS_SAVED_FILE_CANCEL) { result=0; goto done; }
+    if(choice.action==SLICKS_SAVED_FILE_NAME) {
+        name[0]=0;
+        if(slicks_amiga_saved_filename_open(m,name,slicks_original_saved_name,slicks_original_players_footer_percent)) goto done;
+        int accepted=0;
+        g_slicks_diag_saved_phase=2;
+        while(!accepted) {
+            if(slicks_amiga_name_dialog_tick(m,p->vblank_count)) goto done;
+            present_menu_surface(p,m);
+            if(!p->active && slicks_amiga_platform_begin(p,0)) goto done;
+            championship_dialog_checkpoint(p); slicks_amiga_platform_wait_vblank(p);
+            if(g_slicks_diag_force_exit) goto done;
+            unsigned short raw;
+            while(slicks_amiga_platform_poll_key(p,&raw)) {
+                unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
+                if(raw&128) continue;
+                accepted=slicks_name_dialog_key(&m->name_dialog->renderer,character);
+                m->name_dialog->hidden=0;
+                if(accepted) break;
+            }
+        }
+        slicks_amiga_platform_end(p);
+        if(slicks_amiga_name_dialog_close(m) || accepted<0) goto done;
+        if(accepted!=1 || !name[0]) goto again;
+    } else {
+        if(choice.index<0 || choice.index>=count) goto again;
+        for(unsigned i=0;i<9;++i) name[i]=names[choice.index][i];
+    }
+    if(slicks_saved_file_path(path,name)) {
+        if(championship_notice(p,m,(const unsigned char *)"USE 1-8 LETTERS, DIGITS, - OR _")<0) goto done;
+        goto again;
+    }
+    if(choice.action==SLICKS_SAVED_FILE_DELETE) {
+        int key=championship_notice(p,m,slicks_original_saved_delete);
+        if(key<0) goto done;
+        if(slicks_saved_file_delete_accepted((unsigned char)key)) {
+            if(slicks_amiga_saved_file_delete(path) &&
+               championship_notice(p,m,(const unsigned char *)"DELETE FAILED - CHECK NEW/BAK FILES")<0) goto done;
+        }
+        goto again;
+    }
+    const char *error=0;
+    if(saving) {
+        int exists=slicks_amiga_saved_file_exists(path);
+        if(exists<0) error="CANNOT ACCESS SAVE FILE";
+        else if(exists) {
+            int key=championship_notice(p,m,(const unsigned char *)"OVERWRITE THIS SAVED GAME? Y/N");
+            if(key<0) goto done;
+            if(key!=0x15) goto again;
+        }
+        if(!error) {
+            struct SlicksSetupStorageReport report=slicks_amiga_store_saved_game(path,game);
+            if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
+                if(championship_notice(p,m,(const unsigned char *)(report.result==SLICKS_SETUP_SAVED?
+                    "GAME SAVED":"GAME SAVED - BACKUP REMAINS"))<0) goto done;
+                result=1; goto done;
+            }
+            error=report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
+                "SAVE RECOVERY REQUIRED - KEEP NEW/BAK":"SAVE FAILED - RETRY OR ESC";
+        }
+    } else {
+        struct SlicksSetupLoadReport report=slicks_amiga_load_saved_game(path,game,tracks,256);
+        if(report.result==SLICKS_SETUP_LOADED) { result=1; goto done; }
+        error=report.result==SLICKS_SETUP_LOAD_RECOVERY?"KEEP SAVE NEW/BAK FILES - RECOVERY REQUIRED":
+            report.result==SLICKS_SETUP_LOAD_INVALID?"INVALID SAVED GAME":"LOAD FAILED - RETRY OR ESC";
+    }
+    if(championship_notice(p,m,(const unsigned char *)error)<0) goto done;
+    goto again;
+done:
+    slicks_amiga_platform_end(p);
+    if(m->picker) (void)slicks_amiga_profile_picker_close(m);
+    if(m->name_dialog) (void)slicks_amiga_name_dialog_close(m);
+    if(m->message) (void)slicks_amiga_message_close(m);
+    present_menu_surface(p,m);
+    g_slicks_diag_saved_menu=0; g_slicks_diag_saved_phase=0;
+    return result;
+}
 
 void __attribute__((noinline)) slicks_diag_profile_dialog_failed(void) { __asm__ volatile("" ::: "memory"); }
 static int profile_dialog_warning(struct SlicksAmigaPlatform *platform,unsigned char diagnostic)
@@ -1235,6 +1400,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     slicks_resolve_race_options(&options,configuration,
         slicks_original_mode_flags[configuration->options[0]]);
+    if(session) session->options=options;
     struct SlicksResourceArchive archive = {0, 0, 0};
     struct SlicksTrackNavigation *navigation = 0;
     unsigned char *dat = 0;
@@ -1291,6 +1457,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             short profile=session->players.selected[driver];
             if(profile>=0 && profile<g_slicks_profiles.count)
                 race->cars[driver].position_scale=g_slicks_profiles.setting[profile];
+            if(session->saved_position_scale_valid)
+                race->cars[driver].position_scale=session->saved_position_scale[driver];
         }
     slicks_race_set_service_options(race,options.fuel,options.damage);
     race->car_collisions_disabled=slicks_car_collisions_disabled(options.car_collisions);
@@ -1659,6 +1827,10 @@ static int update_race_key(struct SlicksRaceRuntime *race,
 static void pause_live_checkpoint(struct SlicksAmigaPlatform *platform,unsigned char diagnostic,unsigned *step)
 {
     slicks_diag_pause_live_ready();
+    if(championship_test) {
+        static const unsigned char keys[]={0x44};
+        championship_test_keys(platform,keys,1);
+    }
     if(diagnostic==8) {
         static const unsigned char keys[]={0x4d,0x44,0x44,0x44,0x45,0x4d,0x44,0x44,0x44,0x44,0x44,0x45,0x45};
         if(*step==1) g_slicks_diag_help_fail_allocation=1;
@@ -1838,7 +2010,8 @@ static void intermission_test_key(struct SlicksAmigaPlatform *platform,unsigned 
 }
 static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
     unsigned char *chunky,const unsigned char *palette,const char *next_path,
-    const unsigned char *next_name,short position,short total,unsigned char diagnostic)
+    const unsigned char *next_name,short position,short total,unsigned char diagnostic,
+    void *track_names,unsigned track_count)
 {
     struct SlicksResourceArchive archive={0}; struct SlicksAmigaPlayerMenu *m=0;
     unsigned char *dat=0,*track=0,*language=0;
@@ -1879,6 +2052,10 @@ retry:
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_diag_intermission_menu=m;
     slicks_diag_intermission_checkpoint();
+    if(championship_test==1) {
+        static const unsigned char keys[]={0x4c,0x44};
+        championship_test_keys(platform,keys,2);
+    }
     intermission_test_key(platform,diagnostic,test_step);
     while(!m->intermission->state.exit_code) {
         unsigned short raw;
@@ -1909,9 +2086,16 @@ retry:
                     if(opened<=0 && slicks_amiga_intermission_refresh_cars(m,g_slicks_setup_session.players.vehicle)) goto done;
                     if(opened<0 && slicks_amiga_warning_open(m,(const unsigned char *)"CARS UNAVAILABLE - PRESS A KEY")) goto done;
                 } else if(action==SLICKS_INTERMISSION_SAVE_GAME) {
-                    /* Championship serialization is not CFG/PLR persistence.
-                     * Do not pretend that saving setup saves this game. */
-                    if(slicks_amiga_warning_open(m,(const unsigned char *)"SAVE GAME NOT IMPLEMENTED")) goto done;
+                    static unsigned char saved_tracks[256][8];
+                    struct SlicksSavedGame game; unsigned char scales[4];
+                    for(unsigned i=0;i<4;++i) {
+                        scales[i]=race->cars[i].position_scale;
+                        for(unsigned j=0;j<13;++j) g_slicks_setup_session.inventory[i][j]=race->weapon_inventory[i][j];
+                    }
+                    if(slicks_championship_export(&game,saved_tracks,track_selection,g_slicks_track_playlist.count,
+                        position+1,track_count,native_track_name,track_names,&g_slicks_setup_session,&g_slicks_profiles,scales)) {
+                        if(championship_notice(platform,m,(const unsigned char *)"CHAMPIONSHIP CANNOT BE SAVED")<0) goto done;
+                    } else if(run_saved_game_dialog(platform,m,&game,saved_tracks,1)<0) goto done;
                 }
             }
             if(diagnostic==2) {
@@ -2269,7 +2453,9 @@ int main(void)
     unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test);
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
-    original_setup=(unsigned char)(!argc || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
+    if(argc==9 && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
+        championship_test=(unsigned char)(argv[5]=='S'?1:argv[5]=='L'?2:0);
+    original_setup=(unsigned char)(!argc || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
         struct DateStamp now;
         DateStamp(&now);
@@ -2372,7 +2558,7 @@ int main(void)
         configuration.options[9]=configuration.options[10]=0;
         g_slicks_diag_target_frame = 3600;
     }
-    auto_race = (unsigned char)(argc > 0 && !restore_test && !service_menu_test && !player_menu_test && !options_test && !setup_reload_test && !title_help_test && !tracks_test);
+    auto_race = (unsigned char)(argc > 0 && !championship_test && !restore_test && !service_menu_test && !player_menu_test && !options_test && !setup_reload_test && !title_help_test && !tracks_test);
     if(argc>0 && argv[0]=='W') {
         weapon_hud_fixture=1;
         g_slicks_diag_audit_bitmap=1;
@@ -2497,6 +2683,10 @@ int main(void)
         platform.key_head = sizeof(keys);
     }
     slicks_diag_frame_ready();
+    if(championship_test) {
+        static const unsigned char save[]={0x4d,0x4d,0x44},load[]={0x4d,0x4d,0x4d,0x4d,0x44};
+        championship_test_keys(&platform,championship_test==1?save:load,championship_test==1?3:5);
+    }
     if(setup_reload_test) {
         platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
     }
@@ -2513,7 +2703,7 @@ int main(void)
         if(track_info_fault_test) g_slicks_diag_track_info_fault=1;
     }
     if(title_help_test) {
-        static const unsigned char keys[]={0x4d,0x4d,0x4d,0x4d,0x44,0x45,0x50,0x45,0x4d,0x44};
+        static const unsigned char keys[]={0x4d,0x4d,0x4d,0x4d,0x4d,0x44,0x45,0x50,0x45,0x4d,0x44};
         platform.key_tail=0;
         for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
         platform.key_head=sizeof keys;
@@ -2659,6 +2849,18 @@ int main(void)
     for (;;) {
         unsigned short code;
         unsigned char left_down;
+        if(championship_test==1 && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
+            static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,0x4f,0x44,0x4d,0x44,0x4d,0x44,0x45,0x4c,0x4c,0x44};
+            championship_test_keys(&platform,keys,sizeof keys); championship_test_stage=1;
+        }
+        if(championship_test && g_slicks_diag_ingame && race->frame_count>=40 && championship_test_stage<2) {
+            unsigned char key=championship_test==1?0x58:0x59;
+            championship_test_keys(&platform,&key,1); championship_test_stage=2;
+        }
+        if(championship_test==2 && championship_test_stage==2 && !g_slicks_diag_ingame) {
+            static const unsigned char keys[]={0x45};
+            championship_test_keys(&platform,keys,1); championship_test_stage=3;
+        }
         if (!g_slicks_diag_ingame)
             slicks_amiga_platform_wait_vblank(&platform);
         if (g_slicks_diag_force_exit || (pause_live_test && pause_live_sent && race->frame_count>=150)) {
@@ -2816,7 +3018,7 @@ int main(void)
             if (g_slicks_diag_ingame) {
                 int pause_result=0;
                 unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
-                if((!argc || pause_live_test || pause_transition_test) && !race->race_complete && !(code&128) &&
+                if((!argc || championship_test || pause_live_test || pause_transition_test) && !race->race_complete && !(code&128) &&
                    (scan==1 || scan==0x1d || scan==0x3b || scan==0x3c || scan==0x43 || scan==0x44)) {
                     pause_result=run_race_pause(&platform,&audio,race,chunky,race_palette,&configuration,
                         &setup_dirty,(unsigned char)(scan==0x43?4:scan==0x44?5:0),
@@ -2846,7 +3048,8 @@ int main(void)
                         make_track_path(next_path,(const char *)next_name);
                         int choice=run_intermission(&platform,race,chunky,race_palette,next_path,next_name,
                             (short)playlist_position,(short)slicks_arcade_track_count(configuration.options[0],
-                                configuration.options[14],(short)g_slicks_track_playlist.count),intermission_retry_test?3:intermission_live_test?2:sequence_test);
+                                configuration.options[14],(short)g_slicks_track_playlist.count),intermission_retry_test?3:intermission_live_test?2:sequence_test,
+                            track_names,track_count);
                         if(choice<0) goto cleanup;
                         advance=(unsigned char)(choice==1);
                     }
@@ -3340,11 +3543,11 @@ int main(void)
                 }
                 if (raw == 0x4c) {
                     menu_selection = (unsigned short)(
-                        menu_selection ? menu_selection - 1 : 5);
+                        menu_selection ? menu_selection - 1 : 6);
                     redraw = 1;
                 } else if (raw == 0x4d) {
                     menu_selection = (unsigned short)(
-                        menu_selection < 5 ? menu_selection + 1 : 0);
+                        menu_selection < 6 ? menu_selection + 1 : 0);
                     redraw = 1;
                 } else if (raw == 0x4f || raw == 0x4e) {
                     int delta = raw == 0x4e ? 1 : -1;
@@ -3402,7 +3605,62 @@ int main(void)
                         service_selection, configuration.options[9], configuration.options[10]);
                     continue;
                 }
-                if (action == 1 || (action == 2 && menu_selection == 5)) {
+                if(action==2 && menu_selection==4 && original_setup) {
+                    static unsigned char saved_tracks[256][8];
+                    static struct SlicksSavedGame game;
+                    static struct SlicksSavedGameResolved resolved;
+                    static struct SlicksSetupSession staged,previous;
+                    struct SlicksConfiguration next_config=configuration;
+                    struct SlicksResourceArchive archive={0};
+                    slicks_amiga_platform_end(&platform);
+                    if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto cleanup;
+                    struct SlicksAmigaPlayerMenu *m=slicks_amiga_help_surface_create(&archive,chunky,source_palette);
+                    slicks_resource_archive_close(&archive);
+                    if(!m) goto cleanup;
+                    int loaded=run_saved_game_dialog(&platform,m,&game,saved_tracks,0);
+                    if(loaded==1) {
+                        enum SlicksSavedGameResolveResult status=slicks_championship_stage(&staged,&resolved,
+                            &game,&g_slicks_setup_session,&configuration,&g_slicks_profiles,
+                            slicks_original_fallback_colours,SLICKS_VEHICLE_COUNT,track_count,native_track_name,track_names);
+                        if(status!=SLICKS_RESUME_READY) {
+                            const char *message=status==SLICKS_RESUME_MISSING_TRACK?"SAVED TRACK IS MISSING":
+                                status==SLICKS_RESUME_MISSING_PROFILE?"SAVED PLAYER PROFILE IS MISSING":"INVALID NEXT TRACK OR PLAYER SELECTION";
+                            loaded=championship_notice(&platform,m,(const unsigned char *)message)<0?-1:0;
+                        }
+                    }
+                    slicks_amiga_player_menu_destroy(m);
+                    if(loaded<0) goto cleanup;
+                    if(!loaded) {
+                        redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
+                            selected_vehicle,track_names[selected_track],selected_laps);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        continue;
+                    }
+                    for(unsigned i=0;i<4;++i) next_config.selected_profile[i]=staged.players.selected[i];
+                    previous=g_slicks_setup_session;
+                    g_slicks_setup_session=staged;
+                    make_track_path(selected_track_path,track_names[resolved.tracks[game.next_track]]);
+                    if(prepare_race(&platform,logical,chunky,mode_state,race,selected_track_path,race_palette,
+                        selected_vehicle,&next_config,&g_slicks_setup_session,0)) {
+                        g_slicks_setup_session=previous;
+                        race_prepared=0; race_load_prompt=1; race_load_retry=0;
+                        if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,0)) goto cleanup;
+                        continue;
+                    }
+                    configuration=next_config; setup_dirty=1;
+                    for(unsigned i=0;i<(unsigned)game.track_count;++i) track_selection[i]=resolved.tracks[i];
+                    g_slicks_track_playlist.count=game.track_count;
+                    playlist_position=(unsigned short)game.next_track;
+                    selected_track=(unsigned short)track_selection[playlist_position];
+                    race_prepared=1;
+                    slicks_race_set_laps(race,selected_laps);
+                    if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
+                    g_slicks_diag_ready=1;
+                    enter_prepared_race(&platform,logical,race);
+                    start_race_engines(&audio,race,&platform);
+                    continue;
+                }
+                if (action == 1 || (action == 2 && menu_selection == 6)) {
                     exit_requested=1;
                     continue;
                 }
@@ -3767,7 +4025,7 @@ int main(void)
                     action = 0;
                 }
             }
-            if (action == 1 || (action==2 && menu_selection==5)) {
+            if (action == 1 || (action==2 && menu_selection==6)) {
                 exit_requested=1;
             }
             if (action == 2 && menu_selection == 0) {

@@ -8,9 +8,9 @@ int main(void)
     size_t n=fread(runtime,1,sizeof runtime,f); fclose(f);
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u));
     check(uc_mem_map(u,0,0x100000,UC_PROT_ALL)); check(uc_mem_write(u,0x10100,runtime,n));
-    for(unsigned action=0;action<6;++action) for(unsigned selection=0;selection<6;++selection) {
+    for(unsigned action=0;action<6;++action) for(unsigned selection=0;selection<7;++selection) {
         const unsigned char *topic=slicks_title_help_topic(action,selection);
-        if(action!=3 && !(action==2 && selection==4)) { if(topic) abort(); continue; }
+        if(action!=3 && !(action==2 && selection==5)) { if(topic) abort(); continue; }
         regs(u,0);
         check(uc_emu_start(u,action==3?0x2a3cc:0x2a096,0x327dc,0,30));
         uint16_t cs,ip,sp; check(uc_reg_read(u,UC_X86_REG_CS,&cs)); check(uc_reg_read(u,UC_X86_REG_IP,&ip));

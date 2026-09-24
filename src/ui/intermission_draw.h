@@ -19,19 +19,23 @@ static inline void slicks_intermission_car_rows(struct SlicksIntermissionMenu *m
 /* Original 245da..24702: rows 0/1 stay hidden even after F2 selects row 0.
  * Labels 2/3 are already resolved through nexttrack/mainmenu with the
  * original NEXT TRACK/END MATCH strings as fallbacks. */
-static inline void slicks_intermission_action_rows(struct SlicksIntermissionMenu *m,
+static inline void slicks_intermission_action_rows_from(struct SlicksIntermissionMenu *m,
     unsigned char count,unsigned char has_background,const unsigned char *const labels[4],
-    const struct SlicksPlayerMenuDrawOps *ops)
+    const struct SlicksPlayerMenuDrawOps *ops,short first)
 {
     if(!m->redraw) return;
     if(has_background) ops->restore(ops->context,125,(short)(77+10*count),0,0,72,42);
-    for(short row=2;row<4;++row) {
+    for(short row=first;row<4;++row) {
         if(row==m->selected)
             ops->bevel(ops->context,125,(short)(77+10*(count+row)),70,11,50,10,10);
         ops->text(ops->context,0,labels[row],160,(short)(80+10*(count+row)),1);
     }
     m->redraw=0;
 }
+static inline void slicks_intermission_action_rows(struct SlicksIntermissionMenu *m,
+    unsigned char count,unsigned char has_background,const unsigned char *const labels[4],
+    const struct SlicksPlayerMenuDrawOps *ops)
+{ slicks_intermission_action_rows_from(m,count,has_background,labels,ops,2); }
 
 struct SlicksIntermissionRowsOps {
     void (*colour)(void *,unsigned char);

@@ -142,6 +142,14 @@ int main(int argc,char **argv)
        strings(out,data,sizeof data,"slicks_original_intermission_keys",0x7c2,4)) {
         fclose(out); return 2;
     }
+    const unsigned save_offsets[]={0x783,0xb6f,0xb7b,0xb8e,0xbb0,0xbbb};
+    const char *save_names[]={"save","load","empty","delete","deleted","name"};
+    for(unsigned i=0;i<6;++i) {
+        fprintf(out,"static const unsigned char slicks_original_saved_%s[] = {",save_names[i]);
+        unsigned at=save_offsets[i];
+        do { fprintf(out,"%s%u",at==save_offsets[i]?"":",",data[at]); } while(data[at++]);
+        fputs("};\n",out);
+    }
     fputs("static const unsigned char slicks_original_change_cars_title[] = {",out);
     for(unsigned i=0;i<5;++i) fprintf(out,"%s%u",i?",":"",data[0xc3d+i]);
     fputs("};\n",out);

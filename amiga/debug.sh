@@ -28,7 +28,11 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ -n "${SLICKS_PROFILE_DIALOG_FAILURE:-}" ]; then
+if [ "${SLICKS_CHAMPIONSHIP:-}" = save ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVE\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_CHAMPIONSHIP:-}" = load ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPLOAD\n' > "$DH0/s/startup-sequence"
+elif [ -n "${SLICKS_PROFILE_DIALOG_FAILURE:-}" ]; then
   case "$SLICKS_PROFILE_DIALOG_FAILURE" in NF|NL|CF|CL) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERS%s\n' "$SLICKS_PROFILE_DIALOG_FAILURE" > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_INTERMISSION_LIVE:-0}" = 2 ]; then
