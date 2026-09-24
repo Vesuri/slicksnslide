@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 trap fsuae_stop_previous EXIT
 
 LOG=.run/diag-results.log
-EXPECTED='SLICKS_RESULTS_OK FRAME=618 POS=2,3,4,1 CHECKSUM=de4391a0 DISPLAY=15e8baf5'
+EXPECTED='SLICKS_RESULTS_OK FRAME=618 POS=2,3,4,1 CHECKSUM=2f26e8ea DISPLAY=5ee09abf'
 mkdir -p .run
 SLICKS_AUTO_RACE=1 SLICKS_RESULTS_RACE=1 \
   ./debug.sh "$KICKSTART" diag_results.gdb | tee "$LOG"

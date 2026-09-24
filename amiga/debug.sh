@@ -6,15 +6,194 @@ cd "$(dirname "$0")"
 
 FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
+# Match Revs: silence host output without changing emulated audio/DMA.
+# This FS-UAE build does not implement the volume=0 path.
+# Opt in only when audible output is needed for a sound investigation.
+AUDIO_ARGS=(--audio_driver=dummy)
+if [ "${FSUAE_SOUND:-0}" = 1 ]; then AUDIO_ARGS=(); fi
+LUA_ARGS=()
+if [ -n "${SLICKS_DEBUG_LUA:-}" ]; then LUA_ARGS=("--uae_lua=$SLICKS_DEBUG_LUA"); fi
+DEBUG_JOYSTICK=nothing
+if [ "${SLICKS_DEBUG_JOYSTICK_KEYS:-0}" = 1 ]; then
+  # The installed FSEMU build ignores legacy keyboard_key_* overrides.
+  # Use its built-in keyboard joystick: arrows and right Ctrl/Alt fire.
+  DEBUG_JOYSTICK=keyboard
+fi
 ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
 SETPATCH="${SETPATCH:-../tmp/SetPatch}"
+DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
-[ -f out/SlicksDiag.elf ] || { echo "build first: make"; exit 1; }
+[ -f "$DEBUG_BUILD.elf" ] || { echo "build first: make"; exit 1; }
 [ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
 
-RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
+RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_RESTORE_TEST:-0}" = 1 ]; then
+if [ -n "${SLICKS_PROFILE_DIALOG_FAILURE:-}" ]; then
+  case "$SLICKS_PROFILE_DIALOG_FAILURE" in NF|NL|CF|CL) ;; *) exit 2;; esac
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERS%s\n' "$SLICKS_PROFILE_DIALOG_FAILURE" > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_INTERMISSION_LIVE:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSTJ\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_INTERMISSION_LIVE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSTI\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_INTERMISSION_SURFACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag UIMENU2\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PAUSE_LIVE:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LIVEMENUN\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PAUSE_LIVE:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LIVEMENUF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PAUSE_LIVE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LIVEMENU\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PAUSE_SURFACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag UIMENU\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 10 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSN\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 9 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSM\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 8 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSK\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 7 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSJ\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 6 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSI\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 5 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 4 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSR\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSL\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_TRACK_MENU:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 8 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSN\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 7 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSM\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 6 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HELPF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 5 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSL\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 4 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HELP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSK\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSJ\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSH\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 16 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 15 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSE\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 14 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 13 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 12 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONST\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 11 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSU\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 10 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSQ\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 9 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSZ\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 8 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSB\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 7 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSA\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 6 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSW\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 5 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSV\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 4 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSR\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSC\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_OPTIONS_MENU:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 18 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSB\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 17 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSZ\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 16 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSY\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 15 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSX\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 14 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSH\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 13 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSW\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 12 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSV\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 11 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSU\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 10 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERST\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 9 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 8 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSC\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 7 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSN\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 6 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSE\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 5 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 4 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSG\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSK\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSR\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SETUP_ABORT:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPA\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SETUP_FAILURE:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPG\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SETUP_FAILURE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SETUP_RELOAD:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPR\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SETUP_INPUT:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPI\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SETUP_SESSION:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_WEAPON_HUD:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag WEAPONHUD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_DAMAGE_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CONFIGD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SERVICE_MENU:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CONFIG\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_FUEL_RACE:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag FUEL\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_JUMP_TRACK:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag UPPERJUMP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SHADOW_TEST:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag JUMP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_BENCHMARK:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag MEASURE\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_AUDIO_IN_BLANK:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag VBLANKAUDIO\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_AUDIO_NO_DMA:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DMAOFF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_NO_AUDIO:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NOAUDIO\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_NO_PARTICLES:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PARTICLESOFF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUTF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUTC\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUT\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag BITMAPFAULT\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag BITMAPAUDIT\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_RESTORE_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag EXIT\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_RESULTS_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag RESULTS\n' > "$DH0/s/startup-sequence"
@@ -32,7 +211,7 @@ else
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
 fi
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
-cp -f out/SlicksDiag.exe "$DH1/SlicksDiag"
+cp -f "$DEBUG_BUILD.exe" "$DH1/SlicksDiag"
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
 cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
 mkdir -p "$DH1/TRACKS"
@@ -40,10 +219,13 @@ cp -f ../ref/TRACKS/*.SS "$DH1/TRACKS/"
 
 fsuae_claim_port
 "$FSUAE" \
+  "${AUDIO_ARGS[@]}" \
+  "${LUA_ARGS[@]}" \
   --amiga_model=A1200 --chip_memory=2048 --fast_memory=0 \
   --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
-  --joystick_port_0=mouse --joystick_port_1=nothing \
+  --hard_drive_1_read_only="${SLICKS_DEBUG_READ_ONLY:-0}" \
+  --joystick_port_0=mouse --joystick_port_1="$DEBUG_JOYSTICK" \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
   --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" \
   --remote_debugger_trigger=SlicksDiag \
@@ -68,7 +250,7 @@ PREAMBLE="$RUN/connect.gdb"
 
 if [ "${2:-}" ] && [ -f "$2" ]; then
   exec env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
-    "$GDB" -q -l 10 -x "$PREAMBLE" -x "$2" out/SlicksDiag.elf
+    "$GDB" -q -l 10 -x "$PREAMBLE" -x "$2" "$DEBUG_BUILD.elf"
 fi
 exec env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
-  "$GDB" -q -l 10 -x "$PREAMBLE" out/SlicksDiag.elf
+  "$GDB" -q -l 10 -x "$PREAMBLE" "$DEBUG_BUILD.elf"
