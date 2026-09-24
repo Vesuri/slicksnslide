@@ -1,0 +1,12 @@
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -909,3 +909,9 @@
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if ((offset == 0x237e7 || offset == 0x23f30) &&
++	    std::getenv("SLICKS_TRACE_PAGES"))
++		LOG_MSG("SLICKS_ACTOR_PAGE stage=%s frame=%u page=%u ds=%04x ticks=%u",
++		        offset == 0x237e7 ? "PRE" : "POST", slicks_race_frame,
++		        mem_readb(SegPhys(ds) + 0x16c6), SegValue(ds),
++		        offset == 0x237e7 ? mem_readw(SegPhys(ss) + reg_bp - 2) : 0);
+ 	if (offset == 0x128d2)
+ 		Slicks_LogActorLayer("PRE");

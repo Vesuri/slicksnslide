@@ -1,0 +1,12 @@
+	section	code
+	dc.l	sui_font_string
+	dc.l	slicks_menu_text
+	dc.l	slicks_menu_measure
+	dc.l	slicks_help_measure
+	dc.l	slicks_help_text
+	dc.l	slicks_records_text
+	include	"src/ui/sui_font_string.s"
+	include	"src/ui/sui_font_measure.s"
+	include	"src/ui/sui_font_glyph.s"
+	include	"src/graphics/sgfx_mult320.s"
+	include	"src/ui/sui_menu_bridge.s"

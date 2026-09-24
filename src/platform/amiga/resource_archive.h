@@ -1,8 +1,10 @@
 #ifndef SLICKS_RESOURCE_ARCHIVE_H
 #define SLICKS_RESOURCE_ARCHIVE_H
 
+#ifndef SLICKS_ARCHIVE_HOST_TEST
 #include <exec/types.h>
 #include <dos/dos.h>
+#endif
 
 struct SlicksResourceArchive {
     BPTR file;

@@ -3,6 +3,7 @@ SOURCE ?= ref/SLICKS.EXE
 REFERENCE_ROOT ?= tmp/pc-root
 REFERENCE_CAPTURE ?= $(REFERENCE_ROOT)/slicks-handoff
 REFERENCE_FIXED_ROOT ?= tmp/pc-fixed
+REFERENCE_TRACK ?= ref/TRACKS/BASIC.SS
 REFERENCE_RACE_VIDEO ?=
 REFERENCE_TRACE_BITMAP ?= $(REFERENCE_FIXED_ROOT)/slicks-executed.bin
 REFERENCE_TRACE_EDGES ?= $(REFERENCE_FIXED_ROOT)/slicks-edges.csv
@@ -56,7 +57,7 @@ prepare-reference:
 prepare-fixed-reference:
 	@mkdir -p $(REFERENCE_FIXED_ROOT)/TRACKS
 	rsync -a --exclude TRACKS ref/ $(REFERENCE_FIXED_ROOT)/
-	cp ref/TRACKS/BASIC.SS $(REFERENCE_FIXED_ROOT)/TRACKS/
+	cp $(REFERENCE_TRACK) $(REFERENCE_FIXED_ROOT)/TRACKS/
 
 reference-staging: prepare-reference
 	$(DOSBOX_STAGING) --noprimaryconf --nolocalconf \
@@ -86,6 +87,19 @@ reference-trace: prepare-fixed-reference
 		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
 		-c "autotype -w 15 -p 0.2 down enter , enter , enter , esc , up enter" \
 		-c "dx-capture /v /-a /-d slicks.exe"
+
+.PHONY: reference-layer-trace
+REFERENCE_KEY_PACE ?= 1
+reference-layer-trace: prepare-fixed-reference
+	cd $(REFERENCE_FIXED_ROOT) && \
+		env SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy SLICKS_TRACE_LAYERS=1 \
+		$(abspath $(DOSBOX_X_TRACE)) \
+		-conf $(ABS_ROOT)/reference/dosbox-x-286.conf \
+		-set "cpu cycles=12000" -set "log logfile=layers-paced.log" \
+		-nogui -nomenu -silent -fastlaunch -time-limit 75 \
+		-c "mount c $(abspath $(REFERENCE_FIXED_ROOT))" -c "c:" \
+		-c "autotype -w 15 -p $(REFERENCE_KEY_PACE) down enter , enter , enter , esc , up enter" \
+		-c "slicks.exe"
 
 reference-frame-hash:
 	@test -n "$(REFERENCE_VIDEO)" || \
@@ -168,7 +182,7 @@ build/verify_car_collision: tools/verify_car_collision.c \
 		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
-		-Wl,-dead_strip $< src/game/race_runtime.c -o $@
+		-Wl,-dead_strip $< src/game/race_runtime.c src/game/track_scene.c -o $@
 
 verify-car-collision: build/verify_car_collision
 	build/verify_car_collision
@@ -177,28 +191,677 @@ build/verify_drive_physics: tools/verify_drive_physics.c \
 		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
-		-Wl,-dead_strip $< -o $@
+		-Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 verify-drive-physics: build/verify_drive_physics
 	build/verify_drive_physics
+
+.PHONY: verify-dos-steering
+build/verify_dos_steering: tools/verify_dos_steering.c \
+		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c \
+		-L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-dos-steering: build/verify_dos_steering
+	build/verify_dos_steering disasm/runtime.bin
+
+.PHONY: verify-dos-ai
+build/verify_dos_ai: tools/verify_dos_ai.c src/game/race_runtime.c \
+        src/game/race_runtime.h src/game/track_scene.h src/game/track_scene.c \
+        src/ui/service_options.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c \
+		-L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-dos-ai: build/verify_dos_ai
+	build/verify_dos_ai disasm/runtime.bin
+
+.PHONY: verify-dos-damage
+.PHONY: verify-dos-hud
+.PHONY: verify-profile-setup
+.PHONY: verify-configuration
+.PHONY: verify-race-options
+.PHONY: verify-profile-palette
+.PHONY: verify-setup-session
+build/verify_setup_session: tools/verify_setup_session.c src/game/setup_session.h src/game/profile_setup.h src/game/configuration.h src/game/race_options.h src/game/weapon_state.h src/game/race_rewards.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-setup-session: build/verify_setup_session
+	build/verify_setup_session
+
+build/verify_profile_palette: tools/verify_profile_palette.c src/game/profile_palette.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-profile-palette: build/verify_profile_palette
+	build/verify_profile_palette
+
+build/verify_race_options: tools/verify_race_options.c src/game/race_options.h src/game/configuration.h src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-race-options: build/verify_race_options
+	build/verify_race_options
+
+.PHONY: verify-intermission-menu
+build/verify_intermission_menu: tools/verify_intermission_menu.c src/ui/intermission_menu.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-intermission-menu: build/verify_intermission_menu
+	build/verify_intermission_menu
+
+.PHONY: verify-intermission-draw
+build/verify_intermission_draw: tools/verify_intermission_draw.c tools/verify_profile_setup.c src/ui/intermission_draw.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-intermission-draw: build/verify_intermission_draw
+	build/verify_intermission_draw
+
+.PHONY: verify-intermission-prepare
+build/verify_intermission_prepare: tools/verify_intermission_prepare.c tools/verify_palette_remap.c src/ui/intermission_prepare.h src/ui/palette_remap.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-intermission-prepare: build/verify_intermission_prepare
+	build/verify_intermission_prepare
+
+.PHONY: verify-intermission-renderer
+build/verify_intermission_renderer: tools/verify_intermission_renderer.c $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+verify-intermission-renderer: build/verify_intermission_renderer
+	build/verify_intermission_renderer
+
+.PHONY: verify-change-cars-dialog
+build/verify_change_cars_dialog: tools/verify_change_cars_dialog.c src/ui/change_cars_dialog.h src/game/profile_setup.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-change-cars-dialog: build/verify_change_cars_dialog
+	build/verify_change_cars_dialog
+
+.PHONY: verify-change-cars-renderer
+build/verify_change_cars_renderer: tools/verify_change_cars_renderer.c src/ui/change_cars_renderer.h src/ui/change_cars_dialog.h src/ui/player_menu_renderer.h src/ui/saved_rectangle.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+verify-change-cars-renderer: build/verify_change_cars_renderer
+	build/verify_change_cars_renderer
+
+.PHONY: verify-change-cars-pixels verify-intermission-pixels
+build/verify_change_cars_pixels: tools/verify_change_cars_pixels.c tools/verify_palette_remap.c $(wildcard src/ui/*.h) tools/host_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-change-cars-pixels: build/verify_change_cars_pixels build/font_string_test.bin build/hud_icon_test.bin
+	build/verify_change_cars_pixels
+
+# Shared asset/68020 harness also checks the complete intermission UI layer.
+verify-intermission-pixels: verify-change-cars-pixels
+
+build/export_setup_defaults: tools/export_setup_defaults.c src/game/configuration.h src/ui/options_menu.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+disasm/runtime.bin: $(SOURCE) build/unpack_compack
+	$(MAKE) unpack
+
+src/gen/setup_defaults.h: build/export_setup_defaults disasm/runtime.bin
+	@mkdir -p src/gen
+	build/export_setup_defaults disasm/runtime.bin $@
+
+.PHONY: setup-defaults
+setup-defaults: src/gen/setup_defaults.h
+
+.PHONY: verify-setup-storage
+build/verify_setup_storage: tools/verify_setup_storage.c src/game/setup_storage.h src/game/configuration.h src/game/player_profiles.h src/game/profile_setup.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+verify-setup-storage: build/verify_setup_storage
+	build/verify_setup_storage
+
+build/verify_native_configuration: tools/verify_native_configuration.c src/game/configuration.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+.PHONY: verify-setup-load
+build/verify_setup_load: tools/verify_setup_load.c src/platform/amiga/amiga_setup_storage.c src/platform/amiga/amiga_setup_storage.h src/game/configuration.h src/game/player_profiles.h src/game/setup_storage.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+verify-setup-load: build/verify_setup_load
+	build/verify_setup_load
+
+.PHONY: verify-options-menu
+build/verify_options_menu: tools/verify_options_menu.c src/ui/options_menu.h src/game/configuration.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-options-menu: build/verify_options_menu
+	build/verify_options_menu
+
+.PHONY: verify-options-draw
+build/verify_options_draw: tools/verify_options_draw.c tools/verify_profile_setup.c src/ui/options_menu_draw.h src/ui/options_menu_renderer.h src/ui/options_menu.h src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-options-draw: build/verify_options_draw
+	build/verify_options_draw
+
+.PHONY: verify-controllers
+build/verify_controllers: tools/verify_controllers.c tools/verify_options_menu.c src/ui/controllers_dialog.h src/ui/options_menu.h src/game/configuration.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-controllers: build/verify_controllers
+	build/verify_controllers
+
+.PHONY: verify-controllers-draw
+build/verify_controllers_draw: tools/verify_controllers_draw.c tools/verify_profile_setup.c src/ui/controllers_dialog_draw.h src/ui/controllers_dialog.h src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-controllers-draw: build/verify_controllers_draw
+	build/verify_controllers_draw
+
+build/verify_configuration: tools/verify_configuration.c src/game/configuration.h src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-configuration: build/verify_configuration
+	build/verify_configuration
+
+.PHONY: verify-player-profiles
+build/verify_player_profiles: tools/verify_player_profiles.c src/game/player_profiles.h src/game/profile_setup.h src/ui/profile_editor.h src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-player-profiles: build/verify_player_profiles
+	build/verify_player_profiles
+
+.PHONY: verify-text-entry
+build/verify_text_entry: tools/verify_text_entry.c src/ui/text_entry.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-text-entry: build/verify_text_entry
+	build/verify_text_entry
+
+.PHONY: verify-colour-picker
+build/verify_colour_picker: tools/verify_colour_picker.c src/ui/colour_picker.h src/ui/chunky_ui.h src/graphics/row_offsets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-colour-picker: build/verify_colour_picker
+	build/verify_colour_picker
+
+.PHONY: verify-menu-bitmap
+build/verify_menu_bitmap: tools/verify_menu_bitmap.c src/ui/menu_bitmap.h tools/host_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-menu-bitmap: build/verify_menu_bitmap
+	build/verify_menu_bitmap
+
+.PHONY: verify-font-resource
+.PHONY: verify-menu-restore
+.PHONY: verify-menu-icon
+build/verify_menu_icon: tools/verify_menu_icon.c tools/host_archive.h src/ui/menu_icon.h src/ui/chunky_ui.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-menu-icon: build/verify_menu_icon build/hud_icon_test.bin
+	build/verify_menu_icon
+
+.PHONY: verify-indexed-menu-icon
+.PHONY: verify-amiga-key-scan
+.PHONY: verify-driver-device
+.PHONY: verify-amiga-joystick
+.PHONY: verify-resource-archive
+.PHONY: verify-help-index
+.PHONY: verify-track-record-write
+.PHONY: verify-track-storage
+.PHONY: verify-track-menu
+.PHONY: verify-track-menu-draw
+build/verify_track_menu_draw: tools/verify_track_menu_draw.c tools/verify_profile_setup.c src/ui/track_menu_draw.h src/ui/track_menu.h src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-menu-draw: build/verify_track_menu_draw
+	build/verify_track_menu_draw
+.PHONY: verify-track-playlist
+.PHONY: verify-track-lists
+.PHONY: verify-race-rewards
+build/verify_race_rewards: tools/verify_race_rewards.c src/game/race_rewards.h src/game/finish_rank.h src/game/setup_session.h src/game/profile_setup.h src/game/configuration.h src/game/race_options.h src/game/weapon_state.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-race-rewards: build/verify_race_rewards
+	build/verify_race_rewards
+.PHONY: verify-track-list-storage
+.PHONY: verify-saved-game
+.PHONY: verify-saved-game-resume
+build/verify_saved_game_resume: tools/verify_saved_game_resume.c tools/verify_configuration.c src/game/saved_game_resume.h src/game/saved_game.h src/game/player_profiles.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-saved-game-resume: build/verify_saved_game_resume
+	build/verify_saved_game_resume
+.PHONY: verify-saved-file-dialog
+build/verify_saved_file_dialog: tools/verify_saved_file_dialog.c src/ui/saved_file_dialog.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-saved-file-dialog: build/verify_saved_file_dialog
+	build/verify_saved_file_dialog
+.PHONY: verify-saved-game-storage
+build/verify_saved_game_storage: tools/verify_saved_game_storage.c tools/verify_track_storage.c src/platform/amiga/amiga_setup_storage.c src/platform/amiga/amiga_setup_storage.h src/game/saved_game.h src/game/setup_storage.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-saved-game-storage: build/verify_saved_game_storage
+	build/verify_saved_game_storage
+build/verify_saved_game: tools/verify_saved_game.c src/game/saved_game.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-saved-game: build/verify_saved_game
+	build/verify_saved_game
+.PHONY: verify-track-list-dialog
+build/verify_track_list_dialog: tools/verify_track_list_dialog.c src/ui/track_list_dialog.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-list-dialog: build/verify_track_list_dialog
+	build/verify_track_list_dialog
+build/verify_track_list_storage: tools/verify_track_list_storage.c tools/verify_track_storage.c src/platform/amiga/amiga_setup_storage.c src/platform/amiga/amiga_setup_storage.h src/game/track_lists.h src/game/track_playlist.h src/game/setup_storage.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-track-list-storage: build/verify_track_list_storage
+	build/verify_track_list_storage
+build/verify_track_lists: tools/verify_track_lists.c src/game/track_lists.h src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-lists: build/verify_track_lists
+	build/verify_track_lists
+build/verify_track_playlist: tools/verify_track_playlist.c tools/verify_options_menu.c src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-playlist: build/verify_track_playlist
+	build/verify_track_playlist
+build/verify_track_menu: tools/verify_track_menu.c tools/verify_options_menu.c src/ui/track_menu.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-menu: build/verify_track_menu
+	build/verify_track_menu
+.PHONY: verify-audio-volume
+.PHONY: verify-amiga-audio-volume
+build/verify_amiga_audio_volume: tools/verify_amiga_audio_volume.c src/platform/amiga/amiga_audio.c src/platform/amiga/amiga_audio.h src/game/audio_volume.h src/game/audio_channels.h src/game/audio_pitch.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-amiga-audio-volume: build/verify_amiga_audio_volume
+	build/verify_amiga_audio_volume
+build/verify_audio_volume: tools/verify_audio_volume.c tools/verify_configuration.c src/game/audio_volume.h src/game/configuration.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-audio-volume: build/verify_audio_volume
+	build/verify_audio_volume
+.PHONY: verify-audio-pitch
+build/verify_audio_pitch: tools/verify_audio_pitch.c tools/verify_configuration.c src/game/audio_pitch.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-audio-pitch: build/verify_audio_pitch
+	build/verify_audio_pitch
+build/verify_cleared_tracks: tools/verify_cleared_tracks.c src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+build/verify_track_storage: tools/verify_track_storage.c src/platform/amiga/amiga_setup_storage.c src/platform/amiga/amiga_setup_storage.h src/game/setup_storage.h src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-track-storage: build/verify_track_storage
+	build/verify_track_storage
+build/verify_track_record_write: tools/verify_track_record_write.c tools/verify_options_menu.c src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-record-write: build/verify_track_record_write
+	build/verify_track_record_write
+.PHONY: verify-title-help
+build/verify_title_help: tools/verify_title_help.c tools/verify_options_menu.c src/ui/title_help.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-title-help: build/verify_title_help
+	build/verify_title_help
+build/verify_help_index: tools/verify_help_index.c tools/verify_options_menu.c tools/host_archive.h src/ui/help_index.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-help-index: build/verify_help_index
+	build/verify_help_index
+
+.PHONY: verify-help-builder
+build/verify_help_builder: tools/verify_help_builder.c tools/verify_options_menu.c tools/host_archive.h src/ui/help_index.h src/ui/help_text.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-help-builder: build/verify_help_builder
+	build/verify_help_builder
+
+.PHONY: verify-help-line
+build/verify_help_line: tools/verify_help_line.c tools/verify_options_menu.c tools/host_archive.h src/ui/help_line.h src/ui/help_text.h src/ui/help_index.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-help-line: build/verify_help_line
+	build/verify_help_line
+
+.PHONY: verify-help-pixels
+build/verify_help_pixels: tools/verify_help_pixels.c tools/verify_palette_remap.c tools/host_archive.h $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-help-pixels: build/verify_help_pixels build/font_string_test.bin
+	build/verify_help_pixels
+
+.PHONY: verify-help-navigation
+build/verify_help_navigation: tools/verify_help_navigation.c tools/verify_options_menu.c src/ui/help_navigation.h src/ui/help_line.h src/ui/help_index.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-help-navigation: build/verify_help_navigation
+	build/verify_help_navigation
+
+.PHONY: verify-help-refresh
+build/verify_help_refresh: tools/verify_help_refresh.c tools/verify_help_navigation.c tools/verify_options_menu.c $(wildcard src/ui/help_*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-help-refresh: build/verify_help_refresh
+	build/verify_help_refresh
+
+build/verify_resource_archive: tools/verify_resource_archive.c tools/host_archive.h src/platform/amiga/resource_archive.c src/platform/amiga/resource_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-resource-archive: build/verify_resource_archive
+	build/verify_resource_archive
+
+build/verify_amiga_joystick: tools/verify_amiga_joystick.c src/platform/amiga/amiga_joystick.h src/game/driver_device.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-amiga-joystick: build/verify_amiga_joystick
+	build/verify_amiga_joystick
+
+build/verify_driver_device: tools/verify_driver_device.c tools/verify_options_menu.c src/game/driver_device.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-driver-device: build/verify_driver_device
+	build/verify_driver_device
+
+build/verify_amiga_key_scan: tools/verify_amiga_key_scan.c src/platform/amiga/amiga_key_scan.h src/ui/controllers_dialog.h src/game/driver_input.h src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+verify-amiga-key-scan: build/verify_amiga_key_scan
+	build/verify_amiga_key_scan
+
+build/verify_indexed_menu_icon: tools/verify_indexed_menu_icon.c tools/verify_menu_icon.c tools/host_archive.h src/ui/menu_icon.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-indexed-menu-icon: build/verify_indexed_menu_icon
+	build/verify_indexed_menu_icon
+
+build/verify_menu_restore: tools/verify_menu_restore.c src/ui/menu_background.h src/ui/chunky_ui.h src/graphics/row_offsets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-menu-restore: build/verify_menu_restore
+	build/verify_menu_restore
+
+.PHONY: verify-palette-remap
+.PHONY: verify-track-prepare
+build/verify_track_prepare: tools/verify_track_prepare.c tools/verify_palette_remap.c src/ui/track_menu_prepare.h $(wildcard src/ui/*.h) tools/host_archive.h src/graphics/row_offsets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-prepare: build/verify_track_prepare build/font_string_test.bin
+	build/verify_track_prepare
+
+build/verify_palette_remap: tools/verify_palette_remap.c src/ui/profile_editor_draw.h src/ui/profile_editor_renderer.h src/ui/profile_editor.h src/ui/palette_remap.h src/ui/player_menu_prepare.h src/ui/player_menu_renderer.h src/ui/player_menu_draw.h src/ui/menu_background.h src/ui/menu_icon.h src/ui/chunky_ui.h src/ui/colour_picker.h src/ui/font_resource.h src/ui/menu_bitmap.h tools/host_archive.h src/graphics/row_offsets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-palette-remap: build/verify_palette_remap build/font_string_test.bin build/hud_icon_test.bin
+	build/verify_palette_remap
+
+build/verify_font_resource: tools/verify_font_resource.c src/ui/font_resource.h tools/host_archive.h src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-font-resource: build/verify_font_resource
+	build/verify_font_resource
+
+.PHONY: verify-wheel-geometry
+build/verify_wheel_geometry: tools/verify_wheel_geometry.c src/game/wheel_geometry.h src/game/race_runtime.c src/game/race_runtime.h tools/host_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-wheel-geometry: build/verify_wheel_geometry
+	build/verify_wheel_geometry
+
+build/verify_wheel_geometry build/verify_vehicle_properties build/verify_dos_hud \
+build/verify_surface_effects build/verify_dirty_tracking build/verify_drive_physics \
+build/verify_car_collision build/verify_dos_ai build/verify_dos_damage \
+build/verify_dos_steering build/verify_dos_points build/verify_actor_layers: src/game/wheel_geometry.h
+
+.PHONY: verify-vehicle-properties
+build/verify_vehicle_properties: tools/verify_vehicle_properties.c src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c src/game/driver_input.h tools/host_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-vehicle-properties: build/verify_vehicle_properties
+	build/verify_vehicle_properties
+
+build/verify_profile_setup: tools/verify_profile_setup.c src/game/profile_setup.h src/game/player_profiles.h src/ui/player_menu.h src/ui/player_menu_draw.h src/ui/profile_editor_draw.h src/ui/profile_editor.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-profile-setup: build/verify_profile_setup
+	build/verify_profile_setup
+
+.PHONY: verify-list-dialog
+build/verify_list_dialog: tools/verify_list_dialog.c src/ui/list_dialog.h src/ui/list_dialog_draw.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-list-dialog: build/verify_list_dialog
+	build/verify_list_dialog
+
+.PHONY: verify-list-captions
+build/verify_list_captions: tools/verify_list_captions.c src/ui/list_captions.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-list-captions: build/verify_list_captions
+	build/verify_list_captions
+
+.PHONY: verify-saved-rectangle
+build/verify_saved_rectangle: tools/verify_saved_rectangle.c src/ui/saved_rectangle.h src/ui/chunky_ui.h src/graphics/row_offsets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-saved-rectangle: build/verify_saved_rectangle
+	build/verify_saved_rectangle
+
+.PHONY: verify-list-renderer
+build/make_large_track_lists: tools/make_large_track_lists.c src/game/track_lists.h src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+build/verify_list_renderer: tools/verify_list_renderer.c $(wildcard src/ui/*.h) src/graphics/row_offsets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+verify-list-renderer: build/verify_list_renderer
+	build/verify_list_renderer
+
+.PHONY: verify-list-pixels
+.PHONY: verify-track-records-draw
+.PHONY: verify-track-records-pixels
+.PHONY: verify-track-info
+.PHONY: verify-arcade-setup
+build/verify_arcade_setup: tools/verify_arcade_setup.c src/game/arcade_setup.h src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-arcade-setup: build/verify_arcade_setup
+	build/verify_arcade_setup
+
+.PHONY: verify-arcade-hud
+build/verify_arcade_hud: tools/verify_arcade_hud.c src/ui/arcade_hud.h src/game/arcade_setup.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-arcade-hud: build/verify_arcade_hud
+	build/verify_arcade_hud
+
+.PHONY: verify-race-lap-limit
+build/verify_race_lap_limit: tools/verify_race_lap_limit.c src/game/race_runtime.c src/game/race_runtime.h src/game/race_timing.h src/game/arcade_setup.h src/game/finish_rank.h src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
+
+verify-race-lap-limit: build/verify_race_lap_limit
+	build/verify_race_lap_limit
+
+.PHONY: verify-track-preview-pixels
+.PHONY: verify-track-preview-scene
+.PHONY: verify-race-menu
+.PHONY: verify-speed-dialog
+
+.PHONY: verify-language-table
+.PHONY: verify-race-timing
+build/verify_race_timing: tools/verify_race_timing.c src/game/race_timing.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-race-timing: build/verify_race_timing
+	build/verify_race_timing
+build/verify_language_table: tools/verify_language_table.c src/ui/language_table.h tools/host_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-language-table: build/verify_language_table
+	build/verify_language_table
+build/verify_speed_dialog: tools/verify_speed_dialog.c tools/verify_track_info.c src/ui/speed_dialog.h src/ui/track_records_renderer.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-speed-dialog: build/verify_speed_dialog
+	build/verify_speed_dialog
+
+build/verify_race_menu: tools/verify_race_menu.c tools/verify_track_info.c src/ui/race_menu.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-race-menu: build/verify_race_menu
+	build/verify_race_menu
+
+.PHONY: verify-track-preview-failure
+build/verify_track_preview_failure: tools/verify_track_preview_failure.c tools/verify_track_info.c src/ui/track_info.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-preview-failure: build/verify_track_preview_failure
+	build/verify_track_preview_failure
+
+.PHONY: verify-track-preview-shimmer
+build/verify_track_preview_shimmer: tools/verify_track_preview_shimmer.c tools/verify_track_info.c src/ui/track_info.h src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-preview-shimmer: build/verify_track_preview_shimmer
+	build/verify_track_preview_shimmer
+
+build/verify_track_preview_scene: tools/verify_track_preview_scene.c tools/verify_track_info.c src/game/track_scene.c src/game/track_scene.h src/ui/track_info.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-preview-scene: build/verify_track_preview_scene
+	build/verify_track_preview_scene
+
+build/verify_track_preview_pixels: tools/verify_track_preview_pixels.c tools/verify_palette_remap.c $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-preview-pixels: build/verify_track_preview_pixels
+	build/verify_track_preview_pixels
+
+build/verify_track_info: tools/verify_track_info.c src/ui/track_info.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-info: build/verify_track_info
+	build/verify_track_info
+
+build/verify_track_records_pixels: tools/verify_track_records_pixels.c tools/verify_palette_remap.c $(wildcard src/ui/*.h) src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-records-pixels: build/verify_track_records_pixels build/font_string_test.bin build/hud_icon_test.bin
+	build/verify_track_records_pixels
+
+build/verify_track_records_draw: tools/verify_track_records_draw.c src/ui/track_records_draw.h src/ui/track_records_renderer.h src/ui/race_hud.h src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-track-records-draw: build/verify_track_records_draw
+	build/verify_track_records_draw
+
+build/verify_list_pixels: tools/verify_list_pixels.c tools/verify_palette_remap.c $(wildcard src/ui/*.h) src/gen/setup_defaults.h tools/host_archive.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-list-pixels: build/verify_list_pixels build/font_string_test.bin
+	build/verify_list_pixels
+
+.PHONY: verify-profile-actions
+build/verify_profile_actions: tools/verify_profile_actions.c src/ui/profile_actions.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-profile-actions: build/verify_profile_actions
+	build/verify_profile_actions
+
+build/verify_dos_hud: tools/verify_dos_hud.c src/ui/race_hud.h src/game/race_runtime.c src/game/race_runtime.h src/ui/hud_background.h src/graphics/row_offsets.h src/game/track_records.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+build/verify_dos_hud: src/game/weapon_state.h
+verify-dos-hud: build/verify_dos_hud
+	build/verify_dos_hud
+
+.PHONY: verify-hud-background
+build/verify_hud_background: tools/verify_hud_background.c src/ui/hud_background.h tools/host_archive.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+build/hud_icon_test.bin: tools/hud_icon_test.s src/graphics/sgfx_chunky_transparent_blit.s src/graphics/sgfx_mult320.s
+	@mkdir -p build
+	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
+verify-hud-background: build/verify_hud_background build/hud_icon_test.bin
+	build/verify_hud_background
+
+.PHONY: verify-font-glyph
+build/sui_font_glyph.bin: tools/font_glyph_test.s src/ui/sui_font_glyph.s src/graphics/sgfx_mult320.s
+	@mkdir -p build
+	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
+build/sui_font_measure.bin: src/ui/sui_font_measure.s
+	@mkdir -p build
+	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
+build/font_string_test.bin: tools/font_string_test.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph.s src/ui/sui_menu_bridge.s src/graphics/sgfx_mult320.s
+	@mkdir -p build
+	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
+build/verify_font_glyph: tools/verify_font_glyph.c tools/host_archive.h src/ui/font_resource.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-font-glyph: build/verify_font_glyph build/sui_font_glyph.bin build/sui_font_measure.bin build/font_string_test.bin
+	build/verify_font_glyph build/sui_font_glyph.bin build/sui_font_measure.bin build/font_string_test.bin
+	build/verify_font_glyph build/sui_font_glyph.bin build/sui_font_measure.bin build/font_string_test.bin kirj.@f
+	build/verify_font_glyph build/sui_font_glyph.bin build/sui_font_measure.bin build/font_string_test.bin iso.@f
+
+build/verify_dos_damage: tools/verify_dos_damage.c \
+		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h tools/host_archive.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip \
+		-I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-dos-damage: build/verify_dos_damage
+	build/verify_dos_damage disasm/runtime.bin
 
 build/verify_surface_effects: tools/verify_surface_effects.c \
 		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
-		-Wl,-dead_strip $< -o $@
+		-Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 verify-surface-effects: build/verify_surface_effects
 	build/verify_surface_effects
 
-build/scan_track_materials: tools/scan_track_materials.c \
+.PHONY: verify-dirty-tracking verify-planar-writes
+build/verify_dirty_tracking: tools/verify_dirty_tracking.c \
+		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip $< src/game/track_scene.c -o $@
+
+build/verify_car_collision build/verify_drive_physics build/verify_dos_steering \
+build/verify_dos_damage build/verify_surface_effects build/verify_dirty_tracking: src/game/track_scene.c
+
+build/verify_car_collision build/verify_drive_physics build/verify_dos_steering \
+build/verify_dos_damage build/verify_surface_effects build/verify_dirty_tracking: \
+		src/ui/race_hud.h src/ui/arcade_hud.h src/game/arcade_setup.h src/game/finish_rank.h src/ui/hud_background.h src/ui/font_resource.h src/game/track_records.h src/graphics/row_offsets.h
+
+verify-dirty-tracking: build/verify_dirty_tracking
+	build/verify_dirty_tracking
+
+verify-planar-writes:
+	bash tools/verify_planar_writes.sh
+
+.PHONY: verify-dos-particle-expiry
+.PHONY: verify-dos-points
+build/verify_dos_points: tools/verify_dos_points.c src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c src/game/track_scene.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip -I/opt/homebrew/opt/unicorn/include $< \
+		src/game/track_scene.c -L/opt/homebrew/opt/unicorn/lib -lunicorn -o $@
+
+verify-dos-points: build/verify_dos_points
+	build/verify_dos_points disasm/runtime.bin
+
+build/verify_dos_particle_expiry: tools/verify_dos_particle_expiry.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I/opt/homebrew/opt/unicorn/include $< \
+		-L/opt/homebrew/opt/unicorn/lib -lunicorn -o $@
+
+verify-dos-particle-expiry: build/verify_dos_particle_expiry
+	build/verify_dos_particle_expiry disasm/runtime.bin
+
+build/verify_actor_layers: tools/verify_actor_layers.c src/game/race_runtime.c src/game/track_scene.c \
+        src/game/race_runtime.h src/game/track_scene.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
+		-Wl,-dead_strip $< src/game/track_scene.c -o $@
+
+build/verify_actor_mask: tools/verify_actor_mask.c tools/host_archive.h src/game/track_scene.c \
+        src/game/track_scene.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		tools/verify_actor_mask.c src/game/track_scene.c -o $@
+
+build/scan_track_materials: tools/scan_track_materials.c tools/host_archive.h \
 		src/game/track_scene.c src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
 		tools/scan_track_materials.c src/game/track_scene.c -o $@
 
 verify-native-tracks: build/scan_track_materials
-	build/scan_track_materials ref/SLICKS.DAT ref/TRACKS/*.SS
+	SLICKS_MASK_ARCHIVE=ref/SLICKS.000 build/scan_track_materials ref/SLICKS.DAT ref/TRACKS/*.SS
+	SLICKS_MASK_ARCHIVE=ref/SLICKS.000 SLICKS_SERVICE=1 build/scan_track_materials ref/SLICKS.DAT ref/TRACKS/*.SS
+
+build/scan_track_materials build/verify_actor_mask build/verify_actor_layers \
+build/verify_dos_ai build/verify_dos_points: src/graphics/row_offsets.h
+
+build/verify_dos_hud: src/game/track_scene.c
 
 build/sgfx_plot.bin: src/graphics/sgfx_plot.s
 	@mkdir -p build
@@ -248,6 +911,21 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
+
+.PHONY: verify-title-bridge
+build/title_bridge.bin: tools/title_bridge_test.s src/platform/amiga/native_bridge.s src/ui/sui_title_dispatch.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
+
+build/verify_title_bridge: tools/verify_title_bridge.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \
+		-L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+
+verify-title-bridge: build/title_bridge.bin build/verify_title_bridge
+	build/verify_title_bridge build/title_bridge.bin
+
+verify-native-graphics: verify-title-bridge
 
 build/sgame_post_title_init.bin: tools/sgame_post_title_init_test.s \
 		src/game/sgame_post_title_init.s

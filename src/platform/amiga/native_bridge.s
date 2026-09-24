@@ -2,6 +2,7 @@
 	xdef	slicks_draw_title_pages
 	xdef	slicks_draw_title_menu_selection
 	xdef	slicks_draw_title_text
+	xdef	slicks_draw_original_text
 	xdef	slicks_dispatch_title_key
 	xdef	slicks_setup_basic_mode
 	xdef	slicks_prepare_title_frame
@@ -9,6 +10,7 @@
 	xref	sui_title_step
 	xref	sui_title_menu
 	xref	sui_draw_text
+	xref	sui_font_string
 	xref	sui_title_tail
 	xref	sui_title_dispatch
 	xref	sgfx_mode_setup
@@ -22,6 +24,24 @@
 	xref	slicks_title_selected_color
 
 ; C ABI: slicks_prepare_title_frame(asset, frame)
+; C ABI: slicks_draw_original_text(chunky, font, text, x, y)
+; HUD uses ordinary rendering, DS:1604=1, tab=10, shadow offset=(1,0).
+slicks_draw_original_text:
+	movem.l	d2-d7/a2-a6,-(sp)
+	movea.l	48(sp),a0
+	movea.l	52(sp),a1
+	movea.l	56(sp),a2
+	move.w	62(sp),d0
+	move.w	66(sp),d1
+	moveq	#0,d2
+	moveq	#1,d3
+	moveq	#10,d4
+	moveq	#0,d5
+	move.w	#$0100,d6
+	jsr	sui_font_string
+	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
 slicks_prepare_title_frame:
 	movea.l	4(sp),a0
 	movea.l	8(sp),a1
@@ -64,7 +84,7 @@ slicks_draw_title_menu_selection:
 	movem.l	d2-d7/a2-a6,-(sp)
 	movea.l	48(sp),a0
 	movea.l	52(sp),a1
-	move.w	56(sp),d2
+	move.w	58(sp),d2
 	move.w	slicks_title_ordinary_color,d0
 	move.w	slicks_title_selected_color,d1
 	moveq	#0,d7
@@ -77,8 +97,9 @@ slicks_draw_title_text:
 	movem.l	d2-d7/a2-a6,-(sp)
 	movea.l	48(sp),a0
 	movea.l	52(sp),a1
-	move.w	56(sp),d0
-	move.w	60(sp),d1
+; GCC stacks narrow integer arguments in 32-bit slots, right-aligned.
+	move.w	58(sp),d0
+	move.w	62(sp),d1
 	moveq	#0,d2
 	move.b	67(sp),d2
 	moveq	#0,d3
@@ -88,7 +109,7 @@ slicks_draw_title_text:
 
 ; C-platform bridge for the native title-loop scan-code classifier.
 slicks_dispatch_title_key:
-	move.w	4(sp),d0
+	move.w	6(sp),d0
 	jsr	sui_title_dispatch
 	rts
 

@@ -11,6 +11,8 @@
 #include <resources/cia.h>
 
 #include "amiga_platform.h"
+#include "amiga_joystick.h"
+#include "amiga_audio.h"
 #include "framework/AmigaHardware.h"
 #include "framework/Bitmap.h"
 #include "framework/CopperList.h"
@@ -26,6 +28,8 @@
 #define REG_INTENA  0x09a
 #define REG_INTREQ  0x09c
 #define REG_BPLCON3 0x106
+#define REG_VPOSR   0x004
+#define REG_VHPOSR  0x006
 
 #define COPPER_LONGS 558
 #define BITMAP_BYTES (320UL * 200UL)
@@ -110,6 +114,7 @@ static unsigned long vertical_blank_handler(void)
     CUSTOM_WORD(REG_INTREQ) = INTF_VERTB;
     if (active_platform)
         ++active_platform->vblank_count;
+    slicks_amiga_audio_vblank();
     return 0;
 }
 
@@ -324,6 +329,21 @@ void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform)
         ;
 }
 
+void slicks_amiga_platform_wait_display_blank(
+    struct SlicksAmigaPlatform *platform)
+{
+    unsigned short line;
+    if (!platform || !platform->active)
+        return;
+    /* The playfield is exactly hardware lines $38..$ff. Starting visible
+     * bitmap writes at line $100 gives them the lower border plus the next
+     * frame's upper border, rather than racing the display beam. */
+    do {
+        line = (unsigned short)(((CUSTOM_WORD(REG_VPOSR) & 7) << 8) |
+                                (CUSTOM_WORD(REG_VHPOSR) >> 8));
+    } while (line < 0x100);
+}
+
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
                                   unsigned short *raw)
 {
@@ -344,6 +364,15 @@ int slicks_amiga_platform_left_mouse(void)
 int slicks_amiga_platform_right_mouse(void)
 {
     return !(CUSTOM_WORD(0x016) & 0x0400);
+}
+
+int slicks_amiga_platform_joystick(unsigned device,struct SlicksDeviceSample *sample)
+{
+    if(!sample || device<1 || device>2) return -1;
+    unsigned port=device==1?1:0;
+    *sample=slicks_decode_amiga_joystick(CUSTOM_WORD(0x00a+2*port),CIAA_PRA,
+        CUSTOM_WORD(0x016),port);
+    return 0;
 }
 
 void slicks_amiga_platform_end(struct SlicksAmigaPlatform *platform)

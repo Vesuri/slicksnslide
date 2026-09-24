@@ -70,10 +70,10 @@
  	}
  
  	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
-+	if (offset == 0x103f7)
++	if (offset == 0x10cd9)
 +		Slicks_InjectSpecialState();
 +	/* The special-state branch bypasses the common pre-update hook. */
-+	if (offset == 0x10dde)
++	if (offset == 0x10cd9)
 +		Slicks_RecordSpecialStatePre();
  	/* Common post-control/steering path in the live per-car race loop. */
  	if (offset == 0x10d59) {

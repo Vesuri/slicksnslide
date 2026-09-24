@@ -49,10 +49,14 @@ int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
 void slicks_amiga_platform_show(struct SlicksAmigaPlatform *platform,
                                unsigned short view);
 void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform);
+void slicks_amiga_platform_wait_display_blank(
+    struct SlicksAmigaPlatform *platform);
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
                                   unsigned short *raw);
 int slicks_amiga_platform_left_mouse(void);
 int slicks_amiga_platform_right_mouse(void);
+struct SlicksDeviceSample;
+int slicks_amiga_platform_joystick(unsigned device,struct SlicksDeviceSample *sample);
 void slicks_amiga_platform_end(struct SlicksAmigaPlatform *platform);
 unsigned short slicks_amiga_platform_restore_status(
     const struct SlicksAmigaPlatform *platform);

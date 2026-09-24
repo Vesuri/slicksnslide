@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <unicorn/unicorn.h>
+#include <unicorn/x86.h>
+#include "host_archive.h"
+#include "../src/ui/font_resource.h"
+#include "../src/game/race_runtime.c"
+static unsigned char source[8192]; static unsigned length,cursor,allocated;
+static void check(uc_err e) { if(e) { fprintf(stderr,"%s\n",uc_strerror(e)); exit(1); } }
+static void word(uc_engine *u,unsigned a,unsigned v)
+{ unsigned char b[2]={v,v>>8}; check(uc_mem_write(u,a,b,2)); }
+static unsigned get(uc_engine *u,unsigned a)
+{ unsigned char b[2]; check(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
+static void io(uc_engine *u,uint64_t address,uint32_t size,void *context)
+{
+    (void)size; (void)context; uint16_t ss,sp,cs,ip,ax=0,dx=0;
+    check(uc_reg_read(u,UC_X86_REG_SS,&ss)); check(uc_reg_read(u,UC_X86_REG_SP,&sp)); unsigned stack=ss*16U+sp;
+    if(address==0x373a7) dx=0x7000;
+    else if(address==0x12d8a) { if(cursor>=length) abort(); ax=source[cursor++]; }
+    else if(address==0x1221d) ax=cursor;
+    else if(address==0x13b07) { allocated=get(u,stack+4); if(allocated>16384) abort(); dx=0x5000; }
+    ip=get(u,stack); cs=get(u,stack+2); sp+=4;
+    check(uc_reg_write(u,UC_X86_REG_AX,&ax)); check(uc_reg_write(u,UC_X86_REG_DX,&dx));
+    check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_IP,&ip)); check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+}
+int main(void)
+{
+    unsigned char runtime[300000]; FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
+    size_t bytes=fread(runtime,1,sizeof runtime,f); fclose(f); if(bytes<200000 || bytes==sizeof runtime) return 2;
+    uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
+    check(uc_mem_write(u,0x10100,runtime,bytes));
+    const unsigned addresses[]={0x373a7,0x12d8a,0x1221d,0x13b07,0x119c2};
+    for(unsigned i=0;i<5;++i) { uc_hook h; check(uc_hook_add(u,&h,UC_HOOK_CODE,io,0,addresses[i],addresses[i])); }
+    const char *names[]={"kirj.@f","pieni.@f","iso.@f"};
+    for(unsigned test=0;test<3;++test) {
+        long loaded=host_archive_load("ref/SLICKS.000",names[test],source,sizeof source); if(loaded<0) return 2;
+        length=(unsigned)loaded; cursor=allocated=0;
+        unsigned char native[16384],original[16384]; memset(native,0xa5,sizeof native);
+        check(uc_mem_write(u,0x50000,native,sizeof native));
+        long output=slicks_decode_font_resource(source,length,native,sizeof native); if(output<0) return 1;
+        uint16_t cs=0x2e0f,ds=0x3cbf,ss=0x8000,sp=0xf000,ip,ax,dx;
+        word(u,0x8f000,0); word(u,0x8f002,0x9000); word(u,0x8f004,0); word(u,0x8f006,0x6000); word(u,0x8f008,0);
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss)); check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+        check(uc_emu_start(u,0x2fc0c,0x90000,0,1000000));
+        check(uc_reg_read(u,UC_X86_REG_IP,&ip)); check(uc_reg_read(u,UC_X86_REG_SP,&sp));
+        check(uc_reg_read(u,UC_X86_REG_AX,&ax)); check(uc_reg_read(u,UC_X86_REG_DX,&dx));
+        check(uc_mem_read(u,0x50000,original,sizeof original));
+        if(ip || sp!=0xf004 || ax || dx!=0x5000 || cursor!=length || output>(long)allocated || memcmp(native,original,sizeof native)) {
+            fprintf(stderr,"Font resource mismatch %s output=%ld allocation=%u consumed=%u\n",names[test],output,allocated,cursor); return 1;
+        }
+        if(test==1) {
+            static struct SlicksRaceRuntime race;
+            memset(race.font.runtime,0xa5,sizeof race.font.runtime);
+            if(slicks_race_add_font(&race,source,length) || !race.font.ready ||
+               memcmp(race.font.runtime,original,sizeof race.font.runtime)) {
+                fprintf(stderr,"Production HUD font differs from original loader\n"); return 1;
+            }
+            puts("Production HUD loader: full runtime buffer matches original, including padding and untouched tail");
+        }
+        for(unsigned cut=0;cut<length;++cut) {
+            memset(native,0xa5,sizeof native);
+            if(slicks_decode_font_resource(source,cut,native,sizeof native)!=-1) abort();
+            for(unsigned i=0;i<sizeof native;++i) if(native[i]!=0xa5) abort();
+        }
+        for(unsigned capacity=0;capacity<(unsigned)output;++capacity) {
+            if(slicks_decode_font_resource(source,length,native,capacity)!=-1) abort();
+            for(unsigned i=0;i<sizeof native;++i) if(native[i]!=0xa5) abort();
+        }
+        printf("Original %s: %ld runtime bytes/padding match; all truncated inputs and short output capacities rejected atomically\n",names[test],output);
+    }
+    check(uc_close(u)); return 0;
+}

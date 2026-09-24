@@ -6,27 +6,132 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
+#include <proto/utility.h>
+#include <utility/date.h>
 
 #include "../../game/race_runtime.h"
+#include "../../game/driver_input.h"
+#include "../../game/driver_device.h"
 #include "../../game/track_scene.h"
+#include "../../graphics/row_offsets.h"
+#include "../../game/race_options.h"
+#include "../../game/player_profiles.h"
+#include "../../game/profile_palette.h"
+#include "../../game/setup_session.h"
+#include "../../game/arcade_setup.h"
+#include "../../game/race_timing.h"
+#include "../../gen/setup_defaults.h"
+#include "../../ui/service_options.h"
 #include "amiga_platform.h"
 #include "amiga_audio.h"
+#include "amiga_player_menu.h"
+#include "amiga_setup_storage.h"
+#include "../../ui/player_menu.h"
+#include "../../ui/profile_actions.h"
+#include "../../ui/title_help.h"
+#include "../../ui/language_table.h"
 #include "resource_archive.h"
 
 struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
+/* Setup-owned state survives races; it is not an emulated DOS data segment. */
+struct SlicksPlayerProfiles g_slicks_profiles;
+struct SlicksSetupSession g_slicks_setup_session;
+unsigned char g_slicks_diag_race_load_fault;
+struct SlicksAmigaPlayerMenu *g_slicks_diag_pause_menu;
+volatile unsigned short g_slicks_diag_pause_phase;
+struct SlicksAmigaPlayerMenu *g_slicks_diag_intermission_menu;
+volatile unsigned short g_slicks_diag_intermission_phase;
+void __attribute__((noinline)) slicks_diag_intermission_checkpoint(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_intermission_input(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_intermission_retry(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_pause_checkpoint(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_pause_child(void) { __asm__ volatile("" ::: "memory"); }
+struct SlicksRaceRuntime *g_slicks_diag_paused_race;
+volatile unsigned char g_slicks_diag_pause_unavailable;
+void __attribute__((noinline)) slicks_diag_pause_live_enter(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_pause_live_recovered(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_pause_warning_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_pause_live_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_pause_live_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_race_load_failed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_race_load_dismissed(void) { __asm__ volatile("" ::: "memory"); }
+volatile unsigned char g_slicks_diag_unique_stage;
+void __attribute__((noinline)) slicks_diag_unique_selection(void) { __asm__ volatile("" ::: "memory"); }
+struct SlicksAmigaPlayerMenu *g_slicks_player_menu;
+struct SlicksAmigaPlayerMenu *g_slicks_options_menu;
+struct SlicksAmigaPlayerMenu *g_slicks_track_menu;
+struct SlicksTrackRenderer g_slicks_track_renderer;
+struct SlicksTrackMenu g_slicks_track_state;
+static short track_selection[256];
+struct SlicksTrackPlaylist g_slicks_track_playlist={track_selection,1,256};
+volatile unsigned short g_slicks_track_action;
+void __attribute__((noinline)) slicks_diag_tracks_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_tracks_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_track_info_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_track_info_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_track_info_warning_closed(void) { __asm__ volatile("" ::: "memory"); }
+struct SlicksAmigaPlayerMenu *g_slicks_title_help;
+struct SlicksOptionsRenderer g_slicks_options_renderer;
+struct SlicksOptionsMenu g_slicks_options_state;
+volatile unsigned short g_slicks_options_action;
+const struct SlicksConfiguration *g_slicks_options_configuration;
+void __attribute__((noinline)) slicks_diag_options_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_options_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_controllers_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_controllers_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_help_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_help_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_help_failed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_help_warning_closed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_help_test_ready(void) { __asm__ volatile("" ::: "memory"); }
+static unsigned char help_fail_archive;
+static unsigned char help_fail_surface;
+unsigned char g_slicks_title_help_warning;
+static unsigned char title_help_saved[280*22];
+struct SlicksSetupLoadReport g_slicks_setup_load_report;
+struct SlicksSetupStorageReport g_slicks_setup_save_report;
+struct SlicksSetupStorageReport g_slicks_track_clear_report;
+unsigned short g_slicks_track_clear_changed;
+unsigned char g_slicks_track_clear_phase;
+void __attribute__((noinline)) slicks_diag_track_clear_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_track_clear_cancelled(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_setup_saved(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_setup_save_failed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_setup_load_failed(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_setup_save_cancelled(void) { __asm__ volatile("" ::: "memory"); }
+volatile unsigned short g_slicks_diag_player_menu_action;
+volatile unsigned short g_slicks_diag_player_menu_row;
+static struct SlicksSetupResources setup_resources;
+static unsigned char setup_vehicle_requests[4];
+static void request_setup_vehicle(void *context,unsigned driver,signed char vehicle)
+{
+    /* Asset preparation is deferred until GO; all vehicle resources are
+     * loaded there before any selected car is started or drawn. */
+    ((unsigned char *)context)[driver]=(unsigned char)vehicle;
+}
 
 #define CUSTOM_WORD(offset) \
     (*(volatile unsigned short *)(0xdff000UL + (offset)))
 #define REG_VPOSR 0x004
 #define REG_VHPOSR 0x006
 #define PAL_RASTER_LINES 312UL
+/* Kalms' modulo path reads one final 32-pixel block ahead.  Its output is
+ * discarded, but the read must still stay within an allocated buffer. */
+#define C2P_LOOKAHEAD_BYTES 32UL
+#define CHUNKY_ALLOCATION_BYTES (320UL * 200UL + C2P_LOOKAHEAD_BYTES)
+#define TITLE_FRAME_ALLOCATION_BYTES (64002UL + C2P_LOOKAHEAD_BYTES)
 
 volatile unsigned short g_slicks_diag_ready;
 volatile unsigned short g_slicks_diag_ingame;
 volatile unsigned short g_slicks_diag_race_error;
 volatile unsigned short g_slicks_diag_race_stage;
+volatile unsigned short g_slicks_diag_shadow_check;
+volatile unsigned long g_slicks_diag_jump_takeoffs;
+volatile unsigned long g_slicks_diag_jump_landings;
+volatile unsigned long g_slicks_diag_jump_shadow_frames;
+volatile unsigned short g_slicks_diag_jump_peak;
 volatile unsigned long g_slicks_diag_checksum;
 volatile unsigned long g_slicks_diag_display_checksum;
 volatile unsigned long g_slicks_diag_race_frame;
@@ -39,6 +144,7 @@ volatile unsigned char g_slicks_diag_start_light_visible;
 volatile unsigned char g_slicks_diag_start_light_stage_mask;
 volatile unsigned short g_slicks_diag_dirty_ranges;
 volatile unsigned short g_slicks_diag_dirty_rows;
+volatile unsigned short g_slicks_diag_dirty_pixels;
 volatile unsigned long g_slicks_diag_dirty_c2p_calls;
 volatile unsigned long g_slicks_diag_dirty_c2p_rows;
 volatile unsigned short g_slicks_diag_restore_status;
@@ -78,6 +184,60 @@ volatile unsigned char g_slicks_diag_acceleration[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char g_slicks_diag_steering[SLICKS_RACE_CAR_COUNT];
 volatile unsigned char *g_slicks_diag_logical;
 volatile unsigned long g_slicks_diag_target_frame = 200;
+static unsigned char fuel_race_test;
+static unsigned char service_menu_test;
+volatile unsigned short g_slicks_diag_damage_peak[4];
+volatile unsigned short g_slicks_diag_repair_frames[4];
+volatile unsigned short g_slicks_diag_damage_status_checks;
+volatile unsigned long g_slicks_diag_damage_peak_impact;
+static short previous_damage[4];
+static struct SlicksStatusClock status_clock;
+static unsigned long status_clock_vblank;
+volatile unsigned short g_slicks_diag_status_checks;
+volatile unsigned short g_slicks_diag_status_failures;
+static unsigned char status_checked_phases;
+volatile unsigned int g_slicks_diag_fuel[4];
+volatile unsigned int g_slicks_diag_fuel_capacity[4];
+volatile short g_slicks_diag_service[4];
+volatile unsigned short g_slicks_diag_service_requests[4];
+volatile unsigned short g_slicks_diag_refuel_frames[4];
+volatile unsigned short g_slicks_diag_service_departures[4];
+volatile unsigned char g_slicks_diag_fuel_surface[4];
+volatile unsigned char g_slicks_diag_fuel_layer[4];
+volatile long g_slicks_diag_fuel_speed[4];
+volatile short g_slicks_diag_fuel_target_x[4], g_slicks_diag_fuel_target_y[4];
+volatile unsigned short g_slicks_diag_pit_frames[4];
+/* Opt-in through the debugger; never part of performance measurements.
+ * Reuses the no-longer-needed decoded title source allocation for a snapshot. */
+volatile unsigned char g_slicks_diag_audit_bitmap;
+static unsigned char weapon_hud_fixture;
+
+/* Explicit renderer diagnostic only; never seed ordinary gameplay inventory. */
+static void set_weapon_hud_fixture(struct SlicksRaceRuntime *race)
+{
+    unsigned phase=race->frame_count<350?0:race->frame_count<500?1:race->frame_count<550?2:3;
+    race->weapons_enabled=phase!=2;
+    for(unsigned car=0;car<4;++car) {
+        race->selected_weapon[car]=(signed char)(car+(phase==1?4:0));
+        for(unsigned slot=5;slot<13;++slot) {
+            race->weapon_capacity[slot]=20;
+            race->weapon_inventory[car][slot]=(short)(5+car*5);
+        }
+    }
+}
+volatile unsigned char g_slicks_diag_scanout_only;
+volatile unsigned char g_slicks_diag_audio_in_blank = 1;
+volatile unsigned long g_slicks_diag_audio_blank_spills;
+volatile unsigned short g_slicks_diag_audio_hold_frames;
+volatile unsigned long g_slicks_diag_audio_blank_max_lines;
+volatile unsigned long g_slicks_diag_scanout_frames;
+volatile unsigned long g_slicks_diag_audit_frame;
+volatile unsigned long g_slicks_diag_audit_offset;
+volatile unsigned short g_slicks_diag_audit_x;
+volatile unsigned short g_slicks_diag_audit_y;
+volatile unsigned char g_slicks_diag_audit_plane;
+volatile unsigned char g_slicks_diag_audit_before;
+volatile unsigned char g_slicks_diag_audit_after;
 volatile unsigned long g_slicks_diag_profile_step_vblanks;
 volatile unsigned long g_slicks_diag_profile_audio_vblanks;
 volatile unsigned long g_slicks_diag_profile_c2p_vblanks;
@@ -88,6 +248,15 @@ volatile unsigned long g_slicks_diag_profile_audio_lines;
 volatile unsigned long g_slicks_diag_profile_c2p_lines;
 volatile unsigned long g_slicks_diag_profile_diag_lines;
 volatile unsigned long g_slicks_diag_profile_total_lines;
+volatile unsigned char g_slicks_diag_profile_all;
+volatile unsigned long g_slicks_diag_bench_frames;
+volatile unsigned long g_slicks_diag_bench_work_max;
+volatile unsigned long g_slicks_diag_bench_work_max_frame;
+volatile unsigned long g_slicks_diag_bench_work_over;
+volatile unsigned long g_slicks_diag_bench_wall_max;
+volatile unsigned long g_slicks_diag_bench_cadence_sum;
+volatile unsigned long g_slicks_diag_bench_cadence_count;
+static unsigned long g_slicks_diag_bench_previous;
 volatile unsigned long g_slicks_diag_profile_restore_lines;
 volatile unsigned long g_slicks_diag_profile_advance_lines;
 volatile unsigned long g_slicks_diag_profile_update_lines;
@@ -101,12 +270,57 @@ __attribute__((noinline)) void slicks_diag_frame_ready(void)
     __asm volatile("" ::: "memory");
 }
 
+__attribute__((noinline)) void slicks_diag_player_menu_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_player_menu_closed(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_profile_picker_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_profile_editor_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_name_dialog_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_colour_dialog_ready(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
 __attribute__((noinline)) void slicks_diag_gameplay_ready(void)
 {
     __asm volatile("" ::: "memory");
 }
 
+__attribute__((noinline)) void slicks_diag_collision_failed(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_race_progress(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
 __attribute__((noinline)) void slicks_diag_system_restored(void)
+{
+    __asm volatile("" ::: "memory");
+}
+
+__attribute__((noinline)) void slicks_diag_bitmap_audit_failed(void)
 {
     __asm volatile("" ::: "memory");
 }
@@ -192,12 +406,22 @@ extern void slicks_chunky_rows_to_amiga(const unsigned char *chunky,
                                         struct BitMap *bitmap,
                                         unsigned long top,
                                         unsigned long bottom);
+extern void slicks_chunky_rect_to_amiga(const unsigned char *chunky,
+                                        struct BitMap *bitmap,
+                                        unsigned long left,
+                                        unsigned long top,
+                                        unsigned long right,
+                                        unsigned long bottom,
+                                        unsigned char *packed_scratch);
+extern void slicks_chunky_pixels_to_amiga(
+    const unsigned char *chunky, struct BitMap *bitmap,
+    const struct SlicksDirtyPixel *pixels, unsigned long count);
 
 #define SLICKS_TRACK_FILE_MAX 256
 #define SLICKS_TRACK_NAME_SIZE 12
 
 static unsigned short discover_tracks(
-    char names[SLICKS_TRACK_FILE_MAX][SLICKS_TRACK_NAME_SIZE])
+    char names[SLICKS_TRACK_FILE_MAX][SLICKS_TRACK_NAME_SIZE],unsigned char legacy_basic_first)
 {
     struct FileInfoBlock *info =
         (struct FileInfoBlock *)AllocDosObject(DOS_FIB, 0);
@@ -235,8 +459,8 @@ cleanup:
             names[0][at] = fallback[at];
         count = 1;
     }
-    /* AmigaDOS directory order is filesystem-dependent.  Keep the menu
-     * deterministic and make BASIC.SS the initial selection when present. */
+    /* AmigaDOS directory order is filesystem-dependent. Native setup uses
+     * alphabetical names; only legacy race diagnostics promote BASIC. */
     {
         unsigned short left;
         for (left = 0; left + 1 < count; ++left) {
@@ -258,7 +482,7 @@ cleanup:
             }
         }
     }
-    for (at = 0; at < count; ++at) {
+    for (at = 0; legacy_basic_first && at < count; ++at) {
         static const char basic[] = "BASIC.SS";
         unsigned short character = 0;
         while (basic[character] == names[at][character] && basic[character])
@@ -291,18 +515,7 @@ static void make_track_path(char *path, const char *name)
     path[at] = 0;
 }
 
-static unsigned short amiga_raw_to_dos_scan(const unsigned short raw)
-{
-    switch (raw & 0x7fu) {
-    case 0x45: return 0x01; /* Escape */
-    case 0x44: return 0x1c; /* Return */
-    case 0x40: return 0x39; /* Space */
-    case 0x50: return 0x3b; /* F1 */
-    case 0x58: return 0x43; /* F9 */
-    case 0x59: return 0x44; /* F10 */
-    default: return 0;
-    }
-}
+#include "amiga_key_scan.h"
 
 static void make_title_surface(unsigned char *planes,
                                const unsigned char *frame,
@@ -323,6 +536,24 @@ static void clear_title_rectangle(unsigned char *logical,
                     (unsigned long)(x & 3) * 65536UL] = 0;
 }
 
+static int show_race_load_error(struct SlicksAmigaPlatform *platform,
+    unsigned char *logical,unsigned char *chunky,unsigned short *mode_state,
+    const unsigned char *palette,unsigned char retry)
+{
+    if(slicks_setup_basic_mode(logical,mode_state)) return -1;
+    clear_title_rectangle(logical,0,0,320,200);
+    slicks_draw_title_text(logical,"RACE SETUP FAILED",160,70,15);
+    slicks_draw_title_text(logical,g_slicks_diag_race_error==1?"NOT ENOUGH MEMORY":
+        g_slicks_diag_race_error==7?"CHECK PLAYERS AND CONTROLLERS":"CHECK GAME AND TRACK FILES",160,90,15);
+    slicks_draw_title_text(logical,retry?"ENTER RETRIES - ESC RETURNS TO MENU":
+        "ENTER OR ESC RETURNS TO MENU",160,110,15);
+    slicks_convert_to_amiga(logical,chunky,platform->views[0].bitmap);
+    if(slicks_amiga_platform_set_view(platform,0,palette) ||
+       slicks_amiga_platform_begin(platform,0)) return -1;
+    g_slicks_diag_ingame=0; g_slicks_diag_ready=1;
+    slicks_diag_race_load_failed(); return 0;
+}
+
 static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
@@ -331,7 +562,8 @@ static void redraw_title_configuration(
     const char *track_name, unsigned short laps)
 {
     char vehicle_text[] = "CAR AUTO 01";
-    char laps_text[] = "LAPS 4";
+    unsigned char lap_number[64];
+    char laps_text[10]="LAPS ";
     static char track_text[19];
     static const char prefix[] = "TRACK ";
     unsigned short at;
@@ -342,12 +574,435 @@ static void redraw_title_configuration(
     track_text[at] = 0;
     vehicle_text[9] = (char)('0' + (vehicle + 1) / 10);
     vehicle_text[10] = (char)('0' + (vehicle + 1) % 10);
-    laps_text[5] = (char)('0' + laps);
+    slicks_option_number(lap_number,(short)laps,(const unsigned char *)"");
+    for(unsigned i=0;i<4;++i) { laps_text[5+i]=(char)lap_number[i]; if(!lap_number[i]) break; }
+    laps_text[9]=0;
     slicks_draw_title_menu_selection(logical, palette, selection);
     clear_title_rectangle(logical, 105, 164, 235, 191);
     slicks_draw_title_text(logical, vehicle_text, 160, 166, 15);
     slicks_draw_title_text(logical, track_text, 160, 174, 15);
     slicks_draw_title_text(logical, laps_text, 160, 182, 15);
+    slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
+}
+
+static void present_menu_surface(struct SlicksAmigaPlatform *platform,struct SlicksAmigaPlayerMenu *menu)
+{
+    if(platform->active) slicks_amiga_platform_wait_display_blank(platform);
+    for(unsigned i=0;i<menu->dirty_count;++i)
+        slicks_chunky_rows_to_amiga(menu->renderer.ui.pixels,platform->views[0].bitmap,
+            menu->dirty[i].top,menu->dirty[i].bottom);
+    slicks_amiga_player_menu_clear_dirty(menu);
+}
+static void present_player_menu(struct SlicksAmigaPlatform *platform)
+{ present_menu_surface(platform,g_slicks_player_menu); }
+
+void __attribute__((noinline)) slicks_diag_profile_dialog_failed(void) { __asm__ volatile("" ::: "memory"); }
+static int profile_dialog_warning(struct SlicksAmigaPlatform *platform,unsigned char diagnostic)
+{
+    struct SlicksAmigaPlayerMenu *m=g_slicks_player_menu;
+    m->editor_pending=0;
+    if(slicks_amiga_warning_open(m,(const unsigned char *)"DIALOG UNAVAILABLE - PRESS A KEY")) return -1;
+    present_player_menu(platform);
+    if(slicks_amiga_platform_begin(platform,0)) return -1;
+    slicks_diag_profile_dialog_failed();
+    if(diagnostic) {
+        /* Dismiss and retry through normal input, preserving queued typing. */
+        unsigned char keys[15]; unsigned count=0;
+        while(platform->key_tail!=platform->key_head) {
+            if(count==13) return -1;
+            keys[count++]=platform->keys[platform->key_tail];
+            platform->key_tail=(unsigned char)((platform->key_tail+1)&15);
+        }
+        platform->key_tail=0; platform->keys[0]=0x44; platform->keys[1]=0x44;
+        for(unsigned i=0;i<count;++i) platform->keys[i+2]=keys[i];
+        platform->key_head=(unsigned char)(count+2);
+    }
+    return 0;
+}
+
+static int pause_child_present(struct SlicksAmigaPlatform *platform,
+    struct SlicksAmigaPlayerMenu *m,unsigned phase)
+{
+    present_menu_surface(platform,m);
+    if(!platform->active && slicks_amiga_platform_begin(platform,0)) return -1;
+    g_slicks_diag_pause_phase=(unsigned short)phase; slicks_diag_pause_child(); return 0;
+}
+static int test_pause_children(struct SlicksAmigaPlatform *platform,
+    struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive)
+{
+    /* Private diagnostic configuration: never save or alter the live setup. */
+    struct SlicksConfiguration config=slicks_original_configuration;
+    const struct SlicksControllersLabels labels={slicks_original_controller_key_names,
+        slicks_original_controller_scans,slicks_original_controller_defaults,slicks_original_controller_exit};
+    int result=-1; unsigned char *saved=AllocMem(64000,MEMF_ANY);
+    if(!saved) return -1;
+    for(unsigned row=1;row<=3;++row) {
+        while(m->race_menu->state.row!=row) {
+            slicks_race_menu_key(&m->race_menu->state,m->race_menu->state.row<row?0x50:0x48);
+            if(slicks_amiga_race_menu_draw(m)) goto done;
+        }
+        if(slicks_amiga_race_menu_draw(m)) goto done;
+        unsigned char colours[2]={m->fonts[0][6],m->fonts[1][6]};
+        for(unsigned long i=0;i<64000;++i) saved[i]=m->renderer.ui.pixels[i];
+        enum SlicksRaceMenuAction action=slicks_race_menu_key(&m->race_menu->state,0x1c);
+        if(row==1) {
+            if(action!=SLICKS_RACE_MENU_HELP || slicks_amiga_help_open(m,archive,(const unsigned char *)"")) goto done;
+            if(pause_child_present(platform,m,40)) goto done;
+            if(slicks_help_viewer_key(m->help,27,1) || !m->help->navigation.done) goto done;
+            slicks_amiga_platform_end(platform);
+            if(slicks_amiga_help_close(m) || pause_child_present(platform,m,41)) goto done;
+        } else if(row==2) {
+            if(action!=SLICKS_RACE_MENU_CONTROLLERS || slicks_amiga_controllers_open_at(m,archive,45,65) ||
+               slicks_amiga_controllers_draw(m,&config,&labels) || pause_child_present(platform,m,42)) goto done;
+            unsigned char previous=config.player_input[0];
+            if(slicks_controllers_key(&m->controllers_dialog->state,&config,slicks_original_configuration.keys,0x1c) ||
+               config.player_input[0]!=(previous+1)%3 || slicks_amiga_controllers_draw(m,&config,&labels) ||
+               pause_child_present(platform,m,43)) goto done;
+            if(slicks_controllers_key(&m->controllers_dialog->state,&config,slicks_original_configuration.keys,1) ||
+               !m->controllers_dialog->state.done) goto done;
+            slicks_amiga_platform_end(platform);
+            if(slicks_amiga_controllers_close(m) || pause_child_present(platform,m,44)) goto done;
+        } else {
+            unsigned char changed=0; unsigned short timer=0; config.field_05de=100;
+            if(action!=SLICKS_RACE_MENU_SPEED || slicks_amiga_race_speed_open(m,&config,&changed) || !changed ||
+               pause_child_present(platform,m,45)) goto done;
+            if(slicks_amiga_race_speed_key(m,&config,0x4d) || slicks_amiga_race_speed_key(m,&config,0x48) ||
+               config.field_05de!=106 || pause_child_present(platform,m,46)) goto done;
+            if(slicks_amiga_race_speed_key(m,&config,1) || !m->race_menu->speed.done) goto done;
+            slicks_amiga_platform_end(platform);
+            if(slicks_amiga_race_speed_close(m,&config,&timer) || timer!=530 || config.field_05de!=106 ||
+               pause_child_present(platform,m,47)) goto done;
+        }
+        if(m->fonts[0][6]!=colours[0] || m->fonts[1][6]!=colours[1]) goto done;
+        for(unsigned long i=0;i<64000;++i) if(saved[i]!=m->renderer.ui.pixels[i]) goto done;
+        slicks_amiga_platform_end(platform);
+    }
+    result=0;
+done:
+    slicks_amiga_platform_end(platform);
+    FreeMem(saved,64000); return result;
+}
+/* Component diagnostic, not the interactive race input loop. */
+static int test_pause_surface(struct SlicksAmigaPlatform *platform,
+    unsigned char *chunky,const unsigned char *palette)
+{
+    struct SlicksResourceArchive archive={0,0,0}; int result=-1;
+    struct SlicksAmigaPlayerMenu *m=0;
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) return -1;
+    m=slicks_amiga_race_surface_create(&archive,chunky,palette);
+    if(!m) goto done;
+    g_slicks_diag_pause_menu=m;
+    for(unsigned long i=0;i<64000;++i) m->saved[i]=chunky[i];
+    unsigned char old_colour=m->fonts[0][6];
+    for(unsigned fault=1;fault<=3;++fault) {
+        g_slicks_diag_pause_fault=(unsigned char)fault;
+        if(!slicks_amiga_race_menu_open(m,&archive,"lang1.txt",slicks_original_race_menu_keys,0,50) ||
+           m->race_menu || g_slicks_diag_pause_fault || m->fonts[0][6]!=old_colour) goto done;
+        for(unsigned long i=0;i<64000;++i) if(chunky[i]!=m->saved[i]) goto done;
+        g_slicks_diag_pause_phase=(unsigned short)fault; slicks_diag_pause_checkpoint();
+    }
+    for(unsigned repeat=0;repeat<2;++repeat) {
+        if(slicks_amiga_race_menu_open(m,&archive,"lang1.txt",slicks_original_race_menu_keys,
+            (unsigned char)(repeat?5:0),50)) goto done;
+        if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
+        slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+        slicks_amiga_player_menu_clear_dirty(m);
+        if(slicks_amiga_platform_begin(platform,0)) goto done;
+        for(unsigned step=0;step<7;++step) {
+            if(step) slicks_race_menu_key(&m->race_menu->state,(unsigned char)(repeat?0x48:0x50));
+            if(slicks_amiga_race_menu_draw(m)) goto done;
+            present_menu_surface(platform,m);
+            g_slicks_diag_pause_phase=(unsigned short)(10+repeat*10+step);
+            slicks_diag_pause_checkpoint();
+        }
+        slicks_amiga_platform_end(platform);
+        if(test_pause_children(platform,m,&archive)) goto done;
+        if(slicks_amiga_race_menu_close(m) || m->fonts[0][6]!=old_colour) goto done;
+        for(unsigned long i=0;i<64000;++i) if(chunky[i]!=m->saved[i]) goto done;
+        present_menu_surface(platform,m);
+        if(slicks_amiga_platform_begin(platform,0)) goto done;
+        g_slicks_diag_pause_phase=(unsigned short)(17+repeat*10); slicks_diag_pause_checkpoint();
+        slicks_amiga_platform_end(platform);
+    }
+    result=0;
+done:
+    slicks_amiga_platform_end(platform);
+    slicks_amiga_player_menu_destroy(m); g_slicks_diag_pause_menu=0;
+    slicks_resource_archive_close(&archive);
+    return result;
+}
+
+static int open_help(struct SlicksAmigaPlatform *platform,struct SlicksAmigaPlayerMenu *menu,const unsigned char *topic)
+{
+    slicks_amiga_platform_end(platform);
+    struct SlicksResourceArchive archive={0,0,0};
+    int result=slicks_resource_archive_open(&archive,help_fail_archive?"__SLICKS_HELP_MISSING__":"SLICKS.000");
+    help_fail_archive=0;
+    if(!result) result=slicks_amiga_help_open(menu,&archive,topic);
+    slicks_resource_archive_close(&archive);
+    if(result && slicks_amiga_help_warning_open(menu)) return -1;
+    present_menu_surface(platform,menu);
+    if(slicks_amiga_platform_begin(platform,0)) return -1;
+    if(result) slicks_diag_help_failed(); else slicks_diag_help_ready();
+    return 0;
+}
+
+static int open_title_help(struct SlicksAmigaPlatform *platform,unsigned char *logical,unsigned char *chunky,
+    const unsigned char *palette,const unsigned char *topic)
+{
+    slicks_amiga_platform_end(platform);
+    struct SlicksResourceArchive archive={0,0,0};
+    int result=slicks_resource_archive_open(&archive,help_fail_archive?"__SLICKS_HELP_MISSING__":"SLICKS.000");
+    help_fail_archive=0;
+    if(!result && !help_fail_surface)
+        g_slicks_title_help=slicks_amiga_help_surface_create(&archive,chunky,palette);
+    help_fail_surface=0;
+    result=g_slicks_title_help?slicks_amiga_help_open(g_slicks_title_help,&archive,topic):-1;
+    slicks_resource_archive_close(&archive);
+    if(result) {
+        slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
+        /* The title font and logical surface are already resident. This
+         * recovery needs neither a Help surface nor any new allocation. */
+        unsigned at=0;
+        for(unsigned y=90;y<112;++y) for(unsigned x=20;x<300;++x)
+            title_help_saved[at++]=logical[y*100UL+(x>>2)+((x&3)<<16)];
+        clear_title_rectangle(logical,20,90,300,112);
+        slicks_draw_title_text(logical,"HELP UNAVAILABLE - PRESS A KEY",160,96,15);
+        slicks_convert_to_amiga(logical,chunky,platform->views[0].bitmap);
+        g_slicks_title_help_warning=1;
+        if(slicks_amiga_platform_begin(platform,0)) return -1;
+        slicks_diag_help_failed(); return 0;
+    }
+    present_menu_surface(platform,g_slicks_title_help);
+    if(slicks_amiga_platform_begin(platform,0)) return -1;
+    slicks_diag_help_ready(); return 0;
+}
+
+static int present_track_clear_message(struct SlicksAmigaPlatform *platform,const unsigned char *message)
+{
+    if(slicks_amiga_message_open(g_slicks_options_menu,message,slicks_original_players_footer_percent)) return -1;
+    present_menu_surface(platform,g_slicks_options_menu);
+    if(slicks_amiga_platform_begin(platform,0)) return -1;
+    slicks_diag_track_clear_ready(); return 0;
+}
+
+static const unsigned char *native_track_name(void *context,unsigned index)
+{
+    /* Original 35d28 with strip-extension=1: eight-byte DOS base name.
+     * Keep the full filename in the IO catalogue, not in the displayed list. */
+    const char (*names)[SLICKS_TRACK_NAME_SIZE]=context;
+    static unsigned char display[9]; unsigned i=0;
+    while(i<8 && names[index][i] && names[index][i]!='.') {
+        display[i]=(unsigned char)names[index][i]; ++i;
+    }
+    display[i]=0; return display;
+}
+static int draw_track_menu(struct SlicksAmigaPlatform *platform,short total)
+{
+    const struct SlicksTrackMenuLabels labels={
+        {slicks_original_track_actions[0],slicks_original_track_actions[1],slicks_original_track_actions[2],
+         slicks_original_track_actions[3],slicks_original_track_actions[4],slicks_original_track_actions[5]},
+        slicks_original_track_random_on,slicks_original_track_random_off,slicks_original_track_separator};
+    g_slicks_track_menu->error=0;
+    if(slicks_track_renderer_draw(&g_slicks_track_renderer,&g_slicks_track_state,total,
+        &g_slicks_track_playlist,&labels) || g_slicks_track_menu->error) return -1;
+    present_menu_surface(platform,g_slicks_track_menu);
+    return 0;
+}
+static int open_track_menu(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+    char names[][SLICKS_TRACK_NAME_SIZE],short total,short random_count)
+{
+    slicks_amiga_platform_end(platform);
+    struct SlicksResourceArchive archive={0,0,0};
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) return -1;
+    g_slicks_track_menu=slicks_amiga_track_menu_create(&archive,chunky,
+        slicks_original_track_title,slicks_original_track_footer,total,slicks_original_players_footer_percent,
+        &g_slicks_track_renderer,native_track_name,names);
+    slicks_resource_archive_close(&archive);
+    if(!g_slicks_track_menu) return -1;
+    g_slicks_track_state.column=0; g_slicks_track_state.previous=-1;
+    g_slicks_track_state.done=0; g_slicks_track_state.random_count=random_count; g_slicks_track_action=0;
+    if(draw_track_menu(platform,total) || slicks_amiga_platform_set_view(platform,0,g_slicks_track_menu->palette) ||
+       slicks_amiga_platform_begin(platform,0)) return -1;
+    slicks_diag_tracks_ready(); return 0;
+}
+struct SlicksSetupLoadReport g_slicks_track_lists_load;
+struct SlicksSetupStorageReport g_slicks_track_lists_save;
+__attribute__((noinline)) void slicks_diag_track_lists_ready(void) { __asm__ volatile("" ::: "memory"); }
+__attribute__((noinline)) void slicks_diag_track_lists_closed(void) { __asm__ volatile("" ::: "memory"); }
+/* Modal transitions allocate and perform DOS IO only with hardware released. */
+static int track_lists_finish(struct SlicksAmigaPlatform *platform,short total,const char *error)
+{
+    slicks_amiga_track_lists_close(g_slicks_track_menu);
+    g_slicks_track_state.previous=-1;
+    if(draw_track_menu(platform,total)) return -1;
+    if(error && slicks_amiga_message_open(g_slicks_track_menu,(const unsigned char *)error,
+        slicks_original_players_footer_percent)) return -1;
+    slicks_diag_track_lists_closed(); return 0;
+}
+static int track_lists_commit(struct SlicksAmigaPlatform *platform,short total,void *names,int remove)
+{
+    struct SlicksAmigaTrackLists *lists=g_slicks_track_menu->track_lists;
+    g_slicks_track_lists_save=slicks_amiga_store_track_lists(&lists->catalogue,remove,
+        remove<0?lists->name:0,&g_slicks_track_playlist,total,native_track_name,names);
+    const char *error=0;
+    switch(g_slicks_track_lists_save.result) {
+    case SLICKS_SETUP_SAVED: break;
+    case SLICKS_SETUP_SAVED_CLEANUP_PENDING: error="SAVED - BACKUP REMAINS"; break;
+    case SLICKS_SETUP_RECOVERY_REQUIRED: error="KEEP SLICKS.TRK NEW/BAK FILES"; break;
+    default: error="SLICKS.TRK SAVE FAILED"; break;
+    }
+    return track_lists_finish(platform,total,error);
+}
+static int track_lists_key(struct SlicksAmigaPlatform *platform,short total,void *names,
+    unsigned char character,unsigned char scan,unsigned long tick)
+{
+    struct SlicksAmigaPlayerMenu *m=g_slicks_track_menu;
+    struct SlicksAmigaTrackLists *lists=m->track_lists;
+    if(m->name_dialog) {
+        int done=slicks_name_dialog_key(&m->name_dialog->renderer,character);
+        if(done<0 || m->error) return -1;
+        m->name_dialog->hidden=0;
+        if(!done) return 0;
+        if(slicks_amiga_name_dialog_close(m)) return -1;
+        return done==1?track_lists_commit(platform,total,names,-1):track_lists_finish(platform,total,0);
+    }
+    if(m->message) {
+        if(!scan) return 0;
+        if(slicks_amiga_message_close(m)) return -1;
+        return slicks_track_list_delete_accepted(scan)?
+            track_lists_commit(platform,total,names,lists->pending_delete):track_lists_finish(platform,total,0);
+    }
+    if(!m->picker) return -1;
+    slicks_list_dialog_key(&m->picker->renderer.state,scan);
+    if(!m->picker->renderer.state.done) return slicks_amiga_profile_picker_draw(m,tick);
+    struct SlicksTrackListChoice choice=slicks_amiga_track_lists_choice(m,g_slicks_track_playlist.count);
+    switch(choice.action) {
+    case SLICKS_TRACK_LIST_LOAD:
+        if(slicks_track_lists_select(&lists->catalogue,choice.index,&g_slicks_track_playlist,
+            total,native_track_name,names)) return track_lists_finish(platform,total,"TRACK LIST CANNOT BE LOADED");
+        return track_lists_finish(platform,total,0);
+    case SLICKS_TRACK_LIST_NAME:
+        lists->name[0]=0;
+        return slicks_amiga_name_dialog_open_at(m,lists->name,slicks_original_track_list_name,
+            185,40,slicks_original_players_footer_percent);
+    case SLICKS_TRACK_LIST_CONFIRM_DELETE:
+        lists->pending_delete=choice.index;
+        return slicks_amiga_message_open_font(m,slicks_original_track_list_delete_question,
+            slicks_original_players_footer_percent,2);
+    default: return track_lists_finish(platform,total,0);
+    }
+}
+static int draw_options_menu(struct SlicksAmigaPlatform *platform,const struct SlicksConfiguration *configuration)
+{
+    const struct SlicksOptionsLabels labels={slicks_original_option_labels,slicks_original_option_suffixes,
+        slicks_original_mode_labels,slicks_original_options_boolean[0],slicks_original_options_boolean[1]};
+    g_slicks_options_menu->error=0;
+    if(slicks_options_renderer_draw(&g_slicks_options_renderer,&g_slicks_options_state,configuration,
+        slicks_original_option_specs,&labels) || g_slicks_options_menu->error) return -1;
+    present_menu_surface(platform,g_slicks_options_menu);
+    return 0;
+}
+static int open_options_menu(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+    const unsigned char *palette,const struct SlicksConfiguration *configuration)
+{
+    slicks_amiga_platform_end(platform);
+    struct SlicksResourceArchive archive={0,0,0};
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) return -1;
+    g_slicks_options_menu=slicks_amiga_options_menu_create(&archive,chunky,palette,
+        slicks_original_options_title,&g_slicks_options_renderer);
+    slicks_resource_archive_close(&archive);
+    if(!g_slicks_options_menu) return -1;
+    g_slicks_options_state=(struct SlicksOptionsMenu){0,0,0,-1}; g_slicks_options_action=0;
+    g_slicks_options_configuration=configuration;
+    if(draw_options_menu(platform,configuration) || slicks_amiga_platform_begin(platform,0)) return -1;
+    slicks_diag_options_ready(); return 0;
+}
+
+static int draw_controllers_dialog(struct SlicksAmigaPlatform *platform,
+    const struct SlicksConfiguration *configuration)
+{
+    const struct SlicksControllersLabels labels={slicks_original_controller_key_names,
+        slicks_original_controller_scans,slicks_original_controller_defaults,slicks_original_controller_exit};
+    if(slicks_amiga_controllers_draw(g_slicks_options_menu,configuration,&labels)) return -1;
+    present_menu_surface(platform,g_slicks_options_menu);
+    slicks_diag_controllers_ready(); return 0;
+}
+static int open_controllers_dialog(struct SlicksAmigaPlatform *platform,
+    const struct SlicksConfiguration *configuration)
+{
+    slicks_amiga_platform_end(platform);
+    struct SlicksResourceArchive archive={0,0,0};
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) return -1;
+    int result=slicks_amiga_controllers_open(g_slicks_options_menu,&archive);
+    slicks_resource_archive_close(&archive);
+    if(result || draw_controllers_dialog(platform,configuration) ||
+       slicks_amiga_platform_begin(platform,0)) return -1;
+    g_slicks_options_action=SLICKS_OPTIONS_NONE;
+    return 0;
+}
+
+static int open_player_menu(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+    struct SlicksConfiguration *configuration,struct SlicksPlayerMenu *state)
+{
+    slicks_amiga_platform_end(platform);
+    struct SlicksResourceArchive archive={0,0,0};
+    const struct SlicksPlayerMenuLabels labels={slicks_original_players_random,
+        slicks_original_players_random_each,{slicks_original_players_add,
+        slicks_original_players_edit,slicks_original_players_delete,slicks_original_players_exit}};
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) return -1;
+    g_slicks_player_menu=slicks_amiga_player_menu_create(&archive,chunky,
+        slicks_original_players_title,slicks_original_players_footer,
+        slicks_original_players_footer_percent,&labels);
+    slicks_resource_archive_close(&archive);
+    if(!g_slicks_player_menu) return -1;
+    *state=(struct SlicksPlayerMenu){0,1,0,0};
+    setup_resources.profile_count=g_slicks_profiles.count;
+    slicks_setup_select(&g_slicks_setup_session,configuration,&setup_resources,0);
+    if(slicks_amiga_player_menu_draw(g_slicks_player_menu,0,configuration->selected_profile,
+        g_slicks_setup_session.players.participation,&g_slicks_profiles) ||
+        slicks_amiga_platform_set_view(platform,0,g_slicks_player_menu->palette)) return -1;
+    present_player_menu(platform);
+    if(slicks_amiga_platform_begin(platform,0)) return -1;
+    state->redraw=0; g_slicks_diag_player_menu_action=0; g_slicks_diag_player_menu_row=0;
+    slicks_diag_player_menu_ready();
+    return 0;
+}
+
+static int present_profile_editor(struct SlicksAmigaPlatform *platform)
+{
+    const struct SlicksProfileEditorLabels labels={
+        {slicks_original_editor_rows,slicks_original_editor_rows+8,slicks_original_editor_rows+16,
+         slicks_original_editor_rows+24,slicks_original_editor_rows+32,slicks_original_editor_rows+40},
+        {slicks_original_editor_roles,slicks_original_editor_roles+9},slicks_original_editor_percent,
+        slicks_original_editor_random,slicks_original_editor_random_each,slicks_original_editor_unavailable};
+    if(slicks_amiga_profile_editor_draw(g_slicks_player_menu,&g_slicks_profiles,&labels,
+        slicks_original_editor_field_01a6)) return -1;
+    present_player_menu(platform);
+    if(!platform->active && slicks_amiga_platform_begin(platform,0)) return -1;
+    slicks_diag_profile_editor_ready(); return 0;
+}
+
+static void redraw_service_options(struct SlicksAmigaPlatform *platform,
+    unsigned char *logical, unsigned char *chunky, unsigned short selection,
+    short fuel, short damage)
+{
+    char fuel_text[] = "FUEL   000";
+    char damage_text[] = "DAMAGE 000";
+    unsigned short row;
+    for (row = 0; row < 3; ++row) {
+        fuel_text[9 - row] = (char)('0' + fuel % 10);
+        damage_text[9 - row] = (char)('0' + damage % 10);
+        fuel /= 10;
+        damage /= 10;
+    }
+    clear_title_rectangle(logical, 60, 80, 260, 160);
+    slicks_draw_title_text(logical, "CUSTOM OPTIONS", 160, 85, 15);
+    slicks_draw_title_text(logical, fuel_text, 160, 103, 15);
+    slicks_draw_title_text(logical, damage_text, 160, 116, 15);
+    slicks_draw_title_text(logical, "BACK", 160, 129, 15);
+    slicks_draw_title_text(logical, ">", 100, (short)(103 + selection * 13), 15);
+    slicks_draw_title_text(logical, "LEFT/RIGHT TO CHANGE", 160, 145, 15);
     slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
 }
 
@@ -378,6 +1033,62 @@ static unsigned long checksum_bitmap(const struct BitMap *bitmap)
         }
     }
     return checksum;
+}
+
+static void snapshot_display(unsigned char *snapshot, const struct BitMap *bitmap)
+{
+    const unsigned long *source = (const unsigned long *)bitmap->Planes[0];
+    unsigned long *destination = (unsigned long *)snapshot;
+    unsigned long at;
+    for (at = 0; at < 64000UL / 4; ++at)
+        destination[at] = source[at];
+}
+
+static int audit_display(const unsigned char *snapshot,
+                         const struct BitMap *bitmap,
+                         const struct SlicksRaceRuntime *race)
+{
+    const unsigned char *current = bitmap->Planes[0];
+    unsigned long at;
+    for (at = 0; at < 64000UL; ++at) {
+        unsigned char changed = snapshot[at] ^ current[at];
+        unsigned short x, y, within_row, i, bit;
+        unsigned char permitted = 0;
+        if (!changed)
+            continue;
+        y = (unsigned short)(at / 320UL);
+        within_row = (unsigned short)(at - mult320[y]);
+        x = (unsigned short)((within_row % 40U) * 8U);
+        for (i = 0; i < race->dirty_row_count; ++i) {
+            const struct SlicksDirtyRows *r = &race->dirty_rows[i];
+            if (y >= r->top && y < r->bottom && x >= r->left && x < r->right) {
+                permitted = 255;
+                break;
+            }
+        }
+        if (permitted != 255)
+            for (i = 0; i < race->dirty_pixel_count; ++i) {
+                const struct SlicksDirtyPixel *p = &race->dirty_pixels[i];
+                if (p->y == y && p->x >= x && p->x < x + 8)
+                    permitted |= (unsigned char)(0x80U >> (p->x - x));
+            }
+        changed &= (unsigned char)~permitted;
+        if (!changed)
+            continue;
+        for (bit = 0; bit < 8; ++bit)
+            if (changed & (0x80U >> bit))
+                break;
+        g_slicks_diag_audit_frame = race->frame_count;
+        g_slicks_diag_audit_offset = at;
+        g_slicks_diag_audit_x = x + bit;
+        g_slicks_diag_audit_y = y;
+        g_slicks_diag_audit_plane = within_row / 40U;
+        g_slicks_diag_audit_before = snapshot[at];
+        g_slicks_diag_audit_after = current[at];
+        slicks_diag_bitmap_audit_failed();
+        return -1;
+    }
+    return 0;
 }
 
 static unsigned long checksum_material_map(const unsigned char *material_map)
@@ -412,37 +1123,43 @@ static long load_plain_file(const char *path, void *destination,
 
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 
-static void prepare_race_palette(unsigned char *palette)
+static int open_track_info(struct SlicksAmigaPlayerMenu *menu,
+    const char *path,const unsigned char *name)
 {
-    static const unsigned char car_ramps[4][2][3] = {
-        {{32, 0, 0}, {63, 45, 0}},
-        {{20, 8, 45}, {40, 48, 60}},
-        {{20, 8, 45}, {40, 48, 60}},
-        {{20, 8, 45}, {40, 48, 60}}
-    };
+    struct SlicksResourceArchive archive={0};
+    unsigned char *dat=AllocMem(65536,MEMF_ANY),*track=AllocMem(8192,MEMF_ANY);
+    int result=-1;
+    if(dat && track && !slicks_resource_archive_open(&archive,"SLICKS.000")) {
+        long ds=load_plain_file("SLICKS.DAT",dat,65536),ts=load_plain_file(path,track,8192);
+        if(ds>0 && ds<65536 && ts>0 && ts<8192)
+            result=slicks_amiga_track_info_open(menu,&archive,dat,(unsigned long)ds,track,(unsigned long)ts,
+                name,slicks_original_players_footer_percent,slicks_original_date_separator,slicks_original_date_order);
+    }
+    if(dat) FreeMem(dat,65536);
+    if(track) FreeMem(track,8192);
+    slicks_resource_archive_close(&archive);
+    return result;
+}
+
+static void prepare_race_palette(unsigned char *palette,
+    const struct SlicksConfiguration *configuration)
+{
+    /* Like DS:310c, initially zero and preserved for inactive slots. */
+    static unsigned char car_ramps[4][6];
     static const unsigned char yellow_ramp[5][3] = {
         {63, 61, 1}, {63, 59, 11}, {63, 57, 21},
         {63, 55, 31}, {63, 53, 41}
     };
-    unsigned short car;
     unsigned short shade;
 
     /* The DOS race setup rewrites four five-shade car slots after loading
      * peli.@p.  Recreate the interpolation rather than displaying the raw
      * resource palette, whose first twenty entries are placeholders. */
-    for (car = 0; car < 4; ++car) {
-        for (shade = 0; shade < 5; ++shade) {
-            unsigned short colour;
-            unsigned short index = 1 + car * 5 + shade;
-            for (colour = 0; colour < 3; ++colour) {
-                unsigned short first = car_ramps[car][0][colour];
-                unsigned short last = car_ramps[car][1][colour];
-                palette[index * 3 + colour] =
-                    (unsigned char)(first +
-                        ((long)(last - first) * shade) / 4L);
-            }
-        }
-    }
+    slicks_select_profile_colours(car_ramps,configuration->selected_profile,
+        g_slicks_profiles.setup,g_slicks_profiles.count,
+        slicks_original_fallback_colours,configuration->options[0],
+        slicks_original_override_count);
+    slicks_profile_palette(palette,car_ramps);
     palette[183 * 3] = 39;
     palette[183 * 3 + 1] = 43;
     palette[183 * 3 + 2] = 10;
@@ -453,13 +1170,71 @@ static void prepare_race_palette(unsigned char *palette)
     }
 }
 
+static struct SlicksDriverDeviceState driver_device_state[4];
+static struct SlicksConfiguration driver_device_configuration_storage;
+static const struct SlicksConfiguration *driver_device_configuration;
+static void poll_driver_devices(struct SlicksRaceRuntime *race,unsigned short ticks)
+{
+    const struct SlicksConfiguration *c=driver_device_configuration;
+    for(unsigned driver=0;driver<4;++driver) {
+        struct SlicksDeviceSample sample={0,0,0};
+        if(race->participation[driver]<0 && c->player_input[driver])
+            (void)slicks_amiga_platform_joystick(c->player_input[driver],&sample);
+        (void)slicks_driver_device(&driver_device_state[driver],&race->driver_controls[driver],
+            c->player_input[driver],race->participation[driver],(signed char)ticks,
+            slicks_original_device_interval,c->field_062e,race->weapons_enabled,&sample);
+    }
+}
+
+__attribute__((noinline)) void slicks_diag_finish_rewarded(void) { __asm__ volatile("" ::: "memory"); }
+static void award_race_finish(struct SlicksRaceRuntime *race,unsigned driver,signed char rank)
+{
+    (void)race;
+    slicks_setup_finish_reward(&g_slicks_setup_session,driver,rank,slicks_original_finish_points);
+    slicks_diag_finish_rewarded();
+}
+__attribute__((noinline)) void slicks_diag_track_rewarded(void) { __asm__ volatile("" ::: "memory"); }
+static void award_race_track(struct SlicksRaceRuntime *race)
+{
+    signed int best_laps[4];
+    for(unsigned i=0;i<4;++i) best_laps[i]=(signed int)race->cars[i].best_lap_time_units;
+    slicks_setup_track_reward(&g_slicks_setup_session,best_laps,slicks_original_fastest_points);
+    slicks_diag_track_rewarded();
+}
+
 static int prepare_race(struct SlicksAmigaPlatform *platform,
                       unsigned char *logical, unsigned char *chunky,
                       unsigned short *mode_state,
                       struct SlicksRaceRuntime *race,
                       const char *track_path,
-                      unsigned char *race_palette)
+                      unsigned char *race_palette, unsigned short vehicle,
+                      struct SlicksConfiguration *configuration,
+                      struct SlicksSetupSession *session,unsigned char new_game)
 {
+    struct SlicksRaceOptions options;
+    /* A failed GO must not consume random choices or reset the user's game
+     * state. Static backups avoid adding this transaction to the 4 KiB stack.
+     * Preparation is synchronous and never reentrant. */
+    static struct SlicksSetupSession saved_session;
+    static struct SlicksConfiguration saved_configuration;
+    static unsigned char saved_requests[4];
+    g_slicks_diag_race_error=0;
+    if(configuration->options[0]<0 || configuration->options[0]>=6) {
+        g_slicks_diag_race_error=7;
+        return -1;
+    }
+    if(session) {
+        saved_session=*session; saved_configuration=*configuration;
+        for(unsigned i=0;i<4;++i) saved_requests[i]=setup_vehicle_requests[i];
+    }
+    if(session && new_game) {
+        session->players.vehicle[0]=(signed char)vehicle;
+        slicks_setup_new_game(session,configuration,&setup_resources,
+            slicks_original_mode_flags[configuration->options[0]],
+            1); /* GO prepares one track; original 2633c sets this to one. */
+    }
+    slicks_resolve_race_options(&options,configuration,
+        slicks_original_mode_flags[configuration->options[0]]);
     struct SlicksResourceArchive archive = {0, 0, 0};
     struct SlicksTrackNavigation *navigation = 0;
     unsigned char *dat = 0;
@@ -468,6 +1243,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     unsigned char *car_resource = 0;
     unsigned char *font_resource = 0;
     long dat_size;
+    long masks_size;
     long track_size;
     unsigned short car;
     unsigned short direction;
@@ -491,10 +1267,54 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             ((unsigned char *)navigation)[at] = 0;
     }
     slicks_race_initialize(race, navigation);
+    slicks_race_set_timer(race,slicks_speed_timer_argument(configuration->field_05de));
+    if(session) { race->finish_reward=award_race_finish; race->track_reward=award_race_track; }
+    slicks_race_set_mode(race,configuration->options[0],configuration->options[13]);
+    if(session) {
+        for(unsigned driver=0;driver<4;++driver) {
+            if(session->players.participation[driver]<0 && configuration->player_input[driver]>2) {
+                g_slicks_diag_race_error=7;
+                goto cleanup; /* PC/LPT adapters are not Amiga game ports. */
+            }
+            driver_device_state[driver]=(struct SlicksDriverDeviceState){0,0,0,0};
+        }
+        driver_device_configuration_storage=*configuration;
+        driver_device_configuration=&driver_device_configuration_storage;
+        race->poll_driver_devices=poll_driver_devices;
+    }
+    slicks_race_set_vehicle(race,0,vehicle);
+    if(session)
+        for(unsigned driver=0;driver<4;++driver) {
+            if(session->players.vehicle[driver]<0 ||
+                session->players.vehicle[driver]>=SLICKS_VEHICLE_COUNT) goto cleanup;
+            slicks_race_set_vehicle(race,driver,(unsigned char)session->players.vehicle[driver]);
+            short profile=session->players.selected[driver];
+            if(profile>=0 && profile<g_slicks_profiles.count)
+                race->cars[driver].position_scale=g_slicks_profiles.setting[profile];
+        }
+    slicks_race_set_service_options(race,options.fuel,options.damage);
+    race->car_collisions_disabled=slicks_car_collisions_disabled(options.car_collisions);
+    race->weapons_enabled=(unsigned char)(options.weapons_enabled!=0);
+    for(unsigned item=0;item<13;++item) race->weapon_capacity[item]=slicks_original_item_capacity[item];
+    if(session && slicks_race_set_participation(race,session->players.participation)) {
+        g_slicks_diag_race_error=7;
+        goto cleanup;
+    }
+    if(session && slicks_race_set_inventory(race,session->inventory)) {
+        g_slicks_diag_race_error=7;
+        goto cleanup;
+    }
     race_checkpoint(1);
     dat_size = load_plain_file("SLICKS.DAT", dat, 65536UL);
-    track_size = load_plain_file(track_path, track, 8192UL);
+    if(g_slicks_diag_race_load_fault==2) {
+        g_slicks_diag_race_load_fault=0;
+        track_size=load_plain_file("TRACKS/__MISSING__.SS",track,8192UL);
+    } else track_size = load_plain_file(track_path, track, 8192UL);
     if (dat_size <= 0 || track_size <= 0) {
+        g_slicks_diag_race_error = 2;
+        goto cleanup;
+    }
+    if(slicks_race_set_track_info(race,track_path,track,(unsigned long)track_size)) {
         g_slicks_diag_race_error = 2;
         goto cleanup;
     }
@@ -505,24 +1325,39 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_error = 3;
         goto cleanup;
     }
-    prepare_race_palette(race_palette);
+    prepare_race_palette(race_palette,configuration);
+    slicks_race_set_status_palette(race,race_palette);
     race_checkpoint(3);
     if (slicks_setup_basic_mode(logical, mode_state) != 0) {
         g_slicks_diag_race_error = 4;
         goto cleanup;
     }
     race_checkpoint(4);
-    if (slicks_build_track_scene(logical, race->material_map,
+    if (slicks_build_track_scene_options(logical, race->material_map,
                                  race->surface_map, dat,
                                  (unsigned long)dat_size, track,
                                  (unsigned long)track_size, arena, 65536UL,
-                                 navigation) <= 0) {
+                                 navigation, race->fuel_option, race->damage_scale) <= 0) {
         g_slicks_diag_race_error = 5;
         goto cleanup;
     }
     race_checkpoint(5);
 
+    /* The /masks resource is independent of the visible DAT palette.
+     * Reuse the DAT allocation after scenery decoding, and the sprite arena
+     * after drawing. No extra persistent allocation is needed. */
+    masks_size = slicks_resource_archive_load(&archive, "masks", dat, 65536UL);
+    if (masks_size <= 0 || slicks_build_track_masks(
+            race->material_map, race->surface_map, dat, (unsigned long)masks_size,
+            track, (unsigned long)track_size, arena, 65536UL,
+            race->fuel_option != 0 || race->damage_scale != 0,
+            track[6 + 0x165 + 4], navigation) < 0) {
+        g_slicks_diag_race_error = 5;
+        goto cleanup;
+    }
+
     race->navigation = *navigation;
+    race->damage_enabled = navigation->service_available;
     g_slicks_diag_track_zones = navigation->zone_count;
     g_slicks_diag_material_checksum =
         checksum_material_map(race->material_map);
@@ -537,6 +1372,15 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             ++g_slicks_diag_material_count[race->material_map[pixel] & 31];
     }
     {
+        const char *hud_name="alamenu.@I";
+        if(g_slicks_diag_race_load_fault==6) {
+            g_slicks_diag_race_load_fault=0; hud_name="missing-race-hud";
+        }
+        long hud_size=slicks_resource_archive_load(&archive,hud_name,dat,65536UL);
+        if(hud_size<=0 || slicks_race_add_hud_background(race,dat,(unsigned long)hud_size)) {
+            g_slicks_diag_race_error=6;
+            goto cleanup;
+        }
         long font_size = slicks_resource_archive_load(
             &archive, "pieni.@f", font_resource, 2048UL);
         if (font_size <= 0 ||
@@ -544,6 +1388,17 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
                                  (unsigned long)font_size) != 0) {
             g_slicks_diag_race_error = 6;
             goto cleanup;
+        }
+        static const char *const weapon_icons[8]={"vir5.@I","vir6.@I",
+            "vir7.@I","vir8.@I","vir9.@I","vir10.@I","vir11.@I","vir12.@I"};
+        for(unsigned weapon=0;weapon<8;++weapon) {
+            long size=slicks_resource_archive_load(&archive,weapon_icons[weapon],
+                                                   font_resource,2048UL);
+            if(size<=0 || slicks_race_add_weapon_icon(race,weapon,font_resource,
+                                                      (unsigned long)size)) {
+                g_slicks_diag_race_error=6;
+                goto cleanup;
+            }
         }
     }
     for (car = 0; car < SLICKS_START_LIGHT_COUNT; ++car) {
@@ -593,8 +1448,21 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         }
     }
     race_checkpoint(6);
+    if(weapon_hud_fixture) set_weapon_hud_fixture(race);
     if (slicks_race_start(race, logical, chunky) != 0) {
         g_slicks_diag_race_error = 7;
+        goto cleanup;
+    }
+    if(session) {
+        race->random_state=session->random_state;
+        /* Original 1fd72..1fdc6 runs even with Weapons disabled. Do not
+         * reseed or skip the computer's draw when its inventory is empty. */
+        for(unsigned driver=0;driver<4;++driver)
+            race->selected_weapon[driver]=slicks_initial_weapon(race->weapon_inventory[driver],
+                session->players.participation[driver],&race->random_state);
+    }
+    if (slicks_race_draw_status(race,logical,status_clock.ticks)<0) {
+        g_slicks_diag_race_error=9;
         goto cleanup;
     }
     race->profile_frame = g_slicks_diag_target_frame;
@@ -626,8 +1494,13 @@ cleanup:
         FreeMem(track, 8192UL);
     if (dat)
         FreeMem(dat, 65536UL);
-    if (result != 0)
+    if (result != 0) {
+        if(session) {
+            *session=saved_session; *configuration=saved_configuration;
+            for(unsigned i=0;i<4;++i) setup_vehicle_requests[i]=saved_requests[i];
+        }
         slicks_diag_frame_ready();
+    }
     return result;
 }
 
@@ -653,7 +1526,7 @@ static void sync_chunky_to_logical(const unsigned char *chunky,
         unsigned short group;
         for (group = 0; group < 80; ++group) {
             unsigned long chunky_at =
-                (unsigned long)y * 320UL + (unsigned long)group * 4UL;
+                mult320[y] + (unsigned long)group * 4UL;
             unsigned long logical_at =
                 (unsigned long)y * 100UL + group;
             logical[logical_at] = chunky[chunky_at];
@@ -668,10 +1541,16 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
 {
     unsigned short car;
     unsigned short sample;
+    unsigned short progress = service_menu_test && race->frame_count &&
+        (race->frame_count % 600 == 0 ||
+         g_slicks_diag_lap[3] != race->cars[3].lap ||
+         g_slicks_diag_service[3] != race->cars[3].ai_service_state);
     g_slicks_diag_race_frame = race->frame_count;
     g_slicks_diag_skidmarks = race->skidmark_count;
     g_slicks_diag_particles = race->trail_particle_count;
     g_slicks_diag_collisions = race->collision_count;
+    if (service_menu_test && race->collision_impact > g_slicks_diag_damage_peak_impact)
+        g_slicks_diag_damage_peak_impact = race->collision_impact;
     g_slicks_diag_track_collisions = race->track_collision_count;
     g_slicks_diag_countdown_stage = race->countdown_stage;
     g_slicks_diag_start_light_visible = race->start_light_visible;
@@ -680,6 +1559,39 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
         g_slicks_diag_sound_event_totals[sample] =
             race->sound_event_totals[sample];
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+        if (service_menu_test) {
+            const struct SlicksRaceCar *state = &race->cars[car];
+            if (state->damage[0] > (short)g_slicks_diag_damage_peak[car])
+                g_slicks_diag_damage_peak[car] = state->damage[0];
+            if (state->effective_surface == 30 && state->measured_speed < 300 &&
+                state->damage[0] < previous_damage[car])
+                ++g_slicks_diag_repair_frames[car];
+            previous_damage[car] = state->damage[0];
+        }
+        if (fuel_race_test || service_menu_test) {
+            const struct SlicksRaceCar *state = &race->cars[car];
+            if (state->ai_service_state == -1 &&
+                g_slicks_diag_service[car] != -1)
+                ++g_slicks_diag_service_requests[car];
+            if (race->frame_count && state->effective_surface == 30 &&
+                (signed int)state->fuel > (signed int)g_slicks_diag_fuel[car])
+                ++g_slicks_diag_refuel_frames[car];
+            if (g_slicks_diag_service[car] > 0 && !state->ai_service_state &&
+                g_slicks_diag_refuel_frames[car] && !state->finished &&
+                state->ai_target_x == -1 && !state->ai_route_seen &&
+                state->damage[0] < 10)
+                ++g_slicks_diag_service_departures[car];
+            if (race->frame_count && state->effective_surface == 30)
+                ++g_slicks_diag_pit_frames[car];
+            g_slicks_diag_fuel_surface[car] = state->effective_surface;
+            g_slicks_diag_fuel_layer[car] = state->actor_layer;
+            g_slicks_diag_fuel_speed[car] = state->measured_speed;
+            g_slicks_diag_fuel_target_x[car] = state->ai_target_x;
+            g_slicks_diag_fuel_target_y[car] = state->ai_target_y;
+            g_slicks_diag_service[car] = state->ai_service_state;
+            g_slicks_diag_fuel[car] = state->fuel;
+            g_slicks_diag_fuel_capacity[car] = state->fuel_capacity;
+        }
         g_slicks_diag_car_x[car] = race->cars[car].x;
         g_slicks_diag_car_y[car] = race->cars[car].y;
         g_slicks_diag_car_vx[car] = race->cars[car].velocity_x;
@@ -691,7 +1603,7 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
             long y = race->cars[car].y / 100;
             g_slicks_diag_material[car] =
                 x >= 0 && x < 320 && y >= 0 && y < 190
-                    ? race->material_map[(unsigned long)y * 320UL +
+                    ? race->material_map[mult320[y] +
                                          (unsigned long)x]
                     : 31;
         }
@@ -709,11 +1621,20 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race)
     }
     g_slicks_diag_race_complete = race->race_complete;
     g_slicks_diag_results_drawn = race->results_drawn;
+    if (progress)
+        slicks_diag_race_progress();
 }
 
 static int update_race_key(struct SlicksRaceRuntime *race,
-                           unsigned short raw)
+                           unsigned short raw,const struct SlicksConfiguration *configuration)
 {
+    if(race->participation_ready) {
+        unsigned short scan=amiga_raw_to_dos_scan(raw);
+        if(!scan) return 0;
+        slicks_driver_key(race->driver_controls,configuration->keys,
+            g_slicks_setup_session.players.order,(unsigned char)(scan|(raw&128)));
+        return 1;
+    }
     unsigned char control;
     unsigned char controls = race->controls;
     unsigned char pressed = !(raw & 0x80);
@@ -732,8 +1653,455 @@ static int update_race_key(struct SlicksRaceRuntime *race,
     return 1;
 }
 
-int main(int argc, char **argv)
+/* Blocking original menu boundary: no race step executes while it is open.
+ * Resources are loaded only with AmigaOS restored. The race bitmap stays
+ * untouched in view 1; all modal conversion targets view 0. */
+static void pause_live_checkpoint(struct SlicksAmigaPlatform *platform,unsigned char diagnostic,unsigned *step)
 {
+    slicks_diag_pause_live_ready();
+    if(diagnostic==8) {
+        static const unsigned char keys[]={0x4d,0x44,0x44,0x44,0x45,0x4d,0x44,0x44,0x44,0x44,0x44,0x45,0x45};
+        if(*step==1) g_slicks_diag_help_fail_allocation=1;
+        if(*step==6) g_slicks_diag_controllers_fault=1;
+        if(*step==8) g_slicks_diag_controllers_fault=2;
+        if(*step<sizeof keys) {
+            platform->key_tail=0; platform->keys[0]=keys[(*step)++]; platform->key_head=1;
+        }
+        return;
+    }
+    if(diagnostic==7) {
+        platform->key_tail=0; platform->keys[0]=0x44; platform->key_head=1;
+        return;
+    }
+    if(diagnostic) {
+        static const unsigned char keys[]={0x4d,0x44,0x45,0x4d,0x44,0x44,0x45,0x4d,0x44,0x4e,0x4c,0x45,0x45};
+        if(*step<sizeof keys) {
+            platform->key_tail=0; platform->keys[0]=keys[(*step)++]; platform->key_head=1;
+        }
+    }
+}
+static int pause_unavailable_notice(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
+    unsigned char *chunky,const unsigned char *palette,unsigned char diagnostic)
+{
+    /* Race HUD font and the shared warning save-under are already resident.
+     * Even archive/surface allocation failure needs no further resources. */
+    if(!race->font.ready || slicks_amiga_emergency_warning_open(chunky,palette,race->font.runtime,
+        (const unsigned char *)"MENU UNAVAILABLE - PRESS A KEY")) return -1;
+    int result=-1;
+    if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    platform->key_tail=platform->key_head;
+    slicks_diag_pause_warning_ready();
+    if(diagnostic) {
+        platform->key_tail=0; platform->keys[0]=0x44; platform->key_head=1;
+    }
+    for(;;) {
+        unsigned short raw;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) goto done;
+        while(slicks_amiga_platform_poll_key(platform,&raw))
+            if(!(raw&128) && raw<0x60 && amiga_raw_to_dos_scan(raw)) { result=0; goto done; }
+    }
+done:
+    slicks_amiga_platform_end(platform);
+    if(slicks_amiga_emergency_warning_close()) result=-1;
+    return result;
+}
+/* Target resource/lifetime gate, separate from the interactive race loop.
+ * Real fonts, icons and track data; private driver choices never get saved. */
+static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
+    unsigned char *chunky,const unsigned char *palette)
+{
+    struct SlicksResourceArchive archive={0}; struct SlicksAmigaPlayerMenu *m=0;
+    unsigned char *dat=AllocMem(65536,MEMF_ANY),*track=AllocMem(8192,MEMF_ANY);
+    unsigned char *saved=AllocMem(64000,MEMF_ANY);
+    int result=-1;
+    struct SlicksProfileSelection players={.participation={-1,0,1,-1},
+        .vehicle={1,7,3,4},.selected={0,1,2,3},.count=3};
+    struct SlicksSetupProfile profiles[4]={{0}};
+    unsigned long seed=1234;
+    const struct SlicksIntermissionContent content={.roles={-1,0,1,-1},.vehicles={1,7,3,4},
+        .points={3,0,-1,8},.laps={100,0,200,100},.fastest=100,.track_index=0,.track_total=2,
+        .names={(const unsigned char *)"FIRST",0,(const unsigned char *)"THIRD",(const unsigned char *)"FOURTH"},
+        .labels={(const unsigned char *)"CHANGE CARS",(const unsigned char *)"SAVE GAME",
+            (const unsigned char *)"NEXT TRACK",(const unsigned char *)"MAIN MENU"},
+        .track_name=(const unsigned char *)"BASIC",.slash=(const unsigned char *)"/"};
+    if(!dat || !track || !saved || slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+    long ds=load_plain_file("SLICKS.DAT",dat,65536),ts=load_plain_file("TRACKS/BASIC.SS",track,8192);
+    if(ds<=0 || ds>=65536 || ts<=0 || ts>=8192) goto done;
+    m=slicks_amiga_intermission_surface_create(&archive,chunky,palette);
+    if(!m) goto done;
+    g_slicks_diag_intermission_menu=m;
+    unsigned char colour=m->fonts[0][6];
+    for(unsigned long i=0;i<64000;++i) saved[i]=chunky[i];
+    for(unsigned fault=1;fault<=3;++fault) {
+        g_slicks_diag_intermission_fault=(unsigned char)fault;
+        if(!slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts) || m->intermission ||
+           m->fonts[0][6]!=colour || g_slicks_diag_intermission_fault) goto done;
+        for(unsigned long i=0;i<64000;++i) if(saved[i]!=chunky[i]) goto done;
+        ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
+    }
+    for(unsigned repeat=0;repeat<2;++repeat) {
+        if(slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts)) goto done;
+        if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
+        /* View zero previously held the title, not this race background. */
+        slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+        present_menu_surface(platform,m);
+        if(slicks_amiga_platform_begin(platform,0)) goto done;
+        ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
+        slicks_amiga_platform_end(platform);
+        for(unsigned long i=0;i<64000;++i) saved[i]=chunky[i];
+        unsigned char menu_colour=m->fonts[0][6];
+        for(unsigned fault=1;fault<=3;++fault) {
+            g_slicks_diag_change_cars_fault=(unsigned char)fault;
+            if(slicks_amiga_change_cars_open(m,&archive,&players,profiles,10,
+                slicks_original_vehicle_weights,&seed,1,(const unsigned char *)"CARS")!=-1 ||
+                m->change_cars || m->fonts[0][6]!=menu_colour || seed!=1234) goto done;
+            for(unsigned long i=0;i<64000;++i) if(saved[i]!=chunky[i]) goto done;
+            ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
+        }
+        for(unsigned edit=0;edit<2;++edit) {
+            if(slicks_amiga_intermission_key(m,60)!=SLICKS_INTERMISSION_CHANGE_CARS ||
+               slicks_amiga_change_cars_open(m,&archive,&players,profiles,10,
+                slicks_original_vehicle_weights,&seed,1,(const unsigned char *)"CARS")!=1) goto done;
+            signed char before=players.vehicle[2];
+            if(slicks_amiga_change_cars_key(m,80) || slicks_amiga_change_cars_key(m,77) ||
+               players.vehicle[2]!=(before+1)%10 || players.vehicle[1]!=7 ||
+               slicks_amiga_change_cars_key(m,edit?28:1)!=1 || slicks_amiga_change_cars_close(m) ||
+               slicks_amiga_intermission_refresh_cars(m,players.vehicle) || seed!=1234 ||
+               m->intermission->content.vehicles[2]!=players.vehicle[2]) goto done;
+            for(unsigned i=0;i<4;++i) if(profiles[i].vehicle) goto done;
+            present_menu_surface(platform,m);
+            if(slicks_amiga_platform_begin(platform,0)) goto done;
+            ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
+            slicks_amiga_platform_end(platform);
+        }
+        if(slicks_amiga_intermission_key(m,repeat?68:67) ||
+           m->intermission->state.exit_code!=(repeat?2:1) || slicks_amiga_intermission_close(m) ||
+           m->fonts[0][6]!=colour) goto done;
+        for(unsigned long i=0;i<64000;++i) if(m->saved[i]!=chunky[i]) goto done;
+        present_menu_surface(platform,m);
+        if(slicks_amiga_platform_begin(platform,0)) goto done;
+        ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
+        slicks_amiga_platform_end(platform);
+    }
+    result=0;
+done:
+    slicks_amiga_platform_end(platform);
+    slicks_amiga_player_menu_destroy(m); g_slicks_diag_intermission_menu=0;
+    slicks_resource_archive_close(&archive);
+    if(dat) FreeMem(dat,65536);
+    if(track) FreeMem(track,8192);
+    if(saved) FreeMem(saved,64000);
+    return result;
+}
+
+/* Original 25937..25965: caller already refreshed selections exactly once.
+ * Preview is the NEXT track, while the header counts the completed track.
+ * Return 1=next, 2=end; never rerun profile selection after child edits. */
+static int intermission_retry_notice(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
+    unsigned char *chunky,const unsigned char *palette,unsigned char diagnostic)
+{
+    if(!race->font.ready || slicks_amiga_emergency_warning_open(chunky,palette,race->font.runtime,
+        (const unsigned char *)"ENTER: RETRY / ESC: END MATCH")) return -1;
+    int result=-1;
+    if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    platform->key_tail=platform->key_head;
+    slicks_diag_intermission_retry();
+    if(diagnostic) { platform->key_tail=0; platform->keys[0]=0x44; platform->key_head=1; }
+    for(;;) {
+        unsigned short raw;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) goto done;
+        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+            if(raw==0x44) { result=1; goto done; }
+            if(raw==0x45) { result=2; goto done; }
+        }
+    }
+done:
+    slicks_amiga_platform_end(platform);
+    if(slicks_amiga_emergency_warning_close()) result=-1;
+    return result;
+}
+static void intermission_test_key(struct SlicksAmigaPlatform *platform,unsigned diagnostic,unsigned step)
+{
+    /* Ordinary raw-key queue only: no mutation of driver or dialog state. */
+    static const unsigned char edits[]={0x51,0x4e,0x4d,0x4e,0x45,0x51,0x4e,0x44,0x58};
+    if(diagnostic==2 && step<sizeof edits) {
+        platform->key_tail=0; platform->keys[0]=edits[step]; platform->key_head=1;
+    } else if((diagnostic==1 || diagnostic==3) && !step) {
+        platform->key_tail=0; platform->keys[0]=0x58; platform->key_head=1;
+    }
+}
+static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
+    unsigned char *chunky,const unsigned char *palette,const char *next_path,
+    const unsigned char *next_name,short position,short total,unsigned char diagnostic)
+{
+    struct SlicksResourceArchive archive={0}; struct SlicksAmigaPlayerMenu *m=0;
+    unsigned char *dat=0,*track=0,*language=0;
+    int result=-1; unsigned used=0,test_step=0;
+    struct SlicksIntermissionContent content={.track_index=position,.track_total=total,
+        .track_name=next_name,.slash=(const unsigned char *)"/"};
+    if(diagnostic==3) g_slicks_diag_intermission_fault=3;
+retry:
+    slicks_amiga_platform_end(platform);
+    dat=AllocMem(65536,MEMF_ANY); track=AllocMem(8192,MEMF_ANY); language=AllocMem(2048,MEMF_ANY);
+    if(!dat || !track || !language || slicks_resource_archive_open(&archive,"SLICKS.000")) goto unavailable;
+    long size=slicks_resource_archive_load(&archive,"lang1.txt",dat,65536);
+    if(size<0 || slicks_language_table_load(dat,(unsigned)size,language,2048,&used)) goto unavailable;
+    for(unsigned i=0;i<4;++i) {
+        content.roles[i]=g_slicks_setup_session.players.participation[i];
+        content.vehicles[i]=g_slicks_setup_session.players.vehicle[i];
+        content.points[i]=g_slicks_setup_session.points[i];
+        content.laps[i]=(signed int)race->cars[i].best_lap_time_units;
+        short selected=g_slicks_setup_session.players.selected[i];
+        if(content.roles[i] && (selected<0 || selected>=g_slicks_profiles.count)) goto unavailable;
+        content.names[i]=content.roles[i]?g_slicks_profiles.names[selected]:0;
+        content.labels[i]=slicks_language_lookup(language,used,slicks_original_intermission_keys[i],
+            slicks_original_intermission_keys[i]);
+    }
+    short fastest=29999;
+    for(unsigned i=0;i<4;++i) if((signed int)fastest>content.laps[i]) fastest=(short)(unsigned short)content.laps[i];
+    content.fastest=fastest;
+    long ds=load_plain_file("SLICKS.DAT",dat,65536),ts=load_plain_file(next_path,track,8192);
+    if(ds<=0 || ds>=65536 || ts<=0 || ts>=8192) goto unavailable;
+    m=slicks_amiga_intermission_surface_create(&archive,chunky,palette);
+    if(!m || slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts)) goto unavailable;
+    /* Release preview-only data before taking over hardware. */
+    FreeMem(dat,65536); dat=0; FreeMem(track,8192); track=0; FreeMem(language,2048); language=0;
+    if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+    slicks_amiga_player_menu_clear_dirty(m);
+    platform->key_tail=platform->key_head;
+    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    g_slicks_diag_intermission_menu=m;
+    slicks_diag_intermission_checkpoint();
+    intermission_test_key(platform,diagnostic,test_step);
+    while(!m->intermission->state.exit_code) {
+        unsigned short raw;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) goto done;
+        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+            if(raw&128) continue;
+            unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
+            if(!scan) continue;
+            if(m->help_warning) {
+                if(slicks_amiga_help_warning_close(m)) goto done;
+            } else if(m->change_cars) {
+                int key=slicks_amiga_change_cars_key(m,scan);
+                if(key<0) goto done;
+                if(key) {
+                    slicks_amiga_platform_end(platform);
+                    if(slicks_amiga_change_cars_close(m) ||
+                       slicks_amiga_intermission_refresh_cars(m,g_slicks_setup_session.players.vehicle)) goto done;
+                }
+            } else {
+                int action=slicks_amiga_intermission_key(m,scan);
+                if(action<0) goto done;
+                if(action==SLICKS_INTERMISSION_CHANGE_CARS) {
+                    slicks_amiga_platform_end(platform);
+                    int opened=slicks_amiga_change_cars_open(m,&archive,&g_slicks_setup_session.players,
+                        g_slicks_profiles.setup,setup_resources.vehicle_count,setup_resources.vehicle_weights,
+                        &g_slicks_setup_session.random_state,1,slicks_original_change_cars_title);
+                    if(opened<=0 && slicks_amiga_intermission_refresh_cars(m,g_slicks_setup_session.players.vehicle)) goto done;
+                    if(opened<0 && slicks_amiga_warning_open(m,(const unsigned char *)"CARS UNAVAILABLE - PRESS A KEY")) goto done;
+                } else if(action==SLICKS_INTERMISSION_SAVE_GAME) {
+                    /* Championship serialization is not CFG/PLR persistence.
+                     * Do not pretend that saving setup saves this game. */
+                    if(slicks_amiga_warning_open(m,(const unsigned char *)"SAVE GAME NOT IMPLEMENTED")) goto done;
+                }
+            }
+            if(diagnostic==2) {
+                g_slicks_diag_intermission_phase=(unsigned short)++test_step;
+                slicks_diag_intermission_input();
+            }
+            if(m->intermission->state.exit_code) break;
+            present_menu_surface(platform,m);
+            if(!platform->active && slicks_amiga_platform_begin(platform,0)) goto done;
+            intermission_test_key(platform,diagnostic,test_step);
+        }
+    }
+    result=m->intermission->state.exit_code;
+    goto done;
+unavailable:
+    /* Release the failed attempt before the allocation-free retry notice.
+     * Retry never returns through rewards, profile refresh or playlist advance. */
+    slicks_amiga_player_menu_destroy(m); m=0;
+    slicks_resource_archive_close(&archive);
+    if(dat) { FreeMem(dat,65536); dat=0; }
+    if(track) { FreeMem(track,8192); track=0; }
+    if(language) { FreeMem(language,2048); language=0; }
+    result=intermission_retry_notice(platform,race,chunky,palette,diagnostic);
+    if(result==1) { result=-1; goto retry; }
+done:
+    slicks_amiga_platform_end(platform);
+    slicks_amiga_player_menu_destroy(m); g_slicks_diag_intermission_menu=0;
+    slicks_resource_archive_close(&archive);
+    if(dat) FreeMem(dat,65536);
+    if(track) FreeMem(track,8192);
+    if(language) FreeMem(language,2048);
+    if(result>=0 && slicks_amiga_platform_begin(platform,1)) result=-1;
+    return result;
+}
+
+static void update_race_engines(struct SlicksAmigaAudio *audio,const struct SlicksRaceRuntime *race)
+{
+    unsigned long speeds[4];
+    for(unsigned i=0;i<4;++i) speeds[i]=(unsigned long)race->cars[i].measured_speed;
+    slicks_amiga_audio_update_speeds(audio,speeds);
+}
+static void start_race_engines(struct SlicksAmigaAudio *audio,const struct SlicksRaceRuntime *race,
+    struct SlicksAmigaPlatform *platform)
+{
+    unsigned short vehicles[4]; unsigned mask=0;
+    for(unsigned i=0;i<4;++i) {
+        vehicles[i]=race->cars[i].vehicle;
+        if(!race->participation_ready || race->participation[i]) mask|=1U<<i;
+    }
+    slicks_amiga_platform_wait_display_blank(platform);
+    slicks_amiga_audio_start_engines(audio,vehicles,mask);
+    update_race_engines(audio,race);
+}
+
+static int run_race_pause(struct SlicksAmigaPlatform *platform,struct SlicksAmigaAudio *audio,
+    struct SlicksRaceRuntime *race,unsigned char *chunky,const unsigned char *palette,
+    struct SlicksConfiguration *configuration,unsigned char *setup_dirty,unsigned char row,unsigned char diagnostic)
+{
+    struct SlicksResourceArchive archive={0,0,0}; struct SlicksAmigaPlayerMenu *m=0;
+    const struct SlicksControllersLabels labels={slicks_original_controller_key_names,
+        slicks_original_controller_scans,slicks_original_controller_defaults,slicks_original_controller_exit};
+    int result=-3; unsigned char engine=audio->engine_started; unsigned test_step=0;
+    g_slicks_diag_pause_unavailable=0;
+    g_slicks_diag_paused_race=race;
+    slicks_diag_pause_live_enter();
+    slicks_amiga_platform_wait_display_blank(platform);
+    slicks_amiga_audio_stop(audio);
+    slicks_amiga_platform_end(platform);
+    if(slicks_resource_archive_open(&archive,diagnostic==5?"missing-pause-archive":"SLICKS.000")) {
+        g_slicks_diag_pause_unavailable=1; goto unavailable;
+    }
+    m=diagnostic==6?0:slicks_amiga_race_surface_create(&archive,chunky,palette);
+    if(diagnostic>=2 && diagnostic<=4) g_slicks_diag_pause_fault=(unsigned char)(diagnostic-1);
+    if(!m || slicks_amiga_race_menu_open(m,&archive,"lang1.txt",slicks_original_race_menu_keys,
+        row,slicks_original_players_footer_percent)) {
+        g_slicks_diag_pause_unavailable=m?3:2; goto unavailable;
+    }
+    g_slicks_diag_pause_menu=m; g_slicks_diag_paused_race=race;
+    /* The original keyboard helper flushes entry events. Clear drive latches
+     * so a release consumed by a modal cannot leave a car accelerating. */
+    platform->key_tail=platform->key_head;
+    race->controls=0;
+    for(unsigned i=0;i<4;++i) race->driver_controls[i]=0;
+    if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+    slicks_amiga_player_menu_clear_dirty(m);
+    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    pause_live_checkpoint(platform,diagnostic,&test_step);
+    while(!m->race_menu->state.result) {
+        unsigned short raw;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) goto done;
+        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+            unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
+            if(raw&128) continue;
+            unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
+            if(!scan) continue;
+            if(m->help_warning) {
+                if(slicks_amiga_help_warning_close(m)) goto done;
+            } else if(m->message) {
+                slicks_amiga_platform_end(platform);
+                if(slicks_amiga_message_close(m)) goto done;
+            } else if(m->help) {
+                struct SlicksAmigaHelpKey key=slicks_amiga_help_key((unsigned char)raw,character);
+                if(slicks_help_viewer_key(m->help,key.ascii,key.scan)) {
+                    slicks_amiga_platform_end(platform);
+                    if(slicks_amiga_help_close(m) || slicks_amiga_help_warning_open(m)) goto done;
+                } else if(m->help->navigation.done) {
+                    slicks_amiga_platform_end(platform);
+                    if(slicks_amiga_help_close(m)) goto done;
+                }
+            } else if(m->controllers_dialog) {
+                struct SlicksControllersDialog *state=&m->controllers_dialog->state;
+                if(state->capturing) {
+                    if(slicks_controllers_capture(state,configuration,slicks_original_controller_scans,scan)) goto done;
+                } else if(slicks_controllers_key(state,configuration,slicks_original_configuration.keys,scan)) goto done;
+                if(state->done) {
+                    slicks_amiga_platform_end(platform);
+                    if(slicks_amiga_controllers_close(m)) goto done;
+                } else if(state->capturing) {
+                    if(slicks_amiga_controllers_capture_prompt(m,slicks_original_controller_prompt)) goto done;
+                } else if(slicks_amiga_controllers_draw(m,configuration,&labels)) goto done;
+            } else if(m->race_menu->speed_active) {
+                if(slicks_amiga_race_speed_key(m,configuration,scan)) goto done;
+                if(m->race_menu->speed.done) {
+                    unsigned short argument;
+                    if(slicks_amiga_race_speed_close(m,configuration,&argument)) goto done;
+                    slicks_race_set_timer(race,argument);
+                }
+            } else {
+                enum SlicksRaceMenuAction action=slicks_race_menu_key(&m->race_menu->state,scan);
+                if(action==SLICKS_RACE_MENU_HELP) {
+                    slicks_amiga_platform_end(platform);
+                    if(slicks_amiga_help_open(m,&archive,(const unsigned char *)"") &&
+                       slicks_amiga_help_warning_open(m)) goto done;
+                } else if(action==SLICKS_RACE_MENU_CONTROLLERS) {
+                    slicks_amiga_platform_end(platform);
+                    *setup_dirty=1;
+                    if(slicks_amiga_controllers_open_at(m,&archive,45,65)) {
+                        if(slicks_amiga_warning_open(m,(const unsigned char *)"CONTROLLERS UNAVAILABLE - PRESS A KEY")) goto done;
+                    } else if(slicks_amiga_controllers_draw(m,configuration,&labels)) goto done;
+                } else if(action==SLICKS_RACE_MENU_SPEED) {
+                    if(slicks_amiga_race_speed_open(m,configuration,setup_dirty)) goto done;
+                } else if(!m->race_menu->state.result && slicks_amiga_race_menu_draw(m)) goto done;
+            }
+            if(m->race_menu->state.result) break;
+            present_menu_surface(platform,m);
+            if(!platform->active && slicks_amiga_platform_begin(platform,0)) goto done;
+            pause_live_checkpoint(platform,diagnostic,&test_step);
+        }
+    }
+    result=m->race_menu->state.result;
+    slicks_amiga_platform_end(platform);
+    if(slicks_amiga_race_menu_close(m)) { result=-3; goto done; }
+    driver_device_configuration_storage=*configuration;
+    for(unsigned i=0;i<4;++i) driver_device_state[i]=(struct SlicksDriverDeviceState){0,0,0,0};
+    platform->key_tail=platform->key_head;
+    slicks_diag_pause_live_closed();
+    goto done;
+unavailable:
+    /* Opening is transactional: neither owner creation nor a failed menu
+     * open leaves edits in the race pixels/configuration. View 1 was never
+     * touched. Keep the race alive and allow the next menu key to retry. */
+    if(pause_unavailable_notice(platform,race,chunky,palette,diagnostic)) goto done;
+    result=1;
+    platform->key_tail=platform->key_head;
+done:
+    /* Allocations and archive IO are never released with the OS disabled. */
+    unsigned char restore=(unsigned char)(result!=-3);
+    slicks_amiga_platform_end(platform);
+    slicks_amiga_player_menu_destroy(m); slicks_resource_archive_close(&archive);
+    g_slicks_diag_pause_menu=0; g_slicks_diag_paused_race=0;
+    if(restore) {
+        if(slicks_amiga_platform_begin(platform,1)) return -3;
+        status_clock_vblank=platform->vblank_count;
+        /* The final OS boundary disables audio DMA, so restart the loop
+         * here, not before freeing resources. One-shots are not replayed. */
+        if(result==1 && engine) {
+            slicks_amiga_platform_wait_display_blank(platform);
+            start_race_engines(audio,race,platform);
+        }
+        if(g_slicks_diag_pause_unavailable) slicks_diag_pause_live_recovered();
+    }
+    return result;
+}
+
+int main(void)
+{
+    int argc = 0;
+    const char *argv = 0;
     static unsigned char source_palette[768];
     static unsigned char race_palette[768];
     static unsigned short mode_state[11];
@@ -751,13 +2119,27 @@ int main(int argc, char **argv)
     unsigned long title_display_checksum = 0;
     unsigned char left_was_down = 0;
     unsigned char auto_race;
+    unsigned char original_setup = 0;
     unsigned char restore_test;
     unsigned char race_prepared = 0;
+    unsigned char shadow_fixture = 0;
+    unsigned char jump_track_test = 0;
+    short previous_jump_state[SLICKS_RACE_CAR_COUNT] = {0, 0, 0, 0};
+    unsigned char shadow_background = 0;
+    unsigned long shadow_at = 0;
     unsigned short menu_selection = 0;
+    unsigned short service_menu_open = 0, service_selection = 0;
+    struct SlicksPlayerMenu player_menu_state={0,0,0,0};
+    struct SlicksStatusClock picker_clock={0};
+    unsigned long picker_clock_vblank=0;
     unsigned short selected_vehicle = 5;
+    unsigned short playlist_position = 0;
     unsigned short selected_track = 0;
     unsigned short track_count;
     unsigned short selected_laps = 4;
+    struct SlicksConfiguration configuration = slicks_original_configuration;
+    unsigned char setup_dirty=0,exit_requested=0,save_prompt=0,right_was_down=0;
+    unsigned char race_load_prompt=0,race_load_retry=0;
     const char *track_path;
     char selected_track_path[19];
     int result = 20;
@@ -770,13 +2152,150 @@ int main(int argc, char **argv)
         (CONST_STRPTR)"graphics.library", 39);
     if (!DOSBase || !GfxBase)
         goto cleanup;
+    {
+        struct UtilityBase *UtilityBase=(struct UtilityBase *)OpenLibrary(
+            (CONST_STRPTR)"utility.library",37);
+        if(!UtilityBase) goto cleanup;
+        struct DateStamp now;
+        struct ClockData date;
+        DateStamp(&now);
+        Amiga2Date((unsigned long)now.ds_Days*86400UL+
+            (unsigned long)now.ds_Minute*60UL+(unsigned long)now.ds_Tick/TICKS_PER_SECOND,&date);
+        CloseLibrary((struct Library *)UtilityBase);
+        slicks_player_profile_defaults(&g_slicks_profiles,slicks_original_profile_colours);
+        /* Original 2c03e stores calendar day, one-based month and full year;
+         * its pre-1997 guard clears the day. No DOS BIOS identity on Amiga. */
+        g_slicks_setup_load_report=slicks_amiga_load_setup(&configuration,&g_slicks_profiles,
+            date.year<1997?0:date.mday,date.month,date.year);
+        if(g_slicks_setup_load_report.result!=SLICKS_SETUP_LOADED) {
+            PutStr((CONST_STRPTR)"Slicks: setup could not be loaded; no files were changed.\n");
+            if(g_slicks_setup_load_report.path) {
+                PutStr((CONST_STRPTR)g_slicks_setup_load_report.path);
+                PutStr((CONST_STRPTR)"\n");
+            }
+            switch(g_slicks_setup_load_report.result) {
+            case SLICKS_SETUP_LOAD_RECOVERY:
+                PutStr((CONST_STRPTR)"Recovery required: preserve and inspect .new/.bak files before restarting.\n"); break;
+            case SLICKS_SETUP_LOAD_FOREIGN:
+                PutStr((CONST_STRPTR)"Foreign CFG signature: this configuration requires explicit import.\n"); break;
+            case SLICKS_SETUP_LOAD_INVALID:
+                PutStr((CONST_STRPTR)"Malformed or incomplete setup file. Restore a known-good copy.\n"); break;
+            default:
+                PrintFault(g_slicks_setup_load_report.io_error,(CONST_STRPTR)"Setup read"); break;
+            }
+            slicks_diag_setup_load_failed();
+            goto cleanup;
+        }
+        const char *labels[3]={slicks_original_profile_labels[0],
+            slicks_original_profile_labels[1],slicks_original_profile_labels[2]};
+        if(slicks_set_builtin_profiles(&g_slicks_profiles,SLICKS_VEHICLE_COUNT,labels))
+            goto cleanup;
+    }
+    /* The shared framework invokes main() with no C arguments. Read the
+     * CLI string from DOS, not the caller's saved registers on the stack. */
+    argv = (const char *)GetArgStr();
+    if (!argv)
+        argv = "";
+    while (*argv == ' ' || *argv == '\t')
+        ++argv;
+    while (argv[argc])
+        ++argc;
+    while (argc && (unsigned char)argv[argc - 1] <= ' ')
+        --argc;
+    unsigned char profile_dialog_failure_test=(unsigned char)(argc==9 &&
+        argv[0]=='P' && argv[1]=='L' && argv[2]=='A' && argv[3]=='Y' &&
+        argv[4]=='E' && argv[5]=='R' && argv[6]=='S' &&
+        (argv[7]=='N' || argv[7]=='C') && (argv[8]=='F' || argv[8]=='L'));
+    unsigned char profile_dialog_failure_sent=0;
+    unsigned char profile_dialog_fault=profile_dialog_failure_test && argv[8]=='L'?2:1;
+    if(profile_dialog_failure_test) --argc;
+    unsigned char setup_session_test=(unsigned char)((argc==5 || (argc==6 && (argv[5]=='I' || argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G'))) && argv[0]=='S' &&
+        argv[1]=='E' && argv[2]=='T' && argv[3]=='U' && argv[4]=='P');
+    unsigned char setup_input_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='I');
+    unsigned char setup_reload_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G'));
+    unsigned char setup_failure_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='F' || argv[5]=='G'));
+    if(setup_failure_test) g_slicks_diag_race_load_fault=argv[5]=='F'?2:6;
+    unsigned char setup_abort_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='A'),setup_abort_sent=0;
+    unsigned char pause_live_test=(unsigned char)((argc==8 || (argc==9 && (argv[8]=='F' || argv[8]=='N'))) && argv[0]=='L' && argv[1]=='I' &&
+        argv[2]=='V' && argv[3]=='E' && argv[4]=='M' && argv[5]=='E' && argv[6]=='N' && argv[7]=='U');
+    unsigned char pause_failure_test=(unsigned char)(pause_live_test && argc==9 && argv[8]=='F');
+    unsigned char pause_nested_test=(unsigned char)(pause_live_test && argc==9 && argv[8]=='N');
+    unsigned char pause_live_sent=0;
+    if(setup_input_test) {
+        configuration.selected_profile[0]=2;
+        configuration.selected_profile[1]=0;
+        configuration.selected_profile[2]=2;
+        configuration.selected_profile[3]=1;
+    }
+    unsigned char player_menu_test=(unsigned char)((argc==7 || (argc==8 && (argv[7]=='R' || argv[7]=='K' || argv[7]=='G' || argv[7]=='D' || argv[7]=='E' || argv[7]=='N' || argv[7]=='C' || argv[7]=='P' || argv[7]=='T' || argv[7]=='U' || argv[7]=='V' || argv[7]=='W' || argv[7]=='H' || argv[7]=='X' || argv[7]=='Y'))) && argv[0]=='P' && argv[1]=='L' &&
+        argv[2]=='A' && argv[3]=='Y' && argv[4]=='E' && argv[5]=='R' && argv[6]=='S');
+    unsigned char vehicle_save_test=(unsigned char)(argc==8 && argv[0]=='P' && argv[1]=='L' &&
+        argv[2]=='A' && argv[3]=='Y' && argv[4]=='E' && argv[5]=='R' && argv[6]=='S' && (argv[7]=='Z' || argv[7]=='B'));
+    player_menu_test|=vehicle_save_test;
+    unsigned char name_test_stage=0;
+    unsigned char shared_human_test=(unsigned char)(player_menu_test && argc==8 && argv[7]=='H');
+    unsigned char persistence_test=(unsigned char)(player_menu_test && argc==8 && (argv[7]=='P' || argv[7]=='T' || argv[7]=='U' || argv[7]=='V' || argv[7]=='W' || argv[7]=='X' || argv[7]=='Y'));
+    unsigned char unique_setup_test=(unsigned char)(persistence_test && argv[7]=='Y'),unique_stage=0;
+    unsigned char mixed_setup_test=(unsigned char)(persistence_test && argv[7]=='W');
+    unsigned char combined_test=(unsigned char)(persistence_test && argv[7]=='U'),combined_stage=0;
+    unsigned char failure_injected=0;
+    unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J'));
+    unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]=='J');
+    unsigned char options_test=(unsigned char)((intermission_live_test || argc==7 || (argc==8 && (argv[7]=='A' || argv[7]=='B' || argv[7]=='C' || argv[7]=='D' || argv[7]=='E' || argv[7]=='F' || argv[7]=='H' || argv[7]=='J' || argv[7]=='K' || argv[7]=='L' || argv[7]=='M' || argv[7]=='N' || argv[7]=='P' || argv[7]=='Q' || argv[7]=='R' || argv[7]=='S' || argv[7]=='T' || argv[7]=='U' || argv[7]=='V' || argv[7]=='W' || argv[7]=='Z'))) && argv[0]=='O' && argv[1]=='P' &&
+        argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S');
+    unsigned char controllers_test=(unsigned char)(options_test && argc==8 && argv[7]=='C');
+    unsigned char collisions_test=(unsigned char)(options_test && argc==8 && argv[7]=='D');
+    unsigned char weapons_test=(unsigned char)(options_test && argc==8 && (argv[7]=='E' || argv[7]=='F'));
+    unsigned char joystick_test=(unsigned char)(options_test && argc==8 && argv[7]=='Q');
+    unsigned char arcade_test=(unsigned char)(options_test && (argc==8 || intermission_live_test) && (argv[7]=='A' || argv[7]=='B' || argv[7]=='P' || argv[7]=='T' || argv[7]=='U' || argv[7]=='Z'));
+    unsigned char arcade_save_test=(unsigned char)(arcade_test && argv[7]=='Z');
+    unsigned char sequence_test=(unsigned char)(arcade_test && (argv[7]=='B' || argv[7]=='P' || argv[7]=='T' || argv[7]=='U'));
+    unsigned char pause_save_test=(unsigned char)(sequence_test && argv[7]=='P');
+    unsigned char pause_transition_test=(unsigned char)(sequence_test && (argv[7]=='T' || pause_save_test));
+    unsigned char sequence_failure_test=(unsigned char)(sequence_test && argv[7]=='U');
+    unsigned char sequence_returns=0;
+    unsigned char volume_test=(unsigned char)(options_test && argc==8 && (argv[7]=='V' || argv[7]=='W'));
+    unsigned char volume_save_test=(unsigned char)(volume_test && argv[7]=='W');
+    unsigned char clear_test=(unsigned char)(options_test && argc==8 && (argv[7]=='R' || argv[7]=='S')),clear_test_stage=0;
+    unsigned char help_test=(unsigned char)(options_test && argc==8 && (argv[7]=='H' || argv[7]=='J' || argv[7]=='K' || argv[7]=='L' || argv[7]=='M' || argv[7]=='N'));
+    unsigned char help_failure_test=(unsigned char)(help_test && (argv[7]=='L' || argv[7]=='M' || argv[7]=='N')),help_failure_stage=0;
+    unsigned char options_test_stage=0;
+    unsigned char tracks_test=(unsigned char)((argc==6 || (argc==7 && (argv[6]=='L' || argv[6]=='R' || argv[6]=='D' || argv[6]=='F' || argv[6]=='I' || argv[6]=='J' || argv[6]=='K' || argv[6]=='M' || argv[6]=='N'))) && argv[0]=='T' && argv[1]=='R' &&
+        argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S');
+    unsigned char tracks_test_stage=0;
+    unsigned char track_info_test=(unsigned char)(tracks_test && argc==7 && (argv[6]=='I' || argv[6]=='J' || argv[6]=='K'));
+    unsigned char track_info_fault_test=(unsigned char)(track_info_test && argv[6]=='K'),track_info_fault_stage=1;
+    unsigned char track_info_failure_test=(unsigned char)(track_info_test && argv[6]=='J'),track_info_failure_stage=0;
+    unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test);
+    unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
+    unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
+    original_setup=(unsigned char)(!argc || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
+    if(original_setup) {
+        struct DateStamp now;
+        DateStamp(&now);
+        /* DOS time() uses a 1970 epoch; Amiga DateStamp days start in 1978.
+         * Use the local machine's clock as the platform seed source. This
+         * does not promise identical clocks/time-zone settings on two hosts. */
+        unsigned long seconds=252460800UL+(unsigned long)now.ds_Days*86400UL+
+            (unsigned long)now.ds_Minute*60UL+(unsigned long)now.ds_Tick/TICKS_PER_SECOND;
+        setup_resources=(struct SlicksSetupResources){g_slicks_profiles.setup,
+            g_slicks_profiles.count,SLICKS_VEHICLE_COUNT,slicks_original_override_count,
+            slicks_original_fallback_colours,slicks_original_vehicle_weights,
+            slicks_original_item_flags,request_setup_vehicle,setup_vehicle_requests};
+        slicks_setup_session_start(&g_slicks_setup_session,&configuration,&setup_resources,
+            setup_session_test?0x1234:(unsigned short)seconds);
+        selected_vehicle=(unsigned char)g_slicks_setup_session.players.vehicle[0];
+        if(configuration.options[3]>=1 && configuration.options[3]<=100)
+            selected_laps=(unsigned short)configuration.options[3];
+    }
     if (slicks_amiga_platform_create(&platform, GfxBase) != 0)
         goto cleanup;
 
     if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0)
         goto cleanup;
     title_asset = (unsigned char *)AllocMem(64003UL, MEMF_ANY);
-    title_frame = (unsigned char *)AllocMem(64002UL, MEMF_ANY);
+    title_frame = (unsigned char *)AllocMem(TITLE_FRAME_ALLOCATION_BYTES,
+                                          MEMF_ANY | MEMF_CLEAR);
     if (!title_asset || !title_frame)
         goto cleanup;
     if (slicks_resource_archive_load(&archive, "mainmenu.@I", title_asset,
@@ -790,7 +2309,8 @@ int main(int argc, char **argv)
     if (!logical)
         goto cleanup;
     g_slicks_diag_logical = logical;
-    chunky = (unsigned char *)AllocMem(320UL * 200UL, MEMF_ANY);
+    chunky = (unsigned char *)AllocMem(CHUNKY_ALLOCATION_BYTES,
+                                      MEMF_ANY | MEMF_CLEAR);
     if (!chunky)
         goto cleanup;
     race = (struct SlicksRaceRuntime *)AllocMem(sizeof(*race), MEMF_ANY);
@@ -798,16 +2318,15 @@ int main(int argc, char **argv)
         goto cleanup;
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
-    make_title_surface(logical, title_frame, source_palette);
-    redraw_title_configuration(&platform, logical, chunky, source_palette,
-                               menu_selection, selected_vehicle,
-                               "BASIC.SS", selected_laps);
-    title_checksum = checksum_planes(logical);
-    slicks_convert_to_amiga(logical, chunky, platform.views[0].bitmap);
-    if (slicks_amiga_platform_set_view(&platform, 0, source_palette) != 0)
-        goto cleanup;
-    title_display_checksum = checksum_bitmap(platform.views[0].bitmap);
-    track_count = discover_tracks(track_names);
+    track_count = discover_tracks(track_names,(unsigned char)!original_setup);
+    g_slicks_track_state.random_order=slicks_original_track_random_order;
+    if(original_setup) {
+        /* Original startup 26164/26169: select every discovered track,
+         * then shuffle the playlist (without reordering the name catalogue). */
+        if(slicks_track_playlist_all(&g_slicks_track_playlist,track_count) ||
+           slicks_track_playlist_shuffle(&g_slicks_track_playlist,&g_slicks_setup_session.random_state)) goto cleanup;
+        selected_track=(unsigned short)track_selection[0];
+    }
     g_slicks_diag_track_files = track_count;
     {
         unsigned short at;
@@ -817,6 +2336,17 @@ int main(int argc, char **argv)
             for (at = 0; at < sizeof(g_slicks_diag_second_track); ++at)
                 g_slicks_diag_second_track[at] = track_names[1][at];
     }
+    /* Draw only after native startup has selected the playlist's first
+     * track. The former BASIC placeholder disagreed with immediate GO. */
+    make_title_surface(logical, title_frame, source_palette);
+    redraw_title_configuration(&platform, logical, chunky, source_palette,
+                               menu_selection, selected_vehicle,
+                               track_names[selected_track], selected_laps);
+    title_checksum = checksum_planes(logical);
+    slicks_convert_to_amiga(logical, chunky, platform.views[0].bitmap);
+    if (slicks_amiga_platform_set_view(&platform, 0, source_palette) != 0)
+        goto cleanup;
+    title_display_checksum = checksum_bitmap(platform.views[0].bitmap);
     sample_resource = (unsigned char *)AllocMem(131691UL, MEMF_ANY);
     if (!sample_resource ||
         slicks_resource_archive_load(&archive, "samples.dat", sample_resource,
@@ -827,20 +2357,87 @@ int main(int argc, char **argv)
         slicks_amiga_audio_add_music(&audio, sample_resource, 18852UL) != 0)
         goto cleanup;
     g_slicks_diag_audio_ready = audio.ready;
+    slicks_amiga_audio_set_volume(&audio,configuration.options[1],configuration.options[2]);
     FreeMem(sample_resource, 131691UL);
     sample_resource = 0;
     slicks_resource_archive_close(&archive);
 
-    /* The no-stdlib Amiga entry passes the CLI byte count in d0 and its raw
-     * argument string in a0, rather than constructing a Unix argv array. */
+    /* Diagnostic modes consume the trimmed raw CLI string, not Unix argv. */
     restore_test = (unsigned char)(
         argc > 0 && ((const char *)argv)[0] == 'E');
-    auto_race = (unsigned char)(argc > 1 && !restore_test);
+    service_menu_test = (unsigned char)(argc > 0 && argv[0] == 'C');
+    if (service_menu_test) {
+        /* CONFIG/CONFIGD exercise edits from a known zero baseline, not the
+         * original saved custom defaults used by normal interactive play. */
+        configuration.options[9]=configuration.options[10]=0;
+        g_slicks_diag_target_frame = 3600;
+    }
+    auto_race = (unsigned char)(argc > 0 && !restore_test && !service_menu_test && !player_menu_test && !options_test && !setup_reload_test && !title_help_test && !tracks_test);
+    if(argc>0 && argv[0]=='W') {
+        weapon_hud_fixture=1;
+        g_slicks_diag_audit_bitmap=1;
+        g_slicks_diag_target_frame=700;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'F') {
+        fuel_race_test = 1;
+        g_slicks_diag_target_frame = 3600;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'U') {
+        jump_track_test = 1;
+        g_slicks_diag_target_frame = 700;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'J') {
+        shadow_fixture = 1;
+        g_slicks_diag_audit_bitmap = 1;
+        g_slicks_diag_target_frame = 5;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'M') {
+        g_slicks_diag_profile_all = 1;
+        g_slicks_diag_target_frame = 700;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'V') {
+        g_slicks_diag_audio_in_blank = 1;
+        g_slicks_diag_target_frame = 700;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'D') {
+        extern unsigned char slicks_amiga_audio_disable_dma;
+        slicks_amiga_audio_disable_dma = 1;
+        g_slicks_diag_target_frame = 700;
+    }
+    if (argc > 0 && ((const char *)argv)[0] == 'N') {
+        /* NOAUDIO is a diagnostic, distinct from muted host output. All
+         * playback/update entry points return before hardware access when
+         * ready is clear. Keep sample allocations unchanged for this A/B. */
+        audio.ready = 0;
+        g_slicks_diag_audio_ready = 0;
+        g_slicks_diag_target_frame = 700;
+    }
+    /* PLAYERS/PLAYERSR also start with P; they must retain normal particles
+     * and the normal gameplay checkpoint when handing off from the menu. */
+    if (argc > 0 && argv[0] == 'P' && !player_menu_test) {
+        extern unsigned char slicks_race_disable_particles;
+        slicks_race_disable_particles = 1;
+        g_slicks_diag_target_frame = 700;
+    }
+    /* SETUP also starts with S, but must advance the real race. Only the
+     * SCANOUT family selects the frozen-scene display diagnostic. */
+    if (argc >= 7 && argv[0]=='S' && argv[1]=='C' && argv[2]=='A' &&
+        argv[3]=='N' && argv[4]=='O' && argv[5]=='U' && argv[6]=='T')
+        g_slicks_diag_scanout_only =
+            (argc > 7 && ((const char *)argv)[7] == 'F') ? 3 :
+            (argc > 7 && ((const char *)argv)[7] == 'C') ? 2 : 1;
+    if (argc > 0 && ((const char *)argv)[0] == 'B') {
+        g_slicks_diag_audit_bitmap =
+            (argc > 6 && ((const char *)argv)[6] == 'F') ? 2 : 1;
+        g_slicks_diag_target_frame = 700;
+    }
     if (argc > 0 && ((const char *)argv)[0] == 'L')
         g_slicks_diag_target_frame = 700;
     if (argc > 0 && ((const char *)argv)[0] == 'R')
         g_slicks_diag_target_frame = 1800;
-    if (argc > 0 && ((const char *)argv)[0] == 'T')
+    if (jump_track_test)
+        track_path = "TRACKS/BUMPS.SS";
+    else if (argc > 0 && ((const char *)argv)[0] == 'T')
         track_path = "TRACKS/BASICTRK.SS";
     else if (argc > 0 && ((const char *)argv)[0] == 'I')
         track_path = "TRACKS/ICE.SS";
@@ -853,20 +2450,192 @@ int main(int argc, char **argv)
      * waits until GO so the native menu can choose the track, car and laps;
      * its loader temporarily runs with AmigaOS restored. */
     if (auto_race) {
+        struct SlicksConfiguration diagnostic_configuration=configuration;
+        if(fuel_race_test) {
+            diagnostic_configuration.options[0]=4;
+            diagnostic_configuration.options[9]=10;
+            diagnostic_configuration.options[10]=0;
+        }
         if (prepare_race(&platform, logical, chunky, mode_state, race,
-                         track_path, race_palette) != 0)
+                         track_path, race_palette, selected_vehicle,
+                         &diagnostic_configuration,original_setup?&g_slicks_setup_session:0,1) != 0)
             goto cleanup;
         race_prepared = 1;
         if (argc > 0 && ((const char *)argv)[0] == 'R')
             slicks_race_set_laps(race, 1);
     }
 
+    if(argc==7 && argv[0]=='U' && argv[1]=='I' && argv[2]=='M' &&
+       argv[3]=='E' && argv[4]=='N' && argv[5]=='U' && argv[6]=='2') {
+        if(test_intermission_surface(&platform,chunky,race_palette)) goto cleanup;
+        result=0; goto cleanup;
+    }
+    if(argc==6 && argv[0]=='U' && argv[1]=='I' && argv[2]=='M' &&
+       argv[3]=='E' && argv[4]=='N' && argv[5]=='U') {
+        if(test_pause_surface(&platform,chunky,race_palette)) goto cleanup;
+        result=0; goto cleanup;
+    }
     g_slicks_diag_checksum = title_checksum;
     g_slicks_diag_display_checksum = title_display_checksum;
     if (slicks_amiga_platform_begin(&platform, 0) != 0)
         goto cleanup;
     g_slicks_diag_ready = 1;
+    if (service_menu_test) {
+        /* CONFIG gate: only input events, never setup/race-state injection.
+         * Open Options, fuel +5 twice, damage +20, Escape, then GO. */
+        static const unsigned char keys[] = {
+            0x4d, 0x4d, 0x4d, 0x44, 0x4e, 0x4e, 0x4d,
+            0x4e, 0x45, 0x4c, 0x4c, 0x4c, 0x44
+        };
+        unsigned short key;
+        platform.key_tail = 0;
+        for (key = 0; key < sizeof(keys); ++key)
+            platform.keys[key] = keys[key];
+        /* CONFIGD uses the same menu's Return-to-maximum action for damage. */
+        if (argc > 6 && argv[6] == 'D')
+            platform.keys[7] = 0x44;
+        platform.key_head = sizeof(keys);
+    }
     slicks_diag_frame_ready();
+    if(setup_reload_test) {
+        platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
+    }
+    if(tracks_test) {
+        /* Ordinary input: open Tracks, None, select first, close/reopen.
+         * A second batch below starts the race, respecting the 16-key queue. */
+        static const unsigned char keys[]={0x4d,0x4d,0x44,0x4e,0x4d,0x4d,0x4d,
+            0x44,0x4f,0x44,0x45,0x44,0x45};
+        platform.key_tail=0;
+        for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+        platform.key_head=track_lists_test?10:sizeof keys;
+        if(track_info_test) { platform.keys[3]=0x51; platform.key_head=4; }
+        if(track_info_failure_test) platform.key_head=3;
+        if(track_info_fault_test) g_slicks_diag_track_info_fault=1;
+    }
+    if(title_help_test) {
+        static const unsigned char keys[]={0x4d,0x4d,0x4d,0x4d,0x44,0x45,0x50,0x45,0x4d,0x44};
+        platform.key_tail=0;
+        for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+        platform.key_head=sizeof keys;
+        if(title_help_failure_test) platform.key_head=0;
+    }
+    if(help_test) {
+        static const unsigned char keys[]={0x4d,0x4d,0x4d,0x44,0x50,0x4d,0x44,0x41,0x45,0x50,0x45,0x45,0x45};
+        platform.key_tail=0;
+        for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+        platform.key_head=sizeof keys;
+        if(help_failure_test) platform.key_head=4; /* Enter Options; faults below. */
+        if(help_failure_test && argv[7]=='M') platform.key_tail=2; /* Players */
+        if(help_failure_test && argv[7]=='N') platform.key_tail=1; /* Tracks */
+        if(argv[7]=='J') {
+            /* Same navigation/reopen gate entered through Players. */
+            platform.key_tail=2;
+        }
+        if(argv[7]=='K') {
+            /* Players Help: previous page, next page, Contents, return. */
+            static const unsigned char page_keys[]={0x4d,0x44,0x50,0x3f,0x1f,0x50,0x45,0x45,0x45};
+            for(unsigned i=0;i<sizeof page_keys;++i) platform.keys[i]=page_keys[i];
+            platform.key_head=sizeof page_keys;
+        }
+    } else if(options_test) {
+        static const unsigned char keys[]={0x4d,0x4d,0x4d,0x44,0x4e,0x4e,0x4e,0x4e,
+            0x4d,0x4d,0x4d,0x4e,0x45,0x44};
+        platform.key_tail=0;
+        unsigned count=(controllers_test || clear_test)?8:sizeof keys;
+        for(unsigned i=0;i<count;++i) platform.keys[i]=keys[i];
+        platform.key_head=(unsigned char)count;
+        if(collisions_test || weapons_test) {
+            static const unsigned char collision_keys[]={0x4d,0x4d,0x4d,0x44,0x3d,0x4e,0x4e,0x4e,0x4e};
+            for(unsigned i=0;i<sizeof collision_keys;++i) platform.keys[i]=collision_keys[i];
+            platform.key_head=sizeof collision_keys; options_test_stage=1;
+        }
+        if(joystick_test) {
+            /* Reload the unique-profile fixture; choose Custom, Controllers,
+             * driver 3 / joystick 1, then return to GO using ordinary keys. */
+            static const unsigned char joystick_keys[]={
+                0x4d,0x4d,0x4d,0x44,0x3d,0x4e,0x4e,0x4e,0x4e};
+            for(unsigned i=0;i<sizeof joystick_keys;++i) platform.keys[i]=joystick_keys[i];
+            platform.key_head=sizeof joystick_keys;
+            g_slicks_diag_target_frame=3600;
+        }
+        if(clear_test) {
+            /* Keypad 7 selects the original minimum before choosing Custom;
+             * a prior diagnostic may already have saved another mode. */
+            static const unsigned char clear_keys[]={0x4d,0x4d,0x4d,0x44,0x3d,0x4e,0x4e,0x4e,0x4e};
+            for(unsigned i=0;i<sizeof clear_keys;++i) platform.keys[i]=clear_keys[i];
+            platform.key_head=sizeof clear_keys;
+        }
+        if(volume_test) {
+            static const unsigned char volume_keys[]={0x4d,0x4d,0x4d,0x44,0x4d,0x3d,0x4e,0x4e,0x4e,0x4e,0x4e};
+            for(unsigned i=0;i<sizeof volume_keys;++i) platform.keys[i]=volume_keys[i];
+            platform.key_head=sizeof volume_keys;
+        }
+        if(arcade_test) {
+            /* Original Options: mode minimum then five increments, down
+             * past both sound rows to Arcade time, select its minimum 5s. */
+            static const unsigned char arcade_keys[]={0x4d,0x4d,0x4d,0x44,
+                0x3d,0x4e,0x4e,0x4e,0x4e,0x4e,0x4d,0x4d,0x4d,0x3d};
+            for(unsigned i=0;i<sizeof arcade_keys;++i) platform.keys[i]=arcade_keys[i];
+            platform.key_head=sizeof arcade_keys;
+        }
+    }
+    if(player_menu_test) {
+        menu_selection=1;
+        if(open_player_menu(&platform,chunky,&configuration,&player_menu_state)) goto cleanup;
+        /* Like CONFIG: inject ordinary input events on the target, not game state. */
+        static const unsigned char menu_keys[]={0x4d,0x33,0x4e,0x4f,0x4c};
+        platform.key_tail=0;
+        for(unsigned i=0;i<sizeof menu_keys;++i) platform.keys[i]=menu_keys[i];
+        platform.key_head=sizeof menu_keys;
+        if(vehicle_save_test) {
+            /* Change only slot 2's vehicle shortcut, then exit and save.
+             * No picker/editor action may accidentally set the dirty flag. */
+            unsigned count=argv[7]=='B'?10:1;
+            platform.keys[0]=0x4d; platform.keys[1]=0x4d;
+            for(unsigned i=0;i<count;++i) platform.keys[2+i]=0x33;
+            platform.keys[2+count]=0x45; platform.keys[3+count]=0x45;
+            platform.key_head=(unsigned char)(count+4);
+        } else if(argc==8 && (argv[7]=='N' || argv[7]=='C' || persistence_test)) {
+            /* Create ABC through the real prompt, then select it for Edit.
+             * The main loop supplies subsequent ordinary input events. */
+            static const unsigned char name_keys[]={0x4d,0x4d,0x4d,0x4d,0x44,
+                0x44,0x20,0x35,0x33,0x44,0x51,0x4d,0x44,0x1d,0x44};
+            for(unsigned i=0;i<sizeof name_keys;++i) platform.keys[i]=name_keys[i];
+            platform.key_head=sizeof name_keys;
+        } else if(argc==8 && argv[7]=='H') {
+            /* Fresh setup: shared Human in slots 0/1/3, None in slot 2. */
+            static const unsigned char shared_keys[]={0x4d,0x4e,0x4d,0x4f,0x4d,0x4e,0x45,0x45};
+            for(unsigned i=0;i<sizeof shared_keys;++i) platform.keys[i]=shared_keys[i];
+            platform.key_head=sizeof shared_keys;
+        } else if(argc==8 && argv[7]=='E') {
+            /* Add, change type/percentage/vehicle, cancel, reopen, then
+             * reject F2 with an empty name. Only ordinary input events. */
+            static const unsigned char editor_keys[]={0x4d,0x4d,0x4d,0x4d,0x44,
+                0x4d,0x44,0x4e,0x4d,0x4e,0x45,0x44,0x51};
+            for(unsigned i=0;i<sizeof editor_keys;++i) platform.keys[i]=editor_keys[i];
+            platform.key_head=sizeof editor_keys;
+        } else if(argc==8 && argv[7]=='D') {
+            /* Delete row, cancel one prompt with N, then confirm with Y.
+             * Memory-only profile lifecycle; no profile-file writer here. */
+            static const unsigned char delete_keys[]={0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,
+                0x44,0x4d,0x44,0x36,0x44,0x4d,0x44,0x15};
+            for(unsigned i=0;i<sizeof delete_keys;++i) platform.keys[i]=delete_keys[i];
+            platform.key_head=sizeof delete_keys;
+        } else if(argc==8 && argv[7]=='R') {
+            static const unsigned char handoff_keys[]={0x45,0x44,0x45,0x4c,0x44};
+            for(unsigned i=0;i<sizeof handoff_keys;++i) platform.keys[sizeof menu_keys+i]=handoff_keys[i];
+            platform.key_head=sizeof menu_keys+sizeof handoff_keys;
+        } else if(argc==8 && (argv[7]=='K' || argv[7]=='G')) {
+            static const unsigned char picker_keys[]={0x44,0x4c,0x44,0x44,0x4d,0x45};
+            for(unsigned i=0;i<sizeof picker_keys;++i) platform.keys[sizeof menu_keys+i]=picker_keys[i];
+            platform.key_head=sizeof menu_keys+sizeof picker_keys;
+            if(argv[7]=='G') {
+                static const unsigned char race_keys[]={0x45,0x4c,0x44};
+                for(unsigned i=0;i<sizeof race_keys;++i) platform.keys[platform.key_head+i]=race_keys[i];
+                platform.key_head+=sizeof race_keys;
+            }
+        }
+    }
     if (restore_test || g_slicks_diag_force_exit) {
         result = 0;
         goto cleanup;
@@ -874,32 +2643,251 @@ int main(int argc, char **argv)
 
     if (auto_race) {
         enter_prepared_race(&platform, logical, race);
-        slicks_amiga_audio_start_engine(
-            &audio, race->cars[0].vehicle, 100);
+        if(setup_input_test) {
+            /* Real input-event path: hold default group-0 Q and group-1
+             * keypad 7 for the two selected human drivers (0 and 2). */
+            platform.key_tail=0;
+            platform.keys[0]=0x10; platform.keys[1]=0x3d;
+            platform.key_head=2;
+        }
+        if (g_slicks_diag_audio_in_blank)
+            slicks_amiga_platform_wait_display_blank(&platform);
+        start_race_engines(&audio,race,&platform);
         g_slicks_diag_engine_sample_block = audio.engine_sample_block;
     }
 
     for (;;) {
         unsigned short code;
         unsigned char left_down;
-        slicks_amiga_platform_wait_vblank(&platform);
-        if (g_slicks_diag_force_exit) {
+        if (!g_slicks_diag_ingame)
+            slicks_amiga_platform_wait_vblank(&platform);
+        if (g_slicks_diag_force_exit || (pause_live_test && pause_live_sent && race->frame_count>=150)) {
             result = 0;
             goto cleanup;
         }
-        if (slicks_amiga_platform_right_mouse()) {
-            result = 0;
-            goto cleanup;
+        setup_dirty|=player_menu_state.dirty;
+        setup_dirty|=g_slicks_options_state.dirty;
+        unsigned char right_down=(unsigned char)!!slicks_amiga_platform_right_mouse();
+        if(g_slicks_diag_ingame && race->participation_ready)
+            for(unsigned driver=0;driver<4;++driver)
+                if(race->participation[driver]<0 && configuration.player_input[driver]==2)
+                    right_down=0; /* Port-zero second button belongs to the driver. */
+        if(right_down && !right_was_down && !save_prompt) exit_requested=1;
+        right_was_down=right_down;
+        if(exit_requested) {
+            exit_requested=0;
+            /* Diagnostic modes never write setup files implicitly. The normal
+             * original caller saves on program exit, not on every modal close. */
+            if((argc && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test) || !setup_dirty) { result=0; goto cleanup; }
+            slicks_amiga_platform_end(&platform);
+            if(persistence_test && (argv[7]=='T' || argv[7]=='V') && !failure_injected) {
+                /* Isolated diagnostic fault, using AmigaDOS throughout so
+                 * emulator host-directory caching cannot affect recovery. */
+                BPTR obstruction=CreateDir((CONST_STRPTR)"SLICKS.CFG.new");
+                if(!obstruction) goto cleanup;
+                UnLock(obstruction); failure_injected=1;
+            }
+            g_slicks_setup_save_report=slicks_amiga_store_setup(&configuration,&g_slicks_profiles,
+                SLICKS_AMIGA_CONFIG_SIGNATURE);
+            slicks_diag_setup_saved();
+            if(g_slicks_setup_save_report.result==SLICKS_SETUP_SAVED) {
+                setup_dirty=0; result=0; goto cleanup;
+            }
+            /* Keep live settings and ownership on failure. This platform
+             * error screen is intentionally not presented as original DOS UI. */
+            save_prompt=1;
+            if(g_slicks_setup_save_report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
+                setup_dirty=0; player_menu_state.dirty=0; g_slicks_options_state.dirty=0; save_prompt=2;
+            }
+            slicks_amiga_audio_stop(&audio);
+            g_slicks_diag_ingame=0;
+            clear_title_rectangle(logical,0,0,320,200);
+            slicks_draw_title_text(logical,save_prompt==2?"SAVED - BACKUP CLEANUP FAILED":"SETUP SAVE FAILED",160,70,15);
+            slicks_draw_title_text(logical,g_slicks_setup_save_report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
+                "PRESERVE NEW AND BAK FILES":"YOUR SETTINGS ARE STILL IN MEMORY",160,90,15);
+            slicks_draw_title_text(logical,save_prompt==2?"ENTER TO EXIT":"ENTER RETRIES - ESC RETURNS",160,110,15);
+            slicks_convert_to_amiga(logical,chunky,platform.views[0].bitmap);
+            if(slicks_amiga_platform_set_view(&platform,0,source_palette) ||
+               slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+            slicks_diag_setup_save_failed();
+            if(failure_injected==1) {
+                slicks_amiga_platform_end(&platform);
+                if(!DeleteFile((CONST_STRPTR)"SLICKS.CFG.new")) goto cleanup;
+                failure_injected=2;
+                if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+            }
+            if(persistence_test && save_prompt==1) {
+                /* Diagnostic retry is still ordinary input; the fault and
+                 * recovery are supplied outside the target's game state. */
+                platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
+                if(argv[7]=='X') {
+                    platform.keys[0]=0x45; platform.keys[1]=0x44; platform.key_head=2;
+                }
+                if(argv[7]=='V') {
+                    /* Cancel failure, reopen Players, close, and exit again.
+                     * The second exit must still save the retained edits. */
+                    static const unsigned char keys[]={0x45,0x44,0x45,0x45};
+                    for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+                    platform.key_head=sizeof keys;
+                }
+            }
+        }
+        if(pause_live_test && pause_live_sent<(pause_failure_test?6:1) && g_slicks_diag_ingame && race->frame_count>=100U+pause_live_sent) {
+            g_slicks_diag_target_frame=150; race->profile_frame=150;
+            platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1; ++pause_live_sent;
+        }
+        if(setup_abort_test && !setup_abort_sent && g_slicks_diag_ingame &&
+           race->frame_count>=10 && platform.key_head==platform.key_tail) {
+            platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;
+            setup_abort_sent=1;
+        }
+        if(pause_save_test && g_slicks_diag_ingame && sequence_returns<2 &&
+            race->frame_count>=100U+50U*sequence_returns && platform.key_head==platform.key_tail) {
+            platform.key_tail=0; platform.keys[0]=(unsigned char)(sequence_returns?0x59:0x45);
+            platform.key_head=1; ++sequence_returns;
+        }
+        if(pause_transition_test && !pause_save_test && g_slicks_diag_ingame && race->frame_count>=100 &&
+            sequence_returns<playlist_position+1 && platform.key_head==platform.key_tail) {
+            platform.key_tail=0; platform.keys[0]=(unsigned char)(playlist_position?0x59:0x58);
+            platform.key_head=1; ++sequence_returns;
+        }
+        if(sequence_test && !pause_transition_test && g_slicks_diag_ingame && race->race_complete &&
+            sequence_returns<playlist_position+1 && platform.key_head==platform.key_tail) {
+            /* Diagnostic input only; never force race/session state. */
+            platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
+            ++sequence_returns;
         }
         while (slicks_amiga_platform_poll_key(&platform, &code)) {
+            if(race_load_prompt) {
+                if(code==0x44 && race_load_retry) {
+                    /* Retry only preparation: rewards, selection refresh and
+                     * playlist advancement already happened exactly once. */
+                    g_slicks_diag_ready=0;
+                    slicks_amiga_platform_end(&platform);
+                    if(prepare_race(&platform,logical,chunky,mode_state,race,
+                        selected_track_path,race_palette,selected_vehicle,
+                        &configuration,&g_slicks_setup_session,0)) {
+                        if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,1)) goto cleanup;
+                        continue;
+                    }
+                    race_load_prompt=race_load_retry=0; race_prepared=1;
+                    slicks_race_set_laps(race,selected_laps);
+                    if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
+                    g_slicks_diag_ready=1;
+                    enter_prepared_race(&platform,logical,race);
+                    start_race_engines(&audio,race,&platform);
+                    g_slicks_diag_engine_sample_block=audio.engine_sample_block;
+                    continue;
+                }
+                if(code==0x44 || code==0x45) {
+                    race_load_prompt=race_load_retry=0;
+                    make_title_surface(logical,title_frame,source_palette);
+                    redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
+                        selected_vehicle,track_names[selected_track],selected_laps);
+                    slicks_diag_race_load_dismissed();
+                }
+                continue;
+            }
+            if(save_prompt) {
+                if(code==0x44) {
+                    if(save_prompt==2) { result=0; goto cleanup; }
+                    exit_requested=1;
+                } else if(code==0x45) {
+                    save_prompt=0;
+                    /* Return to the title even when the exit request originated
+                     * inside a modal or race. Edited profile data stays alive. */
+                    slicks_amiga_platform_end(&platform);
+                    slicks_amiga_player_menu_destroy(g_slicks_player_menu); g_slicks_player_menu=0;
+                    slicks_amiga_player_menu_destroy(g_slicks_options_menu); g_slicks_options_menu=0;
+                    slicks_amiga_player_menu_destroy(g_slicks_track_menu); g_slicks_track_menu=0;
+                    g_slicks_track_renderer.surface=0;
+                    slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
+                    g_slicks_options_renderer.surface=0;
+                    g_slicks_options_configuration=0;
+                    service_menu_open=0;
+                    make_title_surface(logical,title_frame,source_palette);
+                    redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
+                        selected_vehicle,track_names[selected_track],selected_laps);
+                    if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                    slicks_diag_setup_save_cancelled();
+                }
+                continue;
+            }
             if (g_slicks_diag_ingame) {
+                int pause_result=0;
+                unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
+                if((!argc || pause_live_test || pause_transition_test) && !race->race_complete && !(code&128) &&
+                   (scan==1 || scan==0x1d || scan==0x3b || scan==0x3c || scan==0x43 || scan==0x44)) {
+                    pause_result=run_race_pause(&platform,&audio,race,chunky,race_palette,&configuration,
+                        &setup_dirty,(unsigned char)(scan==0x43?4:scan==0x44?5:0),
+                        (unsigned char)(pause_nested_test?8:pause_transition_test?(pause_save_test && sequence_returns==1?1:7):pause_failure_test && pause_live_sent<=5?pause_live_sent+1:pause_live_test));
+                    if(pause_result==-3) goto cleanup;
+                    if(pause_result==1) continue;
+                }
                 if (!(code & 0x80) &&
-                    ((code & 0x7f) == 0x45 ||
+                    (pause_result<0 || (code & 0x7f) == 0x45 ||
                      (race->race_complete && (code & 0x7f) == 0x44))) {
+                    unsigned char advance=(unsigned char)(pause_result==-1 ||
+                        (race->race_complete && (code&0x7f)==0x44));
+                    slicks_amiga_platform_wait_display_blank(&platform);
                     slicks_amiga_audio_stop(&audio);
+                    /* Original race-loop return reaches 2557e for a normal
+                     * game even on early exit; only demo DS:0459 skips it.
+                     * Completed races have already paid before results. */
+                    if(original_setup) slicks_race_award_track(race);
+                    if(original_setup) g_slicks_setup_session.random_state=race->random_state;
+                    if(original_setup && (race->race_complete || advance))
+                        slicks_setup_after_race(&g_slicks_setup_session,&configuration,&setup_resources);
+                    if(original_setup && advance &&
+                       (int)playlist_position+1 < slicks_arcade_track_count(configuration.options[0],
+                            configuration.options[14],(short)g_slicks_track_playlist.count)) {
+                        char next_path[64];
+                        const unsigned char *next_name=(const unsigned char *)track_names[track_selection[playlist_position+1]];
+                        make_track_path(next_path,(const char *)next_name);
+                        int choice=run_intermission(&platform,race,chunky,race_palette,next_path,next_name,
+                            (short)playlist_position,(short)slicks_arcade_track_count(configuration.options[0],
+                                configuration.options[14],(short)g_slicks_track_playlist.count),intermission_retry_test?3:intermission_live_test?2:sequence_test);
+                        if(choice<0) goto cleanup;
+                        advance=(unsigned char)(choice==1);
+                    }
+                    if(original_setup && advance &&
+                        (int)playlist_position+1 < slicks_arcade_track_count(
+                            configuration.options[0],configuration.options[14],
+                            (short)g_slicks_track_playlist.count)) {
+                        /* Continue the same game: no inventory initialization
+                         * or RNG reseeding. The original selection refresh
+                         * above may deliberately reroll random-per-race cars. */
+                        for(unsigned driver=0;driver<4;++driver)
+                            for(unsigned item=0;item<13;++item)
+                                g_slicks_setup_session.inventory[driver][item]=race->weapon_inventory[driver][item];
+                        ++playlist_position;
+                        selected_track=(unsigned short)track_selection[playlist_position];
+                        make_track_path(selected_track_path,track_names[selected_track]);
+                        g_slicks_diag_ready=0; g_slicks_diag_ingame=0;
+                        slicks_amiga_platform_end(&platform);
+                        if(sequence_failure_test && playlist_position==1)
+                            g_slicks_diag_race_load_fault=6;
+                        if(prepare_race(&platform,logical,chunky,mode_state,race,
+                            selected_track_path,race_palette,selected_vehicle,
+                            &configuration,&g_slicks_setup_session,0)) {
+                            race_prepared=0; race_load_prompt=race_load_retry=1;
+                            if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,1)) goto cleanup;
+                            if(sequence_failure_test) {
+                                platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
+                            }
+                            continue;
+                        }
+                        slicks_race_set_laps(race,selected_laps);
+                        if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
+                        g_slicks_diag_ready=1;
+                        enter_prepared_race(&platform,logical,race);
+                        start_race_engines(&audio,race,&platform);
+                        continue;
+                    }
                     if (slicks_setup_basic_mode(logical, mode_state) != 0)
                         goto cleanup;
                     make_title_surface(logical, title_frame, source_palette);
+                    if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
                     redraw_title_configuration(
                         &platform, logical, chunky, source_palette,
                         menu_selection, selected_vehicle,
@@ -908,17 +2896,448 @@ int main(int argc, char **argv)
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
                     race_prepared = 0;
+                    if(pause_transition_test && sequence_returns==2) {
+                        if(pause_save_test) {
+                            platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;
+                        } else g_slicks_diag_force_exit=1;
+                    }
                     continue;
                 }
-                (void)update_race_key(race, code);
+                (void)update_race_key(race, code,&configuration);
                 continue;
             }
             {
                 unsigned char pressed = (unsigned char)!(code & 0x80);
                 unsigned short raw = code & 0x7f;
                 unsigned char redraw = 0;
+                struct SlicksAmigaPlayerMenu *input_menu=g_slicks_title_help?g_slicks_title_help:
+                    (g_slicks_player_menu?g_slicks_player_menu:
+                    (g_slicks_track_menu?g_slicks_track_menu:g_slicks_options_menu));
+                unsigned char character=input_menu?
+                    slicks_amiga_menu_character(input_menu,(unsigned char)code):0;
                 if (!pressed)
                     continue;
+                if(g_slicks_title_help_warning) {
+                    if(raw>=0x60 || !amiga_raw_to_dos_scan(code)) continue;
+                    slicks_amiga_platform_end(&platform);
+                    unsigned at=0;
+                    for(unsigned y=90;y<112;++y) for(unsigned x=20;x<300;++x)
+                        logical[y*100UL+(x>>2)+((x&3)<<16)]=title_help_saved[at++];
+                    slicks_convert_to_amiga(logical,chunky,platform.views[0].bitmap);
+                    g_slicks_title_help_warning=0;
+                    if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                    slicks_diag_help_warning_closed(); continue;
+                }
+                if(input_menu && input_menu->help_warning) {
+                    if(raw>=0x60 || (!character && !amiga_raw_to_dos_scan(code))) continue;
+                    slicks_amiga_platform_end(&platform);
+                    if(slicks_amiga_help_warning_close(input_menu)) goto cleanup;
+                    present_menu_surface(&platform,input_menu);
+                    if(input_menu==g_slicks_title_help) {
+                        slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
+                    }
+                    if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                    slicks_diag_help_warning_closed();
+                    continue;
+                }
+                if(input_menu && input_menu->help) {
+                    struct SlicksAmigaHelpKey key=slicks_amiga_help_key((unsigned char)code,character);
+                    /* DOS getch returns printable ASCII or an extended scan,
+                     * never both. Amiga modifier events have neither. */
+                    if(key.ascii || key.scan) {
+                        if(slicks_help_viewer_key(input_menu->help,key.ascii,key.scan)) {
+                            slicks_amiga_platform_end(&platform);
+                            if(slicks_amiga_help_close(input_menu) || slicks_amiga_help_warning_open(input_menu)) goto cleanup;
+                            present_menu_surface(&platform,input_menu);
+                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            slicks_diag_help_failed(); continue;
+                        }
+                        if(input_menu->help->navigation.done) {
+                            slicks_amiga_platform_end(&platform);
+                            if(slicks_amiga_help_close(input_menu)) goto cleanup;
+                            present_menu_surface(&platform,input_menu);
+                            if(input_menu==g_slicks_title_help) {
+                                slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
+                            }
+                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            slicks_diag_help_closed();
+                        } else {
+                            present_menu_surface(&platform,input_menu); slicks_diag_help_ready();
+                        }
+                    }
+                    continue;
+                }
+                if(g_slicks_track_menu) {
+                    if(g_slicks_track_menu->track_info) {
+                        if(!character && !amiga_raw_to_dos_scan(code)) continue;
+                        slicks_amiga_platform_end(&platform);
+                        slicks_amiga_track_info_close(g_slicks_track_menu);
+                        present_menu_surface(&platform,g_slicks_track_menu);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_track_info_closed();
+                        continue;
+                    }
+                    if(g_slicks_track_menu->track_lists) {
+                        slicks_amiga_platform_end(&platform);
+                        if(track_lists_key(&platform,(short)track_count,track_names,character,
+                            (unsigned char)amiga_raw_to_dos_scan(code),picker_clock.ticks)) goto cleanup;
+                        present_menu_surface(&platform,g_slicks_track_menu);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_track_lists_ready();
+                        continue;
+                    }
+                    if(g_slicks_track_menu->message) {
+                        slicks_amiga_platform_end(&platform);
+                        if(slicks_amiga_message_close(g_slicks_track_menu)) goto cleanup;
+                        present_menu_surface(&platform,g_slicks_track_menu);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_track_info_warning_closed();
+                        continue;
+                    }
+                    struct SlicksTrackMenu *state=&g_slicks_track_state;
+                    g_slicks_track_action=(unsigned short)slicks_track_menu_key(state,(short)track_count,
+                        (unsigned char)amiga_raw_to_dos_scan(code));
+                    switch(g_slicks_track_action) {
+                    case SLICKS_TRACK_MENU_TOGGLE:
+                        if(state->cursor>=0 && slicks_track_playlist_toggle(&g_slicks_track_playlist,state->cursor,
+                            track_names[state->cursor][0]!=0)) goto cleanup;
+                        break;
+                    case SLICKS_TRACK_MENU_ALL:
+                        if(slicks_track_playlist_all(&g_slicks_track_playlist,track_count)) goto cleanup;
+                        break;
+                    case SLICKS_TRACK_MENU_CLEAR:
+                        if(slicks_track_playlist_all(&g_slicks_track_playlist,0)) goto cleanup;
+                        break;
+                    case SLICKS_TRACK_MENU_SHUFFLE:
+                        if(slicks_track_playlist_shuffle(&g_slicks_track_playlist,&g_slicks_setup_session.random_state)) goto cleanup;
+                        break;
+                    case SLICKS_TRACK_MENU_RANDOM:
+                        if(state->random_count<0 || slicks_track_playlist_random(&g_slicks_track_playlist,track_count,
+                            (unsigned short)state->random_count,&g_slicks_setup_session.random_state)) goto cleanup;
+                        break;
+                    default: break;
+                    }
+                    if(configuration.field_0626!=state->random_count) {
+                        configuration.field_0626=state->random_count; setup_dirty=1;
+                    }
+                    if(state->done) {
+                        slicks_amiga_platform_end(&platform);
+                        slicks_amiga_player_menu_destroy(g_slicks_track_menu); g_slicks_track_menu=0;
+                        g_slicks_track_renderer.surface=0;
+                        if(g_slicks_track_playlist.count) selected_track=(unsigned short)track_selection[0];
+                        make_title_surface(logical,title_frame,source_palette);
+                        redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
+                            selected_vehicle,track_names[selected_track],selected_laps);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_tracks_closed();
+                    } else if(g_slicks_track_action==SLICKS_TRACK_MENU_HELP) {
+                        if(open_help(&platform,g_slicks_track_menu,slicks_original_track_help)) goto cleanup;
+                    } else if(g_slicks_track_action==SLICKS_TRACK_MENU_LISTS) {
+                        slicks_amiga_platform_end(&platform);
+                        g_slicks_track_lists_load=slicks_amiga_track_lists_open(g_slicks_track_menu,
+                            slicks_original_track_list_actions,slicks_original_players_footer_percent);
+                        if(g_slicks_track_lists_load.result!=SLICKS_SETUP_LOADED) {
+                            const char *error=g_slicks_track_lists_load.result==SLICKS_SETUP_LOAD_RECOVERY?
+                                "KEEP SLICKS.TRK NEW/BAK FILES":"SLICKS.TRK LOAD FAILED";
+                            if(track_lists_finish(&platform,(short)track_count,error)) goto cleanup;
+                        } else if(slicks_amiga_profile_picker_draw(g_slicks_track_menu,picker_clock.ticks)) goto cleanup;
+                        present_menu_surface(&platform,g_slicks_track_menu);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_track_lists_ready();
+                    } else if(g_slicks_track_action==SLICKS_TRACK_MENU_RECORDS) {
+                        slicks_amiga_platform_end(&platform);
+                        char path[SLICKS_TRACK_NAME_SIZE+8];
+                        if(state->cursor<0 || state->cursor>=track_count) goto cleanup;
+                        make_track_path(path,track_names[state->cursor]);
+                        if(open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor)) &&
+                            slicks_amiga_message_open(g_slicks_track_menu,(const unsigned char *)"TRACK RECORDS LOAD FAILED",
+                                slicks_original_players_footer_percent)) goto cleanup;
+                        present_menu_surface(&platform,g_slicks_track_menu);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_track_info_ready();
+                    } else {
+                        if(draw_track_menu(&platform,(short)track_count)) goto cleanup;
+                        slicks_diag_tracks_ready();
+                    }
+                    continue;
+                }
+                if(g_slicks_options_menu) {
+                    if(g_slicks_options_menu->message) {
+                        unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
+                        if(!scan || raw>=0x60) continue;
+                        slicks_amiga_platform_end(&platform);
+                        if(slicks_amiga_message_close(g_slicks_options_menu)) goto cleanup;
+                        if(g_slicks_track_clear_phase==1 && scan==0x15) {
+                            static char path[SLICKS_TRACK_NAME_SIZE+8];
+                            g_slicks_track_clear_report=(struct SlicksSetupStorageReport){SLICKS_SETUP_SAVED,0,0};
+                            g_slicks_track_clear_changed=0;
+                            for(unsigned i=0;i<track_count;++i) {
+                                make_track_path(path,track_names[i]); unsigned char changed=0;
+                                g_slicks_track_clear_report=slicks_amiga_clear_track_records(path,&changed);
+                                g_slicks_track_clear_changed+=changed;
+                                if(g_slicks_track_clear_report.result!=SLICKS_SETUP_SAVED) break;
+                            }
+                            const unsigned char *message=slicks_original_clear_complete;
+                            g_slicks_track_clear_phase=2;
+                            if(g_slicks_track_clear_report.result!=SLICKS_SETUP_SAVED) {
+                                g_slicks_track_clear_phase=3;
+                                message=(const unsigned char *)(g_slicks_track_clear_report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
+                                    "PARTIAL CLEAR - KEEP NEW/BAK FILES":g_slicks_track_clear_report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING?
+                                    "PARTIAL CLEAR - BACKUP REMAINS":"CLEAR FAILED - MAY BE PARTIAL");
+                            }
+                            if(present_track_clear_message(&platform,message)) goto cleanup;
+                        } else if(g_slicks_track_clear_phase==3 && g_slicks_track_clear_report.path) {
+                            g_slicks_track_clear_phase=4;
+                            if(present_track_clear_message(&platform,(const unsigned char *)g_slicks_track_clear_report.path)) goto cleanup;
+                        } else {
+                            unsigned char cancelled=(unsigned char)(g_slicks_track_clear_phase==1);
+                            g_slicks_track_clear_phase=0;
+                            present_menu_surface(&platform,g_slicks_options_menu);
+                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            if(cancelled) slicks_diag_track_clear_cancelled();
+                        }
+                        continue;
+                    }
+                    if(g_slicks_options_menu->controllers_dialog) {
+                        struct SlicksControllersDialog *state=&g_slicks_options_menu->controllers_dialog->state;
+                        unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
+                        if(state->capturing) {
+                            if(slicks_controllers_capture(state,&configuration,slicks_original_controller_scans,scan)) goto cleanup;
+                        } else if(slicks_controllers_key(state,&configuration,slicks_original_configuration.keys,scan)) goto cleanup;
+                        if(state->done) {
+                            slicks_amiga_platform_end(&platform);
+                            if(slicks_amiga_controllers_close(g_slicks_options_menu)) goto cleanup;
+                            present_menu_surface(&platform,g_slicks_options_menu);
+                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            slicks_diag_controllers_closed();
+                        } else if(state->capturing) {
+                            if(slicks_amiga_controllers_capture_prompt(g_slicks_options_menu,
+                                slicks_original_controller_prompt)) goto cleanup;
+                            present_menu_surface(&platform,g_slicks_options_menu);
+                            slicks_diag_controllers_ready();
+                        } else if(draw_controllers_dialog(&platform,&configuration)) goto cleanup;
+                        continue;
+                    }
+                    g_slicks_options_action=(unsigned short)slicks_options_menu_key(&g_slicks_options_state,
+                        &configuration,slicks_original_option_specs,(unsigned char)amiga_raw_to_dos_scan(code));
+                    setup_dirty|=g_slicks_options_state.dirty;
+                    slicks_amiga_audio_set_volume(&audio,configuration.options[1],configuration.options[2]);
+                    if(g_slicks_options_state.done) {
+                        slicks_amiga_platform_end(&platform);
+                        slicks_amiga_player_menu_destroy(g_slicks_options_menu); g_slicks_options_menu=0;
+                        g_slicks_options_renderer.surface=0;
+                        selected_laps=(unsigned short)configuration.options[3];
+                        slicks_setup_select(&g_slicks_setup_session,&configuration,&setup_resources,0);
+                        if(g_slicks_setup_session.players.vehicle[0]>=0)
+                            selected_vehicle=(unsigned short)g_slicks_setup_session.players.vehicle[0];
+                        make_title_surface(logical,title_frame,source_palette);
+                        redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
+                            selected_vehicle,track_names[selected_track],selected_laps);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_options_closed();
+                    } else if(g_slicks_options_action==SLICKS_OPTIONS_CONTROLLERS) {
+                        if(open_controllers_dialog(&platform,&configuration)) goto cleanup;
+                    } else if(g_slicks_options_action==SLICKS_OPTIONS_HELP) {
+                        if(open_help(&platform,g_slicks_options_menu,(const unsigned char *)"options")) goto cleanup;
+                    } else if(g_slicks_options_action==SLICKS_OPTIONS_CLEAR_RECORDS) {
+                        slicks_amiga_platform_end(&platform);
+                        g_slicks_track_clear_phase=1;
+                        if(present_track_clear_message(&platform,slicks_original_clear_question)) goto cleanup;
+                    } else {
+                        if(draw_options_menu(&platform,&configuration)) goto cleanup;
+                        slicks_diag_options_ready();
+                    }
+                    continue;
+                }
+                if(g_slicks_player_menu) {
+                    enum SlicksPlayerMenuAction pending=SLICKS_PLAYER_MENU_NONE;
+                    if(g_slicks_player_menu->colour_dialog) {
+                        struct SlicksColourPicker *state=&g_slicks_player_menu->colour_dialog->renderer.state;
+                        slicks_colour_picker_key(state,(unsigned char)amiga_raw_to_dos_scan(code));
+                        if(!state->result) {
+                            if(slicks_amiga_colour_dialog_draw(g_slicks_player_menu,picker_clock.ticks)) goto cleanup;
+                            present_player_menu(&platform); slicks_diag_colour_dialog_ready(); continue;
+                        }
+                        slicks_amiga_platform_end(&platform);
+                        if(slicks_amiga_colour_dialog_close(g_slicks_player_menu)<0 || present_profile_editor(&platform)) goto cleanup;
+                        continue;
+                    } else if(g_slicks_player_menu->name_dialog) {
+                        int done=slicks_name_dialog_key(&g_slicks_player_menu->name_dialog->renderer,character);
+                        if(done<0 || g_slicks_player_menu->error) goto cleanup;
+                        g_slicks_player_menu->name_dialog->hidden=0;
+                        if(!done) {
+                            present_player_menu(&platform); slicks_diag_name_dialog_ready(); continue;
+                        }
+                        slicks_amiga_platform_end(&platform);
+                        if(slicks_amiga_name_dialog_close(g_slicks_player_menu) || present_profile_editor(&platform)) goto cleanup;
+                        continue;
+                    } else if(g_slicks_player_menu->editor_active) {
+                        g_slicks_player_menu->editor_pending=(unsigned char)slicks_profile_editor_key(
+                            &g_slicks_player_menu->editor,&g_slicks_profiles,(unsigned)g_slicks_player_menu->editor_index,
+                            SLICKS_VEHICLE_COUNT,(unsigned char)amiga_raw_to_dos_scan(code));
+                        if(g_slicks_player_menu->editor_pending==SLICKS_PROFILE_EDIT_NAME) {
+                            slicks_amiga_platform_end(&platform);
+                            if(profile_dialog_failure_test && argv[7]=='N' && !profile_dialog_failure_sent) {
+                                extern unsigned char g_slicks_diag_profile_dialog_fault;
+                                g_slicks_diag_profile_dialog_fault=profile_dialog_fault; profile_dialog_failure_sent=1;
+                            }
+                            if(slicks_amiga_name_dialog_open(g_slicks_player_menu,slicks_original_editor_name_caption,
+                                slicks_original_players_footer_percent)) {
+                                if(profile_dialog_warning(&platform,profile_dialog_failure_test)) goto cleanup;
+                                continue;
+                            }
+                            present_player_menu(&platform);
+                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            slicks_diag_name_dialog_ready(); continue;
+                        }
+                        if(g_slicks_player_menu->editor_pending==SLICKS_PROFILE_EDIT_COLOUR_FIRST ||
+                           g_slicks_player_menu->editor_pending==SLICKS_PROFILE_EDIT_COLOUR_SECOND) {
+                            slicks_amiga_platform_end(&platform);
+                            if(profile_dialog_failure_test && argv[7]=='C' && !profile_dialog_failure_sent) {
+                                extern unsigned char g_slicks_diag_profile_dialog_fault;
+                                g_slicks_diag_profile_dialog_fault=profile_dialog_fault; profile_dialog_failure_sent=1;
+                            }
+                            if(slicks_amiga_colour_dialog_open(g_slicks_player_menu,&g_slicks_profiles,
+                                slicks_original_editor_colour_caption)) {
+                                if(profile_dialog_warning(&platform,profile_dialog_failure_test)) goto cleanup;
+                                continue;
+                            }
+                            picker_clock=(struct SlicksStatusClock){0}; picker_clock_vblank=platform.vblank_count;
+                            if(slicks_amiga_colour_dialog_draw(g_slicks_player_menu,0)) goto cleanup;
+                            present_player_menu(&platform);
+                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            slicks_diag_colour_dialog_ready(); continue;
+                        }
+                        if(!g_slicks_player_menu->editor.result) {
+                            if(present_profile_editor(&platform)) goto cleanup;
+                            continue;
+                        }
+                        if(slicks_amiga_profile_editor_close(g_slicks_player_menu,&g_slicks_profiles)<0) goto cleanup;
+                        player_menu_state.redraw=1;
+                    } else if(g_slicks_player_menu->delete_pending) {
+                        if(slicks_profile_delete_confirmed(amiga_raw_to_dos_scan(code)) &&
+                           slicks_delete_player_profile(&g_slicks_profiles,configuration.selected_profile,
+                               (unsigned)g_slicks_player_menu->delete_index)) goto cleanup;
+                        slicks_amiga_player_menu_restore(g_slicks_player_menu);
+                        player_menu_state.redraw=1;
+                    } else if(g_slicks_player_menu->picker) {
+                        slicks_list_dialog_key(&g_slicks_player_menu->picker->renderer.state,
+                            (unsigned char)amiga_raw_to_dos_scan(code));
+                        if(!g_slicks_player_menu->picker->renderer.state.done) {
+                            if(slicks_amiga_profile_picker_draw(g_slicks_player_menu,picker_clock.ticks)) goto cleanup;
+                            present_player_menu(&platform); slicks_diag_profile_picker_ready();
+                            continue;
+                        }
+                        slicks_amiga_platform_end(&platform);
+                        short selected=slicks_amiga_profile_picker_close(g_slicks_player_menu);
+                        if(player_menu_state.row<4) {
+                            if(selected<0 || selected>=SLICKS_PROFILE_MAX) goto cleanup;
+                            slicks_menu_assign_profile(configuration.selected_profile,g_slicks_profiles.setup,
+                                player_menu_state.row,selected);
+                        } else {
+                            short index=0;
+                            unsigned char flags=selected>=0 && selected<SLICKS_PROFILE_MAX?
+                                g_slicks_profiles.setup[selected].flags:0;
+                            enum SlicksProfileListAction action=slicks_profile_list_action(selected,flags,&index);
+                            if(action!=SLICKS_PROFILE_LIST_NONE && (index<0 || index>=g_slicks_profiles.count)) goto cleanup;
+                            if(action==SLICKS_PROFILE_LIST_CONFIRM_DELETE) {
+                                if(slicks_amiga_profile_delete_prompt(g_slicks_player_menu,index,&g_slicks_profiles,
+                                    slicks_original_players_delete_question,slicks_original_players_footer_percent)) goto cleanup;
+                                present_player_menu(&platform);
+                                if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                                g_slicks_diag_player_menu_action=SLICKS_PLAYER_MENU_DELETE;
+                                slicks_diag_player_menu_ready(); continue;
+                            }
+                            if(action==SLICKS_PROFILE_LIST_EDIT) {
+                                if(slicks_amiga_profile_editor_open(g_slicks_player_menu,&g_slicks_profiles,index,0,
+                                    &g_slicks_setup_session.random_state) || present_profile_editor(&platform)) goto cleanup;
+                                continue;
+                            }
+                            slicks_amiga_player_menu_restore(g_slicks_player_menu);
+                        }
+                        player_menu_state.redraw=1;
+                    } else {
+                        short profile=player_menu_state.row<4?
+                            configuration.selected_profile[player_menu_state.row]:-1;
+                        unsigned char old_vehicle=profile>=0 && profile<g_slicks_profiles.count?
+                            g_slicks_profiles.setup[profile].vehicle:0;
+                        pending=slicks_player_menu_key(&player_menu_state,
+                            configuration.selected_profile,g_slicks_profiles.setup,g_slicks_profiles.count,
+                            SLICKS_VEHICLE_COUNT,(unsigned char)amiga_raw_to_dos_scan(code));
+                        /* Keep the original key helper's dirty-byte semantics;
+                         * our save-on-exit adapter must also persist shortcut
+                         * vehicle edits made without opening an editor/picker. */
+                        if(profile>=0 && profile<g_slicks_profiles.count &&
+                           g_slicks_profiles.setup[profile].vehicle!=old_vehicle)
+                            setup_dirty=1;
+                    }
+                    if(pending==SLICKS_PLAYER_MENU_HELP) {
+                        if(open_help(&platform,g_slicks_player_menu,(const unsigned char *)"plr_menu")) goto cleanup;
+                        continue;
+                    }
+                    if(pending==SLICKS_PLAYER_MENU_ADD) {
+                        if(slicks_amiga_profile_editor_open(g_slicks_player_menu,&g_slicks_profiles,g_slicks_profiles.count,1,
+                            &g_slicks_setup_session.random_state) || present_profile_editor(&platform)) goto cleanup;
+                        continue;
+                    }
+                    if((pending==SLICKS_PLAYER_MENU_PICK || pending==SLICKS_PLAYER_MENU_DELETE ||
+                        pending==SLICKS_PLAYER_MENU_EDIT) && !player_menu_state.redraw) {
+                        slicks_amiga_platform_end(&platform);
+                        if(slicks_amiga_profile_picker_open(g_slicks_player_menu,player_menu_state.row,
+                            player_menu_state.row<4?configuration.selected_profile[player_menu_state.row]:0,&g_slicks_profiles,
+                            player_menu_state.row<4?slicks_original_players_select:slicks_original_players_actions,
+                            slicks_original_players_footer_percent)) goto cleanup;
+                        picker_clock=(struct SlicksStatusClock){0}; picker_clock_vblank=platform.vblank_count;
+                        if(slicks_amiga_profile_picker_draw(g_slicks_player_menu,0)) goto cleanup;
+                        present_player_menu(&platform);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        g_slicks_diag_player_menu_action=0;
+                        slicks_diag_profile_picker_ready(); continue;
+                    }
+                    /* Other modal actions remain pending, never treated as completed edits. */
+                    g_slicks_diag_player_menu_action=(unsigned short)pending;
+                    if(player_menu_state.done) {
+                        setup_dirty|=player_menu_state.dirty;
+                        if(g_slicks_setup_session.players.vehicle[0]>=0 &&
+                           g_slicks_setup_session.players.vehicle[0]<SLICKS_VEHICLE_COUNT)
+                            selected_vehicle=(unsigned short)g_slicks_setup_session.players.vehicle[0];
+                        slicks_amiga_platform_end(&platform);
+                        slicks_amiga_player_menu_destroy(g_slicks_player_menu); g_slicks_player_menu=0;
+                        if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
+                        make_title_surface(logical,title_frame,source_palette);
+                        redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
+                            selected_vehicle,track_names[selected_track],selected_laps);
+                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        slicks_diag_player_menu_closed();
+                    } else if(player_menu_state.redraw) {
+                        setup_resources.profile_count=g_slicks_profiles.count;
+                        slicks_setup_select(&g_slicks_setup_session,&configuration,&setup_resources,0);
+                        if(slicks_amiga_player_menu_draw(g_slicks_player_menu,player_menu_state.row,
+                            configuration.selected_profile,g_slicks_setup_session.players.participation,&g_slicks_profiles)) goto cleanup;
+                        present_player_menu(&platform); player_menu_state.redraw=0;
+                        if(!platform.active && slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        g_slicks_diag_player_menu_row=player_menu_state.row;
+                        slicks_diag_player_menu_ready();
+                    }
+                    continue;
+                }
+                if (service_menu_open) {
+                    unsigned short change = slicks_service_menu_key(
+                        &service_selection, &configuration.options[9], &configuration.options[10],
+                        amiga_raw_to_dos_scan(code));
+                    if (change == 2) {
+                        service_menu_open = 0;
+                        make_title_surface(logical, title_frame, source_palette);
+                        redraw_title_configuration(&platform, logical, chunky,
+                            source_palette, menu_selection, selected_vehicle,
+                            track_names[selected_track], selected_laps);
+                    } else if (change) {
+                        setup_dirty=1;
+                        redraw_service_options(&platform, logical, chunky,
+                            service_selection, configuration.options[9], configuration.options[10]);
+                    }
+                    continue;
+                }
                 if (raw == 0x4c) {
                     menu_selection = (unsigned short)(
                         menu_selection ? menu_selection - 1 : 5);
@@ -929,17 +3348,17 @@ int main(int argc, char **argv)
                     redraw = 1;
                 } else if (raw == 0x4f || raw == 0x4e) {
                     int delta = raw == 0x4e ? 1 : -1;
-                    if (menu_selection == 1) {
+                    if (!original_setup && menu_selection == 1) {
                         selected_vehicle = (unsigned short)(
                             (selected_vehicle + SLICKS_VEHICLE_COUNT + delta) %
                             SLICKS_VEHICLE_COUNT);
                         redraw = 1;
-                    } else if (menu_selection == 2) {
+                    } else if (!original_setup && menu_selection == 2) {
                         selected_track = (unsigned short)(
                             (selected_track + track_count + delta) %
                             track_count);
                         redraw = 1;
-                    } else if (menu_selection == 3) {
+                    } else if (!original_setup && menu_selection == 3) {
                         selected_laps = (unsigned short)(
                             selected_laps + delta);
                         if (selected_laps < 1)
@@ -958,43 +3377,398 @@ int main(int argc, char **argv)
                 }
                 unsigned short action = slicks_dispatch_title_key(
                     amiga_raw_to_dos_scan(code));
-                if (action == 1) {
-                    result = 0;
-                    goto cleanup;
+                const unsigned char *help_topic=slicks_title_help_topic(action,menu_selection);
+                if(help_topic) {
+                    if(open_title_help(&platform,logical,chunky,source_palette,help_topic)) goto cleanup;
+                    continue;
                 }
-                if (action == 2 && menu_selection == 5) {
-                    result = 0;
-                    goto cleanup;
+                if(action==2 && menu_selection==1 && original_setup) {
+                    if(open_player_menu(&platform,chunky,&configuration,&player_menu_state)) goto cleanup;
+                    continue;
+                }
+                if(action==2 && menu_selection==2 && original_setup) {
+                    if(open_track_menu(&platform,chunky,track_names,(short)track_count,configuration.field_0626)) goto cleanup;
+                    continue;
+                }
+                if (action == 2 && menu_selection == 3) {
+                    if(original_setup) {
+                        if(open_options_menu(&platform,chunky,source_palette,&configuration)) goto cleanup;
+                        continue;
+                    }
+                    if(configuration.options[0]!=4) setup_dirty=1;
+                    configuration.options[0]=4; /* Enter the custom options. */
+                    service_menu_open = 1;
+                    redraw_service_options(&platform, logical, chunky,
+                        service_selection, configuration.options[9], configuration.options[10]);
+                    continue;
+                }
+                if (action == 1 || (action == 2 && menu_selection == 5)) {
+                    exit_requested=1;
+                    continue;
                 }
                 if (action == 2 && menu_selection == 0) {
                     g_slicks_diag_ready = 0;
                     slicks_amiga_platform_end(&platform);
+                    /* Original 2a593..2a5e4 supplies one random track when
+                     * GO is selected with an empty playlist. */
+                    if(original_setup) {
+                        if(!g_slicks_track_playlist.count && slicks_track_playlist_random(
+                            &g_slicks_track_playlist,track_count,1,&g_slicks_setup_session.random_state)) goto cleanup;
+                        selected_track=(unsigned short)track_selection[0];
+                    }
                     make_track_path(selected_track_path,
                                     track_names[selected_track]);
                     track_path = selected_track_path;
                     if (prepare_race(&platform, logical, chunky, mode_state,
-                                     race, track_path, race_palette) != 0)
-                        goto cleanup;
+                                     race, track_path, race_palette, selected_vehicle,
+                                     &configuration,original_setup?&g_slicks_setup_session:0,1) != 0) {
+                        /* This is a native platform error, not invented DOS
+                         * gameplay. Keep setup alive so files/controllers can
+                         * be corrected and GO retried from the actual menus. */
+                        race_prepared=0; race_load_prompt=1; race_load_retry=0;
+                        if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,0)) goto cleanup;
+                        if(setup_failure_test) {
+                            static const unsigned char keys[]={0x45,0x4d,0x44,0x45,0x4c,0x44};
+                            platform.key_tail=0;
+                            for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+                            platform.key_head=sizeof keys;
+                        }
+                        continue;
+                    }
                     race_prepared = 1;
-                    slicks_race_set_vehicle(race, 0, selected_vehicle);
+                    playlist_position = 0;
                     slicks_race_set_laps(race, selected_laps);
                     if (slicks_amiga_platform_begin(&platform, 1) != 0)
                         goto cleanup;
                     g_slicks_diag_ready = 1;
                     enter_prepared_race(&platform, logical, race);
-                    slicks_amiga_audio_start_engine(
-                        &audio, race->cars[0].vehicle, 100);
+                    start_race_engines(&audio,race,&platform);
                     g_slicks_diag_engine_sample_block =
                         audio.engine_sample_block;
                 }
             }
         }
+        if(player_menu_test && argc==8 && (argv[7]=='N' || argv[7]=='C' || persistence_test) && g_slicks_player_menu &&
+           platform.key_head==platform.key_tail && !g_slicks_player_menu->name_dialog) {
+            if(!name_test_stage && g_slicks_player_menu->editor_active && !g_slicks_player_menu->editor_new) {
+                static const unsigned char keys[]={0x44,0x41,0x32,0x44,0x51};
+                static const unsigned char colour_keys[]={0x4d,0x4d,0x4d,0x44,0x4e,0x4d,0x4f,0x44,
+                    0x4d,0x44,0x4e,0x45,0x51};
+                unsigned count=argv[7]!='N'?sizeof colour_keys:sizeof keys;
+                platform.key_tail=0;
+                for(unsigned i=0;i<count;++i) platform.keys[i]=argv[7]!='N'?colour_keys[i]:keys[i];
+                platform.key_head=(unsigned char)count; name_test_stage=1;
+            } else if(name_test_stage==1 && !g_slicks_player_menu->editor_active) {
+                static const unsigned char keys[]={0x44,0x1d,0x44,0x44,0x41,0x45,0x51};
+                static const unsigned char colour_keys[]={0x44,0x1d,0x44,0x4d,0x4d,0x4d,0x4d,
+                    0x44,0x4e,0x4d,0x4e,0x44,0x51};
+                static const unsigned char save_keys[]={0x4c,0x4c,0x4c,0x4c,0x4c,
+                    0x44,0x1d,0x44,0x45,0x45};
+                unsigned count=persistence_test?sizeof save_keys:argv[7]=='C'?sizeof colour_keys:sizeof keys;
+                if(combined_test || mixed_setup_test || unique_setup_test) --count; /* Return to title, don't exit yet. */
+                platform.key_tail=0;
+                for(unsigned i=0;i<count;++i) platform.keys[i]=persistence_test?save_keys[i]:argv[7]=='C'?colour_keys[i]:keys[i];
+                platform.key_head=(unsigned char)count; name_test_stage=2;
+            }
+        }
+        if(unique_setup_test && name_test_stage==2 && unique_stage<6 && platform.key_head==platform.key_tail) {
+            /* Move ABC through every driver slot using the actual picker.
+             * Include a None destination so the displaced slot is tested. */
+            static const unsigned char steps[6][7]={
+                {0x44,0x4d,0x4f,0x44,0x1d,0x44},
+                {0x4d,0x44,0x1d,0x44},
+                {0x4d,0x44,0x1d,0x44},
+                {0x4c,0x4c,0x4c,0x44,0x1d,0x44},
+                {0x4d,0x4d,0x44,0x1d,0x44},
+                {0x45,0x45}};
+            static const unsigned char counts[]={6,4,4,6,5,2};
+            g_slicks_diag_unique_stage=unique_stage; slicks_diag_unique_selection();
+            platform.key_tail=0;
+            for(unsigned i=0;i<counts[unique_stage];++i) platform.keys[i]=steps[unique_stage][i];
+            platform.key_head=counts[unique_stage++];
+        }
+        if(mixed_setup_test && name_test_stage==2 && !g_slicks_player_menu && platform.key_head==platform.key_tail) {
+            /* Keep ABC human and the shared Computer in slots 1/3; choose
+             * None for slot 2 through the ordinary Players menu. */
+            static const unsigned char keys[]={0x44,0x4d,0x4d,0x4f,0x45,0x45};
+            platform.key_tail=0;
+            for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+            platform.key_head=sizeof keys; name_test_stage=3;
+        }
+        if(combined_test && name_test_stage==2 && !g_slicks_player_menu && combined_stage<3 &&
+           platform.key_head==platform.key_tail) {
+            static const unsigned char steps[3][16]={
+                {0x4d,0x4d,0x44,0x4e,0x4e,0x4e,0x4e,0x4d,0x4d,0x4d,0x4e},
+                {0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x44,0x4e,0x44,0x11},
+                {0x45,0x45,0x45}};
+            static const unsigned char counts[]={11,14,3};
+            unsigned count=counts[combined_stage]; platform.key_tail=0;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=steps[combined_stage][i];
+            platform.key_head=(unsigned char)count; ++combined_stage;
+        }
+        if(track_lists_test && argv[6]=='D' && tracks_test_stage<4 && platform.key_head==platform.key_tail) {
+            static const unsigned char steps[4][12]={
+                {0x4e,0x44,0x42,0x42,0x44,0x36}, /* Delete, N */
+                {0x44,0x42,0x44,0x20,0x45},      /* Save, A, Escape */
+                {0x44,0x42,0x42,0x44,0x15},      /* Delete, Y */
+                {0x44,0x45,0x45,0x4c,0x4c,0x44}}; /* empty picker, close, race */
+            static const unsigned char counts[]={6,5,5,6};
+            platform.key_tail=0;
+            for(unsigned i=0;i<counts[tracks_test_stage];++i) platform.keys[i]=steps[tracks_test_stage][i];
+            platform.key_head=counts[tracks_test_stage++];
+        }
+        if(track_lists_test && argv[6]=='M' && tracks_test_stage<3 && platform.key_head==platform.key_tail) {
+            static const unsigned char steps[3][4]={
+                {0x4e,0x44,0x1d,0x45}, /* Lists, End, cancel */
+                {0x44,0x1d,0x44},      /* reopen, End, load last */
+                {0x45,0x4c,0x4c,0x44}}; /* close Tracks, GO */
+            static const unsigned char counts[]={4,3,4};
+            platform.key_tail=0;
+            for(unsigned i=0;i<counts[tracks_test_stage];++i) platform.keys[i]=steps[tracks_test_stage][i];
+            platform.key_head=counts[tracks_test_stage++];
+        }
+        if(track_lists_test && argv[6]=='N' && tracks_test_stage<4 && platform.key_head==platform.key_tail) {
+            static const unsigned char steps[4][4]={
+                {0x4e,0x44,0x45}, /* Lists allocation warning, dismiss */
+                {0x44,0x45},      /* retry names allocation warning, dismiss */
+                {0x44,0x1d,0x44}, /* retry, last list, load */
+                {0x45,0x4c,0x4c,0x44}};
+            static const unsigned char counts[]={3,2,3,4};
+            g_slicks_diag_list_alloc_fault=tracks_test_stage<2?(unsigned char)(tracks_test_stage+1):0;
+            platform.key_tail=0;
+            for(unsigned i=0;i<counts[tracks_test_stage];++i) platform.keys[i]=steps[tracks_test_stage][i];
+            platform.key_head=counts[tracks_test_stage++];
+        }
+        if(track_lists_test && argv[6]!='D' && argv[6]!='M' && argv[6]!='N' && tracks_test_stage<2 && platform.key_head==platform.key_tail) {
+            static const unsigned char save_keys[]={0x4d,0x44,0x4e,0x44,0x42,0x44,0x20,0x44};
+            static const unsigned char load_keys[]={0x4e,0x44,0x44};
+            static const unsigned char race_keys[]={0x45,0x4c,0x4c,0x44};
+            static const unsigned char failure_return_keys[]={0x44,0x45,0x4c,0x4c,0x44};
+            unsigned char save=(unsigned char)(argv[6]=='L' || argv[6]=='F');
+            const unsigned char *keys=tracks_test_stage?(argv[6]=='F'?failure_return_keys:race_keys):(save?save_keys:load_keys);
+            unsigned count=tracks_test_stage?(argv[6]=='F'?sizeof failure_return_keys:sizeof race_keys):(save?sizeof save_keys:sizeof load_keys);
+            platform.key_tail=0;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=keys[i];
+            platform.key_head=(unsigned char)count; ++tracks_test_stage;
+        }
+        if(track_info_fault_test && track_info_fault_stage<=5 && g_slicks_track_menu &&
+           g_slicks_track_menu->message && !g_slicks_track_menu->track_info && platform.key_head==platform.key_tail) {
+            ++track_info_fault_stage;
+            g_slicks_diag_track_info_fault=track_info_fault_stage<=5?track_info_fault_stage:0;
+            platform.key_tail=0; platform.keys[0]=0x45; platform.keys[1]=0x51; platform.key_head=2;
+        }
+        if(track_info_failure_test && track_info_failure_stage<2 && g_slicks_track_menu && platform.key_head==platform.key_tail) {
+            if(!track_info_failure_stage) {
+                unsigned target;
+                for(target=0;target<track_count;++target) {
+                    static const char wanted[]="RAILROAD"; unsigned j=0;
+                    while(j<8 && track_names[target][j]==wanted[j]) ++j;
+                    if(j==8 && track_names[target][8]=='.') break;
+                }
+                if(target==track_count) goto cleanup;
+                platform.key_tail=0; platform.key_head=0;
+                if(g_slicks_track_state.cursor==(short)target) {
+                    platform.keys[platform.key_head++]=0x51; track_info_failure_stage=1;
+                } else {
+                    unsigned count=target-(unsigned)g_slicks_track_state.cursor;
+                    if(count>15) count=15;
+                    while(count--) platform.keys[platform.key_head++]=0x4d;
+                }
+            } else if(g_slicks_track_menu->message && !g_slicks_track_menu->track_info) {
+                platform.key_tail=0; platform.keys[0]=0x45; platform.keys[1]=0x3d; platform.keys[2]=0x51;
+                platform.key_head=3; track_info_failure_stage=2;
+            }
+        }
+        if(track_info_test && tracks_test_stage<2 && g_slicks_track_menu && g_slicks_track_menu->track_info &&
+            g_slicks_track_menu->track_info->updates>=256 && platform.key_head==platform.key_tail) {
+            platform.key_tail=0; platform.keys[0]=0x45;
+            platform.keys[1]=tracks_test_stage?0x45:0x51;
+            platform.key_head=2; ++tracks_test_stage;
+        }
+        if(tracks_test && !track_lists_test && ((!track_info_test && !tracks_test_stage) ||
+            (track_info_test && tracks_test_stage==2)) && !g_slicks_track_menu && platform.key_head==platform.key_tail) {
+            static const unsigned char keys[]={0x4c,0x4c,0x44};
+            platform.key_tail=0;
+            for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+            platform.key_head=sizeof keys; tracks_test_stage=track_info_test?3:1;
+        }
+        if(joystick_test && options_test_stage<2 && g_slicks_options_menu &&
+           platform.key_head==platform.key_tail) {
+            static const unsigned char steps[2][14]={
+                {0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x44},
+                {0x4d,0x4d,0x44,0x45,0x45,0x4c,0x4c,0x4c,0x44}};
+            unsigned count=options_test_stage?9:14;
+            platform.key_tail=0;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=steps[options_test_stage][i];
+            platform.key_head=(unsigned char)count; ++options_test_stage;
+        }
+        if(controllers_test && options_test_stage<4 && g_slicks_options_menu &&
+           platform.key_head==platform.key_tail) {
+            static const unsigned char steps[4][16]={
+                {0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x44},
+                {0x44,0x4e,0x44,0x11,0x44,0x52,0x45,0x44},
+                {0x4d,0x4d,0x4d,0x4d,0x44,0x45,0x44},
+                {0x4e,0x44,0x15,0x45}};
+            static const unsigned char counts[]={14,8,7,4};
+            unsigned count=counts[options_test_stage];
+            platform.key_tail=0;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=steps[options_test_stage][i];
+            platform.key_head=(unsigned char)count; ++options_test_stage;
+        }
+        if(clear_test && clear_test_stage<2 && g_slicks_options_menu && platform.key_head==platform.key_tail) {
+            static const unsigned char steps[2][15]={
+                {0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x4d},
+                {0x4d,0x4d,0x4d,0x4d,0x4d,0x4d,0x44,0x36,0x44,0x15,0x40,0x45,0x45}};
+            /* Custom skips rows 13/14, so fourteen Down events reach row 16. */
+            unsigned count=clear_test_stage?13:8; platform.key_tail=0;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=steps[clear_test_stage][i];
+            if(clear_test_stage && argv[7]=='S') {
+                /* A failed clear has a second acknowledgement for its path. */
+                platform.keys[count++]=0x45;
+            }
+            platform.key_head=count; ++clear_test_stage;
+        }
+        if(title_help_failure_test && title_help_failure_stage<10 && platform.key_head==platform.key_tail) {
+            platform.key_tail=0; platform.key_head=1;
+            if(title_help_failure_stage==0) { help_fail_archive=1; platform.keys[0]=0x50; }
+            else if(title_help_failure_stage==2) { help_fail_surface=1; platform.keys[0]=0x50; }
+            else if(title_help_failure_stage==4) { g_slicks_diag_help_fail_allocation=1; platform.keys[0]=0x50; }
+            else if(title_help_failure_stage==6) platform.keys[0]=0x50;
+            else if(title_help_failure_stage==7) {
+                if(!g_slicks_title_help || !g_slicks_title_help->help || !g_slicks_title_help->help->chapter_length) goto cleanup;
+                /* Malformed chapter byte: real renderer validation must fail
+                 * on the next link-selection redraw, not a forced result. */
+                g_slicks_title_help->help->chapter[0]=0;
+                platform.keys[0]=0x4d;
+            } else if(title_help_failure_stage==9) {
+                platform.keys[0]=0x50; platform.keys[1]=0x45; platform.keys[2]=0x45; platform.key_head=3;
+            } else {
+                if(!g_slicks_title_help_warning && (!g_slicks_title_help || !g_slicks_title_help->help_warning)) goto cleanup;
+                platform.keys[0]=0x44;
+            }
+            ++title_help_failure_stage;
+        }
+        struct SlicksAmigaPlayerMenu *help_failure_menu=g_slicks_options_menu?g_slicks_options_menu:
+            g_slicks_player_menu?g_slicks_player_menu:g_slicks_track_menu;
+        if(help_failure_test && help_failure_stage<5 && help_failure_menu && platform.key_head==platform.key_tail) {
+            platform.key_tail=0; platform.key_head=1;
+            if(help_failure_stage==0) { slicks_diag_help_test_ready(); help_fail_archive=1; platform.keys[0]=0x50; }
+            else if(help_failure_stage==2) { g_slicks_diag_help_fail_allocation=1; platform.keys[0]=0x50; }
+            else if(help_failure_stage==4) {
+                platform.keys[0]=0x50; platform.keys[1]=0x45;
+                platform.keys[2]=0x45; platform.keys[3]=0x45; platform.key_head=4;
+            } else {
+                if(!help_failure_menu->help_warning) goto cleanup;
+                platform.keys[0]=0x44;
+            }
+            ++help_failure_stage;
+        }
+        if((collisions_test || weapons_test) && options_test_stage==1 && g_slicks_options_menu && platform.key_head==platform.key_tail) {
+            platform.key_head=platform.key_tail=0;
+            if(g_slicks_options_state.row<(weapons_test?7:11)) platform.keys[platform.key_head++]=0x4d;
+            else {
+                static const unsigned char keys[]={0x3d,0x4e,0x45,0x4c,0x4c,0x4c,0x44};
+                for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+                if(!weapons_test || argv[7]=='F') platform.keys[1]=0x3d;
+                platform.key_head=sizeof keys; options_test_stage=2;
+            }
+        }
+        if(volume_test && !options_test_stage && g_slicks_options_menu && platform.key_head==platform.key_tail) {
+            static const unsigned char keys[]={0x4d,0x3d,0x4e,0x4e,0x45,0x4c,0x4c,0x4c,0x44};
+            static const unsigned char save_keys[]={0x4d,0x3d,0x4e,0x4e,0x45,0x4d,0x4d,0x44};
+            unsigned count=volume_save_test?sizeof save_keys:sizeof keys;
+            platform.key_tail=0;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=volume_save_test?save_keys[i]:keys[i];
+            platform.key_head=(unsigned char)count; options_test_stage=1;
+        }
+        if(options_test && !controllers_test && !joystick_test && !help_test && !clear_test && !volume_test && !options_test_stage && g_slicks_options_menu &&
+           platform.key_head==platform.key_tail) {
+            static const unsigned char keys[]={0x45,0x4c,0x4c,0x4c,0x44};
+            static const unsigned char sequence_keys[]={0x4d,0x3d,0x4e,0x45,0x4c,0x44};
+            static const unsigned char arcade_save_keys[]={0x4d,0x3d,0x4e,0x45,0x4d,0x4d,0x44};
+            platform.key_tail=0;
+            const unsigned char *next=arcade_save_test?arcade_save_keys:sequence_test?sequence_keys:keys;
+            unsigned count=arcade_save_test?sizeof arcade_save_keys:sequence_test?sizeof sequence_keys:sizeof keys;
+            for(unsigned i=0;i<count;++i) platform.keys[i]=next[i];
+            platform.key_head=(unsigned char)count; options_test_stage=1;
+        }
+        if(sequence_test && options_test_stage==1 && g_slicks_track_menu &&
+            platform.key_head==platform.key_tail) {
+            /* Initial selection is All: use the native Clear action first. */
+            static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,
+                0x4f,0x3d};
+            platform.key_tail=0;
+            for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
+            platform.key_head=sizeof keys; options_test_stage=2;
+        }
+        if(sequence_test && options_test_stage>=2 && options_test_stage<4 &&
+            g_slicks_track_menu && platform.key_head==platform.key_tail) {
+            const char *wanted=options_test_stage==2?"BASIC":"BASICTRK";
+            unsigned target=0;
+            for(;target<track_count;++target) {
+                unsigned j=0;
+                while(wanted[j] && track_names[target][j]==wanted[j]) ++j;
+                if(!wanted[j] && track_names[target][j]=='.') break;
+            }
+            if(target==track_count) goto cleanup;
+            platform.key_head=platform.key_tail=0;
+            if((unsigned)g_slicks_track_state.cursor==target) {
+                platform.keys[platform.key_head++]=0x40;
+                if(options_test_stage==3) {
+                    platform.keys[platform.key_head++]=0x45;
+                    platform.keys[platform.key_head++]=0x4c;
+                    platform.keys[platform.key_head++]=0x4c;
+                    platform.keys[platform.key_head++]=0x44;
+                }
+                ++options_test_stage;
+            } else {
+                int delta=(int)target-g_slicks_track_state.cursor;
+                unsigned count=delta<0?(unsigned)-delta:(unsigned)delta;
+                if(count>15) count=15;
+                while(count--) platform.keys[platform.key_head++]=delta<0?0x4c:0x4d;
+            }
+        }
         left_down = (unsigned char)slicks_amiga_platform_left_mouse();
-        if (!g_slicks_diag_ingame && left_down && !left_was_down) {
+        if (!save_prompt && !g_slicks_diag_ingame && left_down && !left_was_down) {
             unsigned short action = slicks_dispatch_title_key(0x1c);
-            if (action == 1) {
-                result = 0;
-                goto cleanup;
+            if(g_slicks_player_menu || g_slicks_options_menu || g_slicks_track_menu || g_slicks_title_help || g_slicks_title_help_warning) {
+                action=0; /* Original player menu is keyboard-driven. */
+            } else if(action==2 && menu_selection==4) {
+                if(open_title_help(&platform,logical,chunky,source_palette,slicks_title_help_topic(action,menu_selection))) goto cleanup;
+                action=0;
+            } else if(action==2 && menu_selection==1 && original_setup) {
+                if(open_player_menu(&platform,chunky,&configuration,&player_menu_state)) goto cleanup;
+                action=0;
+            } else if (service_menu_open) {
+                unsigned short change = slicks_service_menu_key(
+                    &service_selection, &configuration.options[9], &configuration.options[10], 0x1c);
+                if (change == 2) {
+                    service_menu_open = 0;
+                    make_title_surface(logical, title_frame, source_palette);
+                    redraw_title_configuration(&platform, logical, chunky,
+                        source_palette, menu_selection, selected_vehicle,
+                        track_names[selected_track], selected_laps);
+                } else {
+                    setup_dirty=1;
+                    redraw_service_options(&platform, logical, chunky,
+                        service_selection, configuration.options[9], configuration.options[10]);
+                }
+                action = 0;
+            } else if (action == 2 && menu_selection == 3) {
+                if(original_setup) {
+                    if(open_options_menu(&platform,chunky,source_palette,&configuration)) goto cleanup;
+                    action=0;
+                } else {
+                    if(configuration.options[0]!=4) setup_dirty=1;
+                    configuration.options[0]=4; /* Legacy service diagnostic only. */
+                    service_menu_open = 1;
+                    redraw_service_options(&platform, logical, chunky,
+                        service_selection, configuration.options[9], configuration.options[10]);
+                    action = 0;
+                }
+            }
+            if (action == 1 || (action==2 && menu_selection==5)) {
+                exit_requested=1;
             }
             if (action == 2 && menu_selection == 0) {
                 if (!race_prepared) {
@@ -1004,34 +3778,163 @@ int main(int argc, char **argv)
                                     track_names[selected_track]);
                     track_path = selected_track_path;
                     if (prepare_race(&platform, logical, chunky, mode_state,
-                                     race, track_path, race_palette) != 0)
+                                     race, track_path, race_palette, selected_vehicle,
+                                     &configuration,original_setup?&g_slicks_setup_session:0,1) != 0)
                         goto cleanup;
                     race_prepared = 1;
-                    slicks_race_set_vehicle(race, 0, selected_vehicle);
+                    playlist_position = 0;
                     slicks_race_set_laps(race, selected_laps);
                     if (slicks_amiga_platform_begin(&platform, 1) != 0)
                         goto cleanup;
                     g_slicks_diag_ready = 1;
                 }
                 enter_prepared_race(&platform, logical, race);
-                slicks_amiga_audio_start_engine(
-                    &audio, race->cars[0].vehicle, 100);
+                start_race_engines(&audio,race,&platform);
                 g_slicks_diag_engine_sample_block =
                     audio.engine_sample_block;
             }
         }
         left_was_down = left_down;
+        if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_info) {
+            slicks_amiga_track_info_tick(g_slicks_track_menu,&g_slicks_setup_session.random_state);
+            present_menu_surface(&platform,g_slicks_track_menu);
+        }
+        if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_lists) {
+            if(g_slicks_track_menu->name_dialog) {
+                if(slicks_amiga_name_dialog_tick(g_slicks_track_menu,platform.vblank_count)) goto cleanup;
+            } else if(g_slicks_track_menu->picker) {
+                slicks_status_clock_advance(&picker_clock,platform.vblank_count-picker_clock_vblank);
+                picker_clock_vblank=platform.vblank_count;
+                if(slicks_amiga_profile_picker_draw(g_slicks_track_menu,picker_clock.ticks)) goto cleanup;
+            }
+            present_menu_surface(&platform,g_slicks_track_menu);
+        }
+        if(!save_prompt && g_slicks_player_menu && g_slicks_player_menu->name_dialog) {
+            if(slicks_amiga_name_dialog_tick(g_slicks_player_menu,platform.vblank_count)) goto cleanup;
+            present_player_menu(&platform);
+        }
+        if(!save_prompt && g_slicks_player_menu && (g_slicks_player_menu->picker || g_slicks_player_menu->colour_dialog)) {
+            unsigned long now=platform.vblank_count;
+            slicks_status_clock_advance(&picker_clock,now-picker_clock_vblank);
+            picker_clock_vblank=now;
+            if(g_slicks_player_menu->colour_dialog) {
+                if(slicks_amiga_colour_dialog_draw(g_slicks_player_menu,picker_clock.ticks)) goto cleanup;
+            } else if(slicks_amiga_profile_picker_draw(g_slicks_player_menu,picker_clock.ticks)) goto cleanup;
+            present_player_menu(&platform);
+        }
+        if (g_slicks_diag_ingame && g_slicks_diag_scanout_only) {
+            slicks_amiga_platform_wait_vblank(&platform);
+            if (g_slicks_diag_scanout_only == 2) {
+                /* SCANOUTC: unchanged source and scene, repeated production
+                 * conversion. Sweep 64-pixel rectangles through all rows
+                 * to expose display/write interactions without game logic. */
+                unsigned short top =
+                    (unsigned short)(g_slicks_diag_scanout_frames % 200);
+                unsigned short left = (unsigned short)(
+                    ((g_slicks_diag_scanout_frames / 200) % 5) * 64);
+                unsigned short bottom = top + 8;
+                if (bottom > 200)
+                    bottom = 200;
+                slicks_amiga_platform_wait_display_blank(&platform);
+                slicks_chunky_rect_to_amiga(
+                    chunky, platform.views[1].bitmap,
+                    left, top, left + 64, bottom, title_frame);
+            }
+            if (g_slicks_diag_scanout_only == 3) {
+                /* SCANOUTF: stress visible DMA with identical full-screen
+                 * stores; unlike SCANOUTC, do not wait for display blank. */
+                slicks_chunky_rect_to_amiga(
+                    chunky, platform.views[1].bitmap,
+                    0, 0, 320, 200, title_frame);
+            }
+            if (++g_slicks_diag_scanout_frames ==
+                (g_slicks_diag_scanout_only == 3 ? 50UL : 500UL)) {
+                g_slicks_diag_display_checksum =
+                    checksum_bitmap(platform.views[1].bitmap);
+                slicks_diag_gameplay_ready();
+            }
+            continue;
+        }
         if (g_slicks_diag_ingame) {
             unsigned short dirty;
             unsigned short sound;
+            unsigned long audio_blank_at = 0;
             unsigned char completed_now = 0;
             unsigned char profile =
-                (unsigned char)(race->frame_count + 1 ==
+                (unsigned char)(g_slicks_diag_profile_all || race->frame_count + 1 ==
                                 g_slicks_diag_target_frame);
             unsigned long profile_at = platform.vblank_count;
             unsigned long profile_line_at =
                 profile ? slicks_diag_profile_raster_time() : 0;
+            unsigned long frame_start = profile_line_at;
+            unsigned char bench_racing = race->racing;
+            if (g_slicks_diag_profile_all && bench_racing) {
+                if (g_slicks_diag_bench_previous) {
+                    g_slicks_diag_bench_cadence_sum +=
+                        frame_start - g_slicks_diag_bench_previous;
+                    ++g_slicks_diag_bench_cadence_count;
+                }
+                g_slicks_diag_bench_previous = frame_start;
+            }
+            if (g_slicks_diag_audit_bitmap)
+                snapshot_display(title_asset, platform.views[1].bitmap);
+            if (shadow_fixture && race->frame_count == 0) {
+                unsigned short car;
+                race->racing = 1;
+                race->actor_page = 0;
+                race->cars[0].special_drive_state = 12000;
+                race->cars[0].special_drive_target = 0;
+                for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
+                    race->cars[car].finished = 1;
+            } else if (shadow_fixture && race->frame_count == 1) {
+                race->cars[0].special_drive_state = 0;
+                race->cars[0].special_drive_target = 0;
+            }
+            if(weapon_hud_fixture) set_weapon_hud_fixture(race);
             slicks_race_step(race, logical);
+            if (race->collision_error) {
+                g_slicks_diag_race_error = 10;
+                slicks_diag_collision_failed();
+                slicks_diag_frame_ready();
+                goto cleanup;
+            }
+            {
+                unsigned long now=platform.vblank_count;
+                slicks_status_clock_advance(&status_clock,now-status_clock_vblank);
+                status_clock_vblank=now;
+                if (slicks_race_draw_status(race,logical,status_clock.ticks)<0) {
+                    g_slicks_diag_race_error=9;
+                    goto cleanup;
+                }
+            }
+            if (jump_track_test) {
+                unsigned short car;
+                for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
+                    short state = race->cars[car].special_drive_state;
+                    if (state > 0 && previous_jump_state[car] <= 0)
+                        ++g_slicks_diag_jump_takeoffs;
+                    if (!state && previous_jump_state[car] > 0)
+                        ++g_slicks_diag_jump_landings;
+                    if (state > (short)g_slicks_diag_jump_peak)
+                        g_slicks_diag_jump_peak = (unsigned short)state;
+                    if (race->shadows[car].saved_valid)
+                        ++g_slicks_diag_jump_shadow_frames;
+                    previous_jump_state[car] = state;
+                }
+            }
+            if (shadow_fixture && race->frame_count == 1) {
+                const struct SlicksCarShadow *shadow = &race->shadows[0];
+                shadow_at = mult320[shadow->old_y] + shadow->old_x + 1;
+                shadow_background = shadow->saved_under[1];
+                g_slicks_diag_shadow_check = shadow->state == 3 &&
+                    shadow->lifetime == 2 && shadow->saved_valid &&
+                    chunky[shadow_at] == 37 ? 1 : 10;
+            } else if (shadow_fixture && race->frame_count == 5 &&
+                       g_slicks_diag_shadow_check == 1) {
+                g_slicks_diag_shadow_check = race->shadows[0].state == -3 &&
+                    !race->shadows[0].saved_valid &&
+                    chunky[shadow_at] == shadow_background ? 2 : 11;
+            }
             if (profile) {
                 unsigned long now = slicks_diag_profile_raster_time();
                 g_slicks_diag_profile_step_vblanks =
@@ -1040,19 +3943,36 @@ int main(int argc, char **argv)
                 profile_at = platform.vblank_count;
                 profile_line_at = now;
             }
+            if (g_slicks_diag_audio_in_blank) {
+                slicks_amiga_platform_wait_display_blank(&platform);
+                audio_blank_at = slicks_diag_profile_raster_time();
+                if (profile) {
+                    profile_at = platform.vblank_count;
+                    profile_line_at = audio_blank_at;
+                }
+            }
             if (race->race_complete && audio.engine_started) {
                 slicks_amiga_audio_stop(&audio);
                 slicks_amiga_audio_start_music(&audio);
                 completed_now = 1;
             }
-            slicks_amiga_audio_update(&audio, race->cars[0].velocity_x,
-                                      race->cars[0].velocity_y);
+            update_race_engines(&audio,race);
             for (sound = 0; sound < race->sound_event_count; ++sound) {
                 const struct SlicksSoundEvent *event =
                     &race->sound_events[sound];
                 slicks_amiga_audio_play_effect(
                     &audio, event->sample_block, event->flags,
                     event->priority);
+            }
+            if (g_slicks_diag_audio_in_blank) {
+                unsigned long duration =
+                    slicks_diag_profile_raster_time() - audio_blank_at;
+                unsigned long remaining = PAL_RASTER_LINES -
+                    (audio_blank_at % PAL_RASTER_LINES) + 56;
+                if (duration > g_slicks_diag_audio_blank_max_lines)
+                    g_slicks_diag_audio_blank_max_lines = duration;
+                if (duration >= remaining)
+                    ++g_slicks_diag_audio_blank_spills;
             }
             if (profile) {
                 unsigned long now = slicks_diag_profile_raster_time();
@@ -1070,14 +3990,31 @@ int main(int argc, char **argv)
             g_slicks_diag_engine_period = audio.engine_period;
             g_slicks_diag_music_started = audio.music_started;
             g_slicks_diag_dirty_ranges = race->dirty_row_count;
+            g_slicks_diag_dirty_pixels = race->dirty_pixel_count;
             g_slicks_diag_dirty_rows = 0;
+            if (!g_slicks_diag_audio_in_blank)
+                slicks_amiga_platform_wait_display_blank(&platform);
+            if (profile) {
+                profile_at = platform.vblank_count;
+                profile_line_at = slicks_diag_profile_raster_time();
+            }
+            /* Both paths consume the same authoritative chunky surface.
+             * Sparse updates include particle restoration/expiry and HUD
+             * changes; a later rectangle conversion must preserve them. */
+            slicks_chunky_pixels_to_amiga(
+                chunky, platform.views[1].bitmap,
+                race->dirty_pixels, race->dirty_pixel_count);
             for (dirty = 0; dirty < race->dirty_row_count; ++dirty) {
                 const struct SlicksDirtyRows *rows = &race->dirty_rows[dirty];
-                slicks_chunky_rows_to_amiga(
+                unsigned long equivalent_rows =
+                    (unsigned long)(rows->right - rows->left) *
+                    (rows->bottom - rows->top) / 320UL;
+                slicks_chunky_rect_to_amiga(
                     chunky, platform.views[1].bitmap,
-                    rows->top, rows->bottom);
-                g_slicks_diag_dirty_rows += rows->bottom - rows->top;
-                g_slicks_diag_dirty_c2p_rows += rows->bottom - rows->top;
+                    rows->left, rows->top, rows->right, rows->bottom,
+                    title_frame);
+                g_slicks_diag_dirty_rows += equivalent_rows;
+                g_slicks_diag_dirty_c2p_rows += equivalent_rows;
                 ++g_slicks_diag_dirty_c2p_calls;
             }
             if (profile) {
@@ -1088,7 +4025,61 @@ int main(int argc, char **argv)
                 profile_at = platform.vblank_count;
                 profile_line_at = now;
             }
+            /* BITMAPFAULT is the audit's positive control: flip a static
+             * pixel outside the countdown's declared updates. */
+            if (g_slicks_diag_audit_bitmap == 2 && race->frame_count == 1)
+                platform.views[1].bitmap->Planes[0][100UL * 320UL] ^= 0x80;
+            if (g_slicks_diag_audit_bitmap &&
+                audit_display(title_asset, platform.views[1].bitmap, race) != 0)
+                goto cleanup;
+            if (shadow_fixture && (race->frame_count == 1 || race->frame_count == 5) &&
+                g_slicks_diag_shadow_check < 10) {
+                const struct BitMap *bitmap = platform.views[1].bitmap;
+                unsigned long offset = (shadow_at / 320UL) * bitmap->BytesPerRow +
+                                       (shadow_at % 320UL) / 8;
+                unsigned char mask = (unsigned char)(0x80U >> (shadow_at & 7));
+                unsigned short plane;
+                unsigned short colour = 0;
+                for (plane = 0; plane < 8; ++plane)
+                    if (bitmap->Planes[plane][offset] & mask)
+                        colour |= 1U << plane;
+                if (colour != (race->frame_count == 1 ? 37 : shadow_background))
+                    g_slicks_diag_shadow_check = 12;
+            }
             slicks_race_clear_dirty_rows(race);
+            unsigned char damage_visible = 0;
+            if (service_menu_test)
+                for (unsigned short car = 0; car < 4; ++car)
+                    if (race->cars[car].damage[0] >= 40)
+                        damage_visible = 1;
+            if ((fuel_race_test || service_menu_test) && (completed_now ||
+                (damage_visible && !g_slicks_diag_damage_status_checks) ||
+                !(status_checked_phases & (1U << (status_clock.ticks & 1))))) {
+                const struct BitMap *bitmap=platform.views[1].bitmap;
+                unsigned short car, x, y, plane;
+                for (car=0;car<4;++car) {
+                    struct SlicksStatusRect rects[3];
+                    int count=slicks_race_status_rects(race,car,status_clock.ticks,rects);
+                    if (count<0) { ++g_slicks_diag_status_failures; continue; }
+                    for (y=187;y<190;++y)
+                    for (x=106+car*60;x<126+car*60;++x) {
+                        unsigned char expected=race->status_colours[0], actual=0;
+                        unsigned long offset=(unsigned long)y*bitmap->BytesPerRow+x/8;
+                        for (int i=0;i<count;++i)
+                            if (x>=rects[i].left && x<rects[i].right &&
+                                y>=rects[i].top && y<rects[i].bottom)
+                                expected=race->status_colours[rects[i].colour];
+                        for (plane=0;plane<8;++plane)
+                            if (bitmap->Planes[plane][offset] & (0x80U >> (x&7))) actual|=1U<<plane;
+                        if (actual!=expected || chunky[mult320[y]+x]!=expected)
+                            ++g_slicks_diag_status_failures;
+                    }
+                }
+                status_checked_phases|=1U << (status_clock.ticks & 1);
+                ++g_slicks_diag_status_checks;
+                if (damage_visible)
+                    ++g_slicks_diag_damage_status_checks;
+            }
             update_race_diagnostics(race);
             if (profile) {
                 unsigned long now = slicks_diag_profile_raster_time();
@@ -1105,6 +4096,19 @@ int main(int argc, char **argv)
                     g_slicks_diag_profile_audio_lines +
                     g_slicks_diag_profile_c2p_lines +
                     g_slicks_diag_profile_diag_lines;
+                if (g_slicks_diag_profile_all && bench_racing) {
+                    unsigned long wall = now - frame_start;
+                    unsigned long work = g_slicks_diag_profile_total_lines;
+                    ++g_slicks_diag_bench_frames;
+                    if (work > g_slicks_diag_bench_work_max) {
+                        g_slicks_diag_bench_work_max = work;
+                        g_slicks_diag_bench_work_max_frame = race->frame_count;
+                    }
+                    if (work > PAL_RASTER_LINES)
+                        ++g_slicks_diag_bench_work_over;
+                    if (wall > g_slicks_diag_bench_wall_max)
+                        g_slicks_diag_bench_wall_max = wall;
+                }
             }
             if (completed_now) {
                 sync_chunky_to_logical(chunky, logical);
@@ -1119,6 +4123,14 @@ int main(int argc, char **argv)
                 g_slicks_diag_display_checksum =
                     checksum_bitmap(platform.views[1].bitmap);
                 slicks_diag_gameplay_ready();
+            }
+            if(g_slicks_diag_audio_hold_frames) {
+                slicks_amiga_platform_wait_display_blank(&platform);
+                slicks_amiga_audio_play_effect(&audio,13,0,127);
+                while(g_slicks_diag_audio_hold_frames) {
+                    slicks_amiga_platform_wait_vblank(&platform);
+                    --g_slicks_diag_audio_hold_frames;
+                }
             }
             slicks_diag_frame_ready();
         }
@@ -1136,18 +4148,25 @@ cleanup:
         slicks_diag_system_restored();
     }
     slicks_amiga_platform_destroy(&platform);
+    slicks_amiga_player_menu_destroy(g_slicks_player_menu); g_slicks_player_menu=0;
+    slicks_amiga_player_menu_destroy(g_slicks_options_menu); g_slicks_options_menu=0;
+    slicks_amiga_player_menu_destroy(g_slicks_track_menu); g_slicks_track_menu=0;
+    g_slicks_track_renderer.surface=0;
+    slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
+    g_slicks_options_renderer.surface=0;
+    g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);
     if (sample_resource)
         FreeMem(sample_resource, 131691UL);
     if (chunky)
-        FreeMem(chunky, 320UL * 200UL);
+        FreeMem(chunky, CHUNKY_ALLOCATION_BYTES);
     if (race)
         FreeMem(race, sizeof(*race));
     if (logical)
         FreeMem(logical, 0x40000UL);
     g_slicks_diag_logical = 0;
     if (title_frame)
-        FreeMem(title_frame, 64002UL);
+        FreeMem(title_frame, TITLE_FRAME_ALLOCATION_BYTES);
     if (title_asset)
         FreeMem(title_asset, 64003UL);
     if (GfxBase)

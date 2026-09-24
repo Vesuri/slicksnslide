@@ -58,6 +58,10 @@ def main() -> None:
     parser.add_argument("logical", type=Path)
     parser.add_argument("archive", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--chunky", action="store_true",
+                        help="input is the native 320x200 chunky surface")
+    parser.add_argument("--palette", type=Path,
+                        help="use a target-dumped 768-byte six-bit palette")
     parser.add_argument(
         "--race-palette",
         action="store_true",
@@ -66,9 +70,11 @@ def main() -> None:
     args = parser.parse_args()
 
     logical = args.logical.read_bytes()
-    if len(logical) != 0x40000:
-        raise ValueError(f"expected 262144 logical bytes, got {len(logical)}")
+    expected_size = 64000 if args.chunky else 0x40000
+    if len(logical) != expected_size:
+        raise ValueError(f"expected {expected_size} screen bytes, got {len(logical)}")
     palette_data = bytearray(
+        args.palette.read_bytes() if args.palette else
         archive_resource(args.archive.read_bytes(), b"peli.@p")
     )
     if len(palette_data) != 768:
@@ -77,12 +83,13 @@ def main() -> None:
         prepare_race_palette(palette_data)
     palette = [((value << 2) | (value >> 4)) for value in palette_data]
 
-    pixels = bytearray(320 * 200)
-    for y in range(200):
-        for x in range(320):
-            pixels[y * 320 + x] = logical[
-                (x & 3) * 0x10000 + y * 100 + (x >> 2)
-            ]
+    pixels = bytearray(logical) if args.chunky else bytearray(320 * 200)
+    if not args.chunky:
+        for y in range(200):
+            for x in range(320):
+                pixels[y * 320 + x] = logical[
+                    (x & 3) * 0x10000 + y * 100 + (x >> 2)
+                ]
     image = Image.frombytes("P", (320, 200), bytes(pixels))
     image.putpalette(palette)
     image.save(args.output)

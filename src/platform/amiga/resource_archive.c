@@ -1,9 +1,11 @@
 #include "resource_archive.h"
 
+#ifndef SLICKS_ARCHIVE_HOST_TEST
 #include <exec/memory.h>
 #include <dos/dos.h>
 #include <proto/dos.h>
 #include <proto/exec.h>
+#endif
 
 static int resource_name_matches(const unsigned char *field, const char *name)
 {
@@ -77,17 +79,22 @@ long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
     for (index = 0; index < archive->count; ++index) {
         const unsigned char *entry = archive->directory +
             (unsigned long)index * 19UL;
-        const unsigned char *next_entry;
         unsigned long start;
         unsigned long end;
         unsigned long size;
         if (!resource_name_matches(entry, name))
             continue;
-        if (index + 1 >= archive->count)
-            return -1;
-        next_entry = entry + 19;
         start = read_u24_be(entry + 16);
-        end = read_u24_be(next_entry + 16);
+        if (index + 1 < archive->count) {
+            end = read_u24_be(entry + 19 + 16);
+        } else {
+            /* HELP.TXT is the final resource, without a sentinel entry.
+             * AmigaDOS Seek returns the previous position, not the new one. */
+            if (Seek(archive->file, 0, OFFSET_END) < 0) return -1;
+            LONG position = Seek(archive->file, 0, OFFSET_CURRENT);
+            if (position < 0) return -1;
+            end = (unsigned long)position;
+        }
         /* Marker entries such as the first duplicate "car9" deliberately
          * have zero length.  Keep looking for a later data entry of the same
          * name instead of treating the marker as the requested resource. */

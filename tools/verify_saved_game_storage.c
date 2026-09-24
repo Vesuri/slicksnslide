@@ -1,0 +1,82 @@
+#define main track_storage_verifier_main
+#include "verify_track_storage.c"
+#undef main
+int main(void)
+{
+    paths[0]="RACE.SSS"; paths[1]="RACE.SSS.new"; paths[2]="RACE.SSS.bak";
+    unsigned char tracks[256][8],expected[SLICKS_SAVED_GAME_MAX_BYTES],old[8]={0x53,8,0,0,0,0,0,0};
+    memset(tracks,'T',sizeof tracks);
+    struct SlicksSavedGame game={.track_count=256,.next_track=93,.tracks=tracks};
+    memset(game.names,'N',sizeof game.names);
+    long size=slicks_save_game_bytes(&game,expected,sizeof expected);
+    assert(size==sizeof expected);
+    unsigned cases=0,results[4]={0};
+    initialize(old,sizeof old); fail_first=fail_second=0;
+    struct SlicksSetupStorageReport report=slicks_amiga_store_saved_game(paths[0],&game);
+    assert(report.result==SLICKS_SETUP_SAVED && equals(0,expected,(unsigned)size) && !allocations);
+    unsigned normal=operation;
+    for(unsigned first=0;first<=normal+5;++first) for(unsigned second=first;second<=normal+5;++second) {
+        initialize(old,sizeof old); fail_first=first; fail_second=second;
+        report=slicks_amiga_store_saved_game(paths[0],&game);
+        assert(!allocations && report.path==paths[0]); ++cases; ++results[report.result];
+        if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING)
+            assert(equals(0,expected,(unsigned)size));
+        else assert(equals(0,old,sizeof old) || equals(2,old,sizeof old));
+        if(report.result==SLICKS_SETUP_SAVE_FAILED) assert(equals(0,old,sizeof old));
+        if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVE_FAILED)
+            assert(!files[1].present && !files[2].present);
+    }
+    fail_first=fail_second=0;
+    for(unsigned artifact=1;artifact<3;++artifact) {
+        initialize(old,sizeof old); files[artifact].present=1; files[artifact].size=3;
+        struct File before[3]; memcpy(before,files,sizeof before);
+        report=slicks_amiga_store_saved_game(paths[0],&game);
+        assert(report.result==SLICKS_SETUP_RECOVERY_REQUIRED && !memcmp(before,files,sizeof before) && !allocations);
+    }
+    initialize(old,sizeof old); files[0].present=0;
+    report=slicks_amiga_store_saved_game(paths[0],&game);
+    assert(report.result==SLICKS_SETUP_SAVED && equals(0,expected,(unsigned)size) && !allocations);
+    game.track_count=257; operation=0;
+    report=slicks_amiga_store_saved_game(paths[0],&game);
+    assert(report.result==SLICKS_SETUP_SAVE_FAILED && !operation && !allocations);
+    for(unsigned i=0;i<4;++i) assert(results[i]);
+    struct SlicksSavedGame loaded;
+    unsigned char loaded_tracks[256][8],encoded[SLICKS_SAVED_GAME_MAX_BYTES];
+    fail_first=fail_second=0; initialize(expected,(unsigned)size);
+    struct SlicksSetupLoadReport load=slicks_amiga_load_saved_game(paths[0],&loaded,loaded_tracks,256);
+    assert(load.result==SLICKS_SETUP_LOADED && !allocations);
+    assert(slicks_save_game_bytes(&loaded,encoded,sizeof encoded)==size && !memcmp(encoded,expected,(size_t)size));
+    unsigned reads=operation,load_cases=0;
+    for(unsigned fault_at=1;fault_at<=reads;++fault_at) {
+        initialize(expected,(unsigned)size); fail_first=fault_at;
+        memset(&loaded,0xa5,sizeof loaded); memset(loaded_tracks,0xa5,sizeof loaded_tracks);
+        load=slicks_amiga_load_saved_game(paths[0],&loaded,loaded_tracks,256);
+        assert(load.result==SLICKS_SETUP_LOAD_IO_ERROR && load.path==paths[0] && !allocations);
+        for(unsigned i=0;i<sizeof loaded;++i) assert(((unsigned char *)&loaded)[i]==0xa5);
+        for(unsigned i=0;i<sizeof loaded_tracks;++i) assert(((unsigned char *)loaded_tracks)[i]==0xa5);
+        assert(equals(0,expected,(unsigned)size)); ++load_cases;
+    }
+    fail_first=0;
+    for(unsigned cut=0;cut<(unsigned)size;++cut) {
+        initialize(expected,cut);
+        load=slicks_amiga_load_saved_game(paths[0],&loaded,loaded_tracks,256);
+        assert(load.result==SLICKS_SETUP_LOAD_INVALID && !allocations);
+        for(unsigned i=0;i<sizeof loaded;++i) assert(((unsigned char *)&loaded)[i]==0xa5);
+        for(unsigned i=0;i<sizeof loaded_tracks;++i) assert(((unsigned char *)loaded_tracks)[i]==0xa5);
+        ++load_cases;
+    }
+    initialize(expected,(unsigned)size); files[0].size++;
+    load=slicks_amiga_load_saved_game(paths[0],&loaded,loaded_tracks,256);
+    assert(load.result==SLICKS_SETUP_LOAD_INVALID && !allocations);
+    initialize(expected,(unsigned)size); files[0].present=0;
+    load=slicks_amiga_load_saved_game(paths[0],&loaded,loaded_tracks,256);
+    assert(load.result==SLICKS_SETUP_LOAD_IO_ERROR && load.io_error==ERROR_OBJECT_NOT_FOUND && !allocations);
+    for(unsigned artifact=1;artifact<3;++artifact) {
+        initialize(expected,(unsigned)size); files[artifact].present=1;
+        load=slicks_amiga_load_saved_game(paths[0],&loaded,loaded_tracks,256);
+        assert(load.result==SLICKS_SETUP_LOAD_RECOVERY && !allocations);
+    }
+    printf("Amiga saved-game storage: %u single/double faults, short writes, missing-file creation and recovery guards pass\n",cases);
+    printf("Amiga saved-game load: %u I/O-fault and truncation cases preserve destinations; overflow/missing/recovery cases pass\n",load_cases);
+    return 0;
+}

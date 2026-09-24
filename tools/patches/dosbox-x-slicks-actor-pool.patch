@@ -1,0 +1,28 @@
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -916,1 +916,25 @@
++	static unsigned slicks_pool_calls = 0;
++	if (std::getenv("SLICKS_TRACE_POOL") &&
++	    (offset == 0x237e7 || offset == 0x23f30)) {
++		if (offset == 0x237e7) ++slicks_pool_calls;
++		if (slicks_pool_calls <= 256) {
++			const auto data = SegPhys(ds);
++			const auto pool = (static_cast<PhysPt>(mem_readw(data + 0x16d0)) << 4) +
++			                  mem_readw(data + 0x16ce);
++			const auto high = mem_readw(data + 0x16c0);
++			LOG_MSG("SLICKS_POOL stage=%s call=%u frame=%u page=%u capacity=%u high=%u objects=%u",
++			        offset == 0x237e7 ? "PRE" : "POST", slicks_pool_calls,
++			        slicks_race_frame, mem_readb(data + 0x16c6),
++			        mem_readw(data + 0x16be), high, mem_readw(data + 0x3124));
++			for (unsigned slot = 1; slot < high && slot < 200; ++slot) {
++				const auto actor = pool + slot * 64;
++				LOG_MSG("SLICKS_POOL_SLOT slot=%u state=%d life=%u priority=%u size=%u colour=%u x=%d y=%d",
++				        slot, static_cast<int8_t>(mem_readb(actor + 0x1a)),
++				        mem_readw(actor + 0x3e), mem_readb(actor + 0x25),
++				        mem_readw(actor + 0x18), mem_readb(actor + 0x26),
++				        static_cast<int16_t>(mem_readw(actor)),
++				        static_cast<int16_t>(mem_readw(actor + 2)));
++			}
++		}
++	}
+ 	if (offset == 0x128d2)
