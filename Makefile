@@ -420,6 +420,11 @@ verify-race-rewards: build/verify_race_rewards
 	build/verify_race_rewards
 .PHONY: verify-track-list-storage
 .PHONY: verify-saved-game
+.PHONY: verify-championship
+build/verify_championship: tools/verify_championship.c src/game/championship.h src/game/setup_session.h src/game/saved_game.h src/game/saved_game_resume.h | build
+	$(CC) -std=c11 -Wall -Wextra -Werror -O2 -o $@ $<
+verify-championship: build/verify_championship
+	./build/verify_championship
 .PHONY: verify-saved-game-resume
 build/verify_saved_game_resume: tools/verify_saved_game_resume.c tools/verify_configuration.c src/game/saved_game_resume.h src/game/saved_game.h src/game/player_profiles.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@

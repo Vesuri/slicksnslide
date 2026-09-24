@@ -10,6 +10,7 @@ struct SlicksSetupSession {
     struct SlicksRaceOptions options;
     short inventory[4][13],cash[4],points[4];
     unsigned long random_state;
+    unsigned char saved_position_scale[4],saved_position_scale_valid;
 };
 struct SlicksSetupResources {
     const struct SlicksSetupProfile *profiles;
@@ -44,6 +45,7 @@ static inline void slicks_setup_select(struct SlicksSetupSession *session,
     struct SlicksConfiguration *configuration,const struct SlicksSetupResources *resources,
     signed char choose_mode)
 {
+    session->saved_position_scale_valid=0;
     struct SlicksSetupSelectionContext context={session,resources,configuration->options[0]};
     struct SlicksProfileSetupOps ops={slicks_setup_override,slicks_setup_choose,slicks_setup_apply,&context};
     for(unsigned i=0;i<4;++i) session->players.selected[i]=configuration->selected_profile[i];
