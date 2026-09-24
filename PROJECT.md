@@ -11,12 +11,14 @@ The current queue is [docs/open-work.md](docs/open-work.md). Native player
 setup, CFG/PLR save/restart and correct race setup are complete, with manual
 joystick verification explicitly deferred by the user. Four-channel direct
 Paula audio now has VBI-based lifetimes and staged DMA restarts. Championship
-save/load has tested format, storage and resolution primitives, but its UI
-and live resume integration are still unfinished. The full game is not yet
+save/load/resume now works through native menus, including fresh-process
+resume, repeated saves, overwrite/delete confirmation and rejected-load
+state preservation. The full game is not yet
 complete; further performance work is deferred.
 
 See [setup evidence](docs/player-setup-completion.md) and
-[audio evidence](docs/audio-channel-plan.md). The measured facts and staged
+[audio evidence](docs/audio-channel-plan.md), and
+[championship evidence](docs/championship-save-resume.md). The measured facts and staged
 implementation narrative below are historical: early Intuition screens,
 temporary fonts and intermediate control paths do not describe the current
 runtime. The general translator pipeline remains an architectural roadmap,
@@ -345,7 +347,5 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Connect championship save/load/resume through the native UI using the tested
-storage and original-code-derived resolution helpers. Follow
-[the current queue](docs/open-work.md) for the remaining priorities and deferred
+Follow [the current queue](docs/open-work.md) for remaining gameplay priorities and deferred
 checks; do not restart performance or manual joystick work implicitly.

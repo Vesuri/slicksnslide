@@ -602,6 +602,7 @@ static void present_player_menu(struct SlicksAmigaPlatform *platform)
 struct SlicksAmigaPlayerMenu *g_slicks_diag_saved_menu;
 volatile unsigned short g_slicks_diag_saved_phase;
 static unsigned char championship_test,championship_test_stage,championship_picker_count;
+static unsigned char championship_dialog_step;
 void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
 static void championship_test_keys(struct SlicksAmigaPlatform *p,const unsigned char *keys,unsigned count)
 {
@@ -613,6 +614,38 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
 {
     slicks_diag_saved_ready();
     if(!championship_test) return;
+    if(championship_test==3) {
+        /* Fresh resume, second intermission: cancel a name, create TEMP,
+         * cancel/accept overwrite of E2E, cancel/accept deletion of TEMP.
+         * Only ordinary keys; catalogue inspection chooses a visible row. */
+        static const unsigned char phases[]={1,1,2,1,2,3,1,3,1,3,3,1,3,1,3,1};
+        unsigned step=championship_dialog_step++;
+        if(step>=sizeof phases || phases[step]!=g_slicks_diag_saved_phase) { g_slicks_diag_force_exit=1; return; }
+        unsigned char keys[16]; unsigned count=0;
+        if(step==2) keys[count++]=0x45;
+        else if(step==4) { keys[count++]=0x14; keys[count++]=0x12; keys[count++]=0x37; keys[count++]=0x19; keys[count++]=0x44; }
+        else if(step==5 || step==10) { keys[count++]=0x44; keys[count++]=0x44; }
+        else if(step==6 || step==8 || step==11 || step==13) {
+            struct SlicksListRenderer *r=&g_slicks_diag_saved_menu->picker->renderer;
+            unsigned target=0; unsigned char initial=step<11?'E':'T';
+            while(target<(unsigned)r->state.count && r->names[target*r->stride]!=initial) ++target;
+            if(target>=12 || target==(unsigned)r->state.count) { g_slicks_diag_force_exit=1; return; }
+            keys[count++]=0x42; /* Save As -> Delete */
+            if(step<11) keys[count++]=0x42; /* Delete -> Save */
+            while(target--) keys[count++]=0x4d;
+            keys[count++]=0x44;
+        } else if(step==7 || step==12) keys[count++]=0x36; /* N */
+        else if(step==9 || step==14) keys[count++]=0x15; /* Y */
+        else if(step==15) { keys[count++]=0x45; keys[count++]=0x59; keys[count++]=0x45; }
+        else keys[count++]=0x44;
+        championship_test_keys(p,keys,count); return;
+    }
+    if(championship_test==4) {
+        unsigned char keys[2]={0x44,0x45};
+        if(g_slicks_diag_saved_phase==3) ++championship_dialog_step;
+        if(g_slicks_diag_saved_phase==1 && championship_dialog_step) keys[0]=0x45;
+        championship_test_keys(p,keys,championship_dialog_step?2:1); return;
+    }
     if(g_slicks_diag_saved_phase==1) {
         static const unsigned char cancel[]={0x45,0x44},accept[]={0x44};
         if(championship_test==1 && !championship_picker_count++) championship_test_keys(p,cancel,2);
@@ -2052,7 +2085,7 @@ retry:
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_diag_intermission_menu=m;
     slicks_diag_intermission_checkpoint();
-    if(championship_test==1) {
+    if(championship_test==1 || championship_test==3) {
         static const unsigned char keys[]={0x4c,0x44};
         championship_test_keys(platform,keys,2);
     }
@@ -2454,7 +2487,7 @@ int main(void)
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
     if(argc==9 && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
-        championship_test=(unsigned char)(argv[5]=='S'?1:argv[5]=='L'?2:0);
+        championship_test=(unsigned char)(argv[5]=='S'?1:argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
     original_setup=(unsigned char)(!argc || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
         struct DateStamp now;
@@ -2854,7 +2887,7 @@ int main(void)
             championship_test_keys(&platform,keys,sizeof keys); championship_test_stage=1;
         }
         if(championship_test && g_slicks_diag_ingame && race->frame_count>=40 && championship_test_stage<2) {
-            unsigned char key=championship_test==1?0x58:0x59;
+            unsigned char key=championship_test==2?0x59:0x58;
             championship_test_keys(&platform,&key,1); championship_test_stage=2;
         }
         if(championship_test==2 && championship_test_stage==2 && !g_slicks_diag_ingame) {

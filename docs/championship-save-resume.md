@@ -1,5 +1,11 @@
 # Championship save/load/resume evidence
 
+Use **Save Game** between races, then **Load Game** on the title after restart.
+The picker offers Save, Save As and Delete; Tab changes actions and arrows
+choose files. Filenames are 1–8 letters/digits/hyphens/underscores, stored as
+`.SSS` alongside the game. Overwrite and deletion require Y; other keys cancel
+the confirmation. Escape backs out without loading or saving.
+
 ## Native integration — 2026-09-25
 
 The native title now exposes Load Game (index 4); Read This and Quit move to
@@ -58,3 +64,43 @@ The first two input attempts were invalid tests: this FS-UAE GDB stub ignores
 memory writes. The successful tests use native raw-key queues and read-only
 GDB assertions, as the established project fixtures do. No debugger supplies
 championship state or race progress. Local saves/dumps remain ignored.
+
+### Repeat saves and failure matrix
+
+`CHAMPEDIT`, port 25146, freshly resumed race two from the saved file and
+reached the following intermission through the real F9 advance menu. Its
+16 checked dialog boundaries cancelled filename entry, created TEMP.SSS,
+cancelled and accepted overwriting E2E.SSS, cancelled and accepted deleting
+TEMP.SSS, and returned through End Match to a clean exit. The surviving E2E
+file has next index 2; TEMP is absent and there are no .SSS.new/.SSS.bak
+leftovers. Cash progressed from 250 to 300 through the ordinary track award.
+`NATIVE_CHAMPIONSHIP_RESAVE_OVERWRITE_DELETE_CANCEL_OK`, restoration 0x1f.
+
+A further fresh process at port 25157 loaded the overwritten E2E checkpoint,
+prepared `TRACKS/8.SS` (race three) with cash 300 and `new_game=0`, ran 40
+updates and exited cleanly. `championship_target_fixtures.py check-resume`
+independently decodes the actual .SSS bytes and compares its points, cash,
+inventory and normalized vehicles to the target's restored memory snapshots.
+
+`CHAMPFAIL`, ports 25152–25156, loaded five deliberately unusable fixtures
+through the real title and picker: truncated stream, missing track, missing
+human profile, next index equal to the playlist count, and a .new recovery
+file. Each run displayed the appropriate warning, returned to the title,
+and exited with restoration 0x1f. Complete session and playlist snapshots
+are byte-identical before/after each rejection; none reaches race preparation.
+`NATIVE_CHAMPIONSHIP_REJECT_RETURN_EXIT_OK` on every case.
+
+Earlier attempts at this matrix mounted the default debug directory instead
+of the fixture directory and exercised only the empty-catalogue notice. They
+are not counted as negative-save evidence. The corrected harness exports
+the exact isolated directory and rejects an empty-catalogue result.
+
+The new file-management tests intentionally delete only their generated
+TEMP.SSS fixture, not user saves. Recovery fixtures remain local/ignored.
+
+Regression suite: championship composition, native catalogue, original
+serializer/resolver/dialog, transactional storage, setup lifecycle, title
+Help/ABI bridge, and intermission dispatcher/drawing/renderer all pass.
+The native build passes `-Werror` and the runtime strlen guard. These tests
+use the supported between-race advance path; natural fuel/damage completion
+and broad mode/track gameplay verification remain separate open work.
