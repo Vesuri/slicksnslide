@@ -22,7 +22,7 @@ ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
 VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)"
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
-OBJECTS = obj/slicks_diag.o obj/amiga_platform.o obj/framework_runtime.o \
+OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/framework_runtime.o \
 	obj/framework_amiga_hardware.o obj/framework_bitmap.o \
 	obj/framework_copper_list.o obj/framework_palette24.o \
 	obj/resource_archive.o obj/amiga_audio.o obj/amiga_player_menu.o obj/amiga_setup_storage.o obj/track_scene.o \
@@ -97,6 +97,9 @@ obj/amiga_player_menu.o: $(REPO)/src/platform/amiga/amiga_player_menu.c | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/amiga_setup_storage.o: $(REPO)/src/platform/amiga/amiga_setup_storage.c | obj
+	$(CC) $(CCFLAGS) -c -o $@ $<
+
+obj/amiga_saved_files.o: $(REPO)/src/platform/amiga/amiga_saved_files.c | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/sui_menu_bridge.o: $(REPO)/src/ui/sui_menu_bridge.s | obj

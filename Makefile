@@ -421,6 +421,11 @@ verify-race-rewards: build/verify_race_rewards
 .PHONY: verify-track-list-storage
 .PHONY: verify-saved-game
 .PHONY: verify-championship
+.PHONY: verify-saved-files
+build/verify_saved_files: tools/verify_saved_files.c src/platform/amiga/amiga_saved_files.c src/platform/amiga/amiga_saved_files.h | build
+	$(CC) -std=c11 -Wall -Wextra -Werror -O2 -o $@ $<
+verify-saved-files: build/verify_saved_files
+	./build/verify_saved_files
 build/verify_championship: tools/verify_championship.c src/game/championship.h src/game/setup_session.h src/game/saved_game.h src/game/saved_game_resume.h | build
 	$(CC) -std=c11 -Wall -Wextra -Werror -O2 -o $@ $<
 verify-championship: build/verify_championship
