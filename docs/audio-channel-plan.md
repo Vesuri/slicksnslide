@@ -45,6 +45,12 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- Every one of the 27 supplied samples now has an adapter regression for
+  one-shot DMA setup, silent reload, expiration and return to the borrowed
+  engine. The full audio-volume/pitch, weapon-fire/projectile and damage/
+  contact/jump original-code suites passed after integration. Host register
+  mocks verify commands; audible defects are checked separately in recordings.
+
 - Native `NATURALF` completed a computer race after 865 effect requests,
   entered results with no engine/effect owners remaining, returned through
   the native result screens and restored the system (31), with zero VBI

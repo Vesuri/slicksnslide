@@ -147,6 +147,33 @@ static void verify_bank_gain(void)
     puts("Sample bank gains: explicit and inherited gains retain signed PCM semantics");
 }
 
+static void verify_bank_one_shots(struct SlicksAmigaAudio *a)
+{
+    const unsigned short vehicles[4]={0,2,6,9};
+    for(unsigned sample=0;sample<SLICKS_AUDIO_SAMPLE_COUNT;++sample) {
+        slicks_amiga_audio_start_engines(a,vehicles,15);
+        slicks_amiga_audio_tick(a); slicks_amiga_audio_tick(a);
+        unsigned channel=a->channels.next_borrow;
+        slicks_amiga_audio_play_effect(a,(unsigned short)sample,0,30);
+        assert(a->channels.owner[channel]==SLICKS_AUDIO_EFFECT);
+        slicks_amiga_audio_tick(a); slicks_amiga_audio_tick(a);
+        assert(longs[AUDIO_BASE(channel)/4]==(unsigned long)a->samples[sample].data);
+        slicks_amiga_audio_tick(a);
+        assert(longs[AUDIO_BASE(channel)/4]==(unsigned long)a->silence);
+        assert(words[(AUDIO_BASE(channel)+4)/2]==1);
+        unsigned frames=0;
+        while(a->channels.owner[channel]==SLICKS_AUDIO_EFFECT || a->pending_start[channel]) {
+            assert(++frames<500);
+            slicks_amiga_audio_tick(a);
+        }
+        assert(a->channels.owner[channel]==SLICKS_AUDIO_ENGINE);
+        assert(longs[AUDIO_BASE(channel)/4]==(unsigned long)engine_sample(a,channel)->data);
+        assert(!a->silent_reload_ticks[channel] && !a->effect_ticks[channel]);
+        slicks_amiga_audio_stop(a);
+    }
+    puts("All 27 supplied samples: one-shot silent reload and borrowed-engine return pass");
+}
+
 int main(void)
 {
     verify_bank_gain();
@@ -164,6 +191,7 @@ int main(void)
     assert(bank_audio.samples[18].bytes==2700);
     assert(bank_audio.samples[26].bytes==5960);
     verify_extreme_pitches(&bank_audio);
+    verify_bank_one_shots(&bank_audio);
     slicks_amiga_audio_destroy(&bank_audio);
     assert(!allocated_bytes);
     const unsigned truncated[]={0,1,7,8,8715,8726,8759,sizeof bank-1};

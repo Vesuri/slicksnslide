@@ -4,9 +4,9 @@ Updated 2026-09-25. Actionable open and deferred work only.
 
 ## Remaining game completion
 
-1. Perform audio listening comparisons, check extreme engine frequencies
-    against Paula limits, and extend event/call-site and results/pause/restart
-    coverage. Keep direct playback without software mixing.
+1. Complete the listening check of the corrected active-racing recording:
+    unwanted effect looping, clicks, missing effects and excessive engine
+    interruption. Keep direct playback without software mixing.
 
 ## Integration and release
 
