@@ -1,0 +1,48 @@
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -908,6 +908,45 @@
+ 	}
+ 
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	/* Read-only engine investigation: no sample/frequency substitutions. */
++	if (std::getenv("SLICKS_TRACE_ENGINE")) {
++		static unsigned voice = 0, frequency = 0, rows = 0;
++		static FILE *trace = nullptr;
++		const auto data = SegPhys(ds);
++		if (offset == 0x294b8) {
++			voice = mem_readb(SegPhys(ss) + reg_sp + 4);
++			frequency = mem_readw(SegPhys(ss) + reg_sp + 6);
++		}
++		if (offset == 0x126b3 && rows < 20000) {
++			const unsigned car = mem_readw(SegPhys(ss) + reg_bp - 0x68);
++			if(car<4) voice=mem_readb(data+0x4c68+car);
++			if (!trace) {
++				trace = fopen("slicks-engine-state.csv", "w");
++				if (trace) fputs("tick,frame,car,vehicle,speed,voice,sample,frequency,step,sample_length,sample_position,pcm_address,pcm_fnv1a\n", trace);
++			}
++			if (trace && car<4 && voice && voice<=16) {
++				const unsigned length = mem_readw(data+0x7690+2*voice);
++				const auto slot = data+0x764e +4*voice;
++				const auto pcm = (static_cast<PhysPt>(mem_readw(slot+2))<<4)+mem_readw(slot);
++				uint32_t hash = 2166136261u;
++				for(unsigned i=0;i<length;++i) hash=(hash^mem_readb(pcm+i))*16777619u;
++				static unsigned dumped = 0;
++				if (!(dumped&(1u<<car))) {
++					char name[64]; snprintf(name,sizeof(name),"slicks-engine-car-%u.raw",car);
++					if(auto *out=fopen(name,"wb")) {
++						for(unsigned i=0;i<length;++i) fputc(mem_readb(pcm+i),out);
++						fclose(out); dumped|=1u<<car;
++					}
++				}
++				fprintf(trace,"%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%x,%08x\n",
++				    (unsigned)PIC_Ticks,slicks_race_frame,car,mem_readb(data+0x4bc2+car),
++				    (unsigned)mem_readd(data+0x684e +4*car),voice,
++				    mem_readw(data+0x752a+2*voice),frequency,mem_readw(data+0x7710+2*voice),
++				    length,mem_readw(data+0x76d0+2*voice),(unsigned)pcm,(unsigned)hash);
++				++rows; fflush(trace);
++			}
++		}
++	}
+ 	/* Opt-in listening fixture only: one original engine, three fixed input
+ 	 * speeds, original allocator/mixer/DSP still execute normally. */
+ 	if (std::getenv("SLICKS_PITCH_PROBE")) {

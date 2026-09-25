@@ -174,7 +174,38 @@ static void verify_bank_one_shots(struct SlicksAmigaAudio *a)
     puts("All 27 supplied samples: one-shot silent reload and borrowed-engine return pass");
 }
 
-int main(void)
+/* Optional independent PCM captured from an unmodified PC race engine.
+ * Arguments are vehicle/path pairs. Verify bytes and DMA source, not pitch. */
+static void verify_pc_engine_pcm(struct SlicksAmigaAudio *a,unsigned vehicle,const char *path)
+{
+    static const unsigned blocks[10]={17,17,21,22,19,18,20,18,23,24};
+    assert(vehicle<10);
+    const struct SlicksAmigaSample *original=&a->samples[blocks[vehicle]];
+    unsigned char pcm[65536];
+    FILE *f=fopen(path,"rb"); assert(f);
+    size_t bytes=fread(pcm,1,sizeof pcm,f); assert(!ferror(f) && feof(f));
+    fclose(f);
+    assert(bytes && bytes==original->bytes);
+    assert(!memcmp(pcm,original->data,bytes));
+    const unsigned short vehicles[4]={vehicle,vehicle,vehicle,vehicle};
+    const unsigned speeds[]={0,1000,500,0,8500,0};
+    slicks_amiga_audio_start_engines(a,vehicles,15);
+    for(unsigned s=0;s<sizeof speeds/sizeof speeds[0];++s) {
+        unsigned long current[4]={speeds[s],speeds[s],speeds[s],speeds[s]};
+        slicks_amiga_audio_update_speeds(a,current);
+        slicks_amiga_audio_tick(a); slicks_amiga_audio_tick(a);
+        if(speeds[s]<=1000) for(unsigned car=0;car<4;++car) {
+            assert(a->engine_levels[car]==0);
+            assert(longs[AUDIO_BASE(car)/4]==(unsigned long)original->data);
+            assert(words[(AUDIO_BASE(car)+4)/2]==bytes/2);
+            assert(!memcmp(pcm,(void *)longs[AUDIO_BASE(car)/4],bytes));
+        }
+    }
+    slicks_amiga_audio_stop(a);
+    printf("PC PCM identity: vehicle %u %s matches all %zu native engine bytes and acceleration/slowdown/idle DMA selections\n",vehicle,path,bytes);
+}
+
+int main(int argc,char **argv)
 {
     verify_bank_gain();
     verify_lifecycle();
@@ -192,6 +223,12 @@ int main(void)
     assert(bank_audio.samples[26].bytes==5960);
     verify_extreme_pitches(&bank_audio);
     verify_bank_one_shots(&bank_audio);
+    assert(argc%2==1);
+    for(int i=1;i<argc;i+=2) {
+        char *end; unsigned long vehicle=strtoul(argv[i],&end,10);
+        assert(*argv[i] && !*end && vehicle<10);
+        verify_pc_engine_pcm(&bank_audio,(unsigned)vehicle,argv[i+1]);
+    }
     slicks_amiga_audio_destroy(&bank_audio);
     assert(!allocated_bytes);
     const unsigned truncated[]={0,1,7,8,8715,8726,8759,sizeof bank-1};

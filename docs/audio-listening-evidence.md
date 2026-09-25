@@ -61,6 +61,50 @@ preserve an initially supplied sample handle while updating pitch through
 acceleration and deceleration. It does not establish which sample the
 original race originally allocated or what other sounds play alongside it.
 
+### Read-only PC PCM observation
+
+`tools/patches/dosbox-x-slicks-engine-state.patch` adds an opt-in
+`SLICKS_TRACE_ENGINE=1` observer to the already instrumented reference core.
+It records engine state after the original update call at runtime offset
+126b3, including the actual PCM far pointer, sample length/current cursor,
+and FNV-1a hash of every PCM byte. It dumps each car's initial PCM for an
+independent byte comparison. Unlike `SLICKS_PITCH_PROBE`, it does not replace
+sample requests, frequencies, controls or emulated memory.
+
+The fresh local-only run in `tmp/audio-pcm-identity` ran for 60 emulated
+seconds, with the original executable, dummy speaker output and WAV capture.
+It observed 2,740 engine updates (685 per car), starting at tick 38620.
+Cars used vehicles 0/0/1/6. The first three used driver handle 18, logical
+sample 17, length 2050, PCM hash d7f7d505. Vehicle 6 used handle 21,
+logical sample 20, length 6346, hash 85b8f8b8. Every observed pointer,
+length and hash stayed unchanged, including deceleration. Observed maximum
+speeds were 1058/1734/1824/1259; subsequent minima were 0/338/320/365.
+This establishes no waveform switch in these observations, not in every
+possible vehicle, sound-driver mode or original capture.
+
+All four PC dumps match their corresponding production Amiga sample bytes
+exactly. The optional vehicle/path arguments to `verify_amiga_audio_volume`
+also check the programmed DMA source and length through acceleration,
+slowdown, idle, an extreme-rate excursion and return to idle. Reproduce:
+
+```sh
+build/verify_amiga_audio_volume \
+  0 tmp/audio-pcm-identity/slicks-engine-car-0.raw \
+  0 tmp/audio-pcm-identity/slicks-engine-car-1.raw \
+  1 tmp/audio-pcm-identity/slicks-engine-car-2.raw \
+  6 tmp/audio-pcm-identity/slicks-engine-car-3.raw
+```
+
+The first comparison attempt deliberately failed on the fourth dump when
+it assumed all cars used sample 17; the trace identifies the actual different
+vehicle. The earlier active Amiga capture used four vehicle-0 cars and is
+therefore not a matched-fleet comparison. Other original requests in this
+run include samples 2/3/4 (road effects), 5/6, 8 and 25. Their contribution
+to the perceived idle sound has not been established.
+
+A separate per-frame native pitch-tracking run was stopped before its
+600-frame completion check; it is not counted as a passing regression.
+
 ## Extreme engine frequencies
 
 The production adapter now prepares half- and quarter-length engine loops
