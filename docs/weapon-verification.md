@@ -244,3 +244,18 @@ failure, and compares 128 overlapping mixed-priority screens against ordered
 original actor draws. Reverse restoration recovers every original pixel.
 The checks exercise producer sidecars and reused actor IDs, not just isolated
 sprite callbacks. General animated track actors remain separate open work.
+
+## Runtime participation and finish dispatch
+
+`verify-race-lap-limit` now checks 576 runtime weapon-caller combinations:
+all drivers and weapons, finished/unfinished states, positive/negative special
+states and both sides of the finish-suppression threshold. Each case buys a
+weapon and ammunition through `slicks_shop_buy` before invoking production
+motion preparation with held fire and a retained request. Suppressed cases
+preserve ammunition and emit no shot; active cases consume exactly one round
+and allocate the original projectile count. A subsequent inactive-driver
+update preserves the remaining inventory despite the held request. All pass.
+These are isolated dispatch integration cases, not a claim of full driving
+trajectory equivalence. Original input/fire/finish arithmetic is covered by
+the independent executable oracles described above and in race-completion
+verification.

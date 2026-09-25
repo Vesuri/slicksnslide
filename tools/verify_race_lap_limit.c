@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../src/game/race_runtime.c"
+#include "../src/gen/setup_defaults.h"
 
 /* The stationary-grid test must never enter target-only particle assembly. */
 unsigned short slicks_advance_particles(struct SlicksTrailParticle *particles,
@@ -124,6 +125,47 @@ int main(void)
         if(apply_finish_gate(&race,0,15) || !race.race_complete) return 1;
     }
     puts("Finish runtime: suppression threshold, cleared drive latches and strict expiry passed");
+    /* Integration guard: buy real weapons/ammunition through the translated
+     * shop, then apply input at the runtime's finish/special-state boundary.
+     * Zero elapsed physics isolates dispatch from unrelated track movement. */
+    unsigned weapon_gates=0;
+    for(unsigned driver=0;driver<4;++driver) for(unsigned weapon=0;weapon<8;++weapon)
+    for(unsigned finished=0;finished<2;++finished) for(int special=-1;special<=1;++special)
+    for(unsigned remaining=269;remaining<=271;++remaining) {
+        memset(&race,0,sizeof race);
+        race.participation_ready=1;race.participation[driver]=-1;
+        race.game_clock_ticks=1000;race.finish_deadline=1000+remaining;
+        race.weapons.ready=1;race.weapons_enabled=1;
+        race.weapons.rules=slicks_original_weapon_rules;
+        initialize_weapon_actors(&race);
+        struct SlicksRaceOptions options={.weapons_enabled=1};
+        short cash=30000;
+        short *inventory=race.weapon_inventory[driver];
+        if(!slicks_shop_buy(&slicks_original_shop_rules,&options,inventory,&cash,-1,6,weapon+5,1) ||
+           !slicks_shop_buy(&slicks_original_shop_rules,&options,inventory,&cash,-1,6,weapon+5,1)) return 1;
+        short before=inventory[weapon+5];
+        race.selected_weapon[driver]=(signed char)weapon;
+        race.driver_controls[driver]=SLICKS_CONTROL_BRAKE;
+        race.cars[driver].finished=finished;
+        race.cars[driver].special_drive_state=(short)special;
+        /* A stale AI request must not bypass the outer caller gate either. */
+        race.weapons.controls[driver].request=1;
+        prepare_car_motion(&race,(unsigned short)driver,0);
+        unsigned suppressed=finished || special || remaining<270;
+        if(inventory[weapon+5]!=before-(suppressed?0:1) ||
+           race.weapons.shots!=(suppressed?0:(unsigned)slicks_original_weapon_rules.shots[weapon])) {
+            fprintf(stderr,"Weapon caller gate failed driver=%u weapon=%u finished=%u special=%d remaining=%u\n",
+                driver,weapon,finished,special,remaining);return 1;
+        }
+        /* Inactive dispatch must ignore held fire and retained inventory. */
+        race.participation[driver]=0;race.weapons.shots=0;
+        memset(race.weapons.projectiles,0,sizeof race.weapons.projectiles);
+        before=inventory[weapon+5];race.weapons.controls[driver].request=1;
+        update_cars(&race,0);
+        if(inventory[weapon+5]!=before || race.weapons.shots) return 1;
+        ++weapon_gates;
+    }
+    printf("Weapon runtime caller: %u bought-inventory finish/special/expiry and inactive dispatch gates pass\n",weapon_gates);
     memset(&race,0,sizeof race);
     race.track_reward=award_track; race.started=1; race.race_complete=1;
     race.game_clock_ticks=12345; race.frame_count=567; race.sound_event_count=3;

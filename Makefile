@@ -761,7 +761,7 @@ verify-arcade-hud: build/verify_arcade_hud
 	build/verify_arcade_hud
 
 .PHONY: verify-race-lap-limit
-build/verify_race_lap_limit: tools/verify_race_lap_limit.c src/game/race_runtime.c src/game/race_runtime.h src/game/race_timing.h src/game/arcade_setup.h src/game/finish_rank.h src/game/track_scene.c | build
+build/verify_race_lap_limit: tools/verify_race_lap_limit.c src/game/race_runtime.c src/game/race_runtime.h src/game/race_timing.h src/game/arcade_setup.h src/game/finish_rank.h src/game/track_scene.c src/gen/setup_defaults.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 verify-race-lap-limit: build/verify_race_lap_limit
