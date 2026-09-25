@@ -45,6 +45,13 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- Added 48 host-adapter lifecycle cases covering stop/pause before either
+  staged VBI, during engine/effect/music playback, after silent reload and
+  after engine resumption. They check that stopped requests cannot restart
+  during 32 further VBIs, resume uses current pitches, and results discard
+  racing owners then finish without resurrecting engines. These are adapter
+  tests, not proof of every game's menu/event call site.
+
 - Four independent engine samples/pitches now feed four direct Paula channels.
   Every active-car mask is supported. Idle channels are preferred, then engine
   borrowing rotates; each borrowed channel returns to its original car. No PCM

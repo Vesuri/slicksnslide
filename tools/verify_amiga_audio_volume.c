@@ -22,8 +22,61 @@ static volatile unsigned long *custom_long(unsigned offset)
 #define CUSTOM_LONG(offset) (*custom_long(offset))
 #define SLICKS_AUDIO_HOST_TEST
 #include "../src/platform/amiga/amiga_audio.c"
+
+static void verify_lifecycle(void)
+{
+    signed char sample[1000]={0};
+    const unsigned short vehicles[4]={0,2,6,9};
+    const unsigned long speeds[4]={50,100,150,200};
+    unsigned cases=0;
+    /* Stop/pause may arrive before either staged VBI, during playback,
+     * after the silent reload, or after an effect has returned its engine. */
+    for(unsigned kind=0;kind<3;++kind) for(unsigned ticks=0;ticks<16;++ticks) {
+        struct SlicksAmigaAudio a={0};
+        a.ready=1; a.silence=sample; a.sound_volume=64; a.music_volume=32;
+        a.music=(struct SlicksAmigaSample){sample,1000,322};
+        for(unsigned i=0;i<SLICKS_AUDIO_SAMPLE_COUNT;++i) a.samples[i]=a.music;
+        slicks_amiga_audio_start_engines(&a,vehicles,15);
+        if(kind==1) for(unsigned i=0;i<4;++i)
+            slicks_amiga_audio_play_effect(&a,i,0,20+i);
+        if(kind==2) slicks_amiga_audio_start_music(&a);
+        for(unsigned i=0;i<ticks;++i) slicks_amiga_audio_tick(&a);
+        slicks_amiga_audio_stop(&a);
+        assert(words[REG_DMACON/2]==15); /* Clear all four audio DMA bits. */
+        unsigned dma=accesses[REG_DMACON/2];
+        for(unsigned i=0;i<32;++i) slicks_amiga_audio_tick(&a);
+        assert(accesses[REG_DMACON/2]==dma); /* No stale pending restart. */
+        assert(!a.engine_started && !a.music_started && !a.channels.engine_mask);
+        for(unsigned i=0;i<4;++i) {
+            assert(a.channels.owner[i]==SLICKS_AUDIO_IDLE);
+            assert(!a.pending_start[i] && !a.effect_ticks[i] && !a.silent_reload_ticks[i]);
+            assert(!words[(AUDIO_BASE(i)+8)/2]);
+        }
+        /* Resume/new race rebuilds every engine at its latest measured speed. */
+        slicks_amiga_audio_start_engines(&a,vehicles,15);
+        slicks_amiga_audio_update_speeds(&a,speeds);
+        slicks_amiga_audio_tick(&a); slicks_amiga_audio_tick(&a);
+        for(unsigned i=0;i<4;++i) {
+            assert(a.channels.owner[i]==SLICKS_AUDIO_ENGINE && !a.pending_start[i]);
+            assert(words[(AUDIO_BASE(i)+6)/2]==a.engine_periods[i]);
+            assert(words[(AUDIO_BASE(i)+8)/2]==64);
+        }
+        /* Results must discard race owners and their pending requests. */
+        slicks_amiga_audio_start_music(&a);
+        slicks_amiga_audio_tick(&a); slicks_amiga_audio_tick(&a);
+        assert(!a.channels.engine_mask && a.channels.owner[3]==SLICKS_AUDIO_MUSIC);
+        for(unsigned i=0;i<3;++i) assert(a.channels.owner[i]==SLICKS_AUDIO_IDLE);
+        for(unsigned i=0;i<16;++i) slicks_amiga_audio_tick(&a);
+        for(unsigned i=0;i<4;++i) assert(a.channels.owner[i]==SLICKS_AUDIO_IDLE);
+        slicks_amiga_audio_stop(&a);
+        ++cases;
+    }
+    printf("Audio lifecycle: %u stop/pause/resume/results/restart phase cases pass\n",cases);
+}
+
 int main(void)
 {
+    verify_lifecycle();
     unsigned char bank[131691]; struct SlicksAmigaAudio bank_audio;
     assert(host_archive_load("ref/SLICKS.000","samples.dat",bank,sizeof bank)==sizeof bank);
     assert(!slicks_amiga_audio_create(&bank_audio,bank,sizeof bank));
