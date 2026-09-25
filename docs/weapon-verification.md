@@ -62,3 +62,17 @@ positions used by collision probing. Mines become able to hit their owner
 at expiry; homing projectiles do so below 800 remaining ticks. Type 7 expiry
 requests radial damage and an explosion, rather than ordinary retirement.
 Those actor/effect side effects are not claimed by this boundary test.
+
+## Original shop transactions
+
+`make verify-weapon-shop` compares 32,768 prices, 65,536 buy/sell
+transactions and 4,096 complete four-driver computer-shopping calls against
+original instructions. Inventory, cash and shared random state all match.
+The tests cover hidden/full items, carrying capacity, option gates, upgrades,
+first weapon purchases, ammunition batches, partial affordability and sales.
+
+The executable's computer-shopping minimum-price accumulator starts at -1
+and only changes if greater than a positive price. It consequently permits
+one random purchase attempt per computer, not a spend-all-cash loop. Failed
+attempts still advance the random stream. These verified helpers are not yet
+connected to the native shop surface or race entry.

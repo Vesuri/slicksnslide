@@ -222,6 +222,11 @@ verify-dos-ai: build/verify_dos_ai
 .PHONY: verify-dos-damage
 .PHONY: verify-dos-hud
 .PHONY: verify-weapon-actions
+.PHONY: verify-weapon-shop
+build/verify_weapon_shop: tools/verify_weapon_shop.c src/game/weapon_shop.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-weapon-shop: build/verify_weapon_shop
+	build/verify_weapon_shop
 build/verify_weapon_actions: tools/verify_weapon_actions.c src/game/weapon_actions.h src/game/weapon_state.h src/game/weapon_projectile.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
