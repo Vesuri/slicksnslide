@@ -659,6 +659,23 @@ verify-arcade-setup: build/verify_arcade_setup
 
 .PHONY: verify-race-completion
 .PHONY: verify-post-race-records
+.PHONY: verify-championship-standings
+.PHONY: verify-standings-draw
+build/verify_standings_draw: tools/verify_standings_draw.c tools/verify_track_records_draw.c src/ui/championship_standings_draw.h src/game/championship_standings.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-standings-draw: build/verify_standings_draw
+	build/verify_standings_draw
+
+build/verify_championship_standings: tools/verify_championship_standings.c tools/verify_post_race_records.c src/game/championship_standings.h src/game/player_profiles.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-championship-standings: build/verify_championship_standings
+	build/verify_championship_standings
+
+build/verify_target_records: tools/verify_target_records.c src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
 build/verify_post_race_records: tools/verify_post_race_records.c src/game/post_race_records.h src/game/track_records.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 

@@ -1,5 +1,14 @@
 # Natural race-completion verification
 
+## Final standings translation
+
+`verify-championship-standings` passes 65,536 original signed-score sorting,
+inactive-slot, tie, shared-profile and statistic-wrap cases. It executes the
+original ordering and match/win increments, not a reference reimplementation.
+`verify-standings-draw` passes 20,736 complete original draw traces including
+gradient colours/stripes, font colour slots, names, points and tied rank
+suppression. These typed routines still need their platform screen owner.
+
 ## Original record insertion translation
 
 `make verify-post-race-records` passes 25,272 complete comparisons with DOS
