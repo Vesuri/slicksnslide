@@ -15,7 +15,10 @@ static void word(uc_engine *u,unsigned a,unsigned v)
 static unsigned readword(uc_engine *u,unsigned a)
 { unsigned char b[2]; check(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
 struct Calls { unsigned override,random,applied; unsigned char mode[4],driver[4],vehicle[4]; };
-struct MenuDrawCall { unsigned kind; short args[8]; unsigned char text[64]; };
+#ifndef SLICKS_MENU_TEXT_CAPACITY
+#define SLICKS_MENU_TEXT_CAPACITY 64
+#endif
+struct MenuDrawCall { unsigned kind; short args[8]; unsigned char text[SLICKS_MENU_TEXT_CAPACITY]; };
 #ifndef SLICKS_MENU_TRACE_CAPACITY
 #define SLICKS_MENU_TRACE_CAPACITY 48
 #endif
@@ -30,7 +33,7 @@ static void menu_sprite(void *p,short sprite,short x,short y)
 { struct MenuDrawCall *c=menu_call(p,2); c->args[0]=sprite; c->args[1]=x; c->args[2]=y; }
 static void menu_text(void *p,unsigned font,const unsigned char *text,short x,short y,unsigned char flags)
 { struct MenuDrawCall *c=menu_call(p,3); c->args[0]=(short)font; c->args[1]=x; c->args[2]=y; c->args[3]=flags;
-  unsigned i=0; do { if(i>=64) abort(); c->text[i]=text[i]; } while(text[i++]); }
+  unsigned i=0; do { if(i>=SLICKS_MENU_TEXT_CAPACITY) abort(); c->text[i]=text[i]; } while(text[i++]); }
 static void menu_draw_boundary(uc_engine *u,uint64_t address,uint32_t size,void *p)
 {
     (void)size; uint16_t ss,sp,cs,ip;
@@ -40,7 +43,7 @@ static void menu_draw_boundary(uc_engine *u,uint64_t address,uint32_t size,void 
     else if(address==0x309cf) menu_bevel(p,a[0],a[1],a[2],a[3],(unsigned char)a[4],(unsigned char)a[5],(unsigned char)a[6]);
     else if(address==0x2e2d2) menu_sprite(p,a[2]==0x300?-1:(short)((a[2]-0x400)/16),a[0],a[1]);
     else {
-        unsigned char text[64]; check(uc_mem_read(u,(unsigned short)a[2]+16U*(unsigned short)a[3],text,sizeof text));
+        unsigned char text[SLICKS_MENU_TEXT_CAPACITY]; check(uc_mem_read(u,(unsigned short)a[2]+16U*(unsigned short)a[3],text,sizeof text));
         menu_text(p,a[4]==0x100?0:1,text,a[0],a[1],(unsigned char)a[6]);
     }
     ip=readword(u,stack); cs=readword(u,stack+2); sp+=4;

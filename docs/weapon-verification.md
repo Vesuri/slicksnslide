@@ -206,3 +206,22 @@ effects retain the full 200-row visible window and the cleared mask tail.
 `verify-dos-points` passes 14,336 original raster comparisons, including
 rows 183/184/189/190. Fully clipped effects never restore uninitialized
 saved-under bytes. Sprite raster equivalence remains a separate gate.
+
+## Original shop composition
+
+`verify-shop-draw` compares 4,096 complete original 2c574 redraw calls and
+512 original 2ca23..2cf00 static compositions: command order, both font
+slots, coordinates, resources, tint/colour operations, packed columns and
+refresh masks. `verify-shop-pixels` additionally compares 168 whole screens
+using actual tuning background/palette, item/vehicle icons and both fonts.
+The reference executes original x86 painters; native text executes production
+68020 code. No pixels are excluded from comparison.
+
+These comparisons exposed and corrected the shop's small driver-name font,
+missing vehicle icons/name-column tint, static composition order, incomplete
+saved background and one-pixel oversized selection/inventory rectangles.
+The original rectangle painter has half-open bounds. Static decoration is
+now saved before dynamic redraw, matching the original 2cf21 capture.
+The native draw routines call the verified shared shop composition directly.
+The updated 2 MiB A1200 run (port 25206) also passes real buy/ammunition/sell,
+help return, four human shots and automatic empty selection at inventory one.

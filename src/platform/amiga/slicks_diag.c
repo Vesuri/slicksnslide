@@ -1446,7 +1446,8 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     int result=-1;
     struct SlicksShopContent c={.session=session,.rules=rules,.items=slicks_original_shop_items,
         .footer=slicks_original_shop_footer,.exit_label=slicks_original_shop_exit,
-        .register_label=slicks_original_shop_register,.extra=slicks_original_shop_extra,
+        .register_label=slicks_original_shop_register,.separator=slicks_original_track_separator,
+        .extra=slicks_original_shop_extra,
         .track=(short)(shop_track_position+1),.total=(short)g_slicks_track_playlist.count};
     for(unsigned d=0;d<4;++d) if(session->players.participation[d]) {
         short p=session->players.selected[d];

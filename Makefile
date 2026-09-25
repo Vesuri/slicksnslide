@@ -443,6 +443,16 @@ verify-menu-icon: build/verify_menu_icon build/hud_icon_test.bin
 .PHONY: verify-track-storage
 .PHONY: verify-track-menu
 .PHONY: verify-track-menu-draw
+.PHONY: verify-shop-draw
+build/verify_shop_draw: tools/verify_shop_draw.c tools/verify_profile_setup.c src/ui/shop_draw.h src/ui/shop_menu.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-shop-draw: build/verify_shop_draw
+	build/verify_shop_draw
+.PHONY: verify-shop-pixels
+build/verify_shop_pixels: tools/verify_shop_pixels.c tools/verify_palette_remap.c src/ui/shop_draw.h src/ui/shop_menu.h $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-shop-pixels: build/verify_shop_pixels build/font_string_test.bin
+	build/verify_shop_pixels
 build/verify_track_menu_draw: tools/verify_track_menu_draw.c tools/verify_profile_setup.c src/ui/track_menu_draw.h src/ui/track_menu.h src/game/track_playlist.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-track-menu-draw: build/verify_track_menu_draw
