@@ -33,7 +33,7 @@ marks are committed after restoration, before the next actor draw.
 `make verify-track-actors` additionally verifies:
 
 - 20,000 original track-object motion/layer/wall/car-contact updates.
-- All 200 possible aliased finish-flag style indices, including the original
+- All 200 retained actor-slot finish-flag style indices, including the original
   shared scratch variable, coordinates, masks, priority, animation and RNG.
 - 1,792 original full-screen actor/frame/page/mask/edge comparisons, with exact
   background restoration; 64 saturated mixed-priority pool comparisons.
@@ -50,7 +50,7 @@ remain green. Track motion is the newly connected moving-probe caller; the
 navigation, car and projectile callers already have their own oracles.
 
 A muted 2 MiB/no-Fast A1200 BASIC test reached natural completion at update
-556, with four flag activations and 2,036 emitted marks, then passed normal
+556, with four flag activations and 2,036 emitted effect actors, then passed normal
 menu return and system restoration. An earlier run trapped after results;
 that did not reproduce on this rebuilt run and is not claimed as a diagnosed
 production fix. Representative-track and startup checks remain pending.
@@ -81,3 +81,60 @@ The preceding integration build passed 600 audited updates and clean system
 restoration on F1 (32 track objects), CITY (18) and WHACKO (5). Together with
 BASIC these exercise all five kinds. Final-build repetitions are required
 after the startup handoff changes above.
+
+## Final integrated checks — 2026-09-25
+
+The final production code in `504dd1b` passes muted FS-UAE tests configured
+as A1200/68020, 2 MiB Chip RAM and no Fast RAM. Each checks initial grid state,
+shared handles, hidden flags, animation periods, every update's planar dirty
+coverage, collision errors, and restoration status `0x1f` on exit.
+
+| Track | Track objects | Checked updates | Pool high-water | Emitted effects |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC | 2 | 556, natural completion and menu return | 198 | 2,038 |
+| F1 | 32 | 600, bounded diagnostic exit | 200 | 2,076 |
+| CITY | 18 | 600, bounded diagnostic exit | 165 | 1,480 |
+| WHACKO | 5 | 600, bounded diagnostic exit | 155 | 1,854 |
+
+The emitted-effect counter includes transient particles; it is not a count
+of surviving permanent marks. Their survival is checked separately by the
+original-renderer comparisons and overlapping-object retirement tests.
+The bounded runs are not claims of race completion on those three tracks.
+A second final-build BASIC run again finished at update 556, explicitly
+verified all four finishers and four flag activations, and restored the
+system normally after the menus. The earlier post-results trap did not
+recur in either final-build natural-completion run; its cause is not claimed
+to have been isolated.
+
+All moving-probe call sites are accounted for:
+
+| Original caller | Native path | Original-code verification |
+| --- | --- | --- |
+| `1b15e`, pit route visibility | Navigation/pit routing | `verify-dos-ai`, 768 full pit-routing cases |
+| `20066`, movable track objects | `update_track_actor_motion` | `verify-track-actors`, 20,000 object updates |
+| `2131b`, car motion | Native motion and track response | `verify-dos-damage`, synthetic and BASIC rays; `verify-drive-trajectory` |
+| `21bce`, projectiles | Weapon simulation | `verify-weapon-simulation`, 4,096 loop cases |
+
+The negative-owner wall-response callback is intentionally empty: original
+`1c64b` returns immediately in this case. Actual car responses and their
+subsequent collision effects are separately verified, not bypassed.
+
+Final regressions also pass `verify-moving-probe`, `verify-car-collision`,
+`verify-projectile-map`, `verify-dos-ai`, `verify-dos-damage`,
+`verify-drive-physics`, `verify-drive-trajectory`, `verify-track-actors`,
+`verify-animated-boundary`, `verify-surface-effects`, `verify-dirty-tracking`,
+`verify-planar-writes`, `verify-actor-slots`, `verify-weapon-fire`,
+`verify-weapon-actors`, and `verify-weapon-simulation`. The trajectory suite
+includes nine 7,200-update scenarios plus BRIDGES and BUMPS. The planar suite
+checks 1,394 write cases and 1,920 consecutive original/68020 point updates.
+
+For target repetition, source `amiga/env.sh` and run `amiga/debug.sh` with
+`amiga/diag_track_actors.gdb`, `SLICKS_TRACK_ACTOR_TEST=1` and
+`SLICKS_TRACK_ACTOR_CASE=0..3` (BASIC, F1, CITY, WHACKO). Use a separate owned
+`FSUAE_RUN` directory and debugger port for concurrent runs. Require both
+`TRACK_ACTOR_GRID_OK` and `TRACK_ACTOR_RESTORE_OK`, plus the target/finish
+marker; a debugger process exiting by itself is not a passing result.
+
+These checks close the animated-boundary/track-actor/probing/collision-effect
+completion item. Broad release regressions, source-wrap boundaries, audio
+listening and deferred performance work remain separate work items.

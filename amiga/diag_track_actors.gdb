@@ -77,7 +77,11 @@ commands
     printf "TRACK_ACTOR_FINISH_FAILED\n"
     quit 1
   end
-  printf "TRACK_ACTOR_NATURAL_FINISH frame=%u flags=%d slots=%u marks=%lu\n",$race->frame_count,$race->track_flag_activations,$race->weapons.slots.high_water,$race->skidmark_count
+  if $race->navigation.actor_count==2 && ($race->finished_count!=4 || $race->track_flag_activations!=4)
+    printf "TRACK_ACTOR_BASIC_FINISH_FAILED\n"
+    quit 1
+  end
+  printf "TRACK_ACTOR_NATURAL_FINISH frame=%u finished=%u flags=%d slots=%u marks=%lu\n",$race->frame_count,$race->finished_count,$race->track_flag_activations,$race->weapons.slots.high_water,$race->skidmark_count
   set $checked=1
   continue
 end
