@@ -1,0 +1,143 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <unicorn/unicorn.h>
+#include <unicorn/x86.h>
+#include "../src/game/weapon_actions.h"
+static void ck(uc_err e) { if(e) { fprintf(stderr,"%s\n",uc_strerror(e)); exit(1); } }
+static void wr(uc_engine *u,unsigned a,unsigned v) { unsigned char b[2]={v,v>>8}; ck(uc_mem_write(u,a,b,2)); }
+static unsigned rd(uc_engine *u,unsigned a) { unsigned char b[2]; ck(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
+static void byte(uc_engine *u,unsigned a,unsigned v) { unsigned char b=v; ck(uc_mem_write(u,a,&b,1)); }
+static unsigned rb(uc_engine *u,unsigned a) { unsigned char b; ck(uc_mem_read(u,a,&b,1)); return b; }
+static void regs(uc_engine *u,unsigned driver)
+{
+    uint16_t cs=0x1987,ds=0x3cbf,ss=0x8000,sp=0xe000,bp=0xf000;
+    ck(uc_reg_write(u,UC_X86_REG_CS,&cs)); ck(uc_reg_write(u,UC_X86_REG_DS,&ds));
+    ck(uc_reg_write(u,UC_X86_REG_SS,&ss)); ck(uc_reg_write(u,UC_X86_REG_SP,&sp));
+    ck(uc_reg_write(u,UC_X86_REG_BP,&bp)); wr(u,0x8f000-0x68,driver);
+}
+static void stop(uc_engine *u,uint64_t a,uint32_t n,void *p)
+{ (void)a;(void)n;(void)p; ck(uc_emu_stop(u)); }
+int main(void)
+{
+    unsigned char runtime[300000]; FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
+    size_t bytes=fread(runtime,1,sizeof runtime,f); fclose(f);
+    uc_engine *u; ck(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); ck(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
+    ck(uc_mem_write(u,0x10100,runtime,bytes));
+    const signed char roles[]={-128,-1,0,1,127};
+    unsigned cases=0;
+    for(unsigned driver=0;driver<4;++driver) for(unsigned role=0;role<5;++role)
+    for(unsigned enabled=0;enabled<2;++enabled) for(int selected=-1;selected<8;++selected)
+    for(unsigned controls=0;controls<32;++controls) for(unsigned held=0;held<2;++held)
+    for(unsigned request=0;request<3;++request) {
+        regs(u,driver); wr(u,0x3cbf0+0x3020,enabled?0x8000:0);
+        byte(u,0x3cbf0+0x4bc6+driver,roles[role]); byte(u,0x3cbf0+0x2fac+driver,selected);
+        byte(u,0x3cbf0+0x2fb0+driver,request); byte(u,0x8f000-0x24+driver,held);
+        for(unsigned i=0;i<5;++i) byte(u,0x3cbf0+0x5344+driver*5+i,!!(controls&(1U<<i)));
+        struct SlicksWeaponControl s={.request=request,.cycle_held=held};
+        slicks_weapon_human_request(&s,enabled?(-32767-1):0,roles[role],selected,controls);
+        ck(uc_emu_start(u,0x20509,0x20595,0,1000));
+        if(rb(u,0x3cbf0+0x2fb0+driver)!=s.request || rb(u,0x8f000-0x24+driver)!=s.cycle_held) abort();
+        ++cases;
+    }
+    printf("Original weapon input: %u human/AI/gate/held-control/request cases pass\n",cases);
+    uc_hook gate; ck(uc_hook_add(u,&gate,UC_HOOK_CODE,stop,0,0x20c09,0x20c09));
+    const unsigned clocks[]={0,249,250,251,65535,65536,0x7fffffff,0x80000000,0xffffffff};
+    const short timers[]={-32768,-1,0,1,32767}; cases=0;
+    for(unsigned driver=0;driver<4;++driver) for(unsigned request=0;request<3;++request)
+    for(int selected=-1;selected<8;++selected) for(unsigned t=0;t<5;++t) for(unsigned c=0;c<9;++c) {
+        regs(u,driver); byte(u,0x3cbf0+0x2fb0+driver,request); byte(u,0x3cbf0+0x2fac+driver,selected);
+        wr(u,0x8f000-0x20+2*driver,timers[t]); wr(u,0x3cbf0+0x685e,clocks[c]); wr(u,0x3cbf0+0x6860,clocks[c]>>16);
+        struct SlicksWeaponControl s={.request=request,.cooldown=timers[t]};
+        ck(uc_emu_start(u,0x206a5,0x206e8,0,1000)); uint16_t ip; ck(uc_reg_read(u,UC_X86_REG_IP,&ip));
+        if((ip+0x19870==0x206e8)!=slicks_weapon_can_fire(&s,selected,clocks[c])) abort();
+        ++cases;
+    }
+    ck(uc_hook_del(u,gate)); printf("Original fire gate: %u clock/cooldown/selection boundaries pass\n",cases);
+    short delays[8]; for(unsigned i=0;i<8;++i) delays[i]=(short)rd(u,0x3cbf0+0x10e +2*i);
+    cases=0;
+    for(unsigned driver=0;driver<4;++driver) for(unsigned mask=0;mask<256;++mask)
+    for(int selected=-1;selected<8;++selected) for(unsigned request=0;request<3;++request) {
+        regs(u,driver); short inventory[13]={0};
+        for(unsigned i=0;i<8;++i) { inventory[i+5]=(mask&(1U<<i))?2:1; wr(u,0x3cbf0+0x6a84+26*driver+2*i,inventory[i+5]); }
+        byte(u,0x3cbf0+0x2fb0+driver,request); byte(u,0x3cbf0+0x2fac+driver,selected);
+        byte(u,0x3cbf0+0x5345+5*driver,1); wr(u,0x8f000-0x20+2*driver,123); wr(u,0x8f000-0xa+2*driver,456);
+        struct SlicksWeaponControl s={.request=request,.cooldown=123,.repeat_ticks=456}; unsigned char controls=31;
+        signed char out=slicks_weapon_finish_request(&s,inventory,selected,delays,&controls);
+        ck(uc_emu_start(u,0x20c09,0x20c6f,0,10000));
+        if((signed char)rb(u,0x3cbf0+0x2fac+driver)!=out || rb(u,0x3cbf0+0x2fb0+driver)!=s.request ||
+            rb(u,0x3cbf0+0x5345+5*driver)!=!!(controls&2) ||
+            (short)rd(u,0x8f000-0x20+2*driver)!=s.cooldown || (short)rd(u,0x8f000-0xa+2*driver)!=s.repeat_ticks) abort();
+        ++cases;
+    }
+    printf("Original weapon cycling: %u inventory/selection/request cases pass\n",cases);
+    ck(uc_hook_add(u,&gate,UC_HOOK_CODE,stop,0,0x20c09,0x20c09));
+    ck(uc_ctl_remove_cache(u,0x10100,0x50000));
+    cases=0;
+    const short counts[]={-32768,-1,0,1,2,3,100,32767};
+    for(unsigned driver=0;driver<4;++driver) for(int selected=0;selected<8;++selected)
+    for(unsigned n=0;n<8;++n) for(unsigned unlimited=0;unlimited<2;++unlimited) {
+        regs(u,driver); short inventory[13]={0}; inventory[selected+5]=counts[n];
+        wr(u,0x3cbf0+0x6a84+26*driver+2*selected,counts[n]); wr(u,0x3cbf0+0x1a8,unlimited);
+        byte(u,0x3cbf0+0x2fac+driver,selected); byte(u,0x3cbf0+0x2fb0+driver,1);
+        struct SlicksWeaponControl s={.request=1}; slicks_weapon_consume(&s,inventory,selected,unlimited);
+        ck(uc_emu_start(u,0x20bbf,0x20c09,0,1000));
+        if((short)rd(u,0x3cbf0+0x6a84+26*driver+2*selected)!=inventory[selected+5] || rb(u,0x3cbf0+0x2fb0+driver)!=s.request) {
+            fprintf(stderr,"depletion driver=%u weapon=%d count=%d unlimited=%u: original=%d/%u native=%d/%u\n",driver,selected,counts[n],unlimited,(short)rd(u,0x3cbf0+0x6a84+26*driver+2*selected),rb(u,0x3cbf0+0x2fb0+driver),inventory[selected+5],s.request);
+            return 1;
+        }
+        ++cases;
+    }
+    printf("Original weapon depletion: %u signed/wrapping/unlimited cases pass\n",cases);
+    ck(uc_hook_del(u,gate));
+    for(unsigned n=0;n<65536;++n) {
+        regs(u,0); short ticks=(short)(n*71U); wr(u,0x8f000-0x20,n); wr(u,0x8f000-2,ticks);
+        struct SlicksWeaponControl s={.cooldown=(short)n}; slicks_weapon_cooldown(&s,ticks);
+        ck(uc_emu_start(u,0x21585,0x215a2,0,1000)); if((short)rd(u,0x8f000-0x20)!=s.cooldown) abort();
+    }
+    puts("Original weapon cooldown: 65536 signed timer/subtraction cases pass");
+    /* Restore the original data after the preceding mutable-state tests. */
+    ck(uc_mem_write(u,0x10100,runtime,bytes));
+    signed char dirx[16],diry[16],ranges[9];
+    ck(uc_mem_read(u,0x3cbf0+0x6c3,dirx,sizeof dirx));
+    ck(uc_mem_read(u,0x3cbf0+0x6d3,diry,sizeof diry));
+    ck(uc_mem_read(u,0x3cbf0+0x165,ranges,sizeof ranges));
+    unsigned random=1234; cases=0;
+    for(unsigned trial=0;trial<32768;++trial) {
+        unsigned driver=trial&3;
+        regs(u,driver);
+        /* ENTER pushes BP; the original far-call argument is SP+4. Stop
+         * before RETF so no fabricated caller is needed. */
+        wr(u,0x8e004,driver);
+        int x[4],y[4]; signed char role[4]; short inventory[13]={0};
+        for(unsigned i=0;i<4;++i) {
+            random=random*1664525U+1013904223U;
+            x[i]=(trial&16)?(int)random:(int)(random%32000);
+            random=random*1664525U+1013904223U;
+            y[i]=(trial&16)?(int)random:(int)(random%20000);
+            role[i]=(signed char)((random%3)-1);
+            if(trial&32) { x[i]=16000+(int)i*100; y[i]=10000+(int)i*100; }
+            wr(u,0x3cbf0+0x538c+4*i,(unsigned)x[i]); wr(u,0x3cbf0+0x538e +4*i,(unsigned)x[i]>>16);
+            wr(u,0x3cbf0+0x539c+4*i,(unsigned)y[i]); wr(u,0x3cbf0+0x539e +4*i,(unsigned)y[i]>>16);
+            byte(u,0x3cbf0+0x4bc6+i,role[i]);
+        }
+        signed char selected=(trial/4)%9-1;
+        short heading=((trial/36)%16)*1200;
+        unsigned char counter=(trial&64)?11:(unsigned char)(trial/128);
+        unsigned clock=trial/256;
+        inventory[selected+5]=(trial&128)?1:100;
+        wr(u,0x3cbf0+0x6a7a+26*driver+2*(selected+5),inventory[selected+5]);
+        byte(u,0x3cbf0+0x2fac+driver,selected); byte(u,0x3cbf0+0x68e5+driver,counter);
+        wr(u,0x3cbf0+0x681c+2*driver,heading); wr(u,0x3cbf0+0x685e,clock);
+        unsigned expected=slicks_weapon_ai_request(&counter,driver,x,y,heading,role,selected,inventory,clock,dirx,diry,ranges);
+        ck(uc_emu_start(u,0x1ebbb,0x1ed63,0,100000));
+        uint16_t ax; ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if((ax&255)!=expected || rb(u,0x3cbf0+0x68e5+driver)!=counter) {
+            fprintf(stderr,"AI trial %u original=%u/%u native=%u/%u\n",trial,ax&255,rb(u,0x3cbf0+0x68e5+driver),expected,counter); return 1;
+        }
+        ++cases;
+    }
+    printf("Original weapon AI: %u counter/heading/range/role/clock/wrapping-coordinate cases pass\n",cases);
+    ck(uc_close(u)); return 0;
+}

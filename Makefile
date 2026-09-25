@@ -221,6 +221,12 @@ verify-dos-ai: build/verify_dos_ai
 
 .PHONY: verify-dos-damage
 .PHONY: verify-dos-hud
+.PHONY: verify-weapon-actions
+build/verify_weapon_actions: tools/verify_weapon_actions.c src/game/weapon_actions.h src/game/weapon_state.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-weapon-actions: build/verify_weapon_actions
+	build/verify_weapon_actions
 .PHONY: verify-profile-setup
 .PHONY: verify-configuration
 .PHONY: verify-race-options
