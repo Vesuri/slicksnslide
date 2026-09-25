@@ -1,11 +1,38 @@
 # SLICKS_TRACK_ACTOR_TEST=1. Native bounded exit; no debugger memory writes.
-set $race=0
+set $race=(struct SlicksRaceRuntime *)0
 set $checked=0
+set $grid=0
 break *slicks_race_start
 commands
   silent
   set $race=*(struct SlicksRaceRuntime **)($sp+4)
   printf "TRACK_ACTOR_START count=%u ready=%u\n",$race->navigation.actor_count,$race->track_actors_ready
+  continue
+end
+break slicks_diag_frame_ready
+commands
+  silent
+  if g_slicks_diag_ingame && $race && !$race->frame_count
+    if !$race->chunky_authoritative || !g_slicks_diag_audit_bitmap || $race->trail_particle_count
+      printf "TRACK_ACTOR_GRID_FAILED\n"
+      quit 1
+    end
+    set $i=0
+    while $i<$race->navigation.actor_count
+      set $h=$race->track_actor_handles[$i]
+      if $h!=$i+5 || $race->weapons.actors[$h].kind!=3 || $race->weapons.actors[$h].motion.period<10 || $race->weapons.actors[$h].motion.period>17
+        printf "TRACK_ACTOR_GRID_SLOT_FAILED\n"
+        quit 1
+      end
+      if $race->navigation.actors[$i].kind==2 && $race->weapons.actors[$h].saved
+        printf "TRACK_ACTOR_HIDDEN_FLAG_FAILED\n"
+        quit 1
+      end
+      set $i=$i+1
+    end
+    set $grid=1
+    printf "TRACK_ACTOR_GRID_OK count=%u seed=%lx\n",$race->navigation.actor_count,$race->random_state
+  end
   continue
 end
 break slicks_diag_race_progress
@@ -57,7 +84,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if !$checked || g_slicks_diag_race_error || g_slicks_diag_restore_status!=0x1f
+  if !$checked || !$grid || g_slicks_diag_race_error || g_slicks_diag_restore_status!=0x1f
     printf "TRACK_ACTOR_EXIT_FAILED error=%u restore=%u\n",g_slicks_diag_race_error,g_slicks_diag_restore_status
     quit 1
   end

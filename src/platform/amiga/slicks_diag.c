@@ -1878,12 +1878,12 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     race_checkpoint(6);
     if(weapon_hud_fixture) set_weapon_hud_fixture(race);
+    if(session) race->random_state=session->random_state;
     if (slicks_race_start(race, logical, chunky) != 0) {
         g_slicks_diag_race_error = 7;
         goto cleanup;
     }
     if(session) {
-        race->random_state=session->random_state;
         /* Original 1fd72..1fdc6 runs even with Weapons disabled. Do not
          * reseed or skip the computer's draw when its inventory is empty. */
         for(unsigned driver=0;driver<4;++driver)
@@ -1904,7 +1904,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
     race_checkpoint(8);
-    slicks_convert_to_amiga(logical, chunky, platform->views[1].bitmap);
+    slicks_chunky_rows_to_amiga(chunky, platform->views[1].bitmap,0,200);
     slicks_race_use_chunky_surface(race);
     slicks_race_clear_dirty_rows(race);
     race_checkpoint(9);

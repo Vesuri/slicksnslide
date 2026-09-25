@@ -466,10 +466,13 @@ build/verify_track_actor_render: tools/verify_track_actor_render.c tools/verify_
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 build/verify_offroad_pool: tools/verify_offroad_pool.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-verify-track-actors: verify-track-actor-assets build/verify_track_actor_motion build/verify_track_actor_render build/verify_offroad_pool
+build/verify_track_actor_setup: tools/verify_track_actor_setup.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-actors: verify-track-actor-assets build/verify_track_actor_motion build/verify_track_actor_render build/verify_offroad_pool build/verify_track_actor_setup
 	build/verify_track_actor_motion
 	build/verify_track_actor_render
 	build/verify_offroad_pool
+	build/verify_track_actor_setup
 build/verify_weapon_actors: tools/verify_weapon_actors.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-actors: build/verify_weapon_actors

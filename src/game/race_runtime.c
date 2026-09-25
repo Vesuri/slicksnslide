@@ -1943,6 +1943,7 @@ static void emit_damage_smoke(struct SlicksRaceRuntime *race,
     /* 239dc..23ada counts updates, not elapsed ticks. Keep the counter when
      * repairs lower damage below the gate, and consume RNG with a full pool. */
     if(car->damage[0]<=400) return;
+    race->track_actor_scratch=(short)(car->damage[0]-400);
     car->damage_smoke_ticks=(short)(car->damage_smoke_ticks+1);
     if(car->damage_smoke_ticks<=30/(car->damage[0]-400)) return;
     car->damage_smoke_ticks=0;
@@ -1951,6 +1952,8 @@ static void emit_damage_smoke(struct SlicksRaceRuntime *race,
     unsigned before=race->trail_particle_count;
     add_trail_component(race,(short)(car->x/100),(short)(car->y/100),
         race->damage_smoke_colour,7,vx,vy,30);
+    if(shared_actor_pool(race)) race->track_actor_scratch=
+        race->trail_particle_count>before?race->weapons.trail_handle[before]:0;
     if(race->trail_particle_count>before)
         race->trail_particles[before].occlusion_limit=car->actor_layer*15;
 }
@@ -1977,6 +1980,8 @@ static void emit_contact_particles(struct SlicksRaceRuntime *race,
         unsigned short first = race->trail_particle_count;
         add_trail_component(race,(short)(car->x/100L),(short)(car->y/100L),
                             colour,3,vx,vy,lifetime);
+        if(shared_actor_pool(race)) race->track_actor_scratch=
+            race->trail_particle_count>first?race->weapons.trail_handle[first]:0;
         if (race->trail_particle_count > first)
             race->trail_particles[first].occlusion_limit = car->actor_layer*15;
     }
@@ -2838,6 +2843,7 @@ void slicks_race_initialize(struct SlicksRaceRuntime *race,
     race->cars[0].vehicle = 5;
     race->cars[1].vehicle = 2;
     race->boundary_level = 5;
+    race->random_state = 0x1fadec20UL; /* Legacy diagnostics; menus supply their seed. */
     for(unsigned car=0;car<4;++car) {
         race->selected_weapon[car]=-1;
         race->cars[car].position_scale=100; /* Explicit legacy diagnostic setup. */
@@ -3070,6 +3076,18 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
+    if(race->track_actors_ready) {
+        /* Seed saved-under from actual scenery before the very first actor
+         * draw. Later frames never deinterleave the VGA surface again. */
+        const unsigned char *s=logical;
+        unsigned char *d=chunky;
+        for(unsigned y=0;y<200;++y,s+=20)
+            for(unsigned x=0;x<80;++x,++s) {
+                *d++=s[0]; *d++=s[0x10000]; *d++=s[0x20000]; *d++=s[0x30000];
+            }
+        race->chunky_authoritative=1;
+        logical=0;
+    }
     race->finish_ranks_ready=0;
     race->track_rewarded=0;
     race->race_complete=0;
@@ -3082,7 +3100,6 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->boundary_palette_pending=0;
     race->track_flag_activations=0;
     race->track_actor_scratch=0;
-    race->random_state = 0x1fadec20UL;
     if(shared_actor_pool(race)) initialize_weapon_actors(race);
     race->pit_repair_ticks = 0;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
@@ -3163,13 +3180,14 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         state->ai_contact_threshold = 350;
         state->ai_route_seen = 1;
         state->ai_recovery_ticks = 400;
-        draw_car(race, logical, car);
+        if(!race->track_actors_ready) draw_car(race, logical, car);
     }
     race->game_clock_ticks = 0;
     race->finish_deadline = 0;
     race->arcade_hud_valid = 0;
     draw_timers(race, logical);
     draw_arcade_timer(race, logical);
+    if(race->track_actors_ready) draw_race_actors(race,logical);
     draw_start_light(race, logical, 0);
     race->countdown_ticks = 0x78;
     race->countdown_stage = 0;

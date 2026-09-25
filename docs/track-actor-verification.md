@@ -54,3 +54,30 @@ A muted 2 MiB/no-Fast A1200 BASIC test reached natural completion at update
 menu return and system restoration. An earlier run trapped after results;
 that did not reproduce on this rebuilt run and is not claimed as a diagnosed
 production fix. Representative-track and startup checks remain pending.
+
+## Startup and effect handoffs — 2026-09-25
+
+`verify_track_actor_setup` executes original `24ee4..25044` for 808 combinations
+of object count (0..100), kinds and seed. It compares source-order handles,
+Q4-to-pixel placement, hidden flags, appended frame counts, priority, masking,
+period and RNG against full native race startup. Synthetic initial pixels
+also prove restoration returns to loaded scenery rather than stale chunky
+memory. Countdown checks exercise animation while car motion and particle
+emission remain gated.
+
+This exposed a platform handoff that discarded initialization RNG: native
+menus now supply the seed before actor construction, retaining those draws
+before initial weapon selection. Track objects are drawn in the initial grid
+frame, not one update later. The scenery-to-chunky transfer occurs before
+saved-under capture; initial presentation converts that authoritative surface.
+
+Collision and damage-smoke tails also update the original aliased scratch
+read by later finish flags. The original collision-burst oracle now covers
+4,800 cases including zero through seven shared-pool slots; the smoke oracle
+covers 1,728 cases including full and one-free-slot pools, and both compare
+the scratch handoff as well as emitted tuples and RNG.
+
+The preceding integration build passed 600 audited updates and clean system
+restoration on F1 (32 track objects), CITY (18) and WHACKO (5). Together with
+BASIC these exercise all five kinds. Final-build repetitions are required
+after the startup handoff changes above.

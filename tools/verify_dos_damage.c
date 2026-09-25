@@ -495,7 +495,10 @@ static void verify_contact_sound(uc_engine *uc)
     printf("DOS contact sounds: %u original transition/sample/flag/priority cases match (mixer stubbed)\n",cases);
 }
 
-struct BurstCalls { unsigned count,colour; unsigned args[7][13],colours[7]; };
+struct BurstCalls {
+    unsigned count,colour; unsigned args[7][13],colours[7];
+    unsigned use_budget,available,next_handle;
+};
 static void inspect_burst(uc_engine *uc,uint64_t address,uint32_t size,void *opaque)
 {
     struct BurstCalls *calls=opaque;
@@ -505,6 +508,9 @@ static void inspect_burst(uc_engine *uc,uint64_t address,uint32_t size,void *opa
     unsigned at=ss*16U+sp;
     if(address==0x332ad) {
         calls->colour=readword(uc,at+4)&255;
+        if(calls->use_budget) {
+            ax=calls->available?(--calls->available,calls->next_handle++):0;
+        }
         check(uc_reg_write(uc,UC_X86_REG_AX,&ax));
     } else {
         if(calls->count>=7) { fputs("Extra collision actor\n",stderr); exit(1); }
@@ -532,7 +538,7 @@ static void verify_contact_particles(uc_engine *uc)
     for(unsigned layer=0;layer<2;++layer)
     for(unsigned velocity=0;velocity<5;++velocity)
     for(unsigned seed=0;seed<3;++seed)
-    for(unsigned full=0;full<2;++full) {
+    for(unsigned full=0;full<10;++full) {
         static struct SlicksRaceRuntime race;
         memset(&race,0,sizeof race); memset(&calls,0,sizeof calls);
         struct SlicksRaceCar *car=&race.cars[index];
@@ -540,7 +546,18 @@ static void verify_contact_particles(uc_engine *uc)
         car->actor_contact=1; car->collision_partner=partner; car->actor_layer=layer;
         car->x=10333; car->y=8377;
         car->velocity_x=velocities[velocity]; car->velocity_y=velocities[4-velocity];
-        if(full) race.trail_particle_count=SLICKS_TRAIL_PARTICLE_MAX;
+        unsigned budget=full>=2?full-2:0;
+        if(full==1) race.trail_particle_count=SLICKS_TRAIL_PARTICLE_MAX;
+        if(full>=2) {
+            race.track_actors_ready=1;
+            slicks_actor_slots_init(&race.weapons.slots);
+            race.weapons.slots.high_water=200;
+            for(unsigned h=0;h<200;++h) {
+                race.weapons.slots.state[h]=h<200-budget;
+                race.weapons.trail_index[h]=-1;
+            }
+            calls.use_budget=1;calls.available=budget;calls.next_handle=200-budget;
+        }
         uint16_t cs=0x1987,ds=0x6000,ss=0x8000,bp=0xf000,sp=0xef00,ip;
         uint8_t p=partner,l=layer,c=200;
         word(uc,0x8ef98,index); check(uc_mem_write(uc,0x8efb4+index,&p,1));
@@ -555,19 +572,22 @@ static void verify_contact_particles(uc_engine *uc)
         check(uc_reg_read(uc,UC_X86_REG_IP,&ip)); check(uc_reg_read(uc,UC_X86_REG_SP,&sp));
         check(uc_mem_read(uc,0x8efb4+index,&p,1));
         emit_contact_particles(&race,car,index);
+        if(full>=2 && race.track_actor_scratch!=(short)readword(uc,0x8efc4)) {
+            fputs("Collision burst shared scratch mismatch\n",stderr);exit(1);
+        }
         if(ip+0x19870!=0x23c94 || sp!=0xef00 || calls.count!=(partner?3:7) ||
            car->collision_partner!=p || race.random_state!=(uint32_t)readdword(uc,0x62aaa) ||
-           race.trail_particle_count!=(full?SLICKS_TRAIL_PARTICLE_MAX:calls.count)) {
+           race.trail_particle_count!=(full==1?SLICKS_TRAIL_PARTICLE_MAX:full>=2?(budget<calls.count?budget:calls.count):calls.count)) {
             fprintf(stderr,"Collision burst state mismatch car=%u partner=%u velocity=%u seed=%u full=%u\n",
                     index,partner,velocity,seed,full);
             fprintf(stderr,"IP=%x SP=%x calls=%u particles=%lu partner=%u/%u rng=%08x/%08x\n",
                     ip,sp,calls.count,(unsigned long)race.trail_particle_count,car->collision_partner,p,
                     (unsigned)race.random_state,(unsigned)readdword(uc,0x62aaa)); exit(1);
         }
-        if(!full) for(unsigned i=0;i<calls.count;++i) {
+        if(full!=1) for(unsigned i=0;i<race.trail_particle_count;++i) {
             struct SlicksTrailParticle *p=&race.trail_particles[i];
             unsigned *a=calls.args[i];
-            if(a[0]!=1 || p->colour!=calls.colours[i] || p->x!=(short)a[1]*64L ||
+            if(a[0]!=(full>=2?200-budget+i:1) || p->colour!=calls.colours[i] || p->x!=(short)a[1]*64L ||
                p->y!=(short)a[2]*64L || p->velocity_x!=(short)a[3] || p->velocity_y!=(short)a[4] ||
                a[5] || a[6] || a[7] || a[8] || p->lifetime!=a[9] ||
                p->occlusion_limit!=a[10] || a[11]!=1 || p->priority!=a[12] || p->permanent) {
@@ -580,7 +600,7 @@ static void verify_contact_particles(uc_engine *uc)
     check(uc_mem_write(uc,0x332ad,&saved_constructor,1));
     check(uc_mem_write(uc,0x32ef2,&saved_actor,1));
     check(uc_ctl_remove_cache(uc,0,0x100000));
-    printf("DOS collision bursts: %u original emission/RNG/tuple cases match (actor allocation stubbed)\n",cases);
+    printf("DOS collision bursts: %u original emission/RNG/tuple cases match, including shared-pool zero/seven-slot budgets\n",cases);
 }
 
 static void verify_damage_smoke(uc_engine *uc)
@@ -596,13 +616,24 @@ static void verify_damage_smoke(uc_engine *uc)
     check(uc_hook_add(uc,&constructor,UC_HOOK_CODE,inspect_burst,&calls,0x332ad,0x332ad));
     check(uc_hook_add(uc,&actor,UC_HOOK_CODE,inspect_burst,&calls,0x32ef2,0x32ef2));
     for(unsigned d=0;d<4;++d) for(unsigned layer=0;layer<2;++layer)
-    for(unsigned a=0;a<9;++a) for(unsigned b=0;b<6;++b) for(unsigned full=0;full<2;++full) {
+    for(unsigned a=0;a<9;++a) for(unsigned b=0;b<6;++b) for(unsigned full=0;full<4;++full) {
         static struct SlicksRaceRuntime race;memset(&race,0,sizeof race);memset(&calls,0,sizeof calls);
         struct SlicksRaceCar *car=&race.cars[d];
         car->damage[0]=damage[a];car->damage_smoke_ticks=counters[b];
         car->x=10333;car->y=8377;car->actor_layer=layer;
         race.damage_smoke_colour=71;race.random_state=cases*713U+1;
-        if(full)race.trail_particle_count=SLICKS_TRAIL_PARTICLE_MAX;
+        if(full==1)race.trail_particle_count=SLICKS_TRAIL_PARTICLE_MAX;
+        race.track_actor_scratch=123;word(uc,0x8efc4,123);
+        if(full>=2) {
+            race.track_actors_ready=1;
+            slicks_actor_slots_init(&race.weapons.slots);
+            race.weapons.slots.high_water=200;
+            for(unsigned h=0;h<200;++h) {
+                race.weapons.slots.state[h]=(full==2 || h!=199);
+                race.weapons.trail_index[h]=-1;
+            }
+            calls.use_budget=1;calls.available=full-2;calls.next_handle=199;
+        }
         uint16_t cs=0x1987,ds=0x6000,ss=0x8000,bp=0xf000,sp=0xef00,ip;
         word(uc,0x8ef98,d);word(uc,0x8efd4+2*d,counters[b]);word(uc,0x6304f+54*d,damage[a]);
         word(uc,0x8eff3,71);word(uc,0x653b6+2*d,100);word(uc,0x653be +2*d,80);
@@ -613,10 +644,13 @@ static void verify_damage_smoke(uc_engine *uc)
         check(uc_reg_write(uc,UC_X86_REG_SP,&sp));
         check(uc_emu_start(uc,0x239dc,0x23ada,0,100000));check(uc_reg_read(uc,UC_X86_REG_IP,&ip));
         emit_damage_smoke(&race,car);
+        if(full>=2 && race.track_actor_scratch!=(short)readword(uc,0x8efc4)) {
+            fputs("Damage smoke shared scratch mismatch\n",stderr);exit(1);
+        }
         if(ip+0x19870!=0x23ada || car->damage_smoke_ticks!=(short)readword(uc,0x8efd4+2*d) ||
            race.random_state!=(uint32_t)readdword(uc,0x62aaa) ||
-           race.trail_particle_count!=(full?SLICKS_TRAIL_PARTICLE_MAX:calls.count)) exit(1);
-        if(!full && calls.count) {
+           race.trail_particle_count!=(full==1?SLICKS_TRAIL_PARTICLE_MAX:full==2?0:calls.count)) exit(1);
+        if(full!=1 && race.trail_particle_count) {
             const struct SlicksTrailParticle *p=&race.trail_particles[0];unsigned *v=calls.args[0];
             if(p->colour!=calls.colours[0] || p->x!=(short)v[1]*64L || p->y!=(short)v[2]*64L ||
                p->velocity_x!=(short)v[3] || p->velocity_y!=(short)v[4] || p->lifetime!=v[9] ||
