@@ -290,6 +290,9 @@ fsuae_claim_port
   --ntsc_mode=0 --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
 FSUAE_PID=$!
 fsuae_track "$FSUAE_PID"
+# Scripted tests own their emulator only until the debugger exits, whether
+# the check passes or fails. Keep the shell alive so the EXIT trap can run.
+if [ "${2:-}" ] && [ -f "$2" ]; then trap fsuae_stop EXIT; fi
 
 for _ in $(seq 1 60); do
   kill -0 "$FSUAE_PID" 2>/dev/null || {
@@ -311,8 +314,9 @@ PREAMBLE="$RUN/connect.gdb"
 } > "$PREAMBLE"
 
 if [ "${2:-}" ] && [ -f "$2" ]; then
-  exec env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
+  env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
     "$GDB" -q -l 10 -x "$PREAMBLE" -x "$2" "$DEBUG_BUILD.elf"
+  exit $?
 fi
 exec env HOME="$GDBHOME" XDG_CACHE_HOME="$GDBHOME" \
   "$GDB" -q -l 10 -x "$PREAMBLE" "$DEBUG_BUILD.elf"

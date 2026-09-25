@@ -89,3 +89,30 @@ demonstrated native-game failure. The historical screen-transition call from
 185ff to 2b8de is still present in older local traces: its source Y plus
 height exceeds the declared sprite height. It remains outside the bounded
 subrectangle helper's proved ABI. No compatibility completion is claimed.
+
+### Additional native regressions and test cleanup
+
+Baseline `6fc78e4`, executable from `0e8399d`, muted PAL A1200/68020,
+2 MiB chip/no Fast RAM:
+
+- F1 and WHACKO each passed 600 updates with per-frame bitmap auditing,
+  clean restoration and zero audio blanking spills. F1 retained 32 actors,
+  reached 200 shared slots and recorded 2,076 marks; WHACKO retained five
+  actors, reached 155 slots and recorded 1,854 marks with four flag events.
+  Logs: `tmp/integration-f1.log`, `tmp/integration-whacko.log`.
+- Five native pause allocation/archive failures recovered and a subsequent
+  retry succeeded. All fifteen before/after race, chunky and configuration
+  snapshots matched. Log: `tmp/integration-pause-failure.log`. This fixture
+  does not assert the audio-spill counter.
+- Arcade skip/next/end passed two starts, two pause menus and an intermission
+  with clean audio ownership, restoration 31 and zero spills. This is not
+  native transition coverage for all six modes. Log: `tmp/integration-restart.log`.
+- Original-code options, race-menu, intermission-menu/preparation, setup-session
+  and weapon-shop gates passed together (`tmp/integration-mode-oracles.log`).
+
+These bounded checks do not establish natural race completion or 20 ms frames.
+Scripted debugging now closes its owned emulator when GDB exits. A real
+restoration test passed `SLICKS_RESTORE_OK STATUS=1f` and removed its PID file;
+a deliberately failing debugger preserved exit status 1 and also removed its
+PID file. The subsequent process inventory showed no FS-UAE processes. The
+normal launcher and interactive debugger behavior are unchanged.
