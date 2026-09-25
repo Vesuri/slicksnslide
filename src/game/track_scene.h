@@ -12,6 +12,13 @@
 #define SLICKS_TRACK_ACTOR_MAX 100 /* DOS slot 99 is overflow scratch. */
 
 struct SlicksChunkyUi;
+struct SlicksTrackNavigation;
+/* Production scenery pass. Material maps/pit routes must subsequently be
+ * built from the original /masks resource, never sampled before that pass. */
+int slicks_build_track_visuals(unsigned char *logical,
+    unsigned char *lower,unsigned char *upper,const unsigned char *dat,unsigned long dat_size,
+    const unsigned char *track,unsigned long track_size,unsigned char *arena,unsigned long arena_size,
+    struct SlicksTrackNavigation *navigation,short fuel,short damage);
 /* Original records-panel preview, directly from DAT sprites and SS objects.
  * Return 1 for the old-format notice, -1 for rejected input, 0 drawn. */
 int slicks_build_track_preview(struct SlicksChunkyUi *ui,

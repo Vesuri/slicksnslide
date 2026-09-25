@@ -37,6 +37,12 @@
 #include "../../ui/title_help.h"
 #include "../../ui/language_table.h"
 #include "resource_archive.h"
+#include "../../ui/font_resource.h"
+
+unsigned char *slicks_title_font;
+unsigned char *slicks_title_small_font;
+#define TITLE_FONT_CAPACITY 8192UL
+volatile unsigned long g_slicks_load_ticks[14];
 
 struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
@@ -339,6 +345,9 @@ __attribute__((noinline)) void slicks_diag_results_ready(void)
 
 static void race_checkpoint(unsigned short stage)
 {
+    struct DateStamp now;
+    DateStamp(&now);
+    if(stage<14) g_slicks_load_ticks[stage]=(unsigned long)now.ds_Minute*3000UL+now.ds_Tick;
     g_slicks_diag_race_stage = stage;
     if (g_slicks_diag_ready)
         slicks_diag_frame_ready();
@@ -1416,6 +1425,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
                       struct SlicksConfiguration *configuration,
                       struct SlicksSetupSession *session,unsigned char new_game)
 {
+    race_checkpoint(0);
     struct SlicksRaceOptions options;
     /* A failed GO must not consume random choices or reset the user's game
      * state. Static backups avoid adding this transaction to the 4 KiB stack.
@@ -1541,7 +1551,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
     race_checkpoint(4);
-    if (slicks_build_track_scene_options(logical, race->material_map,
+    if (slicks_build_track_visuals(logical, race->material_map,
                                  race->surface_map, dat,
                                  (unsigned long)dat_size, track,
                                  (unsigned long)track_size, arena, 65536UL,
@@ -1564,6 +1574,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
 
+    race_checkpoint(10);
     race->navigation = *navigation;
     race->damage_enabled = navigation->service_available;
     g_slicks_diag_track_zones = navigation->zone_count;
@@ -1580,6 +1591,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             ++g_slicks_diag_material_count[race->material_map[pixel] & 31];
     }
     {
+        race_checkpoint(11);
         const char *hud_name="alamenu.@I";
         if(g_slicks_diag_race_load_fault==6) {
             g_slicks_diag_race_load_fault=0; hud_name="missing-race-hud";
@@ -1612,6 +1624,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             }
         }
     }
+    race_checkpoint(12);
     for (car = 0; car < SLICKS_START_LIGHT_COUNT; ++car) {
         char name[10] = "lahto1.@I";
         long light_size;
@@ -2856,6 +2869,19 @@ int main(void)
                                      sizeof(source_palette)) != 768L ||
         slicks_prepare_title_frame(title_asset, title_frame) != 0)
         goto cleanup;
+
+    slicks_title_font=(unsigned char *)AllocMem(TITLE_FONT_CAPACITY,MEMF_ANY);
+    if(!slicks_title_font) goto cleanup;
+    {
+        long bytes=slicks_resource_archive_load(&archive,"iso.@f",title_asset,64003UL);
+        if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
+            slicks_title_font,TITLE_FONT_CAPACITY)<0) goto cleanup;
+        slicks_title_small_font=(unsigned char *)AllocMem(8192UL,MEMF_ANY);
+        if(!slicks_title_small_font) goto cleanup;
+        bytes=slicks_resource_archive_load(&archive,"kirj.@f",title_asset,64003UL);
+        if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
+            slicks_title_small_font,8192UL)<0) goto cleanup;
+    }
 
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);
     if (!logical)
@@ -4821,6 +4847,8 @@ cleanup:
         FreeMem(title_frame, TITLE_FRAME_ALLOCATION_BYTES);
     if (title_asset)
         FreeMem(title_asset, 64003UL);
+    if(slicks_title_font) { FreeMem(slicks_title_font,TITLE_FONT_CAPACITY); slicks_title_font=0; }
+    if(slicks_title_small_font) { FreeMem(slicks_title_small_font,8192UL); slicks_title_small_font=0; }
     if (GfxBase)
         CloseLibrary((struct Library *)GfxBase);
     if (DOSBase)

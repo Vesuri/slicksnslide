@@ -826,6 +826,22 @@ verify-hud-background: build/verify_hud_background build/hud_icon_test.bin
 	build/verify_hud_background
 
 .PHONY: verify-font-glyph
+.PHONY: verify-font-planar
+.PHONY: verify-track-visuals
+build/verify_track_visuals: tools/verify_track_visuals.c src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< -o $@
+verify-track-visuals: build/verify_track_visuals
+	build/verify_track_visuals
+build/verify_track_mask_fast: tools/verify_track_mask_fast.c src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< -o $@
+.PHONY: verify-track-mask-fast
+verify-track-mask-fast: build/verify_track_mask_fast
+	build/verify_track_mask_fast
+build/font_planar_test.bin: tools/font_planar_test.s src/ui/sui_font_glyph_planar.s
+	@mkdir -p build
+	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
+verify-font-planar: build/verify_font_glyph build/font_planar_test.bin
+	build/verify_font_glyph build/font_planar_test.bin unused unused iso.@f planar
 build/sui_font_glyph.bin: tools/font_glyph_test.s src/ui/sui_font_glyph.s src/graphics/sgfx_mult320.s
 	@mkdir -p build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<

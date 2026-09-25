@@ -149,7 +149,7 @@ int slicks_record_track_actor(struct SlicksTrackNavigation *navigation,
     return 0;
 }
 
-int slicks_apply_material_mask(unsigned char pixel, unsigned char bridge,
+static inline __attribute__((always_inline)) int apply_material_mask(unsigned char pixel, unsigned char bridge,
                                unsigned char *lower, unsigned char *upper)
 {
     unsigned char category = 1, value = pixel, previous = *lower;
@@ -197,6 +197,10 @@ int slicks_apply_material_mask(unsigned char pixel, unsigned char bridge,
     return 0;
 }
 
+int slicks_apply_material_mask(unsigned char pixel,unsigned char bridge,
+    unsigned char *lower,unsigned char *upper)
+{ return apply_material_mask(pixel,bridge,lower,upper); }
+
 int slicks_build_track_masks(unsigned char *lower, unsigned char *upper,
                              const unsigned char *masks, unsigned long masks_size,
                              const unsigned char *track, unsigned long track_size,
@@ -226,18 +230,27 @@ int slicks_build_track_masks(unsigned char *lower, unsigned char *upper,
         if (type >= SLICKS_SPRITE_COUNT) return -1;
         if (!service && (type == 68 || type == 69)) continue;
         sprite = &sprites[type];
-        for (unsigned short sy = 0; sy < sprite->height; ++sy)
-        for (unsigned short sx = 0; sx < sprite->width; ++sx) {
-            unsigned short x, y;
-            if (rotation == 1) { x = ox + sprite->height - 1 - sy; y = oy + sx; }
-            else if (rotation == 2) { x = ox + sprite->width - 1 - sx; y = oy + sprite->height - 1 - sy; }
-            else if (rotation == 3) { x = ox + sy; y = oy + sprite->width - 1 - sx; }
-            else { x = ox + sx; y = oy + sy; }
-            /* b283 crops the material pass at y=185, independently of VGA. */
-            if (x >= 320 || y >= 185) continue;
-            unsigned long dest = mult320[y] + x;
-            if (slicks_apply_material_mask(sprite->pixels[(unsigned long)sy * sprite->width + sx],
-                                           bridge, lower + dest, upper + dest)) return -1;
+        unsigned width=(rotation&1)?sprite->height:sprite->width;
+        unsigned height=(rotation&1)?sprite->width:sprite->height;
+        unsigned first=ox>=320?65536U-ox:0;
+        if(first>=width) continue;
+        unsigned x=(unsigned short)(ox+first),length=width-first;
+        if(length>320-x) length=320-x;
+        for(unsigned row=0;row<height;++row) {
+            unsigned short y=(unsigned short)(oy+row);
+            /* Original mask crop differs from the visible scene crop. */
+            if(y>=185) continue;
+            long base,step;
+            if(rotation==1) { base=(long)(sprite->height-1)*sprite->width+row; step=-(long)sprite->width; }
+            else if(rotation==2) { base=(long)(sprite->height-1-row)*sprite->width+sprite->width-1; step=-1; }
+            else if(rotation==3) { base=sprite->width-1-row; step=sprite->width; }
+            else { base=(long)row*sprite->width; step=1; }
+            const unsigned char *src=sprite->pixels+base+(long)first*step;
+            unsigned char *lo=lower+mult320[y]+x,*hi=upper+mult320[y]+x;
+            for(unsigned col=0;col<length;++col,src+=step,++lo,++hi) {
+                unsigned char pixel=*src;
+                if(pixel && apply_material_mask(pixel,bridge,lo,hi)) return -1;
+            }
         }
     }
     navigation->service_available = service && navigation->pit_count;
@@ -435,7 +448,36 @@ int slicks_track_object_enabled(unsigned char type, short fuel, short damage)
     return (type != 68 && type != 69) || fuel != 0 || damage != 0;
 }
 
-int slicks_build_track_scene_options(unsigned char *logical,
+/* Paint in destination scanline order, one VGA bank at a time. Rotation,
+ * clipping and address multiplication stay outside the pixel loop. */
+static void draw_visual(unsigned char *logical,const struct TrackSprite *sprite,
+    unsigned short ox,unsigned short oy,unsigned char rotation)
+{
+    rotation&=3;
+    unsigned width=(rotation&1)?sprite->height:sprite->width;
+    unsigned height=(rotation&1)?sprite->width:sprite->height;
+    for(unsigned row=0;row<height;++row) {
+        unsigned short y=(unsigned short)(oy+row);
+        if(y>=190) continue;
+        long base,step;
+        if(rotation==1) { base=(long)(sprite->height-1)*sprite->width+row; step=-(long)sprite->width; }
+        else if(rotation==2) { base=(long)(sprite->height-1-row)*sprite->width+sprite->width-1; step=-1; }
+        else if(rotation==3) { base=sprite->width-1-row; step=sprite->width; }
+        else { base=(long)row*sprite->width; step=1; }
+        for(unsigned bank=0;bank<4;++bank) {
+            unsigned col=(bank-(ox&3))&3;
+            for(;col<width && (unsigned short)(ox+col)>=320;col+=4) {}
+            if(col>=width) continue;
+            unsigned short x=(unsigned short)(ox+col);
+            unsigned char *dst=logical+((unsigned long)bank<<16)+(unsigned long)y*100+(x>>2);
+            const unsigned char *src=sprite->pixels+base+(long)col*step;
+            for(;col<width && x<320;col+=4,x+=4,++dst,src+=step*4)
+                if(*src) *dst=*src;
+        }
+    }
+}
+
+static int build_track_scene(unsigned char *logical,
                              unsigned char *material_map,
                              unsigned char *surface_map,
                              const unsigned char *dat,
@@ -445,7 +487,7 @@ int slicks_build_track_scene_options(unsigned char *logical,
                              unsigned char *sprite_arena,
                              unsigned long arena_size,
                              struct SlicksTrackNavigation *navigation,
-                             short fuel, short damage)
+                             short fuel, short damage,unsigned char visual_only)
 {
     struct TrackSprite sprites[SLICKS_SPRITE_COUNT];
     unsigned long at;
@@ -461,7 +503,7 @@ int slicks_build_track_scene_options(unsigned char *logical,
                           sprites) != 0)
         return -1;
 
-    for (at = 0; at < 320UL * 190UL; ++at) {
+    for (at = 0; !visual_only && at < 320UL * 190UL; ++at) {
         material_map[at] = 0;
         surface_map[at] = 0;
     }
@@ -504,15 +546,17 @@ int slicks_build_track_scene_options(unsigned char *logical,
             navigation->service_available = 0;
             continue;
         }
-        if (!slicks_record_track_actor(navigation, x, y, type))
-            draw_sprite(logical, material_map, surface_map, &sprites[type],
+        if (!slicks_record_track_actor(navigation, x, y, type)) {
+            if(visual_only) draw_visual(logical,&sprites[type],x,y,rotation);
+            else draw_sprite(logical, material_map, surface_map, &sprites[type],
                         x, y, rotation, type);
+        }
     }
 
     /* Strip the construction priorities before gameplay samples b089. */
     {
         unsigned long surface_at;
-        for (surface_at = 0; surface_at < 320UL * 190UL; ++surface_at)
+        for (surface_at = 0; !visual_only && surface_at < 320UL * 190UL; ++surface_at)
             surface_map[surface_at] &= 0x1f;
     }
 
@@ -577,10 +621,22 @@ int slicks_build_track_scene_options(unsigned char *logical,
     navigation->start_y = read_be16(track + at + 2);
     navigation->start_heading = track[at + 4];
     navigation->start_style = track[at + 5];
-    if (slicks_build_pit_routes(navigation, material_map, 5) < 0)
+    if (!visual_only && slicks_build_pit_routes(navigation, material_map, 5) < 0)
         return -1;
     return (int)object_count;
 }
+
+int slicks_build_track_scene_options(unsigned char *logical,
+    unsigned char *lower,unsigned char *upper,const unsigned char *dat,unsigned long dat_size,
+    const unsigned char *track,unsigned long track_size,unsigned char *arena,unsigned long arena_size,
+    struct SlicksTrackNavigation *navigation,short fuel,short damage)
+{ return build_track_scene(logical,lower,upper,dat,dat_size,track,track_size,arena,arena_size,navigation,fuel,damage,0); }
+
+int slicks_build_track_visuals(unsigned char *logical,
+    unsigned char *lower,unsigned char *upper,const unsigned char *dat,unsigned long dat_size,
+    const unsigned char *track,unsigned long track_size,unsigned char *arena,unsigned long arena_size,
+    struct SlicksTrackNavigation *navigation,short fuel,short damage)
+{ return build_track_scene(logical,lower,upper,dat,dat_size,track,track_size,arena,arena_size,navigation,fuel,damage,1); }
 
 /* Legacy DAT-only callers retain their historical visible-pit behavior.
  * Production uses the explicit setup-aware entry point and archive masks. */

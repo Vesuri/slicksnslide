@@ -38,8 +38,9 @@ static void pixel(uc_engine *uc,uc_mem_type type,uint64_t address,int size,int64
 int main(int argc,char **argv)
 {
     static unsigned char runtime[300000],code[4096],resource[8192],font[8192],native[64000];
-    if(argc!=4 && argc!=5) return 2;
-    const char *font_name=argc==5?argv[4]:"pieni.@f";
+    if(argc<4 || argc>6) return 2;
+    unsigned planar=argc==6;
+    const char *font_name=argc>=5?argv[4]:"pieni.@f";
     FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
     size_t bytes=fread(runtime,1,sizeof runtime,f); if(ferror(f) || !feof(f)) return 2; fclose(f);
     f=fopen(argv[1],"rb"); if(!f) return 2;
@@ -82,10 +83,15 @@ int main(int argc,char **argv)
         check(uc_mem_write(x86,0x50000,font,dst));
         check(uc_mem_write(m68k,0x50000,font,dst));
         for(unsigned at=0;at<64000;++at) dos[at]=(unsigned char)(at*17+at/320+cases);
-        check(uc_mem_write(m68k,0x100000,dos,sizeof dos));
+        if(planar) {
+            static unsigned char planes[0x40000]; memset(planes,0xa5,sizeof planes);
+            for(unsigned y=0;y<200;++y) for(unsigned x=0;x<320;++x)
+                planes[(x&3)*65536+y*100+x/4]=dos[y*320+x];
+            check(uc_mem_write(m68k,0x100000,planes,sizeof planes));
+        } else check(uc_mem_write(m68k,0x100000,dos,sizeof dos));
         unsigned char guard[256]; memset(guard,0xa5,sizeof guard);
         check(uc_mem_write(m68k,0x100000-256,guard,sizeof guard));
-        check(uc_mem_write(m68k,0x100000+64000,guard,sizeof guard));
+        check(uc_mem_write(m68k,0x100000+(planar?0x40000:64000),guard,sizeof guard));
         uint16_t cs=0x2e0f,ds=0x3cbf,ss=0x8000,sp=0xf000,ip;
         word(x86,0x8f000,0); word(x86,0x8f002,0x7000);
         word(x86,0x8f004,x); word(x86,0x8f006,y);
@@ -109,11 +115,16 @@ int main(int argc,char **argv)
         check(uc_emu_start(m68k,0,0x380000,0,100000));
         check(uc_reg_read(m68k,UC_M68K_REG_PC,&pc));
         check(uc_reg_read(m68k,UC_M68K_REG_A7,&stack));
-        check(uc_mem_read(m68k,0x100000,native,sizeof native));
+        if(planar) {
+            static unsigned char planes[0x40000];
+            check(uc_mem_read(m68k,0x100000,planes,sizeof planes));
+            for(unsigned y=0;y<200;++y) for(unsigned x=0;x<320;++x)
+                native[y*320+x]=planes[(x&3)*65536+y*100+x/4];
+        } else check(uc_mem_read(m68k,0x100000,native,sizeof native));
         unsigned char actual_guard[256];
         check(uc_mem_read(m68k,0x100000-256,actual_guard,sizeof actual_guard));
         if(memcmp(guard,actual_guard,sizeof guard)) abort();
-        check(uc_mem_read(m68k,0x100000+64000,actual_guard,sizeof actual_guard));
+        check(uc_mem_read(m68k,0x100000+(planar?0x40000:64000),actual_guard,sizeof actual_guard));
         if(memcmp(guard,actual_guard,sizeof guard)) abort();
         if(pc!=0x380000 || stack!=0x300004 || memcmp(native,dos,sizeof dos)) {
             fprintf(stderr,"Font glyph mismatch glyph=%u palette=%u xy=%u,%u writes=%u\n",glyph,palette,x,y,writes);
@@ -126,6 +137,7 @@ int main(int argc,char **argv)
         ++cases;
     }
     printf("Original glyph rasterizer vs 68020: %u full-frame pixel comparisons; transparency, palette changes, edges and register preservation passed\n",cases);
+    if(planar) { check(uc_close(x86)); check(uc_close(m68k)); return 0; }
     f=fopen(argv[2],"rb"); if(!f) return 2;
     codesize=fread(code,1,sizeof code,f); if(ferror(f) || !feof(f)) return 2; fclose(f);
     check(uc_mem_write(m68k,0x2000,code,codesize));

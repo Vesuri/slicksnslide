@@ -1,7 +1,13 @@
 	section	code
+	ifd	SLICKS_FONT_PLANAR
+	xdef sui_font_string_planar
+	xref sui_font_glyph_planar
+sui_font_glyph equ sui_font_glyph_planar
+	else
 	xdef	sui_font_string
+	xref sui_font_glyph
+	endif
 	xref	sui_font_measure
-	xref	sui_font_glyph
 
 ; 301ab..302b5 string routine plus 3000f's character/highlight wrapper.
 ; a0 = chunky, a1 = runtime font, a2 = string
@@ -9,7 +15,11 @@
 ; d4.w = tab width, d5.b = fallback/highlight colour (DS:1600).
 ; d6.w = signed shadow offsets packed x:y (DS:1602, DS:1603).
 ; Returns d0.w = final x - original anchor; other registers preserved.
+	ifd SLICKS_FONT_PLANAR
+sui_font_string_planar:
+	else
 sui_font_string:
+	endif
 	movem.l	d1-d7/a0-a6,-(sp)
 	link	a6,#-32
 	move.w	d0,-2(a6)

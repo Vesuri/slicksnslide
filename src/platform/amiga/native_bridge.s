@@ -10,6 +10,7 @@
 	xref	sui_title_step
 	xref	sui_title_menu
 	xref	sui_draw_text
+	xref sui_draw_small_text
 	xref	sui_font_string
 	xref	sui_title_tail
 	xref	sui_title_dispatch
@@ -103,7 +104,7 @@ slicks_draw_title_text:
 	moveq	#0,d2
 	move.b	67(sp),d2
 	moveq	#0,d3
-	jsr	sui_draw_text
+	jsr	sui_draw_small_text
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts
 
