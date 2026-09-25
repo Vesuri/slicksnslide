@@ -2,25 +2,18 @@
 
 Updated 2026-09-26. Actionable open and deferred work only.
 
-## Remaining game completion
-
-1. Complete the matched-vehicle idle/slowdown listening comparison; identify
-    the remaining reported sound difference and correct verified mismatches.
-    Complete the listening check of the corrected active-racing recording:
-    unwanted effect looping, clicks, missing effects and excessive engine
-    interruption. Keep direct playback without software mixing.
-
 ## Integration and release
 
-2. Run applicable original-code oracles and muted 2 MiB/no-Fast-RAM A1200
+1. Run applicable original-code oracles and muted 2 MiB/no-Fast-RAM A1200
     regressions after integration changes: persistence, recovery, dirty-region
     integrity, DMA blanking and clean system restoration. Broaden tracks/modes.
     Refresh binary-specific debug fixtures before using them on new builds.
-3. Resolve executed source-wrap and unsupported platform-boundary cases.
-4. Audit dependencies, memory/startup behavior, launcher defaults and release
+2. Resolve executed source-wrap and unsupported platform-boundary cases.
+3. Audit dependencies, memory/startup behavior, launcher defaults and release
     documentation. Package without original game data, captured frames,
     generated reference bytes or emulator artifacts.
-5. Publish/push only when explicitly requested.
+
+Publish/push only when explicitly requested.
 
 ## Deferred
 

@@ -1,5 +1,15 @@
 # Audio capture and listening evidence
 
+## Listening acceptance — 2026-09-26
+
+After receiving the matching-vehicle PC/Amiga recordings, the user confirmed
+“Sound correct, thanks” and requested commit/push and continued work. This
+closes the remaining listening item, including the reported idle-sample
+concern. The earlier controlled-pitch comparison was separately accepted.
+Playback remains four direct Paula channels with prioritized borrowing and
+no software mixing. This acceptance does not claim identical race timing,
+sample phase, or the PC's richer simultaneous-voice mix.
+
 ## Controlled pitch probe and sample-bank correction
 
 The opt-in `AUDIOPITCH` native diagnostic plays one vehicle-0 engine through
