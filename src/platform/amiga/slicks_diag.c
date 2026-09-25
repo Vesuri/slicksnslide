@@ -3186,16 +3186,21 @@ int main(void)
     unsigned char extreme_pitch_probe=(unsigned char)(argc==9 && argv[0]=='A' &&
         argv[1]=='U' && argv[2]=='D' && argv[3]=='I' && argv[4]=='O' &&
         argv[5]=='H' && argv[6]=='I' && argv[7]=='G' && argv[8]=='H');
-    if(extreme_pitch_probe || (argc==10 && argv[0]=='A' && argv[1]=='U' && argv[2]=='D' &&
+    unsigned char falling_pitch_probe=(unsigned char)(argc==9 && argv[0]=='A' &&
+        argv[1]=='U' && argv[2]=='D' && argv[3]=='I' && argv[4]=='O' &&
+        argv[5]=='F' && argv[6]=='A' && argv[7]=='L' && argv[8]=='L');
+    if(extreme_pitch_probe || falling_pitch_probe || (argc==10 && argv[0]=='A' && argv[1]=='U' && argv[2]=='D' &&
        argv[3]=='I' && argv[4]=='O' && argv[5]=='P' && argv[6]=='I' &&
        argv[7]=='T' && argv[8]=='C' && argv[9]=='H')) {
         static const unsigned long probe_speeds[3]={0,500,1000};
         static const unsigned long extreme_speeds[5]={0,4000,8500,4000,0};
+        static const unsigned long falling_speeds[4]={0,1000,500,0};
         if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
         slicks_amiga_platform_wait_display_blank(&platform);
         slicks_amiga_audio_start_engine(&audio,0,100);
-        for(unsigned stage=0;stage<(extreme_pitch_probe?5U:3U);++stage) {
-            unsigned long speeds[4]={extreme_pitch_probe?extreme_speeds[stage]:probe_speeds[stage],0,0,0};
+        for(unsigned stage=0;stage<(extreme_pitch_probe?5U:falling_pitch_probe?4U:3U);++stage) {
+            unsigned long speeds[4]={extreme_pitch_probe?extreme_speeds[stage]:
+                falling_pitch_probe?falling_speeds[stage]:probe_speeds[stage],0,0,0};
             slicks_amiga_platform_wait_display_blank(&platform);
             slicks_amiga_audio_update_speeds(&audio,speeds);
             g_slicks_diag_engine_frequency=audio.engine_frequency;

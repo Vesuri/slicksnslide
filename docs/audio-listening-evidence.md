@@ -41,6 +41,26 @@ Delivered local-only clips after the ID fix, three seconds at each rate:
 - User listening feedback on the corrected controlled pair: “They sound
   exactly the same.” This accepts the three tested pitches, not all race events.
 
+## Idle/slowdown investigation
+
+The user reports that the corrected active-racing engine still sounds like
+the high-RPM sample when cars slow down, and recalls a distinct idle sound
+in PC captures and the older Amiga build. This remains unresolved. Falling
+pitch alone does not establish that the correct PCM sample is playing.
+
+`AUDIOFALL` (`SLICKS_AUDIO_PITCH_TEST=3`) plays one vehicle-0 engine at
+speeds 0/1000/500/0, five seconds each, through the production adapter.
+The 2 MiB/no-Fast A1200 run passed `diag_audio_deceleration.gdb`, restoring
+the system with status 31, no VBI spills, final frequency 2200, period 1612
+and only the normal waveform bank visited. This is a pitch/state diagnostic,
+not acceptance of the reported idle-sample discrepancy.
+
+The pitch oracle additionally executes the whole original engine-update
+block, including pan and sound-driver calls: 440 vehicle/car/speed cases
+preserve an initially supplied sample handle while updating pitch through
+acceleration and deceleration. It does not establish which sample the
+original race originally allocated or what other sounds play alongside it.
+
 ## Extreme engine frequencies
 
 The production adapter now prepares half- and quarter-length engine loops
