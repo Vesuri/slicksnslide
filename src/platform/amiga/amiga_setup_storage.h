@@ -22,6 +22,11 @@ struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *,const
  * loader. Does not alter old-format tracks. Report path borrows caller's path;
  * changed is true only after publication, including cleanup-pending status. */
 struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *,unsigned char *);
+struct SlicksTrackRecords;
+/* Post-race records use the same transactional writer; caller retains its
+ * in-memory result on failure so Retry never re-inserts records. */
+struct SlicksSetupStorageReport slicks_amiga_store_track_records(
+    const char *,const struct SlicksTrackRecords *,unsigned char *);
 
 /* Stable platform tag, replacing the DOS BIOS-date-derived byte. This is
  * format identification, not authentication. Foreign CFGs require import. */

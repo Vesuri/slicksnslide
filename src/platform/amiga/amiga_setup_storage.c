@@ -256,11 +256,12 @@ struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *path,c
     return report;
 }
 
-struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *path,unsigned char *changed)
+struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *path,
+    const struct SlicksTrackRecords *source,unsigned char *changed)
 {
     struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
     if(changed) *changed=0;
-    if(!path || !changed) return report;
+    if(!path || !source || !changed) return report;
     unsigned length=0; while(length<120 && path[length]) ++length;
     if(!length || length>=120) return report;
     char temporary[124],backup[124];
@@ -280,7 +281,7 @@ struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *pat
     if(size<6 || load.result!=SLICKS_SETUP_LOADED || buffer[2]!='S' || buffer[3]!='S' || buffer[4]!=0x7e) {
         report.io_error=load.io_error?load.io_error:ERROR_OBJECT_WRONG_TYPE;
     } else {
-        struct SlicksTrackRecords records; slicks_clear_track_records(&records);
+        struct SlicksTrackRecords records=*source;
         int encoded=slicks_write_track_records(buffer,(unsigned long)size,&records);
         if(encoded<0) report.io_error=ERROR_OBJECT_WRONG_TYPE;
         else if(!encoded) report.result=SLICKS_SETUP_SAVED; /* Original old-format no-op. */
@@ -295,6 +296,13 @@ struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *pat
 done:
     report.path=path; /* Never return pointers into local suffix buffers. */
     return report;
+}
+
+struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *path,unsigned char *changed)
+{
+    struct SlicksTrackRecords records;
+    slicks_clear_track_records(&records);
+    return slicks_amiga_store_track_records(path,&records,changed);
 }
 
 struct SlicksSetupLoadReport slicks_amiga_load_setup(

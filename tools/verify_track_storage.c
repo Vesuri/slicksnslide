@@ -75,6 +75,33 @@ int main(void)
     memcpy(after,before,sizeof after); struct SlicksTrackRecords records; slicks_clear_track_records(&records);
     assert(slicks_write_track_records(after,sizeof after,&records)==1);
     unsigned cases=0,results[4]={0};
+    /* Post-race publication preserves non-record bytes and never mutates
+     * the caller's insertion result, even when record one is promoted.
+     * Every one/two-fault transaction retains the old or complete new file. */
+    struct SlicksTrackRecords inserted=records;
+    for(unsigned i=0;i<20;++i) inserted.entries[1][i]=(unsigned char)('A'+i);
+    inserted.entries[1][20]=123; inserted.entries[1][26]=4; inserted.trailer=17;
+    struct SlicksTrackRecords encoded=inserted;
+    unsigned char published[512]; memcpy(published,before,sizeof published);
+    assert(slicks_write_track_records(published,sizeof published,&encoded)==1);
+    initialize(before,sizeof before); unsigned char inserted_changed=0;
+    struct SlicksSetupStorageReport inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+    assert(inserted_report.result==SLICKS_SETUP_SAVED && inserted_changed && equals(0,published,sizeof published));
+    unsigned inserted_calls=operation,inserted_cases=0;
+    struct SlicksTrackRecords retained=inserted;
+    for(unsigned first=0;first<=inserted_calls+10;++first)
+    for(unsigned second=first;second<=inserted_calls+10;++second) {
+        initialize(before,sizeof before); fail_first=first; fail_second=second;
+        inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+        assert(!allocations && !memcmp(&inserted,&retained,sizeof inserted));
+        unsigned committed=inserted_report.result==SLICKS_SETUP_SAVED || inserted_report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING;
+        assert(inserted_changed==committed);
+        if(committed) assert(equals(0,published,sizeof published));
+        else assert(equals(0,before,sizeof before) || equals(2,before,sizeof before));
+        ++inserted_cases;
+    }
+    printf("Post-race record publication: %u single/double-fault cases preserve source records and complete old/new files\n",inserted_cases);
+    fail_first=fail_second=0;
     initialize(before,sizeof before); unsigned char changed=0;
     struct SlicksSetupStorageReport report=slicks_amiga_clear_track_records(paths[0],&changed);
     assert(report.result==SLICKS_SETUP_SAVED && changed && equals(0,after,sizeof after));

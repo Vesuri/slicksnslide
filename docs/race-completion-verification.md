@@ -11,6 +11,14 @@ profile settings above 100, full/empty/tied tables and counter wraparound.
 The typed routine is in `src/game/post_race_records.h`; this test alone is
 not evidence of platform display/save integration.
 
+The Amiga track writer now accepts post-race record tables as well as the
+existing Clear Top 10s operation. Its 1,225 single/double-fault cases preserve
+the caller's table and either the old file or the fully published new file;
+the original Clear operation's 1,225 cases still pass. The original record
+encoder passes 2,048 full-file/working-table comparisons, including promotion
+of record one into record zero. Amiga cross-build passes. The new API alone
+does not establish that the race caller invokes it.
+
 ## Original finish branch
 
 `make verify-race-completion` executes original instructions at physical
