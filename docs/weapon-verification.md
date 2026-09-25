@@ -197,3 +197,12 @@ reserved/retirement states. Another 8,192 original motion/animation slices
 compare state, signed lifetime, positions, velocity and animation timing.
 These establish slot and timing semantics, not yet full runtime integration
 or the sprite allocator's saved-under allocation failure behavior.
+
+## Original point clipping boundary
+
+The captured race pool uses DS:16c4 = 184, not the 190-row track mask
+height. The production point painters now use this exclusive limit; sprite
+effects retain the full 200-row visible window and the cleared mask tail.
+`verify-dos-points` passes 14,336 original raster comparisons, including
+rows 183/184/189/190. Fully clipped effects never restore uninitialized
+saved-under bytes. Sprite raster equivalence remains a separate gate.

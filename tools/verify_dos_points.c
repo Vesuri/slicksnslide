@@ -32,7 +32,7 @@ static void pixel(uc_engine *uc,uc_mem_type type,uint64_t a,int size,int64_t val
 int main(int argc,char **argv)
 {
     static const short positions[][2]={{-1,0},{0,-1},{0,0},{1,1},{2,1},{3,1},
-        {319,189},{320,189},{319,190},{101,83},{-512,100},{511,189}};
+        {319,183},{319,184},{319,189},{320,189},{319,190},{101,83},{-512,100},{511,189}};
     FILE *f;
     uc_engine *uc;
     uc_hook output,write;
@@ -48,7 +48,7 @@ int main(int argc,char **argv)
     check(uc_hook_add(uc,&write,UC_HOOK_MEM_WRITE,pixel,NULL,0xa0000,0xaffff));
     word(uc,0x616ce,0); word(uc,0x616d0,0x9000);
     word(uc,0x616ca,0); word(uc,0x616cc,0x8000);
-    word(uc,0x616c7,1); word(uc,0x616c4,190);
+    word(uc,0x616c7,1); word(uc,0x616c4,184);
     word(uc,0x3cbf0+0x1d7d,320); word(uc,0x3cbf0+0x1d89,0);
     word(uc,0x61d7b,100);
     for(unsigned raw=0;raw<256;++raw)
@@ -59,7 +59,7 @@ int main(int argc,char **argv)
         unsigned char actor[64]={0},mask=raw;
         short x=positions[p][0],y=positions[p][1];
         unsigned limit=layer*15,colour=(raw*53+17)&255;
-        int visible=x>=0 && x<320 && y>=0 && y<190;
+        int visible=x>=0 && x<320 && y>=0 && y<184;
         memset(native,91,sizeof native); memset(dos,91,sizeof dos);
         memset(&race,0,sizeof race); race.chunky=native;
         if(visible) {

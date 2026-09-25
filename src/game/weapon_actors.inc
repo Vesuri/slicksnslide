@@ -9,7 +9,7 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     if(!a->saved) return;
     for(unsigned y=0;y<a->old_height;++y) for(unsigned x=0;x<a->old_width;++x) {
         int px=a->old_x+x,py=a->old_y+y;
-        if(px>=0 && px<320 && py>=0 && py<190)
+        if(px>=0 && px<320 && py>=0 && py<200)
             race->chunky[mult320[py]+px]=a->saved_under[y*a->old_width+x];
     }
     mark_dirty_rect(race,a->old_x,a->old_y,a->old_x+a->old_width,a->old_y+a->old_height);
@@ -30,14 +30,17 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         asset=&race->weapons.assets[frame];width=asset->width;height=asset->height;
     }
     short left=a->motion.x>>6,top=a->motion.y>>6;
+    if(left>=320 || top>=(asset?200:SLICKS_POINT_HEIGHT) ||
+       left+(int)width<=0 || top+(int)height<=0) { a->saved=0;return; }
     for(unsigned y=0;y<height;++y) for(unsigned x=0;x<width;++x) {
         int px=left+(int)x,py=top+(int)y;
-        if(px<0 || px>=320 || py<0 || py>=190) continue;
+        if(px<0 || px>=320 || py<0 || py>=(asset?200:SLICKS_POINT_HEIGHT)) continue;
         unsigned long at=mult320[py]+px;
         unsigned i=y*width+x;
         a->saved_under[i]=race->chunky[at];
         unsigned char pixel=asset?asset->pixels[i]:a->colour;
-        if((!asset || pixel) && actor_pixel_visible(race,at,a->occlusion))
+        /* The original raw mask's 190..199 tail is explicitly cleared. */
+        if((!asset || pixel) && (py>=190 || actor_pixel_visible(race,at,a->occlusion)))
             race->chunky[at]=pixel;
     }
     a->old_x=left;a->old_y=top;a->old_width=width;a->old_height=height;a->saved=1;

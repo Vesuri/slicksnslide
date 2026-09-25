@@ -31,6 +31,7 @@ unsigned char slicks_race_disable_particles;
 
 #define SLICKS_SCREEN_WIDTH 320
 #define SLICKS_TRACK_HEIGHT 190
+#define SLICKS_POINT_HEIGHT 184 /* Original race actor pool DS:16c4. */
 #define SLICKS_SCREEN_HEIGHT 200
 #define SLICKS_STRIDE 100U
 
@@ -1807,7 +1808,7 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
             ? (short)-((63 - particle->y) >> 6)
             : (short)(particle->y >> 6);
         if (x < 0 || x >= SLICKS_SCREEN_WIDTH ||
-            y < 0 || y >= SLICKS_TRACK_HEIGHT) {
+            y < 0 || y >= SLICKS_POINT_HEIGHT) {
             if (particle->saved_valid & 2)
                 mark_dirty_pixel(race, particle->old_x, particle->old_y);
             particle->saved_valid = 0;
