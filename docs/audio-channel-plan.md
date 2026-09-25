@@ -45,6 +45,12 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- The pitch oracle now also executes original 3000:95b8..96a8 with the
+  Sound Blaster branch enabled: 210 vehicle/speed/output-rate cases verify
+  the driver's 8-bit fractional sample step is `frequency*256/output_rate`.
+  There is no hidden octave multiplier in that conversion. This does not
+  itself verify the DSP output clock or an audible emulator recording.
+
 - Added 48 host-adapter lifecycle cases covering stop/pause before either
   staged VBI, during engine/effect/music playback, after silent reload and
   after engine resumption. They check that stopped requests cannot restart

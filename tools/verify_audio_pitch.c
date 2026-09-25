@@ -2,6 +2,46 @@
 #include "verify_configuration.c"
 #undef main
 #include "../src/game/audio_pitch.h"
+
+/* Follow the frequency through the original Sound Blaster software-driver
+ * wrapper, not just through the game's speed-to-frequency calculation.
+ * This executes the original fixed-point step calculation; it is not an
+ * audible DOSBox capture or an implementation of a production mixer. */
+static void verify_driver_frequency(uc_engine *u)
+{
+    const unsigned rates[]={11025,22050,44100};
+    const unsigned speeds[]={0,237,500,1000,2000,4000,65535};
+    unsigned cases=0;
+    for(unsigned vehicle=0;vehicle<10;++vehicle)
+    for(unsigned r=0;r<sizeof rates/sizeof rates[0];++r)
+    for(unsigned s=0;s<sizeof speeds/sizeof speeds[0];++s) {
+        uint16_t cs=0x3000,ds=0x3cbf,ss=0x8000,sp=0xf000,ip;
+        unsigned frequency=slicks_engine_frequency(vehicle,speeds[s]);
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+        check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));
+        check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+        word(u,0x8f004,1); word(u,0x8f006,frequency);
+        word(u,0x3cbf0+0x17bc,0x0100); /* Sound Blaster enabled, not GUS. */
+        word(u,0x3cbf0+0x17e8,0);
+        word(u,0x3cbf0+0x17be,rates[r]);
+        word(u,0x3cbf0+0x752c,0); /* voice 1 -> sample 0 */
+        word(u,0x3cbf0+0x74c8,11025);
+        word(u,0x3cbf0+0x7692,1000); /* sample end/start positions */
+        word(u,0x3cbf0+0x76d2,0);
+        check(uc_emu_start(u,0x395b8,0x396a8,0,2000));
+        check(uc_reg_read(u,UC_X86_REG_IP,&ip));
+        unsigned step=readword(u,0x3cbf0+0x7712);
+        unsigned expected=frequency*256U/rates[r];
+        if(ip!=0x96a8 || step!=expected) {
+            fprintf(stderr,"Driver pitch mismatch vehicle=%u speed=%u rate=%u frequency=%u step=%u expected=%u ip=%x\n",
+                vehicle,speeds[s],rates[r],frequency,step,expected,ip);
+            exit(1);
+        }
+        ++cases;
+    }
+    printf("Original Sound Blaster pitch: %u driver step cases pass (no hidden pitch multiplier)\n",cases);
+}
 int main(void)
 {
     unsigned char runtime[300000]; FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
@@ -24,6 +64,7 @@ int main(void)
         }
         ++cases;
     }
+    verify_driver_frequency(u);
     check(uc_close(u));
     printf("Engine pitch: %u original x86 comparisons pass (all vehicles and 16-bit speeds)\n",cases);
     return 0;
