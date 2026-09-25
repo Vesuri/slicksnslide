@@ -15,6 +15,11 @@
 #define DMA_SETCLR 0x8000
 #define DMA_AUD0 0x0001
 #define AUDIO_BASE(channel) (0x0a0 + (channel) * 0x10)
+#define PAL_AUDIO_CLOCK 3546895UL
+/* Conservative for both standard PAL (123 minimum) and NTSC (124).
+ * Do not request faster sample DMA and rely on emulator behaviour. */
+#define MIN_AUDIO_PERIOD 124UL
+#define MAX_AUDIO_RATE (PAL_AUDIO_CLOCK/MIN_AUDIO_PERIOD)
 static struct SlicksAmigaAudio *vblank_audio;
 volatile unsigned long g_slicks_audio_vbi_spills;
 volatile unsigned short g_slicks_audio_vbi_last_line;
@@ -42,18 +47,39 @@ static unsigned long absolute_velocity(long value)
     return value < 0 ? 0UL-(unsigned long)value : (unsigned long)value;
 }
 
+static const struct SlicksAmigaSample *engine_sample(const struct SlicksAmigaAudio *audio,unsigned car)
+{
+    unsigned block=engine_sample_block[audio->engine_vehicles[car]];
+    unsigned level=audio->engine_levels[car];
+    return level?&audio->reduced_engines[block-17][level-1]:&audio->samples[block];
+}
+
 static unsigned short engine_period(struct SlicksAmigaAudio *audio,
                                     unsigned car,unsigned long measured_speed)
 {
     unsigned short vehicle = audio->engine_vehicles[car];
     unsigned long frequency = slicks_engine_frequency(vehicle,measured_speed);
     unsigned long period;
+    unsigned block=engine_sample_block[vehicle],level=audio->engine_levels[car];
+    const struct SlicksAmigaSample *base=&audio->samples[block];
+    /* Hysteresis avoids repeated restarts around a bank boundary. */
+    while(level && frequency<=27000UL*(1U<<(level-1))) --level;
+    unsigned long playback_frequency=frequency;
+    for(;;) {
+        const struct SlicksAmigaSample *sample=level?
+            &audio->reduced_engines[block-17][level-1]:base;
+        playback_frequency=level && base->bytes?
+            (frequency*sample->bytes+base->bytes/2U)/base->bytes:frequency;
+        if(playback_frequency<=MAX_AUDIO_RATE || level==2 ||
+           !audio->reduced_engines[block-17][level].data) break;
+        ++level;
+    }
+    audio->engine_levels[car]=(unsigned char)level;
     /* A zero driver frequency has no finite Paula equivalent. Keep the
      * hardware boundary safe; normal race speeds never approach this case. */
-    period = frequency ? 3546895UL / frequency : 65535UL;
+    period = playback_frequency ? PAL_AUDIO_CLOCK / playback_frequency : 65535UL;
     if(period>65535UL) period=65535UL;
-    if (!period)
-        period = 1;
+    if(period<MIN_AUDIO_PERIOD) period=MIN_AUDIO_PERIOD;
     audio->engine_frequencies[car] = (unsigned short)frequency;
     audio->engine_periods[car] = (unsigned short)period;
     if(!car) {
@@ -152,6 +178,31 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
     return block == SLICKS_AUDIO_SAMPLE_COUNT && at==size ? 0 : -1;
 }
 
+/* Load-time box filtering only, never a run-time mixer. Even-length output
+ * obeys Paula's word DMA; period scaling uses the actual lengths so rounding
+ * a reduced loop to a whole word does not change its intended loop pitch. */
+static int prepare_reduced_engines(struct SlicksAmigaAudio *audio)
+{
+    for(unsigned block=17;block<=24;++block) for(unsigned level=1;level<=2;++level) {
+        const struct SlicksAmigaSample *base=&audio->samples[block];
+        struct SlicksAmigaSample *sample=&audio->reduced_engines[block-17][level-1];
+        unsigned quantum=2U<<level;
+        sample->bytes=(unsigned short)(((base->bytes+quantum-1)/quantum)*2U);
+        sample->data=(signed char *)AllocMem(sample->bytes,MEMF_CHIP|MEMF_CLEAR);
+        if(!sample->data) return -1;
+        unsigned remainder=0,source=0;
+        for(unsigned i=0;i<sample->bytes;++i) {
+            remainder+=base->bytes;
+            long sum=0; unsigned count=0;
+            while(remainder>=sample->bytes) {
+                sum+=base->data[source++]; ++count; remainder-=sample->bytes;
+            }
+            sample->data[i]=(signed char)(sum/(long)count);
+        }
+    }
+    return 0;
+}
+
 int slicks_amiga_audio_add_music(struct SlicksAmigaAudio *audio,
                                  const unsigned char *wave,
                                  unsigned long wave_size)
@@ -230,6 +281,7 @@ int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
         ((unsigned char *)audio)[i] = 0;
     if (copy_blocks(audio, resource, resource_size) != 0)
         goto fail;
+    if(prepare_reduced_engines(audio)) goto fail;
     audio->silence = (signed char *)AllocMem(2, MEMF_CHIP | MEMF_CLEAR);
     if (!audio->silence)
         goto fail;
@@ -273,8 +325,8 @@ void slicks_amiga_audio_start_engines(struct SlicksAmigaAudio *audio,
     for(unsigned i=0;i<4;++i) {
         audio->engine_vehicles[i]=(unsigned char)vehicles[i];
         if(!(mask&(1U<<i))) continue;
-        unsigned block=engine_sample_block[vehicles[i]];
-        start_looping_channel(audio,i,&audio->samples[block],engine_period(audio,i,0),audio->sound_volume);
+        unsigned short period=engine_period(audio,i,0);
+        start_looping_channel(audio,i,engine_sample(audio,i),period,audio->sound_volume);
     }
     audio->engine_vehicle=(unsigned char)vehicles[0];
     audio->engine_sample_block=vehicles[0]<SLICKS_AUDIO_ENGINE_COUNT?engine_sample_block[vehicles[0]]:0;
@@ -327,9 +379,14 @@ void slicks_amiga_audio_update_speeds(struct SlicksAmigaAudio *audio,
         audio->volume_dirty=0;
     }
     for(channel=0;channel<4;++channel) if(audio->channels.engine_mask&(1U<<channel)) {
+        const struct SlicksAmigaSample *before=engine_sample(audio,channel);
         unsigned short period=engine_period(audio,channel,speeds[channel]);
-        if(audio->channels.owner[channel]==SLICKS_AUDIO_ENGINE && !audio->pending_start[channel])
-            CUSTOM_WORD(AUDIO_BASE(channel)+6)=period;
+        if(audio->channels.owner[channel]==SLICKS_AUDIO_ENGINE) {
+            const struct SlicksAmigaSample *after=engine_sample(audio,channel);
+            if(before!=after)
+                start_looping_channel(audio,channel,after,period,audio->sound_volume);
+            else if(!audio->pending_start[channel]) CUSTOM_WORD(AUDIO_BASE(channel)+6)=period;
+        }
     }
     AUDIO_UNLOCK();
 }
@@ -390,7 +447,7 @@ void slicks_amiga_audio_tick(struct SlicksAmigaAudio *audio)
             if(audio->channels.owner[effect]==SLICKS_AUDIO_MUSIC) audio->music_started=0;
             slicks_audio_channels_finish(&audio->channels,effect);
             if(audio->channels.owner[effect]==SLICKS_AUDIO_ENGINE)
-                start_looping_channel(audio,effect,&audio->samples[engine_sample_block[audio->engine_vehicles[effect]]],
+                start_looping_channel(audio,effect,engine_sample(audio,effect),
                     audio->engine_periods[effect],audio->sound_volume);
         }
     }
@@ -441,6 +498,7 @@ void slicks_amiga_audio_stop(struct SlicksAmigaAudio *audio)
             audio->effect_ticks[effect] = 0;
             audio->effect_priority[effect] = 0;
             audio->pending_start[effect] = 0;
+            audio->engine_levels[effect] = 0;
         }
         for (effect = 0; effect < SLICKS_AUDIO_ONE_SHOT_CHANNELS; ++effect)
             audio->silent_reload_ticks[effect] = 0;
@@ -456,6 +514,11 @@ void slicks_amiga_audio_destroy(struct SlicksAmigaAudio *audio)
     AUDIO_LOCK();
     if(vblank_audio==audio) vblank_audio=0;
     AUDIO_UNLOCK();
+    for(unsigned block=0;block<8;++block) for(unsigned level=0;level<2;++level) {
+        struct SlicksAmigaSample *sample=&audio->reduced_engines[block][level];
+        if(sample->data) FreeMem(sample->data,sample->bytes);
+        sample->data=0; sample->bytes=0;
+    }
     for (i = 0; i < SLICKS_AUDIO_SAMPLE_COUNT; ++i) {
         if (audio->samples[i].data)
             FreeMem(audio->samples[i].data, audio->samples[i].bytes);

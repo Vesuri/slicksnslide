@@ -207,6 +207,7 @@ volatile unsigned char g_slicks_diag_engine_started;
 volatile unsigned char g_slicks_diag_engine_sample_block;
 volatile unsigned short g_slicks_diag_engine_frequency;
 volatile unsigned short g_slicks_diag_engine_period;
+volatile unsigned short g_slicks_diag_pitch_bank_mask;
 volatile unsigned char g_slicks_diag_effect_sample_block;
 volatile unsigned char g_slicks_diag_effect_priority;
 volatile unsigned long
@@ -3182,21 +3183,26 @@ int main(void)
     /* Opt-in listening probe: the production sample loader, engine adapter
      * and VBI drive one Paula channel at labelled, fixed measured speeds.
      * No mixer, racing input or driver state is replaced in normal runs. */
-    if(argc==10 && argv[0]=='A' && argv[1]=='U' && argv[2]=='D' &&
+    unsigned char extreme_pitch_probe=(unsigned char)(argc==9 && argv[0]=='A' &&
+        argv[1]=='U' && argv[2]=='D' && argv[3]=='I' && argv[4]=='O' &&
+        argv[5]=='H' && argv[6]=='I' && argv[7]=='G' && argv[8]=='H');
+    if(extreme_pitch_probe || (argc==10 && argv[0]=='A' && argv[1]=='U' && argv[2]=='D' &&
        argv[3]=='I' && argv[4]=='O' && argv[5]=='P' && argv[6]=='I' &&
-       argv[7]=='T' && argv[8]=='C' && argv[9]=='H') {
+       argv[7]=='T' && argv[8]=='C' && argv[9]=='H')) {
         static const unsigned long probe_speeds[3]={0,500,1000};
+        static const unsigned long extreme_speeds[5]={0,4000,8500,4000,0};
         if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
         slicks_amiga_platform_wait_display_blank(&platform);
         slicks_amiga_audio_start_engine(&audio,0,100);
-        for(unsigned stage=0;stage<3;++stage) {
-            unsigned long speeds[4]={probe_speeds[stage],0,0,0};
+        for(unsigned stage=0;stage<(extreme_pitch_probe?5U:3U);++stage) {
+            unsigned long speeds[4]={extreme_pitch_probe?extreme_speeds[stage]:probe_speeds[stage],0,0,0};
             slicks_amiga_platform_wait_display_blank(&platform);
             slicks_amiga_audio_update_speeds(&audio,speeds);
             g_slicks_diag_engine_frequency=audio.engine_frequency;
             g_slicks_diag_engine_period=audio.engine_period;
+            g_slicks_diag_pitch_bank_mask|=(unsigned short)(1U<<audio.engine_levels[0]);
             unsigned long start=platform.vblank_count;
-            while(platform.vblank_count-start<250)
+            while(platform.vblank_count-start<(extreme_pitch_probe?125U:250U))
                 slicks_amiga_platform_wait_vblank(&platform);
         }
         slicks_amiga_platform_wait_display_blank(&platform);

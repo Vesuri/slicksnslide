@@ -18,6 +18,7 @@ struct SlicksAmigaSample {
 
 struct SlicksAmigaAudio {
     struct SlicksAmigaSample samples[SLICKS_AUDIO_SAMPLE_COUNT];
+    struct SlicksAmigaSample reduced_engines[8][2]; /* IDs 17..24, half/quarter. */
     struct SlicksAmigaSample music;
     signed char *silence;
     struct SlicksAudioChannels channels;
@@ -25,6 +26,7 @@ struct SlicksAmigaAudio {
     unsigned short pending_period[4],pending_volume[4];
     unsigned char pending_start[4]; /* 1: stop at VBI, 2: start at following VBI. */
     unsigned char engine_vehicles[4];
+    unsigned char engine_levels[4];
     unsigned short engine_frequencies[4], engine_periods[4];
     unsigned short effect_ticks[SLICKS_AUDIO_EFFECT_CHANNELS];
     unsigned char silent_reload_ticks[SLICKS_AUDIO_ONE_SHOT_CHANNELS];

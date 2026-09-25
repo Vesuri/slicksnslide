@@ -6,8 +6,10 @@
 #include "host_archive.h"
 enum { MEMF_CHIP=1,MEMF_CLEAR=2 };
 static unsigned long allocated_bytes;
+static long fail_after=-1;
 static void *AllocMem(unsigned long n,unsigned flags)
-{ (void)flags; void *p=calloc(1,n); if(p) allocated_bytes+=n; return p; }
+{ (void)flags; if(!fail_after) return 0; if(fail_after>0) --fail_after;
+  void *p=calloc(1,n); if(p) allocated_bytes+=n; return p; }
 static void FreeMem(void *p,unsigned long n)
 { assert(allocated_bytes>=n); allocated_bytes-=n; free(p); }
 static unsigned short words[256];
@@ -77,6 +79,49 @@ static void verify_lifecycle(void)
     printf("Audio lifecycle: %u stop/pause/resume/results/restart phase cases pass\n",cases);
 }
 
+static void verify_extreme_pitches(struct SlicksAmigaAudio *a)
+{
+    unsigned cases=0,banks=0; double worst=0;
+    for(unsigned vehicle=0;vehicle<10;++vehicle) {
+        unsigned short vehicles[4]={(unsigned short)vehicle,0,0,0};
+        slicks_amiga_audio_start_engines(a,vehicles,1);
+        for(unsigned speed=0;speed<65536;++speed) {
+            unsigned long speeds[4]={speed,0,0,0};
+            slicks_amiga_audio_update_speeds(a,speeds);
+            slicks_amiga_audio_tick(a); slicks_amiga_audio_tick(a);
+            const struct SlicksAmigaSample *sample=engine_sample(a,0);
+            const struct SlicksAmigaSample *base=&a->samples[engine_sample_block[vehicle]];
+            unsigned period=a->engine_periods[0],frequency=a->engine_frequencies[0];
+            assert(sample->data && sample->bytes && !(sample->bytes&1));
+            assert(period>=124 && period<=65535);
+            assert(words[(AUDIO_BASE(0)+6)/2]==period);
+            assert(longs[AUDIO_BASE(0)/4]==(unsigned long)sample->data);
+            assert(words[(AUDIO_BASE(0)+4)/2]==sample->bytes/2);
+            banks|=1U<<a->engine_levels[0];
+            if(frequency>=55) {
+                double actual=(double)PAL_AUDIO_CLOCK*base->bytes/(period*(double)sample->bytes);
+                double error=actual/frequency-1; if(error<0) error=-error;
+                if(error>worst) worst=error;
+                assert(error<0.009); /* Integer period/rate quantization, not clamping. */
+            }
+            ++cases;
+        }
+    }
+    assert(banks==7);
+    /* Borrow an engine, change bank while inaudible, resume the latest bank. */
+    const unsigned short vehicles[4]={0,0,0,0};
+    slicks_amiga_audio_start_engines(a,vehicles,15);
+    slicks_amiga_audio_play_effect(a,1,0,100);
+    unsigned long speeds[4]={8500,0,0,0};
+    slicks_amiga_audio_update_speeds(a,speeds);
+    assert(a->engine_levels[0]==2 && a->channels.owner[0]==SLICKS_AUDIO_EFFECT);
+    for(unsigned i=0;i<100;++i) slicks_amiga_audio_tick(a);
+    assert(a->channels.owner[0]==SLICKS_AUDIO_ENGINE);
+    assert(longs[AUDIO_BASE(0)/4]==(unsigned long)engine_sample(a,0)->data);
+    slicks_amiga_audio_stop(a);
+    printf("Paula limits: %u vehicle/speed cases, all three waveform banks, worst representable pitch error %.4f%%; borrowed engine resumes latest bank\n",cases,worst*100);
+}
+
 int main(void)
 {
     verify_lifecycle();
@@ -92,6 +137,7 @@ int main(void)
     assert(bank_audio.samples[17].bytes==2050);
     assert(bank_audio.samples[18].bytes==2700);
     assert(bank_audio.samples[26].bytes==5960);
+    verify_extreme_pitches(&bank_audio);
     slicks_amiga_audio_destroy(&bank_audio);
     assert(!allocated_bytes);
     const unsigned truncated[]={0,1,7,8,8715,8726,8759,sizeof bank-1};
@@ -106,6 +152,13 @@ int main(void)
         assert(!allocated_bytes); bank[corrupt[i]]=before;
     }
     puts("Mixed sample bank: 27 IDs including WAV, correct engine slot and malformed/truncated cleanup pass");
+    for(unsigned failure=0;failure<44;++failure) {
+        fail_after=failure;
+        assert(slicks_amiga_audio_create(&bank_audio,bank,sizeof bank)==-1);
+        assert(!allocated_bytes);
+    }
+    fail_after=-1;
+    puts("Audio allocation: all 44 bank/variant/silence allocation failures clean up completely");
     signed char sample[1000]={0}; unsigned cases=0;
     for(unsigned mask=0;mask<16;++mask) {
         struct SlicksAmigaAudio a={0}; a.ready=1; a.silence=sample; a.sound_volume=64;

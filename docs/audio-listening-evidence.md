@@ -38,7 +38,31 @@ Delivered local-only clips after the ID fix, three seconds at each rate:
   recording (over 0.996). Amiga file-backend output fails the tool's 0.90
   confidence threshold, so its precise loop-rate estimates are **not** used
   as passing evidence. Matching spectrum peaks do not remove that limitation.
-- User listening feedback on the corrected controlled pair is pending.
+- User listening feedback on the corrected controlled pair: “They sound
+  exactly the same.” This accepts the three tested pitches, not all race events.
+
+## Extreme engine frequencies
+
+The production adapter now prepares half- and quarter-length engine loops
+at load time, with box filtering. Above the normal waveform's safe DMA rate
+it selects a shorter waveform and scales the sample clock by the actual
+loop lengths. Playback is still direct Paula DMA, without software mixing.
+Bank changes use the existing blanking-safe restart and downward hysteresis.
+Normal-rate playback retains the original waveform.
+
+The conservative minimum period is 124; PAL hardware allows 123 and NTSC
+124 according to the Commodore hardware reference. Host tests cover all
+655,360 vehicle/speed combinations: every period stays in 124..65535,
+all three banks are exercised, and worst representable loop-pitch error is
+0.8052%. Wrapped requested rates below 55 Hz are outside Paula's range and
+remain clamped, not claimed as pitch matches. Borrowed channels resume the
+latest selected bank. All 44 allocation-failure positions clean up completely.
+
+The muted `AUDIOHIGH` A1200/2 MiB/no-Fast diagnostic traversed full, half,
+quarter, half, full at requested rates 2200/30200/61700/30200/2200.
+`diag_audio_extreme.gdb` passed: restore=31, spills=0, banks=7, final
+frequency=2200 and period=1612. This is a hardware-state test, not a listening
+acceptance of bank transitions.
 
 ## 2026-09-25: first race comparison
 
