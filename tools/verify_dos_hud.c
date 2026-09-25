@@ -219,8 +219,9 @@ static int composed_hud(const unsigned char *runtime,size_t bytes,unsigned activ
     colour=51; check(uc_mem_write(uc,0x3cbf0+0x68e4,&colour,1));
     colour=61; check(uc_mem_write(uc,0x3cbf0+0x68e3,&colour,1));
     word(uc,0x3cbf0+0x1716,0); word(uc,0x3cbf0+0x1718,0x5900);
-    for(unsigned step=0;step<32;++step) {
-        race.weapons_enabled=!!(step&1); race.fuel_option=step&2; race.damage_scale=step&4;
+    for(unsigned step=0;step<48;++step) {
+        unsigned text_step=step<32?step:31;
+        race.weapons_enabled=step>=32?1:!!(step&1); race.fuel_option=step>=32?0:step&2; race.damage_scale=step>=32?0:step&4;
         word(uc,0x3cbf0+0x3020,race.weapons_enabled);
         word(uc,0x3cbf0+0x3024,race.fuel_option); word(uc,0x3cbf0+0x3026,race.damage_scale);
         word(uc,0x59000,(step>>3)&1);
@@ -233,19 +234,19 @@ static int composed_hud(const unsigned char *runtime,size_t bytes,unsigned activ
             word(uc,data+0x3063,100); word(uc,data+0x3065,0);
             word(uc,data+0x304f,race.cars[car].damage[0]);
             unsigned char flags=car&1; check(uc_mem_write(uc,data+0x305e,&flags,1));
-            signed char weapon=step==8?-1:(signed char)((step+car)%8);
+            signed char weapon=(step==8 || step==33 || step==37 || step==47)?-1:(signed char)((step+car)%8);
             race.selected_weapon[car]=weapon;
             check(uc_mem_write(uc,0x3cbf0+0x2fac+car,&weapon,1));
             for(unsigned slot=5;slot<13;++slot) {
                 race.weapon_inventory[car][slot]=(short)((step*3+car+slot)%21);
                 word(uc,0x3cbf0+0x6a7a+car*26+slot*2,race.weapon_inventory[car][slot]);
             }
-            unsigned place=step<6+car?0:car+1;
+            unsigned place=text_step<6+car?0:car+1;
             unsigned char rank=place?place:255;
-            race.cars[car].lap=laps[step%6]; race.cars[car].finished=!!place;
+            race.cars[car].lap=laps[text_step%6]; race.cars[car].finished=!!place;
             race.cars[car].finish_position=place;
-            race.cars[car].last_lap_time_units=step*1568+car*180;
-            race.cars[car].best_lap_time_units=17999-step*918-car*180;
+            race.cars[car].last_lap_time_units=text_step*1568+car*180;
+            race.cars[car].best_lap_time_units=17999-text_step*918-car*180;
             check(uc_mem_write(uc,0x3cbf0+0x4bce +car,&rank,1));
             word(uc,0x3cbf0+0x4bfe +2*car,race.cars[car].lap-1);
             word(uc,0x3cbf0+0x3037+54*car,race.cars[car].last_lap_time_units);
@@ -254,7 +255,7 @@ static int composed_hud(const unsigned char *runtime,size_t bytes,unsigned activ
             word(uc,0x8f000,0); word(uc,0x8f002,0x7000); word(uc,0x8f004,car);
             check(uc_reg_write(uc,UC_X86_REG_CS,&cs)); check(uc_reg_write(uc,UC_X86_REG_DS,&ds));
             check(uc_reg_write(uc,UC_X86_REG_SS,&ss)); check(uc_reg_write(uc,UC_X86_REG_SP,&sp));
-            check(uc_emu_start(uc,0x1ddc0,0x70000,0,1000000));
+            check(uc_emu_start(uc,step>32?0x1d9b6:0x1ddc0,0x70000,0,1000000));
             check(uc_reg_read(uc,UC_X86_REG_IP,&ip)); check(uc_reg_read(uc,UC_X86_REG_SP,&sp));
             if(ip || sp!=0xf004) return 1;
         }
@@ -593,6 +594,6 @@ int main(void)
     printf("DOS driver HUD: %u complete text-command sequences match both pages (icon/palette/status graphics stubbed)\n",cases);
     if(inventory_oracle(runtime,bytes) || weapon_oracle(runtime,bytes) || records_oracle(runtime,bytes) || track_hud(runtime,bytes)) return 1;
     for(unsigned mask=0;mask<16;++mask) if(composed_hud(runtime,bytes,mask)) return 1;
-    puts("Composed original HUD: 512 full-screen transitions, original kirj font, all 16 participation masks, mixed human/computer and racing/finished drivers, every weapon/fuel/damage option combination and both refuelling blink phases (page-0 name mirrored)");
+    puts("Composed original HUD: 768 full-screen transitions, original kirj font, all participation masks, mixed racing/finished drivers, every status option, weapon changes/depletion without text changes (page-0 name mirrored)");
     return 0;
 }

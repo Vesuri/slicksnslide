@@ -49,6 +49,16 @@ FSUAE_RUN=.run/native-results DEBUG_PORT=25186 SLICKS_NATURAL_RESULTS=damage ami
 
 ## Boundary of this evidence
 
+The live purchase/fire test exposed an empty-selection discrepancy: native
+timer caching treated selection changes as full 1ddc0 redraws. Original
+20c09..20c6f changes selection without invoking that redraw; its subsequent
+1d9b6 status call leaves the previous icon visible when selection becomes -1.
+Production now preserves that distinction. The composed oracle has been
+extended to 768 full-screen transitions, including weapon cycling/depletion
+while all lap/finish text stays fixed, using original status-only calls.
+All pass, as do producer dirty-region checks. This fixes the actual gameplay
+case rather than changing the test to accept a different icon policy.
+
 The composed weapon tests supply inventory/selection values to compare the
 original painter. They do **not** prove gameplay-driven firing, cycling or
 depletion. Those producers are now integrated (see weapon-verification.md),

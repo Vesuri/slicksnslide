@@ -2694,8 +2694,10 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
         unsigned char options=(race->weapons_enabled?1:0)|
             (race->fuel_option?2:0)|(race->damage_scale?4:0);
         signed char selected=race->weapons_enabled?race->selected_weapon[car]:-1;
-        if(race->hud_status_options[car]!=options ||
-           race->hud_weapon_selection[car]!=selected) changed=1;
+        /* Selection changes call the original status painter, not 1ddc0's
+         * full text/background redraw. In particular, empty selection keeps
+         * the previous icon until a lap/finish redraw removes it. */
+        if(race->hud_status_options[car]!=options) changed=1;
         for (unsigned i = 0; i < count; ++i) {
             runs[i] = hud_text_run(&race->font, &commands[i]);
             const struct SlicksHudRun *old = &race->hud_runs[car][i];
