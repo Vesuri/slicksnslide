@@ -14,6 +14,10 @@ commands
       quit 1
     end
     if $phases == 4
+      if !$m->intermission->renderer.expose_actions
+        printf "NATIVE_INTERMISSION_ACTION_ROWS_HIDDEN\n"
+        quit 1
+      end
       dump binary memory .run/intermission-owner-v1/open.chunky $m->renderer.ui.pixels $m->renderer.ui.pixels+64000
       dump binary memory .run/intermission-owner-v1/open.planar $bitmap->Planes[0] $bitmap->Planes[0]+64000
     end

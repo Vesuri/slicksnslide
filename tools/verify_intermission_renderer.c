@@ -26,11 +26,12 @@ int main(void)
     unsigned char font[8]={0};
     for(unsigned i=0;i<768;++i) palette[i]=(unsigned char)((i*13)%64);
     unsigned cases=0;
+    for(unsigned extended=0;extended<2;++extended)
     for(unsigned mask=1;mask<16;++mask) for(unsigned failure=0;failure<2;++failure) {
         for(unsigned i=0;i<64000;++i) pixels[i]=(unsigned char)(i*19+i/320);
         struct Test test={0}; test.fail_preview=(int)failure;
         struct SlicksRecordsRenderer surface={.ui={pixels,palette,0,0},.fonts={font,0},.text=text,.icon=icon,.context=&test};
-        struct SlicksIntermissionRenderer r={.surface=&surface,.fastest_icon=11};
+        struct SlicksIntermissionRenderer r={.surface=&surface,.fastest_icon=11,.expose_actions=(unsigned char)extended};
         struct SlicksIntermissionMenu m;
         struct SlicksIntermissionContent c={.labels={(const unsigned char *)"CHANGE CARS",(const unsigned char *)"SAVE GAME",
             (const unsigned char *)"NEXT TRACK",(const unsigned char *)"END MATCH"},
@@ -44,6 +45,9 @@ int main(void)
         int result=slicks_intermission_renderer_open(&r,&m,&c,palette,buttons,sizeof buttons,cars,sizeof cars,preview,&test);
         if(test.previews!=1 || test.markers!=active || (failure?(result!=-1 || r.active):(result || !r.active))) return 1;
         if(!failure) {
+            /* Two original rows versus four deliberate native action rows.
+             * Driver names/points and track name/slash/counts precede them. */
+            if(test.texts!=2*active+4+(extended?4:2)) return 1;
             if(test.cars!=active || m.redraw || m.cars_redraw || m.selected!=2) return 1;
             memcpy(drawn,pixels,sizeof drawn);
             m.redraw=-1; m.cars_redraw=-1;
@@ -56,6 +60,6 @@ int main(void)
         }
         ++cases;
     }
-    printf("Intermission renderer: %u composition/redraw/preview-failure cases pass (stub assets; not a pixel oracle)\n",cases);
+    printf("Intermission renderer: %u original/extended composition/redraw/preview-failure cases pass (stub assets; not a pixel oracle)\n",cases);
     return 0;
 }

@@ -110,5 +110,15 @@ The intermission dispatcher/draw/preparation, renderer, setup-session and
 Arcade-HUD tests passed on this run. The old whole-screen intermission pixel
 oracle failed at (128,90): the championship work intentionally exposed two
 DOS-hidden action rows, but the oracle still compares that extended screen
-with the original hidden-row version. Keep original and extended rendering
-explicitly separate in that test rather than accepting a pixel mismatch.
+with the original hidden-row version.
+
+The renderer now has an explicit `expose_actions` policy. Its original mode
+passes all 75 DOS/native whole-screen/font comparisons; the native Amiga
+owner explicitly enables the two additional actions. The composition test
+checks both policies in 60 cases and verifies that the extended mode emits
+both extra labels. No pixels are masked out of the DOS comparison, and the
+production Save Game/Change Cars actions remain visible. The eight Change
+Cars open/close comparisons and 20 row redraws also pass. The Amiga rebuild
+passes its runtime check. Muted A1200 `UIMENU2` (port 25164) passes all 17
+owner phases, including open failures, reopen, Change Cars, an explicit
+visible-action policy assertion and restored hardware status `0x1f`.

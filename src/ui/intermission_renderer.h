@@ -11,7 +11,7 @@ struct SlicksIntermissionRenderer {
     struct SlicksRecordsRenderer *surface;
     struct SlicksSavedRectangle buttons,cars;
     short fastest_icon;
-    unsigned char participants,active;
+    unsigned char participants,active,expose_actions;
 };
 struct SlicksIntermissionContent {
     signed char roles[4],vehicles[4];
@@ -66,7 +66,7 @@ static inline int slicks_intermission_renderer_draw(struct SlicksIntermissionRen
     slicks_intermission_car_rows(m,c->roles,c->vehicles,1,&ops);
     /* The supplied DOS build hides these two implemented actions. Native
      * championship support exposes Change Cars and Save Game explicitly. */
-    slicks_intermission_action_rows_from(m,r->participants,1,c->labels,&ops,0);
+    slicks_intermission_action_rows_from(m,r->participants,1,c->labels,&ops,r->expose_actions?0:2);
     return r->surface->error;
 }
 /* Owner loads all assets first and retains/restores its full parent page on
@@ -80,7 +80,8 @@ static inline int slicks_intermission_renderer_open(struct SlicksIntermissionRen
 {
     if(!r || r->active || !r->surface || !m || !c || !source_palette || !buttons || !cars ||
        buttons==cars || button_size<3024 || car_size<320 || !preview || !c->track_name ||
-       !c->slash || !c->labels[2] || !c->labels[3]) return -1;
+       !c->slash || !c->labels[2] || !c->labels[3] ||
+       (r->expose_actions && (!c->labels[0] || !c->labels[1]))) return -1;
     struct SlicksRecordsRenderer *s=r->surface;
     if(!s->ui.pixels || !s->ui.palette || !s->fonts[0] || !s->text || !s->icon) return -1;
     unsigned count=0;

@@ -350,6 +350,7 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     d->surface=(struct SlicksRecordsRenderer){.ui=m->renderer.ui,.fonts={m->fonts[0],m->fonts[1]},
         .text=records_text,.icon=records_icon,.context=m};
     d->renderer.surface=&d->surface; d->renderer.fastest_icon=-1;
+    d->renderer.expose_actions=1; /* Native Save/Change Cars extension. */
     d->old_colour=m->renderer.fonts[0][6];
     for(unsigned long i=0;i<64000;++i) m->saved[i]=m->renderer.ui.pixels[i];
     m->intermission=d;
