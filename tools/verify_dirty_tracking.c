@@ -5,6 +5,12 @@
 #include "host_archive.h"
 
 static int covered(const struct SlicksRaceRuntime *race, unsigned x, unsigned y);
+static unsigned expected_hud_width(const struct SlicksRaceFont *font,const char *text)
+{
+    unsigned width=0;
+    for(;*text;++text) width+=font->widths[font->lookup[(unsigned char)*text]]+font->advance_extra;
+    return width;
+}
 
 static void expected_hud_text(unsigned char *pixels,
     const struct SlicksRaceFont *font, unsigned x, unsigned y, const char *text, unsigned colour)
@@ -12,7 +18,7 @@ static void expected_hud_text(unsigned char *pixels,
     for (; *text; ++text) {
         unsigned glyph=font->lookup[(unsigned char)*text];
         unsigned width=font->widths[glyph];
-        for(unsigned row=0;row<5;++row)
+        for(unsigned row=0;row<font->height;++row)
             for(unsigned column=0;column<width;++column) {
                 unsigned pixel=font->pixels[font->offsets[glyph]+row*width+column];
                 if(pixel) pixels[(y+row)*320+x+column]=pixel==1?colour:font->runtime[5+pixel];
@@ -28,7 +34,7 @@ static int verify_hud_renderer(void)
     static unsigned char logical[0x40000], resource[8192];
     long size=host_archive_load("ref/SLICKS.000","alamenu.@I",resource,sizeof resource);
     if(size<0 || slicks_race_add_hud_background(&race,resource,(unsigned long)size)) return 1;
-    size=host_archive_load("ref/SLICKS.000","pieni.@f",resource,sizeof resource);
+    size=host_archive_load("ref/SLICKS.000",SLICKS_RACE_FONT_NAME,resource,sizeof resource);
     if(size<0 || slicks_race_add_font(&race,resource,(unsigned long)size)) return 1;
     memset(pixels,77,sizeof pixels); memset(expected,77,sizeof expected);
     memset(logical,77,sizeof logical);
@@ -46,9 +52,9 @@ static int verify_hud_renderer(void)
             for(unsigned y=186;y<200;++y)
                 memcpy(expected+y*320+base+90,race.hud_background+(y-184)*320+base+90,car==3?50:52);
             unsigned colour=step<2?73:91;
-            if(step<2) expected_hud_text(expected,&race.font,base+(step?93:97),186,step?"12":"1",colour);
+            if(step<2) expected_hud_text(expected,&race.font,base+101-expected_hud_width(&race.font,step?"12":"1"),186,step?"12":"1",colour);
             else {
-                expected_hud_text(expected,&race.font,base+95,186,"2",colour);
+                expected_hud_text(expected,&race.font,base+99-expected_hud_width(&race.font,"2"),186,"2",colour);
                 expected_hud_text(expected,&race.font,base+100,186,".",colour);
             }
             expected_hud_text(expected,&race.font,base+106,191,step<2?"01.00":"05.00",colour);

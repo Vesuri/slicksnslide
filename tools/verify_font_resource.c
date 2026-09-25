@@ -13,6 +13,35 @@ static void word(uc_engine *u,unsigned a,unsigned v)
 { unsigned char b[2]={v,v>>8}; check(uc_mem_write(u,a,b,2)); }
 static unsigned get(uc_engine *u,unsigned a)
 { unsigned char b[2]; check(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
+static unsigned startup_fonts;
+static void startup_font(uc_engine *u,uint64_t address,uint32_t size,void *context)
+{
+    (void)address; (void)size; (void)context;
+    uint16_t ss,sp,cs,ip,ax=0,dx=(uint16_t)(0x5000+startup_fonts*0x100);
+    check(uc_reg_read(u,UC_X86_REG_SS,&ss)); check(uc_reg_read(u,UC_X86_REG_SP,&sp));
+    unsigned stack=ss*16U+sp,source=get(u,stack+4)+16U*get(u,stack+6);
+    char name[16]; check(uc_mem_read(u,source,name,sizeof name));
+    for(unsigned i=0;i<sizeof name;++i) if(name[i]>='A' && name[i]<='Z') name[i]+='a'-'A';
+    if((!startup_fonts && strcmp(name+(name[0]=='/'),SLICKS_RACE_FONT_NAME)) ||
+       (startup_fonts && name[0])) abort();
+    ++startup_fonts;
+    ip=get(u,stack); cs=get(u,stack+2); sp+=4;
+    check(uc_reg_write(u,UC_X86_REG_AX,&ax)); check(uc_reg_write(u,UC_X86_REG_DX,&dx));
+    check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_IP,&ip));
+    check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+}
+static void verify_startup_font(uc_engine *u)
+{
+    uint16_t cs=0x1987,ds=0x3cbf,ss=0x8000,sp=0xf000;
+    uc_hook hook; check(uc_hook_add(u,&hook,UC_HOOK_CODE,startup_font,0,0x2fc0c,0x2fc0c));
+    check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+    check(uc_reg_write(u,UC_X86_REG_SS,&ss)); check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+    check(uc_emu_start(u,0x19dd8,0x19e16,0,1000));
+    if(startup_fonts!=2 || get(u,0x3cbf0+0x680) || get(u,0x3cbf0+0x682)!=0x5000 ||
+       get(u,0x3cbf0+0x686)!=0x5100) abort();
+    check(uc_hook_del(u,hook));
+    puts("Original startup selects the production HUD font into DS:0680; the sequential help font has a distinct slot");
+}
 static void io(uc_engine *u,uint64_t address,uint32_t size,void *context)
 {
     (void)size; (void)context; uint16_t ss,sp,cs,ip,ax=0,dx=0;
@@ -31,6 +60,7 @@ int main(void)
     size_t bytes=fread(runtime,1,sizeof runtime,f); fclose(f); if(bytes<200000 || bytes==sizeof runtime) return 2;
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
     check(uc_mem_write(u,0x10100,runtime,bytes));
+    verify_startup_font(u);
     const unsigned addresses[]={0x373a7,0x12d8a,0x1221d,0x13b07,0x119c2};
     for(unsigned i=0;i<5;++i) { uc_hook h; check(uc_hook_add(u,&h,UC_HOOK_CODE,io,0,addresses[i],addresses[i])); }
     const char *names[]={"kirj.@f","pieni.@f","iso.@f"};
@@ -51,7 +81,7 @@ int main(void)
         if(ip || sp!=0xf004 || ax || dx!=0x5000 || cursor!=length || output>(long)allocated || memcmp(native,original,sizeof native)) {
             fprintf(stderr,"Font resource mismatch %s output=%ld allocation=%u consumed=%u\n",names[test],output,allocated,cursor); return 1;
         }
-        if(test==1) {
+        if(test<2) {
             static struct SlicksRaceRuntime race;
             memset(race.font.runtime,0xa5,sizeof race.font.runtime);
             if(slicks_race_add_font(&race,source,length) || !race.font.ready ||

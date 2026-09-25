@@ -114,13 +114,17 @@ static void hud_pixel(uc_engine *uc,uc_mem_type type,uint64_t address,int size,i
     for(unsigned plane=0;plane<4;++plane) if(write_mask&(1U<<plane))
         for(int i=0;i<size;++i) vga[plane*65536+offset+i]=(unsigned char)((uint64_t)value>>(i*8));
 }
-static int composed_hud(const unsigned char *runtime,size_t bytes)
+static int composed_hud(const unsigned char *runtime,size_t bytes,unsigned active_mask)
 {
     static struct SlicksRaceRuntime race;
     static unsigned char resource[8192],surface[64000],saved[1200];
+    memset(&race,0,sizeof race);
+    race.participation_ready=1;
+    for(unsigned car=0;car<4;++car)
+        race.participation[car]=(active_mask&(1U<<car))?(car&1?1:-1):0;
     long size=host_archive_load("ref/SLICKS.000","alamenu.@I",resource,sizeof resource);
     if(size<0 || slicks_race_add_hud_background(&race,resource,(unsigned long)size)) return 1;
-    size=host_archive_load("ref/SLICKS.000","pieni.@f",resource,sizeof resource);
+    size=host_archive_load("ref/SLICKS.000",SLICKS_RACE_FONT_NAME,resource,sizeof resource);
     if(size<0 || slicks_race_add_font(&race,resource,(unsigned long)size)) return 1;
     const char *icons[]={"vir5.@I","vir6.@I","vir7.@I","vir8.@I",
         "vir9.@I","vir10.@I","vir11.@I","vir12.@I"};
@@ -154,7 +158,7 @@ static int composed_hud(const unsigned char *runtime,size_t bytes)
         unsigned addr=0x52000+car*0x500;
         check(uc_mem_write(uc,addr,saved,1146));
         word(uc,0x3cbf0+0x4bd2+4*car,0); word(uc,0x3cbf0+0x4bd4+4*car,addr/16);
-        unsigned char active=1; check(uc_mem_write(uc,0x3cbf0+0x4bc6+car,&active,1));
+        signed char active=race.participation[car]; check(uc_mem_write(uc,0x3cbf0+0x4bc6+car,&active,1));
     }
     uc_hook ports,pixels,status;
     struct Capture unused={0};
@@ -236,7 +240,7 @@ static int composed_hud(const unsigned char *runtime,size_t bytes)
                 race.weapon_inventory[car][slot]=(short)((step*3+car+slot)%21);
                 word(uc,0x3cbf0+0x6a7a+car*26+slot*2,race.weapon_inventory[car][slot]);
             }
-            unsigned place=step<6?0:car+1;
+            unsigned place=step<6+car?0:car+1;
             unsigned char rank=place?place:255;
             race.cars[car].lap=laps[step%6]; race.cars[car].finished=!!place;
             race.cars[car].finish_position=place;
@@ -264,7 +268,6 @@ static int composed_hud(const unsigned char *runtime,size_t bytes)
                 }
     }
     uc_close(uc);
-    puts("Composed original HUD: 32 four-driver transitions match all visible pixels with every weapon/fuel/damage option combination and both refuelling blink phases (page-0 name mirrored)");
     return 0;
 }
 
@@ -588,5 +591,8 @@ int main(void)
     }
     check(uc_close(uc));
     printf("DOS driver HUD: %u complete text-command sequences match both pages (icon/palette/status graphics stubbed)\n",cases);
-    return inventory_oracle(runtime,bytes) || weapon_oracle(runtime,bytes) || records_oracle(runtime,bytes) || track_hud(runtime,bytes) || composed_hud(runtime,bytes);
+    if(inventory_oracle(runtime,bytes) || weapon_oracle(runtime,bytes) || records_oracle(runtime,bytes) || track_hud(runtime,bytes)) return 1;
+    for(unsigned mask=0;mask<16;++mask) if(composed_hud(runtime,bytes,mask)) return 1;
+    puts("Composed original HUD: 512 full-screen transitions, original kirj font, all 16 participation masks, mixed human/computer and racing/finished drivers, every weapon/fuel/damage option combination and both refuelling blink phases (page-0 name mirrored)");
+    return 0;
 }

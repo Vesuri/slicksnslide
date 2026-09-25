@@ -16,8 +16,12 @@ Updated 2026-09-25. Actionable open and deferred work only.
    integration, other probing callers and collision-effect emission. Verify
    actor ordering/reuse/capacity, foreground interaction, startup gating and
    permanent-mark survival on representative tracks.
-4. Verify complete HUD/results sequencing across inactive/finished drivers,
-   option combinations and real weapon state transitions.
+4. Complete gameplay-driven weapon HUD/results transition verification after
+   item 1 supplies original firing/cycling/depletion. Check selected-icon and
+   ammunition-bar updates, depletion/empty selection, inactive/finished-driver
+   gating and preservation through pause/results/next-track. Use actual game
+   events, not injected inventory values. Retain the original-font, composed
+   HUD and native results regression gates documented in hud-verification.md.
 5. Perform audio listening comparisons, check extreme engine frequencies
     against Paula limits, and extend event/call-site and results/pause/restart
     coverage. Keep direct playback without software mixing.

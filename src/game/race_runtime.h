@@ -9,7 +9,8 @@
 #define SLICKS_CAR_PIXEL_MAX 100
 #define SLICKS_CAR_PROPERTY_SIZE 34
 #define SLICKS_FONT_GLYPH_MAX 195
-#define SLICKS_FONT_PIXEL_MAX 1600
+#define SLICKS_FONT_PIXEL_MAX 4096
+#define SLICKS_RACE_FONT_NAME "kirj.@f"
 #define SLICKS_TRACK_MATERIAL_SIZE (320U * 190U)
 #define SLICKS_SURFACE_GROUP_COUNT 5
 #define SLICKS_START_LIGHT_COUNT 4
@@ -64,7 +65,7 @@ struct SlicksRaceFont {
     unsigned short offsets[SLICKS_FONT_GLYPH_MAX];
     unsigned char lookup[256];
     unsigned char pixels[SLICKS_FONT_PIXEL_MAX];
-    unsigned char runtime[4096]; /* Original padded font/palette layout. */
+    unsigned char runtime[6144]; /* Original kirj padded font/palette layout. */
     unsigned short pixel_count;
     unsigned char glyph_count;
     unsigned char height;

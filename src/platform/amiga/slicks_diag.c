@@ -1589,10 +1589,13 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
             g_slicks_diag_race_error=6;
             goto cleanup;
         }
+        /* Original 19dd8 loads kirj into DS:0680; ddc0/2adbe use that
+         * slot, not the smaller help font in DS:0684. Reuse the existing
+         * scratch allocation rather than enlarge the icon buffer. */
         long font_size = slicks_resource_archive_load(
-            &archive, "pieni.@f", font_resource, 2048UL);
+            &archive, SLICKS_RACE_FONT_NAME, dat, 65536UL);
         if (font_size <= 0 ||
-            slicks_race_add_font(race, font_resource,
+            slicks_race_add_font(race, dat,
                                  (unsigned long)font_size) != 0) {
             g_slicks_diag_race_error = 6;
             goto cleanup;
