@@ -225,6 +225,11 @@ verify-dos-ai: build/verify_dos_ai
 .PHONY: verify-weapon-shop
 .PHONY: verify-moving-probe
 .PHONY: verify-actor-slots
+.PHONY: verify-weapon-fire
+build/verify_weapon_fire: tools/verify_weapon_fire.c src/game/weapon_fire.h src/game/weapon_rules.h src/game/weapon_actions.h src/game/weapon_projectile.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-weapon-fire: build/verify_weapon_fire
+	./build/verify_weapon_fire
 build/verify_actor_slots: tools/verify_actor_slots.c src/game/actor_slots.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-actor-slots: build/verify_actor_slots

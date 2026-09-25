@@ -134,6 +134,23 @@ int main(int argc,char **argv)
         do { fprintf(out,"%s%u",at==shop_strings[i]?"":",",data[at]); } while(data[at++]);
         fputs("};\n",out);
     }
+    fputs("#include \"../game/weapon_rules.h\"\nstatic const struct SlicksWeaponRules slicks_original_weapon_rules = {\n",out);
+    const unsigned weapon_words[]={0x10e,0x126,0x156};
+    const char *weapon_word_names[]={"delay","damage","lifetime"};
+    for(unsigned i=0;i<3;++i) {
+        for(unsigned j=0;j<8;++j) prices[j]=slicks_config_default_word(data,weapon_words[i]+2*j);
+        words(out,weapon_word_names[i],prices,8);
+    }
+    fprintf(out,"    .unlimited = %d,\n",slicks_config_default_word(data,0x1a8));
+    const unsigned weapon_at[]={0x11e,0x136,0x146,0x14e,0x165,0x16e,0x176,0x17e};
+    const char *weapon_names[]={"radius","force","shots","spread","ranges","speed","effect","muzzle"};
+    for(unsigned i=0;i<8;++i) {
+        fprintf(out,"    .%s = {",weapon_names[i]);
+        for(unsigned j=0;j<(i==4?9U:8U);++j) fprintf(out,"%s%d",j?",":"",(signed char)data[weapon_at[i]+j]);
+        fputs("},\n",out);
+    }
+    bytes(out,"fire_sound",data+0x196,8);bytes(out,"hit_sound",data+0x19e,8);
+    fputs("};\n",out);
     const unsigned menu_offsets[]={0x1365,0x136d,0x1393,0x1395,0x1110,0x111b,0x1126,0x1131,0x1343,0x13a0,0x13b5};
     const char *menu_names[]={"title","footer","random","random_each","add","edit","delete","exit","select","actions","delete_question"};
     for(unsigned i=0;i<sizeof menu_offsets/sizeof menu_offsets[0];++i) {
