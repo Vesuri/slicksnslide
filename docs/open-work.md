@@ -6,7 +6,7 @@ Updated 2026-09-25. Actionable open and deferred work only.
 
 1. Integrate original weapon firing, cycling/depletion, weapons-enabled AI,
    projectile collisions/effects and actor allocation. Complete native shop
-   screen comparison, help/end-game/retry and championship continuation gates.
+   screen comparison, end-game/retry and championship continuation gates.
    Verify gameplay-driven selected-icon/ammunition-bar updates,
    depletion/empty selection, inactive/finished-driver gating and preservation
    through pause/results/next-track. Use actual game events, not injected

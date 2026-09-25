@@ -96,6 +96,10 @@ and starting money before original new-game initialization; it never writes
 weapon inventory directly. `diag_shop.gdb` checks the resulting inventory
 and selection on race entry. The native shop capture was visually inspected;
 a full original-screen pixel comparison is not yet claimed.
+The same native input test now opens the original tuning help and returns
+before exiting the shop; purchases and race selection remain intact. Missing
+help uses the existing recoverable warning. The DOS screen-capture shortcut
+has an explicit unavailable warning rather than silently pretending to save.
 
 The natural four-computer, weapons-disabled race still finishes at update
 556 with original HUD font, records/standings/statistics/save/restore checks

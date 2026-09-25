@@ -48,6 +48,7 @@ static unsigned char shop_end_game;
 static unsigned char shop_test;
 static short shop_track_position;
 volatile unsigned short g_slicks_shop_test_phase;
+volatile unsigned short g_slicks_shop_help_phase;
 struct SlicksShopMenu *g_slicks_shop_menu;
 void __attribute__((noinline)) slicks_diag_shop_ready(void) { __asm__ volatile("" ::: "memory"); }
 
@@ -1461,7 +1462,7 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_shop_menu=&state; slicks_diag_shop_ready();
     if(shop_test) {
-        static const unsigned char keys[]={0x44,0x44,0x41,0x45};
+        static const unsigned char keys[]={0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
         for(unsigned i=0;i<sizeof keys;++i) platform->keys[i]=keys[i];
         platform->key_head=sizeof keys;
@@ -1473,11 +1474,17 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
         while(slicks_amiga_platform_poll_key(platform,&raw)) {
             if(raw&128) continue;
             unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
+            if(m->help_warning) {
+                if(slicks_amiga_help_warning_close(m)) goto done;
+                present_menu_surface(platform,m);
+                continue;
+            }
             if(m->help) {
                 if(slicks_help_viewer_key(m->help,scan==1?27:0,scan)) goto done;
                 if(m->help->navigation.done) {
                     slicks_amiga_platform_end(platform);
                     if(slicks_amiga_help_close(m) || slicks_amiga_shop_draw(m,&c,&state)) goto done;
+                    if(shop_test) g_slicks_shop_help_phase=2;
                     present_menu_surface(platform,m);
                     if(slicks_amiga_platform_begin(platform,0)) goto done;
                 } else present_menu_surface(platform,m);
@@ -1486,9 +1493,16 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
             enum SlicksShopAction action=slicks_shop_key(&state,session->players.participation,scan);
             if(action==SLICKS_SHOP_HELP) {
                 slicks_amiga_platform_end(platform);
-                if(slicks_amiga_help_open(m,&archive,slicks_original_shop_help)) goto done;
+                if(slicks_amiga_help_open(m,&archive,slicks_original_shop_help) &&
+                    slicks_amiga_help_warning_open(m)) goto done;
+                if(shop_test && m->help) g_slicks_shop_help_phase=1;
                 present_menu_surface(platform,m);
                 if(slicks_amiga_platform_begin(platform,0)) goto done;
+            } else if(action==SLICKS_SHOP_CAPTURE) {
+                /* DOS Scroll Lock saves a TUNING screenshot. Keep this
+                 * unsupported platform boundary explicit, never silent. */
+                if(slicks_amiga_warning_open(m,(const unsigned char *)"SCREEN CAPTURE UNAVAILABLE")) goto done;
+                present_menu_surface(platform,m);
             } else if(action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
                 int it=slicks_shop_item(rules,&session->options,session->inventory[0],session->players.participation[0],
                     session->players.vehicle[0],c.extra,state.row);
@@ -1501,7 +1515,7 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
                     session->players.participation[d],session->players.vehicle[d],it,c.extra);
                 if(shop_test) { ++g_slicks_shop_test_phase; slicks_diag_shop_ready(); }
             }
-            if(action!=SLICKS_SHOP_HELP) {
+            if(action!=SLICKS_SHOP_HELP && action!=SLICKS_SHOP_CAPTURE) {
                 if(slicks_amiga_shop_draw(m,&c,&state)) goto done;
                 present_menu_surface(platform,m);
             }

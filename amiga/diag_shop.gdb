@@ -19,7 +19,7 @@ end
 break enter_prepared_race
 commands
   silent
-  if g_slicks_shop_test_phase != 3
+  if g_slicks_shop_test_phase != 3 || g_slicks_shop_help_phase != 2
     printf "SHOP_INPUT_FAILED\n"
     quit 1
   end
