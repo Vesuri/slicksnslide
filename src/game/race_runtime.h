@@ -147,6 +147,7 @@ struct SlicksRaceCar {
     unsigned char ai_control_latch; /* Persistent DS:5344..5347 inputs. */
     short steering_scale;
     short damage[4]; /* DOS DS:304f..3055, including steering penalty. */
+    short damage_smoke_ticks; /* Original per-driver BP-2c update counter. */
     unsigned int fuel; /* Signed DOS long DS:305f, stored as raw 32-bit bits. */
     unsigned int fuel_capacity; /* DS:3063. */
     short fuel_upgrade; /* ES:6a7e, copied from setup inventory slot 2. */
@@ -313,6 +314,7 @@ struct SlicksRaceRuntime {
     unsigned char hud_valid[SLICKS_RACE_CAR_COUNT];
     unsigned char status_colours[3];
     unsigned char collision_colour; /* Nearest palette match to 55,55,10. */
+    unsigned char damage_smoke_colour; /* Original BP-0d: nearest 30,30,30. */
     unsigned char started;
     short race_mode, arcade_seconds;
     unsigned int game_clock_ticks; /* Original DS:74bc, wrapping 32-bit. */

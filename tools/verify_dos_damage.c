@@ -121,8 +121,8 @@ static void track_map_read(uc_engine *uc, uc_mem_type type, uint64_t address,
         *(unsigned *)user = 1;
 }
 
-static void load_pit_track(unsigned char *lower,unsigned char *upper,
-                           struct SlicksTrackNavigation *result)
+static void load_physics_track(unsigned char *lower,unsigned char *upper,
+                           struct SlicksTrackNavigation *result,const char *path)
 {
     static unsigned char dat[65536],track[8192],arena[65536],logical[0x40000],masks[65536];
     struct SlicksTrackNavigation navigation;
@@ -130,7 +130,7 @@ static void load_pit_track(unsigned char *lower,unsigned char *upper,
     if(!file) { perror("pit fixture DAT"); exit(1); }
     size_t dat_size=fread(dat,1,sizeof dat,file); int error=ferror(file); fclose(file);
     if(error || !dat_size || dat_size==sizeof dat) exit(1);
-    file=fopen("ref/TRACKS/BASIC.SS","rb");
+    file=fopen(path,"rb");
     if(!file) { perror("pit fixture track"); exit(1); }
     size_t track_size=fread(track,1,sizeof track,file); error=ferror(file); fclose(file);
     if(error || track_size<368 || track_size==sizeof track) exit(1);
@@ -143,6 +143,9 @@ static void load_pit_track(unsigned char *lower,unsigned char *upper,
     }
     if(result) *result=navigation;
 }
+static void load_pit_track(unsigned char *lower,unsigned char *upper,
+                           struct SlicksTrackNavigation *result)
+{ load_physics_track(lower,upper,result,"ref/TRACKS/BASIC.SS"); }
 static void load_pit_masks(unsigned char *lower,unsigned char *upper)
 { load_pit_track(lower,upper,0); }
 

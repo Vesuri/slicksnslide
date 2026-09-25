@@ -1,5 +1,45 @@
 # Natural race-completion verification
 
+## Extended driving matrix (2026-09-25)
+
+The composed DOS/native matrix now passes eleven independent 7,200-update
+sequences (79,200 updates total): both BASIC pit approaches, single-car and
+identical-fleet starts, mixed fleets spanning all ten original vehicle
+resources, human/computer/inactive selections, damaged-car repair/refuelling,
+the stranded vehicle-5 approach, and BRIDGES/BUMPS routes. Cases 4 onward use
+real wheel geometry. All four motion calls precede all per-car tails. Neither
+side is resynchronized from the other after initialization. Finish deadlines,
+collision scratch, smoke counters and shared RNG are also compared.
+
+This found and corrected four further differences:
+
+- Road braking emitted below rather than above the original threshold;
+  damage-adjusted throttle and reverse-latch gates were missing.
+- Damaged-engine smoke's update counter and two RNG draws were absent.
+- Collision probes were cached across a four-car scan, although an earlier
+  impulse changes the velocity used to test the next candidate.
+- Wheel coordinates beyond the visible right edge were rejected instead
+  of using original linear/packed material addressing. The normal row
+  calculation continues to use `mult320`.
+
+The final matrix and existing damage, AI, vehicle properties, race-completion,
+driver-phase, surface-effect, dirty-region and planar-writer regressions pass.
+The stale test-only entrant-count helper in `verify-drive-physics` was restored;
+no removed production helper was reintroduced.
+
+Both the vehicle-0 and vehicle-5 exhausted-fuel approaches remain stranded
+in matching original-code/native trajectories. This is not evidence for
+adding an Amiga-specific escape heuristic. The comparison is an execution
+of the original instructions with matched initial state, not a claim that
+an entire interactive DOS session or every track has been replayed.
+Dynamic track actors, shared-pool allocation/rendering and all-track coverage
+remain the separate actor/integration work; the driving oracle bounds
+HUD/audio/actor allocation and uses a full point-particle pool.
+
+Muted 68020/2 MiB/no-Fast A1200 integration, port 25252: normal native setup,
+one-lap mixed fleet, four natural finishers at update 556, results and clean
+restoration `0x1f`. No car positions or finish states were injected.
+
 ## Composed driving comparison (2026-09-25)
 
 `verify-drive-trajectory` executes original motion `202f0..214df` and

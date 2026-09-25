@@ -1673,10 +1673,8 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
     (void)car_index; /* Geometry follows the vehicle, not the driver slot. */
     unsigned short wheel;
     unsigned short first_particle = race->trail_particle_count;
-    const unsigned char *wheel_map = car->actor_layer
-        ? race->surface_map : race->material_map;
     /* 2000:233b skips wheel effects for any nonzero special-drive state. */
-    if (car->special_drive_state)
+    if (!car->forward_drive_latch || car->special_drive_state)
         return;
     for (wheel = 0; wheel < 2; ++wheel) {
         short x = (short)(car->x / 100L) - 3 +
@@ -1691,26 +1689,29 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
         unsigned char sampled_surface;
         if (wheel_sprite->wheel_x[rotation][wheel] < 0)
             continue;
-        if (x < 0 || x >= SLICKS_SCREEN_WIDTH ||
-            y < 0 || y >= SLICKS_TRACK_HEIGHT)
-            continue;
-        surface = wheel_map[mult320[y] + x];
+        /* Wheels may extend beyond x=319 even when the car centre is legal.
+         * Original b089 wraps the linear address, not the visible rectangle. */
+        int material=slicks_track_material_sample(race->material_map,race->surface_map,
+            x,y,car->actor_layer);
+        if(material<0) { race->collision_error=1; continue; }
+        surface=(unsigned char)material;
 
         if (surface == 0 || surface == 1 || surface == 17 ||
             surface == 19 || surface == 31) {
             unsigned char emits = 0;
             /* 2000:2270..2319 gates the low-speed road cloud from the
              * current accelerator/brake state and the four driver thresholds
-             * at DS:4ee0.  The ordinary race keeps the additional signed
-             * accumulator at zero and its suppressing state bit clear. */
+             * at DS:4ee0. Braking emits ABOVE twice the threshold; throttle
+             * uses the signed, word-wrapped damage-adjusted threshold. */
             if ((controls & SLICKS_CONTROL_BRAKE) &&
                 !(controls & SLICKS_CONTROL_ACCELERATE) &&
-                magnitude <= (long)road_threshold * 2L)
+                magnitude > (long)road_threshold * 2L)
                 emits = 1;
             else if ((controls & SLICKS_CONTROL_ACCELERATE) &&
                      !(controls & SLICKS_CONTROL_BRAKE) &&
                      !(car->service_flags & 1) &&
-                     magnitude < (long)road_threshold * 10L)
+                     magnitude < (short)((short)(road_threshold *
+                         (10-car->damage[0]/100))*10)/10)
                 emits = 1;
             if (emits) {
                 unsigned char lifetime;
@@ -1761,10 +1762,10 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
         sample_y = (short)(y + random_scaled(race, (unsigned short)radius) -
                            radius / 2);
         if (sample_x < 0 || sample_x >= SLICKS_SCREEN_WIDTH ||
-            sample_y < 0 || sample_y >= SLICKS_TRACK_HEIGHT)
+            sample_y < 0 || sample_y >= SLICKS_SCREEN_HEIGHT)
             continue;
-        sampled_surface = wheel_map[
-            mult320[sample_y] + sample_x];
+        sampled_surface = (unsigned char)slicks_track_material_sample(
+            race->material_map,race->surface_map,sample_x,sample_y,car->actor_layer);
         if (sampled_surface != 2 && sampled_surface != 15 &&
             (sampled_surface < 22 || sampled_surface > 26))
             add_trail_component(
@@ -1873,6 +1874,24 @@ static void emit_contact_sound(struct SlicksRaceRuntime *race,
      * DS:0196 belongs to weapon sounds, not heading-selected impacts. */
     if (car->actor_contact && !car->previous_actor_contact)
         emit_sound_event(race, (unsigned char)(5 + car->touching_car), 2, 14);
+}
+
+static void emit_damage_smoke(struct SlicksRaceRuntime *race,
+                               struct SlicksRaceCar *car)
+{
+    /* 239dc..23ada counts updates, not elapsed ticks. Keep the counter when
+     * repairs lower damage below the gate, and consume RNG with a full pool. */
+    if(car->damage[0]<=400) return;
+    car->damage_smoke_ticks=(short)(car->damage_smoke_ticks+1);
+    if(car->damage_smoke_ticks<=30/(car->damage[0]-400)) return;
+    car->damage_smoke_ticks=0;
+    short vy=(short)(random_scaled(race,15)-7);
+    short vx=(short)(random_scaled(race,15)-7);
+    unsigned before=race->trail_particle_count;
+    add_trail_component(race,(short)(car->x/100),(short)(car->y/100),
+        race->damage_smoke_colour,7,vx,vy,30);
+    if(race->trail_particle_count>before)
+        race->trail_particles[before].occlusion_limit=car->actor_layer*15;
 }
 
 static void emit_contact_particles(struct SlicksRaceRuntime *race,
@@ -2239,6 +2258,7 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
     if (update_track_sampling(race, car) < 0)
         race->collision_error = 1;
     consume_car_damage(race, car_index);
+    emit_damage_smoke(race,car);
     emit_contact_sound(race, car);
     emit_contact_particles(race, car, car_index);
     /* 2000:3c94..3cae consumes the jump request before state advancement.
@@ -2308,8 +2328,6 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
     const struct SlicksCarProperties *pa = &race->properties[a->vehicle];
     long speed = (absolute_long(a->velocity_x) +
                   absolute_long(a->velocity_y)) / 2L;
-    long probe_x = a->x + a->velocity_x * 10L / (speed + 1L);
-    long probe_y = a->y + a->velocity_y * 10L / (speed + 1L);
     long extent = (long)pa->collision_radius * 50L;
     unsigned short other;
     unsigned char hit = 0;
@@ -2332,6 +2350,11 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
         if (a->actor_layer != b->actor_layer)
             continue;
         pb = &race->properties[b->vehicle];
+        /* Every candidate recomputes this from the current velocity. An
+         * earlier pair in the same scan may already have changed it; the
+         * measured-speed denominator remains the pre-collision value. */
+        long probe_x = a->x + a->velocity_x * 10L / (speed + 1L);
+        long probe_y = a->y + a->velocity_y * 10L / (speed + 1L);
         if (probe_x < b->x - extent || probe_x > b->x + extent ||
             probe_y < b->y - extent || probe_y > b->y + extent)
             continue;
@@ -2455,10 +2478,10 @@ int slicks_race_status_rects(const struct SlicksRaceRuntime *race,
 void slicks_race_set_status_palette(struct SlicksRaceRuntime *race,
                                     const unsigned char palette[768])
 {
-    static const unsigned char rgb[13][3]={{15,15,25},{50,50,15},{60,20,5},{55,55,10},
+    static const unsigned char rgb[14][3]={{15,15,25},{50,50,15},{60,20,5},{55,55,10},
         {50,50,70},{60,60,35},{55,55,65},{33,33,70},{4,4,4},{40,40,40},{60,60,60},
-        {64,64,50},{45,45,45}};
-    for (unsigned slot=0;slot<13;++slot) {
+        {64,64,50},{45,45,45},{30,30,30}};
+    for (unsigned slot=0;slot<14;++slot) {
         unsigned best=300, selected=1;
         for (unsigned entry=1;entry<256;++entry) {
             unsigned distance=0;
@@ -2474,7 +2497,8 @@ void slicks_race_set_status_palette(struct SlicksRaceRuntime *race,
         else if(slot==7) race->weapon_hud_colour=(unsigned char)selected;
         else if(slot<11) race->arcade_colours[slot-8]=(unsigned char)selected;
         else if(slot==11) race->weapons.bullet_colour=(unsigned char)selected;
-        else race->weapons.impact_colour=(unsigned char)selected;
+        else if(slot==12) race->weapons.impact_colour=(unsigned char)selected;
+        else race->damage_smoke_colour=(unsigned char)selected;
     }
     race->arcade_hud_valid=0;
 }
@@ -3048,6 +3072,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         for (direction = 0; direction < 4; ++direction)
             state->damage[direction] = 0;
         state->damage_turn_sign = 0;
+        state->damage_smoke_ticks = 0;
         state->pending_damage_impact = 0;
         state->special_drive_state = state->special_drive_target = 0;
         state->drive_bias = race->properties[state->vehicle].drive_bias;

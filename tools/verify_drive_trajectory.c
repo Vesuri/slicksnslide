@@ -89,6 +89,12 @@ static void map_car(uc_engine *u,const struct SlicksRaceRuntime *r,unsigned d)
     word(u,s+0x3058,c->special_drive_state);word(u,s+0x305a,c->special_drive_target);
     for(unsigned i=0;i<5;++i) octet(u,DATA+0x5344+5*d+i,(c->ai_control_latch>>i)&1);
     B(0x2fac,-1);B(0x2fb0,0);B(0x5e2,0);
+    for(unsigned heading=0;heading<16;++heading) for(unsigned wheel=0;wheel<2;++wheel) {
+        const struct SlicksCarSprite *sprite=&r->sprites[c->vehicle][heading&3];
+        unsigned at=d*32+heading+wheel*16;
+        octet(u,DATA+0x4ca4+at,sprite->wheel_x[heading>>2][wheel]);
+        octet(u,DATA+0x4d24+at,sprite->wheel_y[heading>>2][wheel]);
+    }
     word(u,FRAME-0x48+2*d,profile_steering_input(c->position_scale,r->participation[d]));
 #undef W
 #undef L
@@ -123,7 +129,12 @@ static void compare_car(uc_engine *u,const struct SlicksRaceRuntime *r,unsigned 
     SAME(c->ai_last_x/100-3,(short)readword(u,DATA+0x68ea+2*d));
     SAME(c->ai_last_y/100-3,(short)readword(u,DATA+0x68f2+2*d));
     unsigned control=0;for(unsigned i=0;i<4;++i) control|=!!octet_read(u,DATA+0x5344+5*d+i)<<i;
-    SAME(c->ai_control_latch,control);
+    if(r->participation[d]>0) SAME(c->ai_control_latch,control);
+    SAME(c->finished,(signed char)octet_read(u,DATA+0x4bce +d)>=0);
+    SAME(r->pit_repair_ticks,(short)readword(u,FRAME-0x64));
+    SAME(c->damage_smoke_ticks,(short)readword(u,FRAME-0x2c+2*d));
+    SAME(c->collision_partner,octet_read(u,FRAME-0x4c+d));
+    SAME(r->finish_deadline,(uint32_t)readdword(u,DATA+0x6862));
     SAME(r->random_state,(uint32_t)readdword(u,DATA+0x2aaa));
 #undef B
 #undef L
@@ -148,11 +159,12 @@ int main(int argc,char **argv)
     uc_engine *u;check(uc_open(UC_ARCH_X86,UC_MODE_16,&u));
     check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));check(uc_mem_write(u,0x10100,runtime,size));
     static struct SlicksRaceRuntime race;
-    load_pit_track(race.material_map,race.surface_map,&race.navigation);
-    /* This first composition isolates motion caller ordering around a real
-     * pit. Later tail checks must not be inferred from these assertions. */
+    load_physics_track(race.material_map,race.surface_map,&race.navigation,
+        argc>2?argv[2]:"ref/TRACKS/BASIC.SS");
+    /* Both instruction ranges execute on independently evolving state. */
     race.participation_ready=1;race.participation[0]=1;race.fuel_option=10;
     race.damage_enabled=1;race.laps_to_run=4;race.boundary_level=5;race.random_state=123;
+    race.race_mode=4;
     struct SlicksRaceCar *c=&race.cars[0];
     c->x=c->ai_last_x=13467;c->y=c->ai_last_y=7256;c->heading=7285;
     c->ai_target_x=114;c->ai_target_y=121;c->ai_state=1;c->ai_service_state=2;
@@ -168,7 +180,7 @@ int main(int argc,char **argv)
     if(scenario==1) {
         c->x=c->ai_last_x=21139;c->y=c->ai_last_y=6850;c->heading=894;
         c->ai_target_x=214;c->ai_target_y=64;c->waypoint=8;
-    } else if(scenario>=2) {
+    } else if(scenario>=2 && scenario!=8) {
         c->x=c->ai_last_x=25900;c->y=c->ai_last_y=5700;c->heading=4000;
         c->ai_target_x=-1;c->ai_target_y=0;c->ai_service_state=0;c->ai_state=0;
         c->waypoint=0;c->fuel=c->fuel_capacity=3600;c->lap=1;
@@ -177,11 +189,23 @@ int main(int argc,char **argv)
     unsigned char property_bytes[34];
     if(host_archive_load("ref/SLICKS.000","auto00.omi",property_bytes,sizeof property_bytes)!=34 ||
        slicks_race_add_car_properties(&race,0,property_bytes,34)) return 2;
-    /* Wheel graphics are absent in this physics-only fixture on both sides.
-     * Sound/HUD/actor construction are external boundaries; their callers and
-     * RNG execute. Full actor-pool failure is the same on both sides. */
+    /* Cases 0..3 omit wheels to isolate motion. Later cases load real wheel
+     * geometry. Audio/HUD/actor construction are external boundaries, but
+     * their callers and RNG execute with a full particle pool on both sides. */
     for(unsigned dir=0;dir<4;++dir) for(unsigned rot=0;rot<4;++rot)
         for(unsigned wheel=0;wheel<2;++wheel) race.sprites[0][dir].wheel_x[rot][wheel]=-1;
+    if(scenario>=4) for(unsigned vehicle=0;vehicle<10;++vehicle) {
+        char name[20];unsigned char resource[128];
+        snprintf(name,sizeof name,"auto%02u.omi",vehicle);
+        long bytes=host_archive_load("ref/SLICKS.000",name,resource,sizeof resource);
+        if(bytes!=34 || slicks_race_add_car_properties(&race,vehicle,resource,bytes)) return 2;
+        for(unsigned dir=0;dir<4;++dir) {
+            snprintf(name,sizeof name,"auto%02u.%03u",vehicle,dir);
+            if(vehicle==9 && !dir) strcpy(name,"car9");
+            bytes=host_archive_load("ref/SLICKS.000",name,resource,sizeof resource);
+            if(bytes<=0 || slicks_race_add_car_sprite(&race,vehicle,dir,resource,bytes)) return 2;
+        }
+    }
     race.trail_particle_count=SLICKS_TRAIL_PARTICLE_MAX;
     uc_hook hooks[8];unsigned boundaries[]={0x1d9b6,0x1ddc0,0x39593,0x395b8,0x3989b,0x332ad,0x32ef2,0x33303};
     for(unsigned i=0;i<8;++i) check(uc_hook_add(u,&hooks[i],UC_HOOK_CODE,device_boundary,0,boundaries[i],boundaries[i]));
@@ -195,14 +219,47 @@ int main(int argc,char **argv)
     octet(u,DATA+0x36a6,1);word(u,DATA+0x0092,4);word(u,DATA+0x4c18,4);
     dword(u,DATA+0x6862,0);dword(u,DATA+0x2aaa,race.random_state);
     map_navigation(u,&race.navigation);
+    if(scenario==7) {race.damage_scale=300;word(u,DATA+0x3026,300);}
     for(unsigned d=0;d<4;++d) {
         if(d && scenario>=3) {race.cars[d]=*c;race.cars[d].y+=d*500;race.cars[d].ai_last_y=race.cars[d].y;race.participation[d]=1;}
+        if(scenario>=4) {
+            race.cars[d].vehicle=(scenario-4)*4+d;
+            race.cars[d].vehicle%=10;
+            race.cars[d].drive_bias=race.properties[race.cars[d].vehicle].drive_bias;
+        }
+        if(argc>2) {
+            struct SlicksRaceCar *car=&race.cars[d];
+            car->x=race.navigation.start_x*100L+d*100;
+            car->y=race.navigation.start_y*100L;
+            car->heading=race.navigation.start_heading*120;
+            car->ai_last_x=car->x;car->ai_last_y=car->y;
+            car->actor_layer=race.navigation.start_style;
+        }
+        if(scenario==5) race.participation[d]=d==2?0:d==0?-1:1;
+        if(scenario==7) {
+            race.cars[d].damage[0]=race.cars[d].damage[3]=d*100;
+            race.cars[d].x=11400+d*30;race.cars[d].y=12100+d*30;
+            race.cars[d].ai_last_x=race.cars[d].x;race.cars[d].ai_last_y=race.cars[d].y;
+            race.cars[d].fuel=0;race.cars[d].ai_service_state=2;race.cars[d].ai_state=1;
+            race.cars[d].ai_target_x=114;race.cars[d].ai_target_y=121;
+        }
+        if(scenario==8) {
+            race.participation[d]=d==0;
+            race.cars[d].vehicle=5;
+            race.cars[d].drive_bias=race.properties[5].drive_bias;
+        }
         map_car(u,&race,d);
         octet(u,DATA+0x4bce +d,race.participation[d]?-1:0);
     }
     for(unsigned step=0;step<7200;++step) {
         unsigned ticks=step%2+1;
+        race.game_clock_ticks+=ticks;
+        dword(u,DATA+0x685e,race.game_clock_ticks);
         unsigned controls[4]={0};
+        for(unsigned d=0;d<4;++d) if(race.participation[d]<0) {
+            race.driver_controls[d]=step%240<180?1:step%240<210?5:10;
+            for(unsigned bit=0;bit<5;++bit) octet(u,DATA+0x5344+5*d+bit,(race.driver_controls[d]>>bit)&1);
+        }
         uint16_t cs=0x1987,ds=0x3cbf,ss=0x8000,bp=0x800,sp=0x700,ip;
         word(u,FRAME-2,ticks);
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));

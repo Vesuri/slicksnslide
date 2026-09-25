@@ -25,6 +25,7 @@ static void prepare(struct SlicksRaceRuntime *race,
     car->velocity_x = velocity_x;
     car->velocity_y = velocity_y;
     car->actor_layer = 1;
+    car->forward_drive_latch = 1;
     race->properties[0].effect_profile = 88;
     race->sprites[0][0].wheel_x[0][0]=2;
     race->sprites[0][0].wheel_x[0][1]=2;
@@ -277,10 +278,14 @@ int main(void)
     if (race.trail_particle_count != 4 || race.random_state != 0x09f9dc4eUL)
         fail("road threshold must follow selected vehicle, not driver slot");
 
-    prepare(&race, &car, 0, 352, 0);
+    prepare(&race, &car, 0, 354, 0);
     emit_wheel_surface(&race, &car, 1, SLICKS_CONTROL_BRAKE);
     if (race.trail_particle_count != 4 || race.random_state != 0x09f9dc4eUL)
-        fail("road brake threshold must be inclusive");
+        fail("road braking above threshold must emit");
+    prepare(&race, &car, 0, 352, 0);
+    emit_wheel_surface(&race, &car, 1, SLICKS_CONTROL_BRAKE);
+    if(race.trail_particle_count || race.random_state!=0x1fadec20UL)
+        fail("road braking at threshold must not emit");
 
     prepare(&race, &car, 5, 600, 0);
     emit_wheel_surface(&race, &car, 1, SLICKS_CONTROL_ACCELERATE);

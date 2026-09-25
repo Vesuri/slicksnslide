@@ -6,6 +6,13 @@
  * internal Q15 helper without widening the production ABI. */
 #include "../src/game/race_runtime.c"
 
+static unsigned active_driver_count(const struct SlicksRaceRuntime *race)
+{
+    unsigned count=0;
+    for(unsigned driver=0;driver<4;++driver) count+=driver_role(race,driver)!=0;
+    return count;
+}
+
 /* Countdown-only step fixture: entering target assembly is a test failure. */
 unsigned short slicks_advance_particles(struct SlicksTrailParticle *particles,
     unsigned long count, unsigned char indices[SLICKS_TRAIL_PRIORITY_COUNT][SLICKS_TRAIL_PARTICLE_MAX],

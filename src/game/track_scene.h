@@ -34,6 +34,9 @@ struct SlicksTrackActor {
 
 struct SlicksTrackPoint { short x, y; };
 
+int slicks_track_material_sample(const unsigned char *lower,const unsigned char *upper,
+    short x,short y,signed char layer);
+
 /* Projectile rays can pass the 190-row drawing area before the caller's
  * 184-row retirement test. Preserve the original cleared map tail and
  * independent signed-x/4 addressing of the packed upper layer. */
