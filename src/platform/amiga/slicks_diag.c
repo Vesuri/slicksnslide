@@ -2934,7 +2934,7 @@ int main(void)
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
-        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A'));
+        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I'));
     if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
     shop_test=(unsigned char)(natural_results_test && (argv[7]=='W' || shop_transition_test));
     if(shop_test && weapon_case_test) g_slicks_diag_weapon_case=(unsigned short)(argv[8]-'0');
@@ -2945,16 +2945,17 @@ int main(void)
         setup_dirty=1;
         configuration=slicks_original_configuration;
         configuration.options[0]=4; configuration.options[3]=1;
+        if(argv[7]=='T' || argv[7]=='I') configuration.options[3]=4;
         configuration.options[7]=0; configuration.options[9]=10;
         if(shop_test) { configuration.options[7]=1; configuration.options[4]=1000; }
-        configuration.options[10]=argv[7]=='D'?300:0;
+        configuration.options[10]=(argv[7]=='D' || argv[7]=='T' || argv[7]=='I')?300:0;
         g_slicks_profiles.count=7;
         static const unsigned char fleet[4]={5,2,0,0};
         for(unsigned i=0;i<4;++i) {
             unsigned p=i+3;
             g_slicks_profiles.setup[p]=g_slicks_profiles.setup[1];
             if(shop_test && !i) g_slicks_profiles.setup[p].flags&=(unsigned char)~1U;
-            g_slicks_profiles.setup[p].vehicle=fleet[i];
+            g_slicks_profiles.setup[p].vehicle=argv[7]=='I'?0:fleet[i];
             g_slicks_profiles.setting[p]=100;
             for(unsigned j=0;j<9;++j) g_slicks_profiles.statistics[p][j]=0;
             for(unsigned j=0;j<21;++j) g_slicks_profiles.names[p][j]=0;

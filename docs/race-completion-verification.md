@@ -1,5 +1,37 @@
 # Natural race-completion verification
 
+## Composed driving comparison (2026-09-25)
+
+`verify-drive-trajectory` executes original motion `202f0..214df` and
+per-car tail `221ac..23d8b`, including their real AI, arithmetic, RNG and
+terrain probes. Each side advances independently for 7,200 updates; only
+initial semantic state and elapsed ticks are shared. BASIC navigation and
+material masks come from the original assets. Four initial scenarios cover
+both exhausted-fuel pit approaches, one starting driver and four drivers.
+Audio/HUD output and actor allocation are boundaries (full particle pool,
+absent wheel graphics); this is not yet a complete rendered PC race replay.
+
+The sustained comparison exposed native checkpoint/lap handling occurring
+after collisions and stopping for finished entrants. DOS handles checkpoints
+before layer sampling and laps before pair collisions, even after finishing.
+Restoring that order fixes the first divergence at update 3,202. All four
+7,200-update comparisons then match the asserted motion, AI, contact, damage,
+surface, checkpoint/lap, fuel and RNG state.
+
+Native read-only observations with four laps, fuel 10, damage 300, named AI
+profiles at setting 100 and seed 0x1234:
+
+- `NATURALT`, mixed 5/2/0/0 fleet, port 25250: prolonged (134,72) pit
+  approach delay, then natural completion at update 5,586; four finishers,
+  results and restoration 0x1f.
+- `NATURALI`, identical vehicle-0 fleet, port 25251: three finishers and
+  driver 3 still targeting (114,121) near (134,72) at update 7,200.
+  This is a bounded observation, not a completion pass.
+- Both independent DOS/native exhausted-fuel approach fixtures remain
+  stranded through 7,200 matching updates. No AI escape heuristic or
+  forced completion has been added. Broader mixed-role/fleet coverage is
+  still required before closing the driving item.
+
 ## Post-race completion gate closed (2026-09-25)
 
 The original post-race implementation is integrated and the first completion

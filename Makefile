@@ -913,6 +913,15 @@ build/verify_dos_damage: tools/verify_dos_damage.c \
 verify-dos-damage: build/verify_dos_damage
 	build/verify_dos_damage disasm/runtime.bin
 
+.PHONY: verify-drive-trajectory
+build/verify_drive_trajectory: tools/verify_drive_trajectory.c tools/verify_dos_damage.c \
+		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c tools/host_archive.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip \
+		-I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-drive-trajectory: build/verify_drive_trajectory
+	@for scenario in 0 1 2 3; do build/verify_drive_trajectory $$scenario || exit $$?; done
+
 build/verify_surface_effects: tools/verify_surface_effects.c \
 		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build

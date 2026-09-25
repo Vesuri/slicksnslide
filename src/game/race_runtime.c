@@ -1413,10 +1413,9 @@ static signed char assign_race_finish(struct SlicksRaceRuntime *race,unsigned dr
     return assigned;
 }
 
-static void advance_lap_checkpoints(struct SlicksRaceRuntime *race,
+static void advance_lap_after_checkpoint(struct SlicksRaceRuntime *race,
                                     struct SlicksRaceCar *car)
 {
-    advance_checkpoint(race, car);
     /* 2a61..2a8e requires selected DS:537c OR mode-zero DS:5384 ==17.
      * 2981 reads mode one into 5380; 29ab reads mode zero into 5384. */
     if (car->checkpoint >= race->navigation.checkpoint_count &&
@@ -1452,6 +1451,14 @@ static void advance_lap_checkpoints(struct SlicksRaceRuntime *race,
                         race->finish_ranks[(unsigned)(car-race->cars)]);
             }
     }
+}
+
+/* Combined entry retained for isolated checkpoint/finish oracle fixtures. */
+static inline __attribute__((unused)) void advance_lap_checkpoints(struct SlicksRaceRuntime *race,
+                                    struct SlicksRaceCar *car)
+{
+    advance_checkpoint(race,car);
+    advance_lap_after_checkpoint(race,car);
 }
 
 #include "weapon_actors.inc"
@@ -2214,7 +2221,13 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
     car->measured_speed = (absolute_long(car->velocity_x) +
                            absolute_long(car->velocity_y)) / 2L;
     emit_wheel_surface(race, car, car_index, controls);
+    if (!car->finished) advance_car_clock(car, timestep);
+    /* 227b6 precedes layer sampling, and 22a61 precedes pair collisions.
+     * Finished entrants still traverse checkpoints and cross the line; only
+     * their one-shot finishing award is gated by the assigned rank. */
+    advance_checkpoint(race,car);
     update_actor_layer(race, car);
+    advance_lap_after_checkpoint(race,car);
     slicks_race_resolve_car_collisions(race, car_index);
     update_surface_limits(car,&race->properties[car->vehicle],timestep);
     apply_oil_spin(race,car,timestep);
@@ -2237,10 +2250,6 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
         ai_update_contact_age(car, timestep);
     car->previous_actor_contact = car->actor_contact;
     car->actor_contact = 0;
-    if (!car->finished) {
-        advance_car_clock(car, timestep);
-        advance_lap_checkpoints(race, car);
-    }
 }
 
 static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)

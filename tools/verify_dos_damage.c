@@ -121,7 +121,8 @@ static void track_map_read(uc_engine *uc, uc_mem_type type, uint64_t address,
         *(unsigned *)user = 1;
 }
 
-static void load_pit_masks(unsigned char *lower,unsigned char *upper)
+static void load_pit_track(unsigned char *lower,unsigned char *upper,
+                           struct SlicksTrackNavigation *result)
 {
     static unsigned char dat[65536],track[8192],arena[65536],logical[0x40000],masks[65536];
     struct SlicksTrackNavigation navigation;
@@ -140,7 +141,10 @@ static void load_pit_masks(unsigned char *lower,unsigned char *upper)
         arena,sizeof arena,1,track[6+0x165+4],&navigation)<0) {
         fputs("Could not decode original BASIC pit masks\n",stderr); exit(1);
     }
+    if(result) *result=navigation;
 }
+static void load_pit_masks(unsigned char *lower,unsigned char *upper)
+{ load_pit_track(lower,upper,0); }
 
 static void verify_track_walk(uc_engine *uc,int real_pit)
 {
