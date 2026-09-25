@@ -117,3 +117,13 @@ coordinates, blocked origins, zero-length rays and low-word multiplication
 before division. The original car probe tests the excluded driver's special
 state, not the candidate's. The probe-all sentinel's adjacent special-state
 word is an explicit caller input rather than an out-of-bounds native access.
+
+## Shared actor allocation and animation
+
+`make verify-actor-slots` passes 8,192 complete original allocator calls using
+the point-resource form, comparing handles, high-water marks and every slot
+state. It covers capacity zero/full, holes, null resources and negative
+reserved/retirement states. Another 8,192 original motion/animation slices
+compare state, signed lifetime, positions, velocity and animation timing.
+These establish slot and timing semantics, not yet full runtime integration
+or the sprite allocator's saved-under allocation failure behavior.
