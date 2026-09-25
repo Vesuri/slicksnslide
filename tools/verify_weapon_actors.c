@@ -32,6 +32,10 @@ int main(void)
         struct SlicksWeaponAsset *image=&race.weapons.assets[asset];unsigned short w,hgt;
         if(slicks_decode_indexed_menu_icon(source,length,image->pixels,sizeof image->pixels,&w,&hgt))abort();
         image->width=w;image->height=hgt;image->ready=1;
+        unsigned char original_image[256];
+        unsigned original_size=3+((w+3)/4)*4*hgt;
+        check(uc_mem_read(u,0x50000,original_image,original_size));
+        check(uc_mem_write(u,0x51000+asset*256,original_image,original_size));
         for(unsigned trial=0;trial<128;++trial) {
             unsigned page=trial&1,limit=(trial&2)?15:0,pattern=(trial/4)%8;
             short x=(short)(100+trial%4),y=(short)(50+(trial/32)*45);
@@ -62,5 +66,57 @@ int main(void)
             restore_weapon_actor(&race,1);if(memcmp(native,before,64000)){fputs("Weapon actor restore failed\n",stderr);return 1;}++cases;
         }
     }
-    check(uc_close(u));printf("Original weapon actors: %u full-screen sprite/mask/page comparisons and exact restoration checks pass\n",cases);return 0;
+    printf("Original weapon actors: %u full-screen sprite/mask/page comparisons and exact restoration checks pass\n",cases);
+    for(unsigned trial=0;trial<128;++trial) {
+        race.weapons.ready=1;race.participation_ready=1;race.trail_particle_count=0;
+        memset(race.trail_priority_counts,0,sizeof race.trail_priority_counts);
+        initialize_weapon_actors(&race);
+        /* Exercise holes in a saturated common pool, not append-only order. */
+        for(unsigned i=0;i<210;++i) {
+            if(i&1) add_trail_component(&race,100,100,(unsigned char)(30+i),3,0,0,20);
+            else {
+                short h=allocate_weapon_actor(&race,i%19,1,0);
+                configure_weapon_actor(&race,h,100,100,0,0,20,3,0);
+            }
+        }
+        if(race.weapons.slots.high_water!=200)abort();
+        for(unsigned h=9;h<200;h+=7)if(race.weapons.trail_index[h]<0) {
+            race.weapons.slots.state[h]=0;race.weapons.actors[h].kind=0;
+        }
+        for(unsigned i=0;i<35;++i) {
+            short expected=0;
+            for(unsigned h=1;h<200;++h)if(!race.weapons.slots.state[h]){expected=(short)h;break;}
+            short actual=allocate_weapon_actor(&race,(i+trial)%19,1,0);
+            if(actual!=expected)abort();
+            configure_weapon_actor(&race,actual,100,100,0,0,20,3,0);
+        }
+        for(unsigned i=0;i<64000;++i)before[i]=native[i]=dos[i]=(unsigned char)(i*37+trial);
+        for(unsigned priority=0;priority<=6;++priority) for(unsigned h=1;h<200;++h) {
+            if(race.weapons.slots.state[h]<=0)continue;
+            int trail=race.weapons.trail_index[h];
+            if(trail<0&&!race.weapons.actors[h].kind)continue;
+            unsigned char colour=0,limit=0;unsigned asset=0;
+            unsigned original_priority=(h+trial)%4;
+            original_priority=original_priority==0?0:original_priority==1?3:original_priority==2?5:6;
+            if(original_priority!=priority)continue;
+            short x=(short)(98+(h+trial)%7),y=(short)(98+(h*3+trial)%7);
+            if(trail>=0) {
+                struct SlicksTrailParticle *t=&race.trail_particles[trail];t->x=x*64;t->y=y*64;t->priority=priority;colour=t->colour;
+            } else {
+                struct SlicksWeaponActor *a=&race.weapons.actors[h];a->motion.x=x*64;a->motion.y=y*64;a->priority=priority;asset=a->asset;
+            }
+            unsigned char actor[64]={0};actor[0x18]=trail<0;actor[0x26]=colour;actor[0x3b]=limit;
+            check(uc_mem_write(u,0x90000+h*64,actor,sizeof actor));word(u,0x90000+h*64+4,x);word(u,0x90000+h*64+8,y);
+            word(u,0x90000+h*64+0xc,asset*256);word(u,0x90000+h*64+0xe,0x5100);word(u,0x616c6,0);word(u,0x616c7,1);
+            uint16_t cs=0x2e0f,ds=0x6000,ss=0x8000,sp=0xf000;
+            word(u,0x8f000,0);word(u,0x8f002,0x5500);word(u,0x8f004,h);
+            check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+            check(uc_emu_start(u,0x33673,0x55000,0,100000));
+        }
+        for(unsigned bucket=0;bucket<4;++bucket)draw_trail_particles(&race,bucket);
+        if(memcmp(native,dos,64000)){fprintf(stderr,"Mixed actor ordering failed trial=%u\n",trial);return 1;}
+        for(unsigned bucket=4;bucket;--bucket)restore_trail_particles(&race,bucket-1);
+        if(memcmp(native,before,64000)){fprintf(stderr,"Mixed actor restoration failed trial=%u\n",trial);return 1;}
+    }
+    check(uc_close(u));puts("Shared weapon/trail pool: 128 saturated/reused mixed-priority full-screen and restoration cases pass");return 0;
 }

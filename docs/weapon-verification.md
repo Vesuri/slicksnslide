@@ -237,3 +237,10 @@ zero transparency and varying raw foreground masks. Each native draw is then
 restored and checked against every pre-draw pixel. This closes the ordinary
 in-bounds sprite raster gate; offscreen policy and shared ordering/reuse still
 need their integration checks.
+
+The same gate now also fills the common 200-slot pool with alternating dense
+trail points and weapon sprites, frees/reuses holes, verifies full-pool
+failure, and compares 128 overlapping mixed-priority screens against ordered
+original actor draws. Reverse restoration recovers every original pixel.
+The checks exercise producer sidecars and reused actor IDs, not just isolated
+sprite callbacks. General animated track actors remain separate open work.
