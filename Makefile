@@ -661,6 +661,20 @@ verify-arcade-setup: build/verify_arcade_setup
 .PHONY: verify-post-race-records
 .PHONY: verify-championship-standings
 .PHONY: verify-standings-draw
+.PHONY: verify-palette-fade
+.PHONY: verify-result-wait
+build/verify_result_wait: tools/verify_result_wait.c tools/verify_post_race_records.c src/ui/result_wait.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-result-wait: build/verify_result_wait
+	build/verify_result_wait
+
+build/verify_palette_fade: tools/verify_palette_fade.c tools/verify_post_race_records.c src/ui/palette_fade.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-palette-fade: build/verify_palette_fade
+	build/verify_palette_fade
+
 build/verify_standings_draw: tools/verify_standings_draw.c tools/verify_track_records_draw.c src/ui/championship_standings_draw.h src/game/championship_standings.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 

@@ -2,6 +2,7 @@
 	xdef	slicks_menu_measure
 	xdef	slicks_menu_text
 	xdef	slicks_records_text
+	xdef	slicks_standings_text
 	xdef	slicks_help_measure
 	xdef	slicks_help_text
 	xref	sui_font_measure
@@ -72,6 +73,12 @@ slicks_menu_text:
 ; with DS:1600 set by their painter, rather than startup's fixed zero.
 slicks_records_text:
 	movem.l	d2-d7/a2-a6,-(sp)
+	move.w	#$0100,d6
+	bra.s	slicks_result_text_body
+slicks_standings_text:
+	movem.l	d2-d7/a2-a6,-(sp)
+	move.w	#$0101,d6
+slicks_result_text_body:
 	movea.l	48(sp),a0
 	movea.l	52(sp),a1
 	movea.l	56(sp),a2
@@ -82,7 +89,6 @@ slicks_records_text:
 	moveq	#10,d4
 	moveq	#0,d5
 	move.b	75(sp),d5
-	move.w	#$0100,d6
 	jsr	sui_font_string
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

@@ -1,0 +1,74 @@
+set $standings = 0
+set $saved = 0
+break slicks_diag_setup_saved
+commands
+  silent
+  if $standings != 3 || g_slicks_setup_save_report.result != 0
+    printf "STANDINGS_SAVE_FAILED result=%u\n",g_slicks_setup_save_report.result
+    quit 1
+  end
+  set $saved = 1
+  dump binary memory .run/post-race-records-v1/standings.profiles &g_slicks_profiles (char *)&g_slicks_profiles+sizeof(g_slicks_profiles)
+  continue
+end
+break slicks_diag_standings_ready
+commands
+  silent
+  if g_slicks_diag_standings_phase != $standings+1
+    quit 1
+  end
+  set $standings = $standings+1
+  printf "STANDINGS phase=%u points=%d/%d/%d/%d drivers=%u/%u/%u/%u places=%u/%u/%u/%u\n",$standings,g_slicks_diag_standings.points[0],g_slicks_diag_standings.points[1],g_slicks_diag_standings.points[2],g_slicks_diag_standings.points[3],g_slicks_diag_standings.driver[0],g_slicks_diag_standings.driver[1],g_slicks_diag_standings.driver[2],g_slicks_diag_standings.driver[3],g_slicks_diag_standings.place[0],g_slicks_diag_standings.place[1],g_slicks_diag_standings.place[2],g_slicks_diag_standings.place[3]
+  if $standings == 1
+    dump binary memory .run/post-race-records-v1/standings.chunky g_slicks_diag_standings_menu->renderer.ui.pixels g_slicks_diag_standings_menu->renderer.ui.pixels+64000
+    dump binary memory .run/post-race-records-v1/standings.palette g_slicks_diag_standings_menu->palette g_slicks_diag_standings_menu->palette+768
+    set $p0 = g_slicks_setup_session.players.selected[0]
+    set $p1 = g_slicks_setup_session.players.selected[1]
+    set $p2 = g_slicks_setup_session.players.selected[2]
+    set $p3 = g_slicks_setup_session.players.selected[3]
+    set $m0 = g_slicks_profiles.statistics[$p0][2]
+    set $m1 = g_slicks_profiles.statistics[$p1][2]
+    set $m2 = g_slicks_profiles.statistics[$p2][2]
+    set $m3 = g_slicks_profiles.statistics[$p3][2]
+    set $w0 = g_slicks_profiles.statistics[$p0][3]
+    set $w1 = g_slicks_profiles.statistics[$p1][3]
+    set $w2 = g_slicks_profiles.statistics[$p2][3]
+    set $w3 = g_slicks_profiles.statistics[$p3][3]
+  end
+  if $standings == 2
+    set $row = 0
+    while $row < 4
+      set $driver = g_slicks_diag_standings.driver[$row]
+      set $profile = g_slicks_setup_session.players.selected[$driver]
+      set $played = 0
+      set $won = 0
+      set $other = 0
+      while $other < 4
+        if g_slicks_setup_session.players.selected[g_slicks_diag_standings.driver[$other]] == $profile && g_slicks_diag_standings.points[$other] > 0
+          set $played = $played+1
+          set $won = $won+(g_slicks_diag_standings.place[$other] == 1)
+        end
+        set $other = $other+1
+      end
+      set $old_m = $driver == 0 ? $m0 : $driver == 1 ? $m1 : $driver == 2 ? $m2 : $m3
+      set $old_w = $driver == 0 ? $w0 : $driver == 1 ? $w1 : $driver == 2 ? $w2 : $w3
+      if g_slicks_profiles.statistics[$profile][2] != (short)($old_m+$played) || g_slicks_profiles.statistics[$profile][3] != (short)($old_w+$won)
+        printf "STANDINGS_STATISTICS_FAILED driver=%u\n",$driver
+        quit 1
+      end
+      set $row = $row+1
+    end
+  end
+  continue
+end
+break slicks_diag_system_restored
+commands
+  silent
+  if $standings != 3 || !$saved || $starts != 2 || $results != 2 || !$title || g_slicks_diag_restore_status != 0x1f
+    printf "STANDINGS_FLOW_FAILED phase=%u\n",$standings
+    quit 1
+  end
+  printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK\n"
+  quit
+end
+source diag_completion_flow.gdb

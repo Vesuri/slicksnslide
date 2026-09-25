@@ -20,6 +20,7 @@
 #include "../../game/setup_session.h"
 #include "../../game/championship.h"
 #include "../../game/post_race_records.h"
+#include "../../ui/palette_fade.h"
 #include "../../ui/saved_file_dialog.h"
 #include "amiga_saved_files.h"
 #include "../../game/arcade_setup.h"
@@ -2260,6 +2261,120 @@ done:
     return result;
 }
 
+volatile unsigned short g_slicks_diag_standings_phase;
+struct SlicksChampionshipStandings g_slicks_diag_standings;
+struct SlicksAmigaPlayerMenu *g_slicks_diag_standings_menu;
+__attribute__((noinline)) void slicks_diag_standings_ready(void) { __asm__ volatile("" ::: "memory"); }
+
+/* Both bitmaps contain the same native image. Build only the inactive
+ * copper list, then swap at blanking: palette fades never modify live
+ * copper instructions while the beam can fetch them. */
+static int result_fade(struct SlicksAmigaPlatform *platform,const unsigned char *palette,
+    short start,short end,short duration,unsigned short timer,unsigned short *view)
+{
+    /* Single modal owner: keep palette work off the 4 KiB CLI stack,
+     * which also carries build_copper's 256-colour conversion. */
+    static unsigned char scaled[768];
+    short ticks=slicks_fade_duration(timer,duration),step=0;
+    unsigned long phase=0,period=slicks_timer_divisor(timer)*50UL;
+    do {
+        unsigned long before=platform->vblank_count;
+        slicks_fade_palette(scaled,palette,slicks_fade_weight(start,end,ticks,step));
+        unsigned short next=(unsigned short)(*view^1);
+        if(slicks_amiga_platform_set_view(platform,next,scaled)) return -1;
+        slicks_amiga_platform_wait_display_blank(platform);
+        slicks_amiga_platform_show(platform,next); *view=next;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) return -1;
+        unsigned elapsed=0;
+        unsigned long frames=platform->vblank_count-before;
+        while(frames--) elapsed+=slicks_physics_clock_advance(&phase,period,0);
+        step=slicks_fade_advance(step,ticks,(unsigned short)elapsed);
+    } while(step<=ticks);
+    return 0;
+}
+
+/* 2b73b's positive limit counts 100 ms waits, including the last one.
+ * Discard entry keys, accept a fresh make or mouse press, and flush exit. */
+static int result_wait(struct SlicksAmigaPlatform *platform,unsigned limit,unsigned char diagnostic)
+{
+    platform->key_tail=platform->key_head;
+    int mouse=slicks_amiga_platform_left_mouse() || slicks_amiga_platform_right_mouse();
+    if(diagnostic) { platform->key_tail=0; platform->keys[0]=0x40; platform->key_head=1; }
+    for(unsigned frame=0;frame<(limit+1)*5;++frame) {
+        unsigned short key;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) return -1;
+        int now=slicks_amiga_platform_left_mouse() || slicks_amiga_platform_right_mouse();
+        if(now && !mouse) break;
+        mouse=now;
+        if(slicks_amiga_platform_poll_key(platform,&key) && !(key&128)) break;
+    }
+    platform->key_tail=platform->key_head;
+    return 0;
+}
+
+/* 25965..259d7 / 2a63e..2aad5. This owns the actual archive bitmap and
+ * font, not a captured DOS screen. Profile statistics are published once,
+ * after successful resource loading/drawing and before the original wait. */
+static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+    const unsigned char *race_palette,unsigned short timer,unsigned char *setup_dirty,unsigned char diagnostic)
+{
+    struct SlicksResourceArchive archive={0};
+    struct SlicksAmigaPlayerMenu *m=0;
+    unsigned char *bitmap=0;
+    static unsigned char palette[768];
+    static const unsigned char black[768]={0};
+    unsigned short view=0;
+    int result=-1,nonzero=0;
+    for(unsigned i=0;i<4;++i) nonzero|=g_slicks_setup_session.points[i];
+    slicks_amiga_platform_end(platform);
+    for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,platform->views[i].bitmap,0,200);
+    if(slicks_amiga_platform_set_view(platform,0,race_palette) || slicks_amiga_platform_begin(platform,0) ||
+       result_fade(platform,race_palette,100,0,2,timer,&view)) goto done;
+    slicks_amiga_platform_end(platform);
+    if(!nonzero) { result=0; goto done; }
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+    bitmap=AllocMem(64003,MEMF_ANY);
+    if(!bitmap || slicks_resource_archive_load(&archive,"sskuppi.@I",bitmap,64003)!=64003 ||
+       bitmap[0]!=1 || bitmap[1]!=64 || bitmap[2]!=200 ||
+       slicks_resource_archive_load(&archive,"sskuppi.@p",palette,768)!=768) goto done;
+    for(unsigned long i=0;i<64000;++i) chunky[i]=bitmap[i+3];
+    FreeMem(bitmap,64003); bitmap=0;
+    m=slicks_amiga_help_surface_create(&archive,chunky,palette);
+    if(!m) goto done;
+    const unsigned char *names[4];
+    for(unsigned i=0;i<4;++i) {
+        short p=g_slicks_setup_session.players.selected[i];
+        if(p<0 || p>=g_slicks_profiles.count) goto done;
+        names[i]=g_slicks_profiles.names[p];
+    }
+    slicks_championship_standings(&g_slicks_diag_standings,g_slicks_setup_session.points,
+        g_slicks_setup_session.players.participation);
+    slicks_amiga_standings_draw(m,&g_slicks_diag_standings,g_slicks_setup_session.players.colours,names);
+    g_slicks_diag_standings_menu=m;
+    g_slicks_diag_standings_phase=1; slicks_diag_standings_ready();
+    if(slicks_championship_statistics(&g_slicks_profiles,g_slicks_setup_session.players.selected,
+        &g_slicks_diag_standings)) goto done;
+    *setup_dirty=1;
+    for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,platform->views[i].bitmap,0,200);
+    if(slicks_amiga_platform_set_view(platform,0,black) || slicks_amiga_platform_begin(platform,0)) goto done;
+    view=0;
+    if(result_fade(platform,palette,0,100,4,timer,&view)) goto done;
+    g_slicks_diag_standings_phase=2; slicks_diag_standings_ready();
+    if(result_wait(platform,1200,diagnostic) || result_fade(platform,palette,100,0,6,timer,&view)) goto done;
+    g_slicks_diag_standings_phase=3; slicks_diag_standings_ready();
+    result=0;
+done:
+    slicks_amiga_platform_end(platform);
+    g_slicks_diag_standings_menu=0;
+    slicks_amiga_player_menu_destroy(m);
+    slicks_resource_archive_close(&archive);
+    if(bitmap) FreeMem(bitmap,64003);
+    /* The caller rebuilds the original title while hardware is restored. */
+    return result;
+}
+
 static void update_race_engines(struct SlicksAmigaAudio *audio,const struct SlicksRaceRuntime *race)
 {
     unsigned long speeds[4];
@@ -3013,7 +3128,7 @@ int main(void)
             exit_requested=0;
             /* Diagnostic modes never write setup files implicitly. The normal
              * original caller saves on program exit, not on every modal close. */
-            if((argc && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test) || !setup_dirty) { result=0; goto cleanup; }
+            if((argc && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
             slicks_amiga_platform_end(&platform);
             if(persistence_test && (argv[7]=='T' || argv[7]=='V') && !failure_injected) {
                 /* Isolated diagnostic fault, using AmigaDOS throughout so
@@ -3224,6 +3339,8 @@ int main(void)
                         start_race_engines(&audio,race,&platform);
                         continue;
                     }
+                    if(original_setup && run_championship_results(&platform,chunky,race_palette,
+                        slicks_speed_timer_argument(configuration.field_05de),&setup_dirty,(unsigned char)(argc!=0))) goto cleanup;
                     if (slicks_setup_basic_mode(logical, mode_state) != 0)
                         goto cleanup;
                     make_title_surface(logical, title_frame, source_palette);
@@ -3233,6 +3350,7 @@ int main(void)
                         menu_selection, selected_vehicle,
                         track_names[selected_track],
                         selected_laps);
+                    if(!platform.active && slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
                     race_prepared = 0;

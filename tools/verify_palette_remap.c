@@ -190,7 +190,7 @@ static void native_text(void *context,unsigned font,const unsigned char *text,sh
     uint32_t arguments[]={0x380000,0x100000,0x50000,0x60000,(unsigned short)x,(unsigned short)y,flags,n->highlight};
     unsigned char argument_bytes[32];
     for(unsigned i=0;i<8;++i) for(unsigned b=0;b<4;++b) argument_bytes[4*i+b]=(unsigned char)(arguments[i]>>(24-8*b));
-    if(n->spacing!=1 || n->tab!=10 || (!n->records_bridge && n->highlight) || n->shadow!=0x0100) abort();
+    if(n->spacing!=1 || n->tab!=10 || (!n->records_bridge && n->highlight) || (n->shadow!=0x0100 && n->shadow!=0x0101)) abort();
     check(uc_reg_write(u,UC_M68K_REG_SR,&sr)); check(uc_reg_write(u,UC_M68K_REG_A7,&stack));
     check(uc_mem_write(u,stack,argument_bytes,sizeof argument_bytes));
     check(uc_emu_start(u,n->records_bridge?n->records_bridge:n->bridge,0x380000,0,1000000));

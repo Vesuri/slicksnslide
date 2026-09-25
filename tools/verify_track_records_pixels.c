@@ -6,6 +6,63 @@
 #include "../src/ui/speed_dialog.h"
 #include "../src/ui/race_menu_renderer.h"
 #include "../src/ui/language_table.h"
+#include "../src/ui/championship_standings_draw.h"
+
+static unsigned char cup_nearest(void *p,unsigned char r,unsigned char g,unsigned char b)
+{ return slicks_ui_nearest(&((struct SlicksRecordsRenderer *)p)->ui,r,g,b); }
+static void cup_colour(void *p,unsigned char index,unsigned char value)
+{ ((struct SlicksRecordsRenderer *)p)->fonts[0][6+index]=value; }
+static void cup_rectangle(void *p,short l,short t,short r,short b,unsigned char colour)
+{ slicks_ui_rectangle(&((struct SlicksRecordsRenderer *)p)->ui,l,t,r,b,colour); }
+static void cup_text(void *p,const unsigned char *text,short x,short y,unsigned char flags)
+{
+    struct SlicksRecordsRenderer *r=p;
+    if(r->text(r->context,&r->ui,r->fonts[0],text,x,y,flags,cup_nearest(p,10,10,10))) abort();
+}
+static void cup_number(void *p,short value,short x,short y,unsigned char flags)
+{ unsigned char s[7]; slicks_records_decimal(value,s); cup_text(p,s,x,y,flags); }
+static void verify_cup_pixels(uc_engine *u,struct SlicksRecordsRenderer *r,struct Vga *v)
+{
+    unsigned char asset[64003],palette[768],colours[4][6];
+    if(host_archive_load("ref/SLICKS.000","sskuppi.@I",asset,sizeof asset)!=64003 ||
+       host_archive_load("ref/SLICKS.000","sskuppi.@p",palette,sizeof palette)!=768) abort();
+    r->ui.palette=palette;
+    check(uc_mem_write(u,0x67000,palette,768));
+    word(u,0x3cbf0+0x71b8,0); word(u,0x3cbf0+0x71ba,0x6700);
+    word(u,0x3cbf0+0x68b2,0); word(u,0x3cbf0+0x68b4,0x6700);
+    word(u,0x3cbf0+0x1600,slicks_ui_nearest(&r->ui,10,10,10));
+    word(u,0x3cbf0+0x1602,0x0101);
+    const unsigned char *names[4]={(const unsigned char *)"FIRST DRIVER",(const unsigned char *)"SECOND",
+        (const unsigned char *)"THIRD DRIVER",(const unsigned char *)"FOURTH"};
+    const struct SlicksStandingsDrawOps ops={cup_nearest,cup_colour,cup_rectangle,cup_text,cup_number,r};
+    for(unsigned variant=0;variant<32;++variant) {
+        memcpy(r->ui.pixels,asset+3,64000); memcpy(v->pixels,asset+3,64000);
+        short points[4]; signed char roles[4];
+        for(unsigned i=0;i<4;++i) {
+            points[i]=(short)(variant&16?10:(i*7+variant)%24); roles[i]=(variant&(1U<<i))?1:0;
+            for(unsigned c=0;c<6;++c) colours[i][c]=(unsigned char)((i*17+c*9+variant)%64);
+            word(u,0x3cbf0+0x44c+2*i,i);
+            check(uc_mem_write(u,0x3cbf0+0x36aa+21*i,names[i],strlen((const char *)names[i])+1));
+        }
+        check(uc_mem_write(u,0x3cbf0+0x310c,colours,24));
+        struct SlicksChampionshipStandings table; slicks_championship_standings(&table,points,roles);
+        for(unsigned i=0;i<4;++i) word(u,0x8eff4+2*i,table.points[i]);
+        check(uc_mem_write(u,0x8effc,table.driver,4));
+        unsigned char zero=0; check(uc_mem_write(u,0x8eff3,&zero,1));
+        uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xe000,bp=0xf000;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss)); check(uc_reg_write(u,UC_X86_REG_SP,&sp)); check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+        check(uc_emu_start(u,0x2a7a1,0x2aa77,0,30000000));
+        slicks_draw_championship_standings(&table,colours,names,&ops);
+        if(memcmp(r->ui.pixels,v->pixels,64000)) {
+            for(unsigned i=0;i<64000;++i) if(r->ui.pixels[i]!=v->pixels[i]) {
+                fprintf(stderr,"Cup pixel mismatch variant=%u at %u,%u native=%u DOS=%u\n",variant,i%320,i/320,r->ui.pixels[i],v->pixels[i]); break;
+            }
+            exit(1);
+        }
+    }
+    puts("Original championship cup: 32 full-frame comparisons with original artwork/font, native 68020 text bridge, all activity masks and tied ranks pass");
+}
 
 static void pause_boundary(uc_engine *u,uint64_t address,uint32_t size,void *context)
 {
@@ -200,6 +257,7 @@ int main(void)
     check(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&p.native.cpu));
     check(uc_ctl_set_cpu_model(p.native.cpu,UC_CPU_M68K_M68020)); check(uc_mem_map(p.native.cpu,0,0x400000,UC_PROT_ALL));
     check(uc_mem_write(p.native.cpu,0,code,size)); p.native.records_bridge=(unsigned)bigword(code+20);
+    unsigned standings_bridge=(unsigned)bigword(code+24);
     f=fopen("build/hud_icon_test.bin","rb"); if(!f) abort(); size=fread(code,1,sizeof code,f); fclose(f);
     check(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&p.native.icon_cpu));
     check(uc_ctl_set_cpu_model(p.native.icon_cpu,UC_CPU_M68K_M68020)); check(uc_mem_map(p.native.icon_cpu,0,0x400000,UC_PROT_ALL));
@@ -300,6 +358,8 @@ int main(void)
     printf("Original track-info surround: %u full-screen/font compositions pass before separately verified preview\n",compositions);
     verify_speed_pixels(u,&renderer,&v,base,p.native.sizes[0]);
     verify_pause_pixels(u,&renderer,&v,base,p.native.sizes[0]);
+    p.native.records_bridge=standings_bridge; p.native.shadow=0x0101;
+    verify_cup_pixels(u,&renderer,&v);
     check(uc_close(u)); check(uc_close(p.native.cpu)); check(uc_close(p.native.icon_cpu));
     printf("Original records panel: %u full-screen/font comparisons with real assets and 68020 text/icons pass\n",cases); return 0;
 }

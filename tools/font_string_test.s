@@ -5,6 +5,7 @@
 	dc.l	slicks_help_measure
 	dc.l	slicks_help_text
 	dc.l	slicks_records_text
+	dc.l	slicks_standings_text
 	include	"src/ui/sui_font_string.s"
 	include	"src/ui/sui_font_measure.s"
 	include	"src/ui/sui_font_glyph.s"

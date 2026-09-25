@@ -16,6 +16,7 @@
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 extern void slicks_menu_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short);
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
+extern void slicks_standings_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 extern short slicks_help_measure(const unsigned char *,const unsigned char *,short);
 extern short slicks_help_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,short);
 extern void slicks_draw_chunky_icon(unsigned char *,const unsigned char *,unsigned short,unsigned short,unsigned short,unsigned short);
@@ -83,6 +84,33 @@ static int records_icon(void *context,struct SlicksChunkyUi *ui,short id,short x
     if(x<0 || y<0 || x+sprite->width>320 || y+sprite->height>200) return -1;
     slicks_draw_chunky_icon(ui->pixels,sprite->pixels,x,y,sprite->width,sprite->height);
     dirty(m,x,y,(short)(x+sprite->width),(short)(y+sprite->height)); return 0;
+}
+static unsigned char standings_nearest(void *context,unsigned char r,unsigned char g,unsigned char b)
+{ return slicks_ui_nearest(&((struct SlicksAmigaPlayerMenu *)context)->renderer.ui,r,g,b); }
+static void standings_colour(void *context,unsigned char index,unsigned char value)
+{ ((struct SlicksAmigaPlayerMenu *)context)->fonts[0][6+index]=value; }
+static void standings_rectangle(void *context,short l,short t,short r,short b,unsigned char colour)
+{ slicks_ui_rectangle(&((struct SlicksAmigaPlayerMenu *)context)->renderer.ui,l,t,r,b,colour); }
+static void standings_text(void *context,const unsigned char *s,short x,short y,unsigned char flags)
+{
+    struct SlicksAmigaPlayerMenu *m=context;
+    slicks_standings_text(m->renderer.ui.pixels,m->fonts[0],s,x,y,flags,
+        slicks_ui_nearest(&m->renderer.ui,10,10,10));
+    /* Includes the original one-pixel shadow below the font. */
+    dirty(m,0,y,320,(short)(y+m->fonts[0][2]+1));
+}
+static void standings_number(void *context,short value,short x,short y,unsigned char flags)
+{
+    unsigned char s[7]; slicks_records_decimal(value,s);
+    standings_text(context,s,x,y,flags);
+}
+void slicks_amiga_standings_draw(struct SlicksAmigaPlayerMenu *m,
+    const struct SlicksChampionshipStandings *table,const unsigned char colours[4][6],
+    const unsigned char *const names[4])
+{
+    const struct SlicksStandingsDrawOps ops={standings_nearest,standings_colour,
+        standings_rectangle,standings_text,standings_number,m};
+    slicks_draw_championship_standings(table,colours,names,&ops);
 }
 unsigned char g_slicks_diag_pause_fault;
 static int pause_fault(unsigned char stage)

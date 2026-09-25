@@ -18,6 +18,11 @@
 #include "../../ui/change_cars_renderer.h"
 #include "../../ui/intermission_renderer.h"
 #include "amiga_setup_storage.h"
+#include "../../ui/championship_standings_draw.h"
+struct SlicksAmigaPlayerMenu;
+void slicks_amiga_standings_draw(struct SlicksAmigaPlayerMenu *,
+    const struct SlicksChampionshipStandings *,const unsigned char [4][6],
+    const unsigned char *const [4]);
 struct SlicksAmigaTrackLists {
     unsigned char *bytes;
     struct SlicksTrackLists catalogue;

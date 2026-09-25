@@ -1,5 +1,36 @@
 # Natural race-completion verification
 
+## Native championship screen (2026-09-25)
+
+The final results owner now loads `sskuppi.@I`/`sskuppi.@p` and `kirj.@f`
+from the archive, draws the original gradients, rankings, names and points,
+updates original match/win statistics once, and returns to the native title.
+The `(1,1)` text-shadow bridge is separate from records' `(1,0)` bridge.
+Both planar pages are populated once; palette fades rebuild only the inactive
+copper list before swapping in blanking. Temporary palettes use modal-owned
+static storage to stay inside the original 4 KiB CLI stack.
+
+`verify-track-records-pixels` includes 32 exact full-frame cup comparisons
+against original x86 rendering, with real artwork/fonts and the production
+68020 text bridge. All activity masks and tied ranks pass. Existing records,
+track information, pause and Speed compositions remain passing.
+`verify-palette-fade` passes 336 full original-routine cases / 657,408 RGB
+writes including skipped ticks, final endpoints and unchanged base palettes.
+`verify-result-wait` passes 192 original release/key/button/timeout/demo traces;
+the shared wait core is verified but its modal adapter remains to be connected.
+
+Muted 2 MiB A1200 `OPTIONSB`, port 25169 / `diag_standings.gdb`: both natural
+Arcade races complete at updates 1408 and 1535. Final scores 7/6/2/0 order
+drivers 3/2/1/0. All three screen/fade checkpoints, per-profile match/win
+increments (including shared-profile accounting), CFG/PLR save on exit,
+title return and restoration `0x1f` pass. `OPTIONSB` now explicitly saves
+its isolated diagnostic setup to exercise statistics persistence.
+The first transition run on port 25168 exposed excessive nested stack use;
+it is superseded by the passing bounded-stack run above.
+
+Remaining for this item: connect the verified shared wait, finish record
+load/save recovery UI, and rerun the full natural-completion regression set.
+
 ## Native record-results integration (2026-09-25)
 
 The custom RESULTS overlay and its private text painter are removed.
