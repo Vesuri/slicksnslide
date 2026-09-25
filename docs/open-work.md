@@ -1,11 +1,11 @@
 # Open work
 
-Updated 2026-09-25. Actionable open and deferred work only.
+Updated 2026-09-26. Actionable open and deferred work only.
 
 ## Remaining game completion
 
-1. Resolve the reported idle/slowdown engine-sample mismatch using actual
-    PC PCM identity and native playback selection, separately from pitch.
+1. Complete the matched-vehicle idle/slowdown listening comparison; identify
+    the remaining reported sound difference and correct verified mismatches.
     Complete the listening check of the corrected active-racing recording:
     unwanted effect looping, clicks, missing effects and excessive engine
     interruption. Keep direct playback without software mixing.

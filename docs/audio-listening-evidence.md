@@ -95,7 +95,7 @@ build/verify_amiga_audio_volume \
   6 tmp/audio-pcm-identity/slicks-engine-car-3.raw
 ```
 
-The first comparison attempt deliberately failed on the fourth dump when
+The first comparison attempt failed on the fourth dump when
 it assumed all cars used sample 17; the trace identifies the actual different
 vehicle. The earlier active Amiga capture used four vehicle-0 cars and is
 therefore not a matched-fleet comparison. Other original requests in this
@@ -104,6 +104,44 @@ to the perceived idle sound has not been established.
 
 A separate per-frame native pitch-tracking run was stopped before its
 600-frame completion check; it is not counted as a passing regression.
+
+### Matching-vehicle listening excerpts
+
+`SLICKS_TRAJECTORY=pc-audio` selects the opt-in `NATURALQ` fixture with
+vehicles 0/0/1/6, four high-skill computer drivers, on BASIC. It supplies
+setup inputs only; production race and audio code perform the simulation.
+The recording's first effect marker was frame 116, speeds 237/237/230/236,
+and confirmed vehicles 0/0/1/6 at raw byte 2,211,840 (12.54 s).
+
+Delivered local-only excerpts under `tmp/audio-pcm-identity`:
+
+- `pc-traced-fleet.wav`: seconds 39..59 of `capture/slicks_000.wav`,
+  the actual PC run described above, 48 kHz stereo PCM.
+- `amiga-matched-fleet.wav`: seconds 35..55 of `amiga-matched-fleet.raw`,
+  actual PAL A1200/2 MiB/no-Fast output, 44.1 kHz stereo PCM. The SDL log
+  confirms file-only disk output; no per-frame debugger stops were used.
+- Neither excerpt is normalized, filtered or resampled. They match vehicle
+  types, not input, speed or event timing. The native capture was deliberately
+  stopped after recording enough audio; it is not a full-race restoration test.
+
+The user was asked whether the matching-vehicle clip contains the reportedly
+missing engine sound, or to identify a time in a PC excerpt for closer tracing.
+
+### Actual A1200 PCM and restoration
+
+The separate `SLICKS_AUDIO_PCM_TEST=1` / `NATURALQB` fixture exits through
+ordinary cleanup at update 150. `diag_audio_pcm_identity.gdb` only reads
+target state and dumps loaded samples 17 and 20 after the first racing
+effect. On PAL A1200/68020, 2 MiB chip/no Fast, it passed with fleet 0/0/1/6,
+lengths 2050/6346, restore status 31 and zero audio-VBI blanking spills.
+Byte comparisons of these actual target-memory dumps against all four PC
+engine dumps pass, independently of the host adapter test.
+
+The initial version attempted to exit by writing the diagnostic flag through
+GDB. That run kept racing and was interrupted, not counted as a restoration
+pass. As already recorded in `player-setup-completion.md`, this debugger's
+target writes are unreliable. The passing replacement sets its bound in
+native code and uses no debugger target writes.
 
 ## Extreme engine frequencies
 

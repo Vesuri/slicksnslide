@@ -49,8 +49,10 @@ elif [ "${SLICKS_TRACK_ACTOR_TEST:-0}" = 1 ]; then
   actor_case="${SLICKS_TRACK_ACTOR_CASE:-0}"
   case "$actor_case" in 0|1|2|3) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALO%s\n' "$actor_case" > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_AUDIO_PCM_TEST:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALQB\n' > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_TRAJECTORY:-}" ]; then
-  case "$SLICKS_TRAJECTORY" in mixed) trajectory=T;; identical) trajectory=I;; *) exit 2;; esac
+  case "$SLICKS_TRAJECTORY" in mixed) trajectory=T;; identical) trajectory=I;; pc-audio) trajectory=Q;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s\n' "$trajectory" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_WEAPON_TRANSITION:-}" ]; then
   case "$SLICKS_WEAPON_TRANSITION" in P|R|E|C|A) ;; *) exit 2;; esac

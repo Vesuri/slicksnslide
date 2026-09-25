@@ -12,6 +12,7 @@ tbreak slicks_amiga_audio_play_effect
 commands
   silent
   printf "AUDIO_CAPTURE_FIRST_EFFECT frame=%u racing=%u speeds=%ld,%ld,%ld,%ld\n",$race->frame_count,$race->racing,$race->cars[0].measured_speed,$race->cars[1].measured_speed,$race->cars[2].measured_speed,$race->cars[3].measured_speed
+  printf "AUDIO_CAPTURE_VEHICLES %u,%u,%u,%u\n",$race->cars[0].vehicle,$race->cars[1].vehicle,$race->cars[2].vehicle,$race->cars[3].vehicle
   shell wc -c "$SLICKS_AUDIO_CAPTURE_FILE"
   continue
 end
