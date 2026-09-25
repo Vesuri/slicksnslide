@@ -114,6 +114,21 @@ capture observer therefore uses only one temporary first-effect breakpoint.
 
 ## Repeating Amiga capture
 
+### Corrected active-race take
+
+`tmp/audio-compare/amiga-corrected-racing.wav` contains seconds 35..55 of
+`amiga-final-active.raw`, recorded after the bank-ID, sample-gain,
+high-frequency and results-order fixes. It uses the same `NATURALI`
+four-computer/vehicle-0 fixture. The first effect marker was frame 116,
+racing=1, measured speeds 237/237/237/237, at raw byte 2,277,376 (12.91 s).
+The excerpt is well after that one-off debugger stop. The owned emulator
+log confirms SDL disk output; no per-frame debugger stops were used.
+Export retained 44,100 Hz stereo PCM, without normalization or resampling.
+It was delivered alongside the original PC race excerpt for the remaining
+effects/looping/engine-interruption listening check, not a matched race.
+
+### Procedure
+
 From the repository root, with a fresh absolute output filename:
 
 ```sh
