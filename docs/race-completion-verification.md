@@ -1,5 +1,16 @@
 # Natural race-completion verification
 
+## Original record insertion translation
+
+`make verify-post-race-records` passes 25,272 complete comparisons with DOS
+`255ff..25803`, including the real `2e000` qualification call and original
+memory-copy helper. All 319 record bytes, four rank markers, display/change
+flags and the trailer counter match. Cases cover all 81 participation
+patterns, negative/zero/sentinel lap times, signed upgrade boundaries,
+profile settings above 100, full/empty/tied tables and counter wraparound.
+The typed routine is in `src/game/post_race_records.h`; this test alone is
+not evidence of platform display/save integration.
+
 ## Original finish branch
 
 `make verify-race-completion` executes original instructions at physical

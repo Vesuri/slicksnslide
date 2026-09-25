@@ -658,6 +658,13 @@ verify-arcade-setup: build/verify_arcade_setup
 	build/verify_arcade_setup
 
 .PHONY: verify-race-completion
+.PHONY: verify-post-race-records
+build/verify_post_race_records: tools/verify_post_race_records.c src/game/post_race_records.h src/game/track_records.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+verify-post-race-records: build/verify_post_race_records
+	build/verify_post_race_records
+
 build/verify_race_completion: tools/verify_race_completion.c src/game/race_runtime.c src/game/race_runtime.h src/game/arcade_setup.h src/game/finish_rank.h src/game/setup_session.h src/game/race_rewards.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
