@@ -50,8 +50,14 @@ int main(void)
         if(native!=(unsigned char)ax) {
             fprintf(stderr,"Projectile map mismatch xy=%d,%d layer=%u level=%d native=%d original=%u\n",x,y,layer,level,native,(unsigned char)ax);return 1;
         }
+        registers(u);word(u,0x8f000,0);word(u,0x8f002,0x7000);
+        word(u,0x8f004,x);word(u,0x8f006,y);word(u,0x8f008,layer);
+        ck(uc_emu_start(u,0x1b089,0x70000,0,10000));ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if(slicks_track_material_sample(lower,upper,x,y,layer)!=(unsigned char)ax) {
+            fprintf(stderr,"Raw material mismatch xy=%d,%d layer=%u\n",x,y,layer);return 1;
+        }
         ++checked;
     }
-    printf("Original projectile map: %u signed-coordinate/layer/boundary cases match; %u unretained addresses rejected\n",checked,rejected);
+    printf("Original raw material and projectile map: %u signed-coordinate/layer/boundary cases match; %u unretained addresses rejected\n",checked,rejected);
     ck(uc_close(u));return 0;
 }

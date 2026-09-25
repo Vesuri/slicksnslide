@@ -27,6 +27,12 @@ driver-phase, surface-effect, dirty-region and planar-writer regressions pass.
 The stale test-only entrant-count helper in `verify-drive-physics` was restored;
 no removed production helper was reintroduced.
 
+Independent instruction-level follow-ups pass 864 damaged-engine smoke cases
+(thresholds, signed counter wrap, RNG, particle position/velocity/colour,
+lifetime and layer masking, including a full native pool), and 3,438 raw
+material-value comparisons in addition to the projectile predicate checks.
+The latter reject 1,008 addresses beyond retained original map allocations.
+
 Both the vehicle-0 and vehicle-5 exhausted-fuel approaches remain stranded
 in matching original-code/native trajectories. This is not evidence for
 adding an Amiga-specific escape heuristic. The comparison is an execution
