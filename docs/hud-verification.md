@@ -51,7 +51,7 @@ FSUAE_RUN=.run/native-results DEBUG_PORT=25186 SLICKS_NATURAL_RESULTS=damage ami
 
 The composed weapon tests supply inventory/selection values to compare the
 original painter. They do **not** prove gameplay-driven firing, cycling or
-depletion. The production game still lacks those weapon producers, which
-are covered by the first remaining-game-completion item. The former fourth
+depletion. Those producers are now integrated (see weapon-verification.md),
+but their full HUD transition gates remain in the first game-completion item. The former fourth
 item's remaining real-weapon transition check has been merged into that item;
 these painter tests alone do not complete it.

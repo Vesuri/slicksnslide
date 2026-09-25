@@ -1,0 +1,33 @@
+#ifndef SLICKS_WEAPON_RUNTIME_H
+#define SLICKS_WEAPON_RUNTIME_H
+#include "weapon_fire.h"
+#include "actor_slots.h"
+
+#define SLICKS_WEAPON_ASSET_COUNT 19
+#define SLICKS_WEAPON_ASSET_PIXELS 64
+struct SlicksWeaponAsset {
+    unsigned char pixels[SLICKS_WEAPON_ASSET_PIXELS];
+    unsigned char width,height,ready;
+};
+struct SlicksWeaponActor {
+    struct SlicksActorMotion motion;
+    unsigned char asset,kind,priority,occlusion,colour;
+    short old_x,old_y;
+    unsigned char old_width,old_height,saved;
+    unsigned char saved_under[SLICKS_WEAPON_ASSET_PIXELS];
+};
+struct SlicksWeaponRuntime {
+    struct SlicksWeaponRules rules;
+    struct SlicksWeaponControl controls[4];
+    struct SlicksWeaponProjectile projectiles[4][30];
+    struct SlicksActorSlots slots;
+    struct SlicksWeaponActor actors[SLICKS_ACTOR_CAPACITY];
+    struct SlicksWeaponAsset assets[SLICKS_WEAPON_ASSET_COUNT];
+    /* The dense 24-byte fast trail ABI is unchanged. These maps preserve
+     * shared allocation and actor-ID drawing order when holes are reused. */
+    short trail_index[SLICKS_ACTOR_CAPACITY];
+    unsigned char trail_handle[256];
+    unsigned char ready,bullet_colour,impact_colour;
+    unsigned long shots,hits,explosions;
+};
+#endif

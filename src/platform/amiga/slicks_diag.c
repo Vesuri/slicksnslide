@@ -1395,6 +1395,11 @@ static const struct SlicksConfiguration *driver_device_configuration;
 static void poll_driver_devices(struct SlicksRaceRuntime *race,unsigned short ticks)
 {
     const struct SlicksConfiguration *c=driver_device_configuration;
+    /* Shop regression: press/release the configured human fire/brake key.
+     * Inventory still comes solely from the ordinary buy/sell menu actions. */
+    if(shop_test && (race->frame_count==150 || race->frame_count==250))
+        slicks_driver_key(race->driver_controls,c->keys,g_slicks_setup_session.players.order,
+            (unsigned char)(c->keys[1]|(race->frame_count==250?128:0)));
     for(unsigned driver=0;driver<4;++driver) {
         struct SlicksDeviceSample sample={0,0,0};
         if(race->participation[driver]<0 && c->player_input[driver])
@@ -1631,6 +1636,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     slicks_race_set_service_options(race,options.fuel,options.damage);
     race->car_collisions_disabled=slicks_car_collisions_disabled(options.car_collisions);
     race->weapons_enabled=(unsigned char)(options.weapons_enabled!=0);
+    race->weapons.rules=slicks_original_weapon_rules;
     for(unsigned item=0;item<13;++item) race->weapon_capacity[item]=slicks_original_item_capacity[item];
     if(session && slicks_race_set_participation(race,session->players.participation)) {
         g_slicks_diag_race_error=7;
@@ -1741,6 +1747,19 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
                 goto cleanup;
             }
         }
+    }
+    if(race->weapons_enabled) {
+        static const char *const assets[SLICKS_WEAPON_ASSET_COUNT]={
+            "miina.ase","aikabomb.ase","flam_raj.@I",
+            "ohjus.1","ohjus.2","ohjus.3","ohjus.4","ohjus.5","ohjus.6","ohjus.7","ohjus.8",
+            "savu.1","savu.2","savu.3","rajahdys.1","rajahdys.2","rajahdys.3","rajahdys.4","flash.@I"};
+        for(unsigned asset=0;asset<SLICKS_WEAPON_ASSET_COUNT;++asset) {
+            long size=slicks_resource_archive_load(&archive,assets[asset],font_resource,2048UL);
+            if(size<=0 || slicks_race_add_weapon_asset(race,asset,font_resource,(unsigned long)size)) {
+                g_slicks_diag_race_error=6;goto cleanup;
+            }
+        }
+        race->weapons.ready=1;
     }
     race_checkpoint(12);
     for (car = 0; car < SLICKS_START_LIGHT_COUNT; ++car) {

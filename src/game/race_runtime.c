@@ -9,6 +9,8 @@
 #include "race_timing.h"
 #include "finish_rank.h"
 #include "../ui/arcade_hud.h"
+#include "../ui/menu_icon.h"
+#include "moving_probe.h"
 
 #if defined(__m68k__)
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
@@ -53,6 +55,7 @@ static const signed char direction_y[16] = {
 };
 
 static long absolute_long(long value);
+static void weapon_ai_request(struct SlicksRaceRuntime *race,unsigned driver);
 
 /* Original 1991f is stateful: query at its race consumers, not eagerly when
  * advancing the clock. The lap increment preceding a query can affect it. */
@@ -910,9 +913,7 @@ static unsigned char ai_controls(struct SlicksRaceRuntime *race,
                                  unsigned short ticks)
 {
     struct SlicksRaceCar *car = &race->cars[car_index];
-    /* Current race setup has weapons disabled (DOS DS:3020 == 0).
-     * f09d clears the weapon request without calling ebbb in this mode.
-     * Its weapon-indexed look-ahead must not suppress ordinary braking. */
+    weapon_ai_request(race,car_index);
     ai_watchdog(car, ticks);
     ai_contact_transition(car);
     /* f1de..f7dd uses sequential state checks, not mutually exclusive
@@ -1452,17 +1453,30 @@ static void advance_lap_checkpoints(struct SlicksRaceRuntime *race,
     }
 }
 
+#include "weapon_actors.inc"
+
 static void restore_trail_particles(struct SlicksRaceRuntime *race,
                                     unsigned short bucket)
 {
     unsigned short at;
     if (slicks_race_disable_particles)
         return;
-    at = race->trail_priority_counts[bucket];
+    at = race->weapons.ready?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
     while (at) {
+        unsigned index;
+        --at;
+        if(race->weapons.ready) {
+            int trail=race->weapons.trail_index[at];
+            if(trail<0) {
+                if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
+                    restore_weapon_actor(race,at);
+                continue;
+            }
+            index=(unsigned)trail;
+            if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
+        } else index=race->trail_priority_indices[bucket][at];
         struct SlicksTrailParticle *particle =
-            &race->trail_particles[
-                race->trail_priority_indices[bucket][--at]];
+            &race->trail_particles[index];
         if (particle->saved_valid & 1) {
             unsigned long pixel_at =
                 mult320[(unsigned short)particle->old_y] +
@@ -1491,11 +1505,25 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
     if (race->dirty_pixel_count + race->trail_particle_count >=
         SLICKS_DIRTY_PIXEL_MAX)
         commit_expiring_trails(race);
+    if(race->weapons.ready) {
+        unsigned out=0;
+        for(unsigned i=0;i<race->trail_particle_count;++i) {
+            unsigned h=race->weapons.trail_handle[i];
+            race->weapons.trail_index[h]=-1;
+            if(race->trail_particles[i].state<0) race->weapons.slots.state[h]=0;
+            else race->weapons.trail_handle[out++]=(unsigned char)h;
+        }
+    }
     race->trail_particle_count = slicks_advance_particles(
         race->trail_particles, race->trail_particle_count,
         race->trail_priority_indices, race->trail_priority_counts,
         race->dirty_pixels, &race->dirty_pixel_count, race->chunky,
         race->actor_page);
+    if(race->weapons.ready) for(unsigned i=0;i<race->trail_particle_count;++i) {
+        unsigned h=race->weapons.trail_handle[i];
+        race->weapons.trail_index[h]=(short)i;
+        race->weapons.slots.state[h]=race->trail_particles[i].state;
+    }
 }
 
 /* DOS state +1a=5 expires to -5: 3000:3e36 skips saved-under restoration,
@@ -1586,6 +1614,13 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
         return;
     if (race->trail_particle_count >= SLICKS_TRAIL_PARTICLE_MAX)
         return;
+    if(race->weapons.ready) {
+        short h=slicks_actor_allocate(&race->weapons.slots,1);
+        if(!h) return;
+        race->weapons.trail_handle[race->trail_particle_count]=(unsigned char)h;
+        race->weapons.trail_index[h]=(short)race->trail_particle_count;
+        race->weapons.actors[h]=(struct SlicksWeaponActor){0};
+    }
     particle_index = race->trail_particle_count++;
     particle = &race->trail_particles[particle_index];
     particle->x = (long)x * 64L;
@@ -1749,9 +1784,20 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
     unsigned short at;
     if (slicks_race_disable_particles)
         return;
-    for (at = 0; at < race->trail_priority_counts[bucket]; ++at) {
-        struct SlicksTrailParticle *particle = &race->trail_particles[
-            race->trail_priority_indices[bucket][at]];
+    unsigned count=race->weapons.ready?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
+    for (at = 0; at < count; ++at) {
+        unsigned index;
+        if(race->weapons.ready) {
+            int trail=race->weapons.trail_index[at];
+            if(trail<0) {
+                if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
+                    draw_weapon_actor(race,at);
+                continue;
+            }
+            index=(unsigned)trail;
+            if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
+        } else index=race->trail_priority_indices[bucket][at];
+        struct SlicksTrailParticle *particle = &race->trail_particles[index];
         /* 3000:39af/39ca use SAR on signed 16-bit coordinates. Negative
          * fractions round down, not toward zero into the visible border. */
         short x = particle->x < 0
@@ -1847,6 +1893,8 @@ static void emit_contact_particles(struct SlicksRaceRuntime *race,
             race->trail_particles[first].occlusion_limit = car->actor_layer*15;
     }
 }
+
+#include "weapon_simulation.inc"
 
 void slicks_race_set_timer(struct SlicksRaceRuntime *race,unsigned short argument)
 {
@@ -2108,9 +2156,24 @@ static unsigned char prepare_car_motion(struct SlicksRaceRuntime *race,
     if (controls & SLICKS_CONTROL_ACCELERATE) {
         apply_throttle(car, timestep);
     }
-    if (controls & SLICKS_CONTROL_BRAKE) {
+    unsigned char weapon_gate=(unsigned char)(!car->special_drive_state &&
+        !slicks_finish_controls_suppressed(race->game_clock_ticks,race->finish_deadline,car->finished?1:-1));
+    if(weapon_gate && race->weapons.ready)
+        slicks_weapon_human_request(&race->weapons.controls[car_index],race->weapons_enabled,
+            driver_role(race,car_index),race->selected_weapon[car_index],controls);
+    if ((controls & SLICKS_CONTROL_BRAKE) &&
+        (!race->weapons.ready || !race->weapons.controls[car_index].request)) {
         apply_brake(race, car, timestep);
     }
+    if(weapon_gate && race->weapons.ready) {
+        weapon_fire_driver(race,car_index,&controls);
+        if(!(controls&SLICKS_CONTROL_BRAKE)) {
+            race->driver_controls[car_index]&=~SLICKS_CONTROL_BRAKE;
+            car->ai_control_latch&=~SLICKS_CONTROL_BRAKE;
+            if(!car_index) race->controls&=~SLICKS_CONTROL_BRAKE;
+        }
+    }
+    active_drive=controls&(SLICKS_CONTROL_ACCELERATE|SLICKS_CONTROL_BRAKE);
     car->speed = (short)(car->speed_fixed / 100L);
 
     /* 2000:0c79..0d54 performs these divisions separately with signed IDIV;
@@ -2187,6 +2250,7 @@ static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
      * 21a7..3d94 tail loop. Pair collisions must see all new positions. */
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if(driver_role(race,car)) controls[car] = prepare_car_motion(race, car, ticks);
+    update_weapon_projectiles(race,ticks);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if(driver_role(race,car)) finish_car_update(race, car, ticks, controls[car]);
 }
@@ -2381,9 +2445,10 @@ int slicks_race_status_rects(const struct SlicksRaceRuntime *race,
 void slicks_race_set_status_palette(struct SlicksRaceRuntime *race,
                                     const unsigned char palette[768])
 {
-    static const unsigned char rgb[11][3]={{15,15,25},{50,50,15},{60,20,5},{55,55,10},
-        {50,50,70},{60,60,35},{55,55,65},{33,33,70},{4,4,4},{40,40,40},{60,60,60}};
-    for (unsigned slot=0;slot<11;++slot) {
+    static const unsigned char rgb[13][3]={{15,15,25},{50,50,15},{60,20,5},{55,55,10},
+        {50,50,70},{60,60,35},{55,55,65},{33,33,70},{4,4,4},{40,40,40},{60,60,60},
+        {64,64,50},{45,45,45}};
+    for (unsigned slot=0;slot<13;++slot) {
         unsigned best=300, selected=1;
         for (unsigned entry=1;entry<256;++entry) {
             unsigned distance=0;
@@ -2397,7 +2462,9 @@ void slicks_race_set_status_palette(struct SlicksRaceRuntime *race,
         else if (slot==3) race->collision_colour=(unsigned char)selected;
         else if(slot<7) race->hud_colours[slot-4]=(unsigned char)selected;
         else if(slot==7) race->weapon_hud_colour=(unsigned char)selected;
-        else race->arcade_colours[slot-8]=(unsigned char)selected;
+        else if(slot<11) race->arcade_colours[slot-8]=(unsigned char)selected;
+        else if(slot==11) race->weapons.bullet_colour=(unsigned char)selected;
+        else race->weapons.impact_colour=(unsigned char)selected;
     }
     race->arcade_hud_valid=0;
 }
@@ -2911,6 +2978,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->results_drawn=0;
     race->finished_count=0;
     race->actor_page = 0; /* First gameplay PRE after the DOS setup toggle. */
+    if(race->weapons.ready) initialize_weapon_actors(race);
     race->pit_repair_ticks = 0;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         race->shadows[car].state = -3;
@@ -3072,6 +3140,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
             if (race->countdown_stage > 5)
                 race->racing = 1;
         }
+        advance_weapon_actors(race);
         race->actor_page ^= 1;
         ++race->frame_count;
         return;
@@ -3093,6 +3162,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     /* DOS 2000:3f51 calls the actor update after all four car tails have
      * emitted their effects. New points move/decrement on this same pass. */
     advance_trail_particles(race);
+    advance_weapon_actors(race);
     if (profile)
         race->profile_marker(2);
     draw_timers(race, logical);

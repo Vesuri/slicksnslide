@@ -55,8 +55,11 @@ int main(void)
     uc_hook hook;
     check(uc_hook_add(u,&hook,UC_HOOK_INSN,port,0,1,0,UC_X86_INS_OUT));
     check(uc_hook_add(u,&hook,UC_HOOK_MEM_WRITE,pixel,0,0xa0000,0xaffff));
-    const char *names[]={"ohj_key.@I","ohj_joy.@I","ohj_lptc.@I"};
-    for(unsigned i=0;i<3;++i) {
+    const char *names[]={"ohj_key.@I","ohj_joy.@I","ohj_lptc.@I",
+        "miina.ase","aikabomb.ase","flam_raj.@I",
+        "ohjus.1","ohjus.2","ohjus.3","ohjus.4","ohjus.5","ohjus.6","ohjus.7","ohjus.8",
+        "savu.1","savu.2","savu.3","rajahdys.1","rajahdys.2","rajahdys.3","rajahdys.4","flash.@I"};
+    for(unsigned i=0;i<sizeof names/sizeof names[0];++i) {
         long n=host_archive_load("ref/SLICKS.000",names[i],source,sizeof source); if(n<0) return 2;
         length=(unsigned)n; verify_indexed(u,names[i]);
     }
@@ -74,6 +77,6 @@ int main(void)
         verify_indexed(u,"synthetic");
     }
     check(uc_close(u));
-    puts("Indexed controller icons: all three resources and four format variants match original loader pixels, padding and dimensions; 28 transparent full-frame draws match across all alignments; every truncation rejected atomically");
+    puts("Indexed controller/weapon assets: 22 resources and four format variants match original loader pixels, padding and dimensions; 104 transparent full-frame draws match across all alignments; every truncation rejected atomically");
     return 0;
 }

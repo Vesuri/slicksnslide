@@ -651,6 +651,24 @@ int slicks_build_track_scene(unsigned char *logical,
         dat,dat_size,track,track_size,arena,arena_size,navigation,1,0);
 }
 
+int slicks_track_projectile_sample(const unsigned char *lower,const unsigned char *upper,
+    short x,short y,signed char layer,short boundary_level)
+{
+    unsigned short raw=(unsigned short)((unsigned short)y*320U+(unsigned short)x);
+    /* Original 1bd30 clears FA00 raw bytes and FE80 packed bytes before
+     * b283's material compositor, whose producers crop at row 185. */
+    if(raw>=64000 || !lower || (layer && !upper)) return -1;
+    unsigned material=raw<60800?lower[raw]:0;
+    if(layer) {
+        unsigned short packed=(unsigned short)((unsigned short)y*80U+x/4);
+        if(packed>=65152) return -1;
+        unsigned at=(unsigned)packed*4U+((unsigned short)x&3U);
+        material=(raw<60800?(upper[raw]&7U):0U)+(at<60800?(upper[at]&24U):0U);
+    }
+    return material==2 || (material>=22 && material<=26 &&
+        (short)(material-22)<=(short)(boundary_level-1));
+}
+
 int slicks_track_car_sample(const unsigned char *lower, const unsigned char *upper,
                             short x, short y, unsigned char layer,
                             short special_state, unsigned char sampling_enabled,

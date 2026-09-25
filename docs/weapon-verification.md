@@ -1,5 +1,62 @@
 # Weapon translation evidence
 
+## Native race integration
+
+The production race now invokes human fire/cycle requests and enabled-AI
+prediction, the verified firing transaction, and projectile updates between
+the all-driver motion and tail passes. Mine/bomb/homing/flame resources,
+muzzle flashes, explosions and smoke are loaded from the original archive.
+All new pixels use the authoritative chunky surface and producer dirty bounds.
+Weapon/effect actors and dense trail particles share the 200-slot allocator;
+the dense 24-byte trail ABI remains unchanged, with handle sidecars maintaining
+lowest-free-slot drawing order. The weapons-disabled fast path is preserved.
+
+`make verify-weapon-simulation` compares 4,096 executions of the complete
+original `21585..221a7` loop. The original moving/car probes, actor configuration,
+explosion helper, radial damage, damage helper, RNG and homing arithmetic run
+unchanged. Allocation/resource construction, an empty material-map boundary
+and the audio device are substituted. All projectile fields, generated actor
+motion/lifetime/frame/mask, car velocity/damage, RNG and sound events match,
+including shared-capacity exhaustion. This caught and corrected the distinction
+between replacing a homing actor's image pointer and changing its animation
+frame, and the raw direction convention used by homing.
+
+`make verify-indexed-menu-icon` now also compares all 19 weapon/effect assets
+with the original resource loader and transparent draw routine. Together with
+controller icons and synthetic format cases, 104 complete framebuffer draws
+match; truncated streams remain rejected atomically.
+
+### Off-track map boundary
+
+The live firing run exposed rays overshooting row 190 before the original
+caller's old-position bounds test retires them. `verify-projectile-map`
+executes original `1bd30..1bd5a` against poisoned memory and proves the exact
+64,000-byte raw / 65,152-byte packed map clears. The new sampler matches 3,438
+original `1c5a0` cases, including the cleared tail, signed x/4 and independently
+wrapped raw/packed addresses. It rejects 1,008 addresses beyond those known
+regions. Production deliberately treats those rejected projectile samples as
+empty space: the DOS equivalents read unrelated heap bytes, which are not
+portable track data. This is an explicit safe boundary policy, not a claim of
+byte-identical behaviour for undefined DOS heap contents. Car probes retain
+their existing stricter contract.
+
+### Target regressions
+
+Muted A1200/68020, 2 MiB Chip/no Fast, `NATURALW`, port 25204:
+ordinary shop input buys the gun, buys ammunition and sells one unit; then
+the configured fire key is pressed/released through the keyboard adapter.
+At update 600, four real shots have consumed inventory 5 down to the original
+count-one sentinel, selection is -1, and no collision error occurred.
+`amiga/diag_weapon_race.gdb` asserts this path. The computer drivers bought no
+weapons in this deterministic visit, so this run does not claim live AI firing.
+
+The original-font/results gate also passes on this build (port 25205): four
+natural finishers at update 556, records, standings/statistics, native save
+and hardware restoration mask 0x1f. The composed original HUD, dirty-region,
+weapon actions/fire, moving probe and actor-slot/motion suites pass.
+Remaining end-to-end checks stay in `open-work.md`; these results alone do
+not close item 1.
+
 ## Full firing transaction
 
 `make verify-weapon-fire` executes original `206a5..20c6f` and compares

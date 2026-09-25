@@ -2,6 +2,7 @@
 #define SLICKS_RACE_RUNTIME_H
 
 #include "track_scene.h"
+#include "weapon_runtime.h"
 
 #define SLICKS_RACE_CAR_COUNT 4
 #define SLICKS_VEHICLE_COUNT 10
@@ -249,6 +250,7 @@ struct SlicksRaceRuntime {
     short weapon_inventory[4][13];
     signed char weapon_capacity[13], selected_weapon[4];
     unsigned char weapons_enabled, weapon_hud_colour;
+    struct SlicksWeaponRuntime weapons;
     unsigned char setup_inventory_ready;
     unsigned char hud_status_options[4];
     signed char hud_weapon_selection[4];
@@ -368,6 +370,8 @@ int slicks_race_add_hud_background(struct SlicksRaceRuntime *race,
                                   unsigned long resource_size);
 int slicks_race_add_weapon_icon(struct SlicksRaceRuntime *race,
     unsigned short weapon, const unsigned char *resource, unsigned long size);
+int slicks_race_add_weapon_asset(struct SlicksRaceRuntime *race,
+    unsigned asset,const unsigned char *resource,unsigned long size);
 int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
                                 unsigned short light,
                                 const unsigned char *resource,

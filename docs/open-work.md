@@ -4,8 +4,8 @@ Updated 2026-09-25. Actionable open and deferred work only.
 
 ## Remaining game completion
 
-1. Integrate original weapon firing, cycling/depletion, weapons-enabled AI,
-   projectile collisions/effects and actor allocation. Complete native shop
+1. Complete integrated weapon/actor rendering and allocation verification,
+   weapons-enabled AI and all-weapon gameplay gates. Complete native shop
    screen comparison, end-game/retry and championship continuation gates.
    Verify gameplay-driven selected-icon/ammunition-bar updates,
    depletion/empty selection, inactive/finished-driver gating and preservation
