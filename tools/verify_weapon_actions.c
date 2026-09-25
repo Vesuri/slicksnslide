@@ -5,6 +5,7 @@
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
 #include "../src/game/weapon_actions.h"
+#include "../src/game/weapon_projectile.h"
 static void ck(uc_err e) { if(e) { fprintf(stderr,"%s\n",uc_strerror(e)); exit(1); } }
 static void wr(uc_engine *u,unsigned a,unsigned v) { unsigned char b[2]={v,v>>8}; ck(uc_mem_write(u,a,b,2)); }
 static unsigned rd(uc_engine *u,unsigned a) { unsigned char b[2]; ck(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
@@ -139,5 +140,64 @@ int main(void)
         ++cases;
     }
     printf("Original weapon AI: %u counter/heading/range/role/clock/wrapping-coordinate cases pass\n",cases);
+    unsigned nearest_cases=0,init_cases=0;
+    for(unsigned trial=0;trial<8192;++trial) {
+        unsigned driver=trial&3,slot=1+(trial%29); int x[4],y[4]; signed char role[4];
+        regs(u,driver); wr(u,0x8e004,driver);
+        for(unsigned i=0;i<4;++i) {
+            random=random*1664525U+1013904223U;
+            x[i]=(trial&16)?(int)random:(int)(random%32000);
+            random=random*1664525U+1013904223U;
+            y[i]=(trial&16)?(int)random:(int)(random%20000);
+            role[i]=(signed char)((random%3)-1);
+            if(trial&32) { x[i]=16000; y[i]=10000; }
+            wr(u,0x3cbf0+0x538c+4*i,(unsigned)x[i]); wr(u,0x3cbf0+0x538e +4*i,(unsigned)x[i]>>16);
+            wr(u,0x3cbf0+0x539c+4*i,(unsigned)y[i]); wr(u,0x3cbf0+0x539e +4*i,(unsigned)y[i]>>16);
+            byte(u,0x3cbf0+0x4bc6+i,role[i]);
+        }
+        unsigned nearest=slicks_weapon_nearest(driver,x,y,role);
+        ck(uc_emu_start(u,0x1ea80,0x1eb48,0,10000)); uint16_t ax; ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if((ax&255)!=nearest) { fprintf(stderr,"nearest trial %u: %u/%u\n",trial,ax&255,nearest); return 1; }
+        ++nearest_cases;
+        regs(u,driver); wr(u,0x8f000-0x3c,slot);
+        signed char type=(trial/4)%8,layer=(trial/32)%3;
+        short heading=((trial/96)%16)*1200;
+        short lifetime=(short)rd(u,0x3cbf0+0x156+type*2);
+        signed char speed=(signed char)rb(u,0x3cbf0+0x16e +type),spread=(signed char)rb(u,0x3cbf0+0x14e +type);
+        unsigned long seed=random;
+        wr(u,0x3cbf0+0x2aaa,random); wr(u,0x3cbf0+0x2aac,random>>16);
+        byte(u,0x3cbf0+0x2fac+driver,type); byte(u,0x3cbf0+0x5388+driver,layer);
+        wr(u,0x3cbf0+0x681c+2*driver,heading);
+        struct SlicksWeaponProjectile p={0};
+        slicks_weapon_projectile_init(&p,driver,x,y,role,heading,type,layer,lifetime,speed,spread,dirx,diry,&seed);
+        ck(uc_emu_start(u,0x20951,0x20b88,0,100000));
+        unsigned offset=60*driver+2*slot;
+        if(p.x!=(short)rd(u,0x8f000 - 0x25e + offset) || p.y!=(short)rd(u,0x8f000 - 0x34e + offset) ||
+           p.vx!=(short)rd(u,0x8f000 - 0x43e + offset) || p.vy!=(short)rd(u,0x8f000 - 0x52e + offset) ||
+           p.lifetime!=(short)rd(u,0x8f000 - 0x70e + offset) ||
+           p.type!=(signed char)rb(u,0x8f000-0x5a6+30*driver+slot) ||
+           p.layer!=(signed char)rb(u,0x8f000 - 0x61e + 30*driver+slot) ||
+           seed!=(rd(u,0x3cbf0+0x2aaa)|((unsigned long)rd(u,0x3cbf0+0x2aac)<<16))) {
+            fprintf(stderr,"projectile init trial %u type=%d native velocity=%d,%d original=%d,%d\n",trial,type,p.vx,p.vy,(short)rd(u,0x8f000 - 0x43e + offset),(short)rd(u,0x8f000 - 0x52e + offset)); return 1;
+        }
+        ++init_cases;
+    }
+    printf("Original nearest target: %u role/tie/wrapping-distance cases pass\n",nearest_cases);
+    printf("Original projectile initialization: %u weapon/heading/position/layer/RNG cases pass\n",init_cases);
+    ck(uc_hook_add(u,&gate,UC_HOOK_CODE,stop,0,0x20ba5,0x20ba5));
+    for(unsigned trial=0;trial<1024;++trial) {
+        unsigned driver=trial&3; regs(u,driver);
+        struct SlicksWeaponProjectile pool[30]={{0}};
+        for(unsigned i=0;i<30;++i) {
+            random=random*1664525U+1013904223U;
+            pool[i].handle=(trial&16)?(short)(random%3-1):1;
+            if(i==trial%30) pool[i].handle=0;
+            wr(u,0x8f000 - 0x16e + 60*driver+2*i,pool[i].handle);
+        }
+        ck(uc_emu_start(u,0x20855,0x20890,0,10000));
+        if(rd(u,0x8f000-0x3c)!=slicks_weapon_free_slot(pool)) return 1;
+    }
+    ck(uc_hook_del(u,gate));
+    puts("Original projectile free-slot search: 1024 mixed/full/reserved-slot cases pass");
     ck(uc_close(u)); return 0;
 }

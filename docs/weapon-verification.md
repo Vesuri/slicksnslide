@@ -28,3 +28,19 @@ Original human controls use brake to fire, and the fifth control or simultaneous
 left/right to cycle once per press. AI probes every twelfth call, returns a
 cycle request for empty ammunition, and throttles shots using game-clock parity
 (different masks for human and computer targets). No random draw is involved.
+
+## Projectile creation core
+
+The same oracle compares `weapon_projectile.h` with original instructions:
+
+- 8,192 nearest-target cases (1ea80..1eb48), including equal positions,
+  inactive drivers and signed/wrapping distance calculations.
+- 8,192 initialization cases (20951..20b88): all weapons/headings, positions,
+  layers, lifetime and exact shared random-state consumption. Homing uses
+  heading/target instead of velocity and consumes no random draws; ordinary
+  shots consume two draws even at zero spread.
+- 1,024 free-slot cases (20855..20890): last nonpositive handle wins, with
+  slot zero reserved. This is distinct from shared actor allocation.
+
+These helpers remain unconnected to gameplay pending the original shared
+actor, projectile collision/effect and firing-path integration.
