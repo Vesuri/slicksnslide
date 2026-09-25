@@ -1,0 +1,59 @@
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -27,6 +27,7 @@
+ #include <tuple>
+ #include <unordered_set>
+ #include <vector>
++#include "pic.h"
+ 
+ #include "cpu.h"
+ #include "lazyflags.h"
+@@ -908,6 +909,48 @@
+ 	}
+ 
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	/* Opt-in listening fixture only: one original engine, three fixed input
++	 * speeds, original allocator/mixer/DSP still execute normally. */
++	if (std::getenv("SLICKS_PITCH_PROBE")) {
++		static bool engine_started = false, clock_started = false;
++		static Bitu pitch_start = 0;
++		static unsigned last_stage = 99;
++		const auto stack = SegPhys(ss) + reg_sp;
++		if (offset == 0x2979b) {
++			if (!engine_started && mem_readw(stack + 6) == 1 &&
++			    mem_readw(stack + 8) == 100) {
++				mem_writew(stack + 4, mem_readb(SegPhys(ds) + 0x4c4a + 17));
++				const auto data = SegPhys(ds);
++				const auto table = (static_cast<PhysPt>(mem_readw(data + 0x1860)) << 4) + mem_readw(data + 0x185e);
++				const auto slot = table + 4u * mem_readw(stack + 4);
++				const auto sample = (static_cast<PhysPt>(mem_readw(slot + 2)) << 4) + mem_readw(slot);
++				const unsigned bytes = mem_readw(sample);
++				LOG_MSG("SLICKS_PITCH_SAMPLE handle=%u bytes=%u address=%x",mem_readw(stack + 4),bytes,(unsigned)sample);
++				if (auto *out = fopen("slicks-pitch-sample.raw", "wb")) {
++					for(unsigned i=0;i<bytes;++i) fputc(mem_readb(sample+10+i),out);
++					fclose(out);
++				}
++				engine_started = true;
++			} else {
++				/* Zero sample is rejected by the original allocator. */
++				mem_writew(stack + 4, 0);
++			}
++		}
++		if (offset == 0x294b8 && engine_started && mem_readb(stack + 4)) {
++			if (!clock_started) { pitch_start = PIC_Ticks; clock_started = true; }
++			unsigned stage = (unsigned)((PIC_Ticks - pitch_start) / 5000);
++			if (stage > 2) stage = 2;
++			const unsigned speeds[] = {0, 500, 1000};
++			const unsigned frequency = 2200 + 7 * speeds[stage];
++			mem_writew(stack + 6, frequency);
++			if (stage != last_stage) {
++				LOG_MSG("SLICKS_PITCH_PROBE tick=%u stage=%u speed=%u frequency=%u voice=%u mixer_rate=%u",
++				        (unsigned)PIC_Ticks, stage, speeds[stage], frequency,
++				        mem_readb(stack + 4), mem_readw(SegPhys(ds) + 0x17be));
++				last_stage = stage;
++			}
++		}
++	}
+ 	if ((offset == 0x237e7 || offset == 0x23f30) &&
+ 	    std::getenv("SLICKS_TRACE_PAGES"))
+ 		LOG_MSG("SLICKS_ACTOR_PAGE stage=%s frame=%u page=%u ds=%04x ticks=%u",

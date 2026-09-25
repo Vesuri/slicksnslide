@@ -1,5 +1,45 @@
 # Audio capture and listening evidence
 
+## Controlled pitch probe and sample-bank correction
+
+The opt-in `AUDIOPITCH` native diagnostic plays one vehicle-0 engine through
+the production loader/adapter/VBI at measured speeds 0, 500 and 1,000 for
+250 PAL vertical blanks each: requested sample rates 2,200, 5,700, 9,200 Hz.
+`SLICKS_AUDIO_PITCH_TEST=1` selects it in the debug launcher.
+`diag_audio_pitch_capture.gdb` observes restoration only, not each frame.
+The corrected 2 MiB/no-Fast A1200 run returned restore=31, VBI spills=0,
+and final requested frequency/Paula period 9,200/385.
+
+The local DOSBox-X patch `dosbox-x-slicks-pitch-probe.patch` is an explicitly
+modified-input listening fixture, enabled only by `SLICKS_PITCH_PROBE=1`.
+It admits one original engine allocation, substitutes original engine ID 17,
+and rejects other sample allocations through the original invalid-sample
+path. It substitutes the same three frequencies at the original driver's
+input, five emulated seconds apart; the original mixer and emulated DSP
+perform playback. It does not synthesize a PC recording on the host.
+The trace reports voice 1, mixer rate 15,000, and all three frequencies.
+
+This investigation exposed the skipped RIFF/WAVE entry described in
+`audio-channel-plan.md`. The live PC mixer sample has 2,050 bytes and its
+waveform correlates 0.99964 with the correct unsigned-to-signed archive
+source (amplitude differs because of original sample gain/quantization).
+The old Amiga slot contained a different 2,700-byte source.
+
+Delivered local-only clips after the ID fix, three seconds at each rate:
+
+- `tmp/audio-pitch/pc-fixed-pitches.wav`: intervals 20..23, 25..28, 30..33
+  from the second controlled DOS capture, `pc/capture/slicks_001.wav`.
+- `tmp/audio-pitch/amiga-fixed-pitches.wav`: intervals 5.5..8.5, 10.5..13.5,
+  15.5..18.5 from `amiga-correct-sample.raw` (44,100 Hz S16LE stereo).
+- No normalization, pitch shifting or resampling was applied to these clips.
+  The dominant spectral peaks are respectively about 33/87/140 Hz on both
+  platforms. These are audible spectral components, not sample-clock rates.
+- Loop autocorrelation (`tools/analyze_audio_pitch.py`) is strong on the PC
+  recording (over 0.996). Amiga file-backend output fails the tool's 0.90
+  confidence threshold, so its precise loop-rate estimates are **not** used
+  as passing evidence. Matching spectrum peaks do not remove that limitation.
+- User listening feedback on the corrected controlled pair is pending.
+
 ## 2026-09-25: first race comparison
 
 Actual emulator output, not reconstructed PCM or microphone/system capture:
