@@ -11,6 +11,17 @@ GDB="${GDB:-m68k-amiga-elf-gdb}"
 # Opt in only when audible output is needed for a sound investigation.
 AUDIO_ARGS=(--audio_driver=dummy)
 if [ "${FSUAE_SOUND:-0}" = 1 ]; then AUDIO_ARGS=(); fi
+# Installed FS-UAE uses SDL2. Record its actual emulated Paula output through
+# SDL's disk backend, never the host speakers. SDL3 uses different variables.
+if [ -n "${SLICKS_AUDIO_CAPTURE_FILE:-}" ]; then
+  case "$SLICKS_AUDIO_CAPTURE_FILE" in /*) ;; *)
+    echo 'SLICKS_AUDIO_CAPTURE_FILE must be an absolute path' >&2; exit 2;; esac
+  [ ! -e "$SLICKS_AUDIO_CAPTURE_FILE" ] || {
+    echo "Audio capture already exists: $SLICKS_AUDIO_CAPTURE_FILE" >&2; exit 2;
+  }
+  export SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE="$SLICKS_AUDIO_CAPTURE_FILE"
+  AUDIO_ARGS=(--audio_driver=sdl)
+fi
 LUA_ARGS=()
 if [ -n "${SLICKS_DEBUG_LUA:-}" ]; then LUA_ARGS=("--uae_lua=$SLICKS_DEBUG_LUA"); fi
 DEBUG_JOYSTICK=nothing
