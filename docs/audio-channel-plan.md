@@ -45,6 +45,12 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- Expanded the composed original race-completion oracle to begin at
+  2000:2b17, before lap announcements. All 6,480 sequences / 55,296 crossings
+  match the exact sample IDs, flags and priorities, not just winner-call
+  counts. Coverage includes ordinary lap (25/0/18), final lap (8/0/19) and
+  winner (9/2/30), all participation masks, finish orders and six game modes.
+
 - The muted native `LIVEMENU` integration passed `diag_audio_pause.gdb` on
   A1200/2 MiB/no-Fast: thirteen pause/child-dialog checkpoints had no engine,
   music, owners, pending starts, silent reloads or effect timers. Resume
