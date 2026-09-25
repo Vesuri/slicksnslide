@@ -542,7 +542,7 @@ verify-track-menu: build/verify_track_menu
 	build/verify_track_menu
 .PHONY: verify-audio-volume
 .PHONY: verify-amiga-audio-volume
-build/verify_amiga_audio_volume: tools/verify_amiga_audio_volume.c src/platform/amiga/amiga_audio.c src/platform/amiga/amiga_audio.h src/game/audio_volume.h src/game/audio_channels.h src/game/audio_pitch.h | build
+build/verify_amiga_audio_volume: tools/verify_amiga_audio_volume.c src/platform/amiga/amiga_audio.c src/platform/amiga/amiga_audio.h src/game/audio_volume.h src/game/audio_channels.h src/game/audio_pitch.h src/game/audio_sample.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-amiga-audio-volume: build/verify_amiga_audio_volume
 	build/verify_amiga_audio_volume
@@ -551,7 +551,7 @@ build/verify_audio_volume: tools/verify_audio_volume.c tools/verify_configuratio
 verify-audio-volume: build/verify_audio_volume
 	build/verify_audio_volume
 .PHONY: verify-audio-pitch
-build/verify_audio_pitch: tools/verify_audio_pitch.c tools/verify_configuration.c src/game/audio_pitch.h | build
+build/verify_audio_pitch: tools/verify_audio_pitch.c tools/verify_configuration.c src/game/audio_pitch.h src/game/audio_sample.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-audio-pitch: build/verify_audio_pitch
 	build/verify_audio_pitch

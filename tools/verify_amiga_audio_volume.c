@@ -122,8 +122,34 @@ static void verify_extreme_pitches(struct SlicksAmigaAudio *a)
     printf("Paula limits: %u vehicle/speed cases, all three waveform banks, worst representable pitch error %.4f%%; borrowed engine resumes latest bank\n",cases,worst*100);
 }
 
+static void verify_bank_gain(void)
+{
+    unsigned char bank[27*14]; unsigned at=0;
+    struct SlicksAmigaAudio a;
+    for(unsigned i=0;i<27;++i) {
+        unsigned gain=i*9;
+        /* Every second entry inherits the previous entry's explicit gain. */
+        unsigned char header[]={ 't','S',0,0,0,4,0,(unsigned char)gain,0x2b,0x11 };
+        unsigned length=i%2?8:10;
+        if(i%2) {header[6]=0x2b;header[7]=0x11;}
+        memcpy(bank+at,header,length); at+=length;
+        bank[at++]=0;bank[at++]=127;bank[at++]=128;bank[at++]=255;
+    }
+    assert(!slicks_amiga_audio_create(&a,bank,at));
+    for(unsigned i=0;i<27;++i) {
+        unsigned gain=(i&~1U)*9;
+        assert(a.samples[i].data[0]==-(int)(128*gain/255));
+        assert(a.samples[i].data[1]==-(int)(gain/255));
+        assert(a.samples[i].data[2]==0);
+        assert(a.samples[i].data[3]==(int)(127*gain/255));
+    }
+    slicks_amiga_audio_destroy(&a); assert(!allocated_bytes);
+    puts("Sample bank gains: explicit and inherited gains retain signed PCM semantics");
+}
+
 int main(void)
 {
+    verify_bank_gain();
     verify_lifecycle();
     unsigned char bank[131691]; struct SlicksAmigaAudio bank_audio;
     assert(host_archive_load("ref/SLICKS.000","samples.dat",bank,sizeof bank)==sizeof bank);

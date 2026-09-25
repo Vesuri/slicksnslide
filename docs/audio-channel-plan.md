@@ -45,6 +45,17 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- Restored the original sample-header gain. Original 3000:8b53 updates a
+  persistent gain byte; 3000:89e2..89ff converts unsigned PCM and performs
+  signed multiplication/division by 255, truncating toward zero. The new
+  native helper matches all 65,536 input/gain pairs executed on the original
+  x86 instructions. Synthetic bank tests cover explicit and inherited gains.
+  The captured live PC engine's 2,050 bytes match the original source at gain
+  100 exactly. This fixes amplitude, not frequency, and runs only at loading.
+  Driver frequency coverage now includes the captured PC's 15,000 Hz mixer
+  rate (280 cases). See `audio-listening-evidence.md` for accepted controlled
+  pitch listening and the passing extreme-frequency hardware test.
+
 - Matched-pitch listening investigation found the bank has **27** entries:
   26 tS records plus a RIFF/WAVE record at ID 1. The previous scan-to-next-tS
   loader skipped that WAV and shifted every subsequent ID. Original startup

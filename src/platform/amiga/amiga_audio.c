@@ -6,6 +6,7 @@
 #include "amiga_audio.h"
 #include "../../game/audio_volume.h"
 #include "../../game/audio_pitch.h"
+#include "../../game/audio_sample.h"
 
 #ifndef SLICKS_AUDIO_HOST_TEST
 #define CUSTOM_WORD(offset) (*(volatile unsigned short *)(0xdff000UL + (offset)))
@@ -139,6 +140,7 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
 {
     unsigned long at = 0;
     unsigned short block = 0;
+    unsigned char gain=255; /* Original DS:1862 persists across bank entries. */
     while (block < SLICKS_AUDIO_SAMPLE_COUNT && at + 8 <= size) {
         struct SlicksAmigaSample *sample = &audio->samples[block];
         unsigned long bytes,frequency;
@@ -147,6 +149,7 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
         if(source[at]=='t' && source[at+1]=='S') {
             unsigned header=source[at+6]==0?10:8;
             if(size-at<header) return -1;
+            if(header==10) gain=source[at+7];
             bytes=((unsigned long)source[at+3]<<16)|read_be16(source+at+4);
             if(bytes>size-at-header) return -1;
             frequency=read_be16(source+at+header-2);
@@ -167,7 +170,7 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
                 return -1;
             for (i = 0; i < bytes; ++i)
                 sample->data[i] =
-                    (signed char)(pcm[i] ^ 0x80);
+                    slicks_sample_pcm(pcm[i],gain);
             sample->bytes = allocated;
             unsigned long period=(3546895UL+frequency/2U)/frequency;
             sample->period = (unsigned short)(period>65535UL?65535UL:period);

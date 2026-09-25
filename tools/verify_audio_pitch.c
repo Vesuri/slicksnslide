@@ -2,6 +2,26 @@
 #include "verify_configuration.c"
 #undef main
 #include "../src/game/audio_pitch.h"
+#include "../src/game/audio_sample.h"
+
+static void verify_sample_gain(uc_engine *u)
+{
+    for(unsigned gain=0;gain<256;++gain) for(unsigned value=0;value<256;++value) {
+        uint16_t cs=0x3000,ss=0x8000,bp=0xf100,ax=value,dx;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));
+        check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+        check(uc_reg_write(u,UC_X86_REG_AX,&ax));
+        word(u,0x8f112,gain);
+        check(uc_emu_start(u,0x389e2,0x389fc,0,100));
+        check(uc_reg_read(u,UC_X86_REG_DX,&dx));
+        if((unsigned char)dx!=(unsigned char)slicks_sample_pcm(value,gain)) {
+            fprintf(stderr,"Original sample gain mismatch gain=%u PCM=%u\n",gain,value);
+            exit(1);
+        }
+    }
+    puts("Original sample gain: all 65536 PCM/gain combinations pass");
+}
 
 /* Follow the frequency through the original Sound Blaster software-driver
  * wrapper, not just through the game's speed-to-frequency calculation.
@@ -9,7 +29,7 @@
  * audible DOSBox capture or an implementation of a production mixer. */
 static void verify_driver_frequency(uc_engine *u)
 {
-    const unsigned rates[]={11025,22050,44100};
+    const unsigned rates[]={11025,15000,22050,44100};
     const unsigned speeds[]={0,237,500,1000,2000,4000,65535};
     unsigned cases=0;
     for(unsigned vehicle=0;vehicle<10;++vehicle)
@@ -65,6 +85,7 @@ int main(void)
         ++cases;
     }
     verify_driver_frequency(u);
+    verify_sample_gain(u);
     check(uc_close(u));
     printf("Engine pitch: %u original x86 comparisons pass (all vehicles and 16-bit speeds)\n",cases);
     return 0;
