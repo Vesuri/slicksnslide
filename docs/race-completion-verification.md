@@ -43,3 +43,72 @@ state, no forced finishes. Baseline executable is the `9426004` build.
 Old fuel/damage fixtures that require every entrant to reach exactly lap 5
 are not the definition of success: the original winner resets the lap target
 and lapped entrants finish their current lap. The composed oracle covers it.
+
+## Natural return and restoration regression
+
+`amiga/diag_completion_flow.gdb` continues beyond the results checkpoint:
+the diagnostic supplies ordinary Return/Next input, returns to the title,
+supplies Escape, and checks restored hardware status `0x1f`. It rejects race
+errors, status-pixel failures, missing finishes/service activity and a
+14,400-update timeout. No finish flag, car position or timer is debugger-written.
+
+2026-09-25 rebuilt target results:
+
+| Diagnostic / port | Natural result | Return and restoration |
+| --- | --- | --- |
+| `CONFIGDR` / 25161 | BASIC update 3648; clock 6641, deadline 6640; four finishers; repairs 1/42/23/25; refuelling 98/82/98/97 | Title reached; `0x1f` |
+| `FUELR` / 25162 | BASIC update 2921; clock 5318, deadline 5316; four finishers on laps 3/5/4/4; refuelling 96/84/97/98 | Title reached; `0x1f` |
+| `OPTIONSB` / 25163 | BASIC update 1408, clock/deadline 2563/2561; BASICTRK update 1535, clock/deadline 2794/2792; three finishers in each timed race | Next track through intermission, then title; `0x1f` |
+
+The earlier single-track `OPTIONSA` display test (port 25160) also passed its
+timer/LAST/LAP phases and original long grace: clock 2982, deadline 2981,
+three finishers. The PAL-to-PIT accumulator can advance two ticks per update;
+strict deadline expiry does not imply every result occurs at deadline+1.
+
+Reproduce from the repository root after `. amiga/env.sh` and an Amiga build:
+
+```sh
+FSUAE_RUN=.run/completion-damage-v1 DEBUG_PORT=25161 SLICKS_DAMAGE_RACE=2 amiga/debug.sh "" diag_completion_flow.gdb
+FSUAE_RUN=.run/completion-fuel-v1 DEBUG_PORT=25162 SLICKS_FUEL_RACE=2 amiga/debug.sh "" diag_completion_flow.gdb
+FSUAE_RUN=.run/completion-arcade-v1 DEBUG_PORT=25163 SLICKS_OPTIONS_MENU=8 amiga/debug.sh "" diag_completion_flow.gdb
+```
+
+Debug output is muted without disabling emulated Paula DMA. These are
+functional, not performance measurements. The two legacy service fixtures
+also emitted FS-UAE BPL refresh-conflict warnings during the title transition;
+the Arcade/original-setup path did not. Hardware restoration passed in all
+three; this does not establish tear-free legacy diagnostic transitions.
+
+## Results audit: not yet original-complete
+
+The current `race_runtime.c:draw_results` is a custom black rectangle labelled
+RESULTS with driver numbers and elapsed times. It is **not** a translation
+of the original post-race screens. `results_drawn` only proves that this
+existing overlay was drawn; the completion tests do not establish original
+results pixels or complete post-race sequencing.
+
+Original caller recovery identifies the missing sequence precisely:
+
+- `255ff..257fe`: check each entrant's profile setting and best lap, apply
+  qualification at `2e000`, insert lap records and update record positions.
+- `25803..258da`: show the record table with the original backdrop/tint,
+  using the already-ported `1aabc` record renderer; original wait is 300.
+- `258dd..25934`: write changed records through the track-record writer.
+- `25937..25965`: refresh player selection; show next-track intermission
+  only when another effective playlist entry remains. The existing native
+  continuation and the tested two-track path implement this branch.
+- `25965..259d7`: at match end (including End Match), show final standings
+  if any championship points are nonzero. Original `2a63e..2aad5` sorts
+  signed points, draws profile names and gradient rows, handles tied places,
+  updates profile match/win statistics and waits 1200 with fades.
+
+Consequently the first open item remains open for this original results
+integration. The verified finish arithmetic, service completion and menu
+transitions must not be presented as completion of the whole item.
+
+The intermission dispatcher/draw/preparation, renderer, setup-session and
+Arcade-HUD tests passed on this run. The old whole-screen intermission pixel
+oracle failed at (128,90): the championship work intentionally exposed two
+DOS-hidden action rows, but the oracle still compares that extended screen
+with the original hidden-row version. Keep original and extended rendering
+explicitly separate in that test rather than accepting a pixel mismatch.

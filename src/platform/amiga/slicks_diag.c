@@ -2471,6 +2471,10 @@ int main(void)
     unsigned char pause_transition_test=(unsigned char)(sequence_test && (argv[7]=='T' || pause_save_test));
     unsigned char sequence_failure_test=(unsigned char)(sequence_test && argv[7]=='U');
     unsigned char sequence_returns=0;
+    unsigned char completion_return_test=(unsigned char)(
+        (argc==8 && argv[0]=='C' && argv[1]=='O' && argv[2]=='N' &&
+         argv[3]=='F' && argv[4]=='I' && argv[5]=='G' && argv[6]=='D' && argv[7]=='R') ||
+        (argc==5 && argv[0]=='F' && argv[1]=='U' && argv[2]=='E' && argv[3]=='L' && argv[4]=='R'));
     unsigned char volume_test=(unsigned char)(options_test && argc==8 && (argv[7]=='V' || argv[7]=='W'));
     unsigned char volume_save_test=(unsigned char)(volume_test && argv[7]=='W');
     unsigned char clear_test=(unsigned char)(options_test && argc==8 && (argv[7]=='R' || argv[7]=='S')),clear_test_stage=0;
@@ -2986,7 +2990,7 @@ int main(void)
             platform.key_tail=0; platform.keys[0]=(unsigned char)(playlist_position?0x59:0x58);
             platform.key_head=1; ++sequence_returns;
         }
-        if(sequence_test && !pause_transition_test && g_slicks_diag_ingame && race->race_complete &&
+        if((sequence_test || completion_return_test) && !pause_transition_test && g_slicks_diag_ingame && race->race_complete &&
             sequence_returns<playlist_position+1 && platform.key_head==platform.key_tail) {
             /* Diagnostic input only; never force race/session state. */
             platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
@@ -3132,6 +3136,11 @@ int main(void)
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
                     race_prepared = 0;
+                    if(completion_return_test || (sequence_test && !pause_transition_test)) {
+                        /* Complete the natural-race diagnostic with normal
+                         * title Escape input, then verify system restoration. */
+                        platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;
+                    }
                     if(pause_transition_test && sequence_returns==2) {
                         if(pause_save_test) {
                             platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;

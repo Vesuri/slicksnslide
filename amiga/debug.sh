@@ -171,6 +171,10 @@ elif [ "${SLICKS_SETUP_SESSION:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUP\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_WEAPON_HUD:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag WEAPONHUD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_DAMAGE_RACE:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CONFIGDR\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_FUEL_RACE:-0}" = 2 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag FUELR\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_DAMAGE_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CONFIGD\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_SERVICE_MENU:-0}" = 1 ]; then

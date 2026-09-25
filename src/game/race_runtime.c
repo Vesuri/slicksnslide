@@ -889,8 +889,8 @@ static unsigned char ai_steering(struct SlicksRaceRuntime *race,
 static void ai_request_service(struct SlicksRaceRuntime *race,
                                 struct SlicksRaceCar *car)
 {
-    /* f7dd..f849, fixed-lap race. Timed races' dynamic 991f lap limit
-     * still belongs to the unimplemented timed-race setup/finish flow. */
+    /* f7dd..f849: use the original 991f limit, including the timed race's
+     * lazy final-lap selection after its clock expires. */
     if (!car->ai_service_state && (car->damage[0] > 500 ||
         (race->fuel_option && (signed int)car->fuel_capacity / 4 > (signed int)car->fuel &&
          (short)(race_lap_limit(race) - 1) > (short)(car->lap - 1))))
