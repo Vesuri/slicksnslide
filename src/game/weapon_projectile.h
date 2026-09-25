@@ -58,4 +58,57 @@ static inline void slicks_weapon_projectile_init(struct SlicksWeaponProjectile *
         p->vy=(short)((short)(diry[sector]*speed)/30+ry*spread/32768-spread/2);
     }
 }
+
+/* 21753..2184b: homing changes heading by one of 112 steps per update,
+ * independent of elapsed ticks. target_direction is the original 3631b
+ * result for (projectile position - target position), with signed words. */
+static inline unsigned char slicks_weapon_home(struct SlicksWeaponProjectile *p,
+    unsigned char target_direction)
+{
+    signed char turn=(signed char)(p->vx/7-target_direction+4);
+    if(turn<-8) turn=(signed char)(turn+16);
+    if(turn>8) turn=(signed char)(turn-16);
+    if(turn) {
+        p->vx=(short)(p->vx+(turn<0?-1:1));
+        if(p->vx>=112) p->vx-=112;
+        if(p->vx<0) p->vx+=112;
+    }
+    return (unsigned char)(p->vx/7);
+}
+
+/* 2184b..21965, excluding the homing sprite-pointer update. Keep candidate
+ * positions separate: the collision probe receives the old position first. */
+static inline void slicks_weapon_move(const struct SlicksWeaponProjectile *p,
+    short ticks,const signed char dirx[16],const signed char diry[16],
+    short *next_x,short *next_y)
+{
+    int dx=p->vx,dy=p->vy;
+    if(p->type==5) { dx=dirx[p->vx/7]/7; dy=diry[p->vx/7]/7; }
+    *next_x=(short)(p->x+dx*ticks);
+    *next_y=(short)(p->y+dy*ticks);
+}
+
+enum SlicksWeaponExpiry { SLICKS_WEAPON_LIVE, SLICKS_WEAPON_RETIRE,
+    SLICKS_WEAPON_DETONATE };
+/* 21965..21b47. Return the actor-side expiry action; the caller must perform
+ * that action before probing movement, even when the handle was retired.
+ * A mine switches from excluding its owner to probing every car at expiry.
+ * Homing excludes its owner only while its remaining lifetime is >=800. */
+static inline enum SlicksWeaponExpiry slicks_weapon_age(
+    struct SlicksWeaponProjectile *p,unsigned driver,short ticks,
+    unsigned char *excluded_driver)
+{
+    *excluded_driver=(unsigned char)(driver+1);
+    p->lifetime=(short)((unsigned short)p->lifetime-(unsigned short)ticks);
+    if(p->type==5 && p->lifetime<800) *excluded_driver=5;
+    if(p->lifetime>0) return SLICKS_WEAPON_LIVE;
+    p->lifetime=0;
+    switch(p->type) {
+    case 0: case 1: case 2: case 4: case 5: case 6:
+        return SLICKS_WEAPON_RETIRE;
+    case 7: return SLICKS_WEAPON_DETONATE;
+    case 3: *excluded_driver=5; break;
+    }
+    return SLICKS_WEAPON_LIVE;
+}
 #endif

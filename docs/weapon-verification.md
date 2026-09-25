@@ -44,3 +44,21 @@ The same oracle compares `weapon_projectile.h` with original instructions:
 
 These helpers remain unconnected to gameplay pending the original shared
 actor, projectile collision/effect and firing-path integration.
+
+## Projectile motion and expiry
+
+Additional original-instruction comparisons pass:
+
+- All 1,792 homing heading/target combinations (21753..2184b).
+- 16,384 ordinary/homing movement cases (2184b..21965, excluding the
+  sprite-pointer update), including signed velocities and wrapping positions.
+- 2,048 expiry cases (21965..21b47), stopping at actor retirement/detonation
+  boundaries: every type, signed lifetime/tick boundaries and owner exclusion.
+
+The original homing heading advances one of 112 steps per update, not per
+elapsed tick. Movement divides the direction-table entry by seven before
+multiplying by ticks. Candidate positions remain separate from the old
+positions used by collision probing. Mines become able to hit their owner
+at expiry; homing projectiles do so below 800 remaining ticks. Type 7 expiry
+requests radial damage and an explosion, rather than ordinary retirement.
+Those actor/effect side effects are not claimed by this boundary test.

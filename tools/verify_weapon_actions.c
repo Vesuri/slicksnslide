@@ -199,5 +199,58 @@ int main(void)
     }
     ck(uc_hook_del(u,gate));
     puts("Original projectile free-slot search: 1024 mixed/full/reserved-slot cases pass");
+    cases=0;
+    for(unsigned heading=0;heading<112;++heading) for(unsigned target=0;target<16;++target) {
+        unsigned driver=heading&3,slot=1+heading%29,offset=60*driver+2*slot;
+        regs(u,driver); wr(u,0x8f000-0x3a,slot);
+        wr(u,0x8f000 - 0x43e + offset,heading); byte(u,0x8f000-0x77,target);
+        struct SlicksWeaponProjectile p={.vx=heading};
+        unsigned sector=slicks_weapon_home(&p,target);
+        ck(uc_emu_start(u,0x21753,0x2184b,0,10000));
+        if(p.vx!=(short)rd(u,0x8f000 - 0x43e + offset) || sector!=rb(u,0x8f000-0x77)) return 1;
+        ++cases;
+    }
+    printf("Original homing turn: %u complete heading/target combinations pass\n",cases);
+    ck(uc_ctl_remove_cache(u,0x10100,0x50000));
+    cases=0;
+    for(unsigned trial=0;trial<16384;++trial) {
+        unsigned driver=trial&3,slot=1+trial%29,offset=60*driver+2*slot;
+        regs(u,driver); wr(u,0x8f000-0x3a,slot);
+        random=random*1664525U+1013904223U;
+        struct SlicksWeaponProjectile p={.x=(short)random,.y=(short)(random>>16),.type=(trial/4)%8};
+        short ticks=(short)trial;
+        p.vx=p.type==5?(short)(trial%112):(short)(random>>8); p.vy=(short)(random>>12);
+        wr(u,0x8f000 - 0x25e + offset,p.x); wr(u,0x8f000 - 0x34e + offset,p.y);
+        wr(u,0x8f000 - 0x43e + offset,p.vx); wr(u,0x8f000 - 0x52e + offset,p.vy);
+        wr(u,0x8f000-2,ticks); byte(u,0x8f000-0x77,p.vx/7);
+        short nx,ny; slicks_weapon_move(&p,ticks,dirx,diry,&nx,&ny);
+        ck(uc_emu_start(u,p.type==5?0x2184b:0x218f9,p.type==5?0x218ad:0x21965,0,10000));
+        if(nx!=(short)rd(u,0x8f000-0x70) || ny!=(short)rd(u,0x8f000-0x72)) {
+            fprintf(stderr,"movement trial %u\n",trial); return 1;
+        }
+        ++cases;
+    }
+    printf("Original projectile movement: %u signed velocity/position/tick cases pass\n",cases);
+    uc_hook retire,detonate;
+    ck(uc_hook_add(u,&retire,UC_HOOK_CODE,stop,0,0x21a2a,0x21a2a));
+    ck(uc_hook_add(u,&detonate,UC_HOOK_CODE,stop,0,0x21a77,0x21a77));
+    cases=0;
+    const short lives[]={-32768,-1,0,1,799,800,801,32767};
+    for(unsigned driver=0;driver<4;++driver) for(unsigned type=0;type<8;++type)
+    for(unsigned l=0;l<8;++l) for(unsigned t=0;t<8;++t) {
+        unsigned slot=1+l,offset=60*driver+2*slot; regs(u,driver);
+        wr(u,0x8f000-0x3a,slot); wr(u,0x8f000-2,lives[t]);
+        wr(u,0x8f000 - 0x70e + offset,lives[l]); byte(u,0x8f000-0x5a6+30*driver+slot,type);
+        struct SlicksWeaponProjectile p={.type=type,.lifetime=lives[l]}; unsigned char excluded;
+        enum SlicksWeaponExpiry action=slicks_weapon_age(&p,driver,lives[t],&excluded);
+        ck(uc_emu_start(u,0x21965,0x21b47,0,10000)); uint16_t ip; ck(uc_reg_read(u,UC_X86_REG_IP,&ip));
+        unsigned end=ip+0x19870;
+        if(p.lifetime!=(short)rd(u,0x8f000 - 0x70e + offset) || excluded!=rb(u,0x8f000-0x79) ||
+           end!=(action==SLICKS_WEAPON_RETIRE?0x21a2a:action==SLICKS_WEAPON_DETONATE?0x21a77:0x21b47)) {
+            fprintf(stderr,"expiry driver=%u type=%u life=%d ticks=%d end=%x action=%d\n",driver,type,lives[l],lives[t],end,action); return 1;
+        }
+        ++cases;
+    }
+    printf("Original projectile expiry: %u type/lifetime/tick/owner-mask cases pass\n",cases);
     ck(uc_close(u)); return 0;
 }
