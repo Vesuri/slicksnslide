@@ -103,6 +103,37 @@ int main(int argc,char **argv)
     fputs("};\nstatic const signed char slicks_original_item_capacity[13] = {",out);
     for(unsigned i=0;i<13;++i) fprintf(out,"%s%d",i?",":"",(signed char)data[0x10a4+i]);
     fputs("};\n",out);
+    fputs("#include \"../game/weapon_shop.h\"\nstatic const struct SlicksShopRules slicks_original_shop_rules = {\n",out);
+    bytes(out,"flags",data+0x106f,13);
+    const unsigned shop_at[]={0x10a4,0x107c,0x1aa,0x13e};
+    const unsigned shop_count[]={13,13,10,8};
+    const char *shop_names[]={"capacity","batch","vehicle_capacity","weapon_weight"};
+    for(unsigned i=0;i<4;++i) {
+        fprintf(out,"    .%s = {",shop_names[i]);
+        for(unsigned j=0;j<shop_count[i];++j) fprintf(out,"%s%d",j?",":"",(signed char)data[shop_at[i]+j]);
+        fputs("},\n",out);
+    }
+    short prices[13];
+    for(unsigned j=0;j<13;++j) prices[j]=slicks_config_default_word(data,0x108a+2*j);
+    words(out,"base_price",prices,13);
+    for(unsigned j=0;j<13;++j) prices[j]=slicks_config_default_word(data,0x17c+2*j);
+    words(out,"ammunition_price",prices,13);
+    fprintf(out,"};\nstatic const unsigned char slicks_original_shop_extra = %u;\n",data[0x62f]);
+    fputs("static const unsigned char slicks_original_shop_items[13][15] = {\n",out);
+    for(unsigned i=0;i<13;++i) {
+        fputs("    {",out);
+        for(unsigned j=0;j<15;++j) fprintf(out,"%s%u",j?",":"",data[0xfac+15*i+j]);
+        fputs("},\n",out);
+    }
+    fputs("};\n",out);
+    const unsigned shop_strings[]={0x1531,0x1575,0x1523,0x157f};
+    const char *shop_string_names[]={"footer","register","exit","help"};
+    for(unsigned i=0;i<4;++i) {
+        fprintf(out,"static const unsigned char slicks_original_shop_%s[] = {",shop_string_names[i]);
+        unsigned at=shop_strings[i];
+        do { fprintf(out,"%s%u",at==shop_strings[i]?"":",",data[at]); } while(data[at++]);
+        fputs("};\n",out);
+    }
     const unsigned menu_offsets[]={0x1365,0x136d,0x1393,0x1395,0x1110,0x111b,0x1126,0x1131,0x1343,0x13a0,0x13b5};
     const char *menu_names[]={"title","footer","random","random_each","add","edit","delete","exit","select","actions","delete_question"};
     for(unsigned i=0;i<sizeof menu_offsets/sizeof menu_offsets[0];++i) {

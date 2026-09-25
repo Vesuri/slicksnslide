@@ -25,7 +25,7 @@ LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/framework_runtime.o \
 	obj/framework_amiga_hardware.o obj/framework_bitmap.o \
 	obj/framework_copper_list.o obj/framework_palette24.o \
-	obj/resource_archive.o obj/amiga_audio.o obj/amiga_player_menu.o obj/amiga_setup_storage.o obj/track_scene.o \
+	obj/resource_archive.o obj/amiga_audio.o obj/amiga_player_menu.o obj/amiga_shop.o obj/amiga_setup_storage.o obj/track_scene.o \
 	obj/race_runtime.o obj/particle_runtime.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
@@ -95,6 +95,9 @@ obj/amiga_audio.o: $(REPO)/src/platform/amiga/amiga_audio.c \
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/amiga_player_menu.o: $(REPO)/src/platform/amiga/amiga_player_menu.c | obj
+	$(CC) $(CCFLAGS) -c -o $@ $<
+
+obj/amiga_shop.o: $(REPO)/src/platform/amiga/amiga_shop.c $(REPO)/src/platform/amiga/amiga_shop.h $(wildcard $(REPO)/src/ui/*.h) $(REPO)/src/game/weapon_shop.h | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/amiga_setup_storage.o: $(REPO)/src/platform/amiga/amiga_setup_storage.c | obj

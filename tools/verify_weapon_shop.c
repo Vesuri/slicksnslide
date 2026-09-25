@@ -5,6 +5,7 @@
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
 #include "../src/game/weapon_shop.h"
+#include "../src/ui/shop_menu.h"
 static uc_engine *trace_engine;
 static unsigned trace_trial,trace_phase;
 static void ck(uc_err e) { if(e) {
@@ -99,5 +100,29 @@ int main(void)
         ++cases;
     }
     printf("Original computer shop: %u whole four-driver calls and shared RNG states match\n",cases);
+    cases=0;
+    for(unsigned mask=0;mask<81;++mask) for(int from=-1;from<4;++from) for(int direction=-1;direction<=1;++direction) {
+        signed char roles[4]; unsigned digits=mask;
+        for(unsigned d=0;d<4;++d) { roles[d]=(signed char)(digits%3)-1; digits/=3; byte(u,0x3cbf0+0x4bc6+d,roles[d]); }
+        regs(u); word(u,0x8e000,0); word(u,0x8e002,0x7000);
+        word(u,0x8e004,from); word(u,0x8e006,direction);
+        ck(uc_emu_start(u,0x2c967,0x70000,0,10000)); uint16_t ax; ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if((signed char)ax!=slicks_shop_driver(roles,from,direction)) return 1;
+        ++cases;
+    }
+    printf("Original shop driver navigation: %u combinations match\n",cases);
+    cases=0;
+    for(unsigned flags=0;flags<16;++flags) for(unsigned vehicle=0;vehicle<10;++vehicle) for(int row=-1;row<16;++row) {
+        short inventory[13]; for(unsigned i=0;i<13;++i) { inventory[i]=(short)(i%3); word(u,0x3cbf0+0x6a7a+2*i,inventory[i]); }
+        struct SlicksRaceOptions options={.weapons_enabled=flags&1,.inventory_mode=flags&2,.fuel=flags&4,.damage=flags&8};
+        word(u,0x3cbf0+0x3020,options.weapons_enabled); word(u,0x3cbf0+0x3022,options.inventory_mode);
+        word(u,0x3cbf0+0x3024,options.fuel); word(u,0x3cbf0+0x3026,options.damage);
+        byte(u,0x3cbf0+0x4bc6,-1); byte(u,0x3cbf0+0x4bc2,vehicle); byte(u,0x3cbf0+0x62f,0);
+        regs(u); word(u,0x8e000,0); word(u,0x8e002,0x7000); word(u,0x8e004,row);
+        ck(uc_emu_start(u,0x2c41c,0x70000,0,100000)); uint16_t ax; ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if((signed char)ax!=slicks_shop_item(&r,&options,inventory,-1,vehicle,0,row)) return 1;
+        ++cases;
+    }
+    printf("Original shop row mapping: %u combinations match\n",cases);
     ck(uc_close(u)); return 0;
 }

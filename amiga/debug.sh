@@ -28,7 +28,9 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_NATURAL_RESULTS:-}" = damage ]; then
+if [ "${SLICKS_NATURAL_RESULTS:-}" = shop ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALW\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_NATURAL_RESULTS:-}" = damage ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALD\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_NATURAL_RESULTS:-}" = fuel ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALF\n' > "$DH0/s/startup-sequence"

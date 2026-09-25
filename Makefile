@@ -223,7 +223,7 @@ verify-dos-ai: build/verify_dos_ai
 .PHONY: verify-dos-hud
 .PHONY: verify-weapon-actions
 .PHONY: verify-weapon-shop
-build/verify_weapon_shop: tools/verify_weapon_shop.c src/game/weapon_shop.h | build
+build/verify_weapon_shop: tools/verify_weapon_shop.c src/game/weapon_shop.h src/ui/shop_menu.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-shop: build/verify_weapon_shop
 	build/verify_weapon_shop

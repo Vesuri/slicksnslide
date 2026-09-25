@@ -31,6 +31,7 @@
 #include "amiga_platform.h"
 #include "amiga_audio.h"
 #include "amiga_player_menu.h"
+#include "amiga_shop.h"
 #include "amiga_setup_storage.h"
 #include "../../ui/player_menu.h"
 #include "../../ui/profile_actions.h"
@@ -43,6 +44,12 @@ unsigned char *slicks_title_font;
 unsigned char *slicks_title_small_font;
 #define TITLE_FONT_CAPACITY 8192UL
 volatile unsigned long g_slicks_load_ticks[14];
+static unsigned char shop_end_game;
+static unsigned char shop_test;
+static short shop_track_position;
+volatile unsigned short g_slicks_shop_test_phase;
+struct SlicksShopMenu *g_slicks_shop_menu;
+void __attribute__((noinline)) slicks_diag_shop_ready(void) { __asm__ volatile("" ::: "memory"); }
 
 struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
@@ -1416,6 +1423,98 @@ static void award_race_track(struct SlicksRaceRuntime *race)
     slicks_diag_track_rewarded();
 }
 
+static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+    struct SlicksSetupSession *session)
+{
+    const struct SlicksShopRules *rules=&slicks_original_shop_rules;
+    unsigned buyable=0;
+    for(unsigned d=0;d<4;++d) for(unsigned i=0;i<13;++i)
+        if(slicks_shop_price(rules,&session->options,session->inventory[d],
+            session->players.participation[d],session->players.vehicle[d],i,slicks_original_shop_extra)>0)
+            buyable=1;
+    shop_end_game=0;
+    if(!buyable) return 0;
+    struct SlicksResourceArchive archive={0};
+    struct SlicksAmigaPlayerMenu *m=0;
+    struct SlicksShopMenu state;
+    int result=-1;
+    struct SlicksShopContent c={.session=session,.rules=rules,.items=slicks_original_shop_items,
+        .footer=slicks_original_shop_footer,.exit_label=slicks_original_shop_exit,
+        .register_label=slicks_original_shop_register,.extra=slicks_original_shop_extra,
+        .track=(short)(shop_track_position+1),.total=(short)g_slicks_track_playlist.count};
+    for(unsigned d=0;d<4;++d) if(session->players.participation[d]) {
+        short p=session->players.selected[d];
+        if(p<0 || p>=g_slicks_profiles.count) goto done;
+        c.names[d]=g_slicks_profiles.names[p];
+    }
+    if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+    m=slicks_amiga_shop_create(&archive,chunky,&c,&state);
+    if(!m) goto done;
+    slicks_shop_computers(rules,&session->options,session->inventory,session->cash,
+        session->players.participation,session->players.vehicle,c.extra,&session->random_state);
+    if(slicks_amiga_shop_draw(m,&c,&state)) goto done;
+    if(state.driver<0) { result=0; goto done; }
+    if(slicks_amiga_platform_set_view(platform,0,m->palette)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+    slicks_amiga_player_menu_clear_dirty(m);
+    platform->key_tail=platform->key_head;
+    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    g_slicks_shop_menu=&state; slicks_diag_shop_ready();
+    if(shop_test) {
+        static const unsigned char keys[]={0x44,0x44,0x41,0x45};
+        platform->key_tail=0;
+        for(unsigned i=0;i<sizeof keys;++i) platform->keys[i]=keys[i];
+        platform->key_head=sizeof keys;
+    }
+    while(!state.done) {
+        unsigned short raw;
+        slicks_amiga_platform_wait_vblank(platform);
+        if(g_slicks_diag_force_exit) goto done;
+        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+            if(raw&128) continue;
+            unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
+            if(m->help) {
+                if(slicks_help_viewer_key(m->help,scan==1?27:0,scan)) goto done;
+                if(m->help->navigation.done) {
+                    slicks_amiga_platform_end(platform);
+                    if(slicks_amiga_help_close(m) || slicks_amiga_shop_draw(m,&c,&state)) goto done;
+                    present_menu_surface(platform,m);
+                    if(slicks_amiga_platform_begin(platform,0)) goto done;
+                } else present_menu_surface(platform,m);
+                continue;
+            }
+            enum SlicksShopAction action=slicks_shop_key(&state,session->players.participation,scan);
+            if(action==SLICKS_SHOP_HELP) {
+                slicks_amiga_platform_end(platform);
+                if(slicks_amiga_help_open(m,&archive,slicks_original_shop_help)) goto done;
+                present_menu_surface(platform,m);
+                if(slicks_amiga_platform_begin(platform,0)) goto done;
+            } else if(action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
+                int it=slicks_shop_item(rules,&session->options,session->inventory[0],session->players.participation[0],
+                    session->players.vehicle[0],c.extra,state.row);
+                if(it<0 || state.driver<0 || state.driver>=4) goto done;
+                unsigned d=(unsigned)state.driver;
+                if(action==SLICKS_SHOP_BUY)
+                    slicks_shop_buy(rules,&session->options,session->inventory[d],&session->cash[d],
+                        session->players.participation[d],session->players.vehicle[d],it,c.extra);
+                else slicks_shop_sell(rules,&session->options,session->inventory[d],&session->cash[d],
+                    session->players.participation[d],session->players.vehicle[d],it,c.extra);
+                if(shop_test) { ++g_slicks_shop_test_phase; slicks_diag_shop_ready(); }
+            }
+            if(action!=SLICKS_SHOP_HELP) {
+                if(slicks_amiga_shop_draw(m,&c,&state)) goto done;
+                present_menu_surface(platform,m);
+            }
+        }
+    }
+    shop_end_game=state.end_game; result=0;
+done:
+    slicks_amiga_platform_end(platform);
+    g_slicks_shop_menu=0;
+    slicks_amiga_player_menu_destroy(m); slicks_resource_archive_close(&archive);
+    return result;
+}
+
 static int prepare_race(struct SlicksAmigaPlatform *platform,
                       unsigned char *logical, unsigned char *chunky,
                       unsigned short *mode_state,
@@ -1443,6 +1542,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         for(unsigned i=0;i<4;++i) saved_requests[i]=setup_vehicle_requests[i];
     }
     if(session && new_game) {
+        shop_track_position=0;
         session->players.vehicle[0]=(signed char)vehicle;
         slicks_setup_new_game(session,configuration,&setup_resources,
             slicks_original_mode_flags[configuration->options[0]],
@@ -1464,6 +1564,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     unsigned short car;
     unsigned short direction;
     int result = -1;
+
+    if(session && run_shop(platform,chunky,session)) {
+        g_slicks_diag_race_error=9; goto cleanup;
+    }
 
     dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
     track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
@@ -2735,19 +2839,22 @@ int main(void)
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
     unsigned char natural_results_test=(unsigned char)(argc==8 && argv[0]=='N' && argv[1]=='A' &&
-        argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && (argv[7]=='D' || argv[7]=='F'));
+        argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && (argv[7]=='D' || argv[7]=='F' || argv[7]=='W'));
+    shop_test=(unsigned char)(natural_results_test && argv[7]=='W');
     if(natural_results_test) {
         /* Isolated input configuration, before original selection/new-game
          * setup. Never inject moving cars, finish state, or result pixels. */
         configuration=slicks_original_configuration;
         configuration.options[0]=4; configuration.options[3]=1;
         configuration.options[7]=0; configuration.options[9]=10;
+        if(shop_test) { configuration.options[7]=1; configuration.options[4]=1000; }
         configuration.options[10]=argv[7]=='D'?300:0;
         g_slicks_profiles.count=7;
         static const unsigned char fleet[4]={5,2,0,0};
         for(unsigned i=0;i<4;++i) {
             unsigned p=i+3;
             g_slicks_profiles.setup[p]=g_slicks_profiles.setup[1];
+            if(shop_test && !i) g_slicks_profiles.setup[p].flags&=(unsigned char)~1U;
             g_slicks_profiles.setup[p].vehicle=fleet[i];
             g_slicks_profiles.setting[p]=100;
             for(unsigned j=0;j<9;++j) g_slicks_profiles.statistics[p][j]=0;
@@ -3449,7 +3556,7 @@ int main(void)
                         selected_track_path,(unsigned char)(argc!=0))) goto cleanup;
                     if(original_setup && (race->race_complete || advance))
                         slicks_setup_after_race(&g_slicks_setup_session,&configuration,&setup_resources);
-                    if(original_setup && advance &&
+                    if(original_setup && advance && !shop_end_game &&
                        (int)playlist_position+1 < slicks_arcade_track_count(configuration.options[0],
                             configuration.options[14],(short)g_slicks_track_playlist.count)) {
                         char next_path[64];
@@ -3462,7 +3569,7 @@ int main(void)
                         if(choice<0) goto cleanup;
                         advance=(unsigned char)(choice==1);
                     }
-                    if(original_setup && advance &&
+                    if(original_setup && advance && !shop_end_game &&
                         (int)playlist_position+1 < slicks_arcade_track_count(
                             configuration.options[0],configuration.options[14],
                             (short)g_slicks_track_playlist.count)) {
@@ -3473,6 +3580,7 @@ int main(void)
                             for(unsigned item=0;item<13;++item)
                                 g_slicks_setup_session.inventory[driver][item]=race->weapon_inventory[driver][item];
                         ++playlist_position;
+                        shop_track_position=(short)playlist_position;
                         selected_track=(unsigned short)track_selection[playlist_position];
                         make_track_path(selected_track_path,track_names[selected_track]);
                         g_slicks_diag_ready=0; g_slicks_diag_ingame=0;
@@ -4056,6 +4164,7 @@ int main(void)
                     for(unsigned i=0;i<4;++i) next_config.selected_profile[i]=staged.players.selected[i];
                     previous=g_slicks_setup_session;
                     g_slicks_setup_session=staged;
+                    shop_track_position=game.next_track;
                     make_track_path(selected_track_path,track_names[resolved.tracks[game.next_track]]);
                     if(prepare_race(&platform,logical,chunky,mode_state,race,selected_track_path,race_palette,
                         selected_vehicle,&next_config,&g_slicks_setup_session,0)) {

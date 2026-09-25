@@ -76,3 +76,29 @@ and only changes if greater than a positive price. It consequently permits
 one random purchase attempt per computer, not a spend-all-cash loop. Failed
 attempts still advance the random stream. These verified helpers are not yet
 connected to the native shop surface or race entry.
+
+## Native shop integration
+
+The native race preparation now enters the shop under the original 24bee
+buyable-item gate, after new-game inventory initialization and before vehicle
+configuration. It uses `tuning.@I`, `tuning.@p`, the thirteen `virNN.@16`
+images, `kirj.@f` and `pieni.@f`, not captured pixels. Buy, ammunition batch,
+sell, driver/row selection and exit act on the persistent setup inventory.
+Computer shopping consumes the same setup random stream. Failed preparation
+restores the pre-entry session transaction.
+
+Additional original-code comparisons pass for 1,215 driver navigation cases
+and 2,720 visible-item row mappings. In the muted 2 MiB/no-Fast A1200
+`NATURALW` diagnostic, ordinary shop keys buy a machine gun, buy ammunition,
+sell one unit and exit. Observed cash/count transitions are
+`1000/0 -> 900/1 -> 890/6 -> 891/5`. This fixture configures a human profile
+and starting money before original new-game initialization; it never writes
+weapon inventory directly. `diag_shop.gdb` checks the resulting inventory
+and selection on race entry. The native shop capture was visually inspected;
+a full original-screen pixel comparison is not yet claimed.
+
+The natural four-computer, weapons-disabled race still finishes at update
+556 with original HUD font, records/standings/statistics/save/restore checks
+passing after integration. This does not establish live firing or impact
+completion: the isolated weapon action/projectile helpers still need runtime
+integration and the gameplay-driven HUD gates remain open.
