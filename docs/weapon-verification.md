@@ -225,3 +225,15 @@ now saved before dynamic redraw, matching the original 2cf21 capture.
 The native draw routines call the verified shared shop composition directly.
 The updated 2 MiB A1200 run (port 25206) also passes real buy/ammunition/sell,
 help return, four human shots and automatic empty selection at inventory one.
+
+## Integrated weapon sprite painter
+
+`verify-weapon-actors` invokes the production weapon actor painter and compares
+2,432 whole visible screens with original 33673 and its real masked/unmasked
+VGA sprite routines. All nineteen original weapon/flash/smoke/explosion assets
+are decoded by both paths. Coverage includes both page coordinate slots,
+four pixel alignments, right/bottom edges, the cleared 190..199 mask tail,
+zero transparency and varying raw foreground masks. Each native draw is then
+restored and checked against every pre-draw pixel. This closes the ordinary
+in-bounds sprite raster gate; offscreen policy and shared ordering/reuse still
+need their integration checks.
