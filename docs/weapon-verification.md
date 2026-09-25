@@ -106,3 +106,14 @@ The natural four-computer, weapons-disabled race still finishes at update
 passing after integration. This does not establish live firing or impact
 completion: the isolated weapon action/projectile helpers still need runtime
 integration and the gameplay-driven HUD gates remain open.
+
+## Generalized moving and car probes
+
+`make verify-moving-probe` passes 16,384 complete original `1cb02` calls,
+comparing return values, destination words and ordered track/car/wall callback
+traces, plus 32,768 complete `1ca5e` car probes using its real arithmetic.
+Coverage includes owner exclusion, layers, special-state gates, signed/wrapped
+coordinates, blocked origins, zero-length rays and low-word multiplication
+before division. The original car probe tests the excluded driver's special
+state, not the candidate's. The probe-all sentinel's adjacent special-state
+word is an explicit caller input rather than an out-of-bounds native access.

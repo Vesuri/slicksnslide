@@ -223,6 +223,11 @@ verify-dos-ai: build/verify_dos_ai
 .PHONY: verify-dos-hud
 .PHONY: verify-weapon-actions
 .PHONY: verify-weapon-shop
+.PHONY: verify-moving-probe
+build/verify_moving_probe: tools/verify_moving_probe.c src/game/moving_probe.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-moving-probe: build/verify_moving_probe
+	build/verify_moving_probe
 build/verify_weapon_shop: tools/verify_weapon_shop.c src/game/weapon_shop.h src/ui/shop_menu.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-shop: build/verify_weapon_shop
