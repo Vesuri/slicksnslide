@@ -1,5 +1,29 @@
 # Natural race-completion verification
 
+## Driving comparison item closed (2026-09-25)
+
+The driving/AI/contact comparison and pit-stall investigation are complete
+for the stated matrix below. Production corrections are in `9849cfa` and
+`5c7e482`; independent smoke/material checks are in `1259111`.
+
+Final four-lap mixed-fleet A1200 observation, port 25253: three finishers at
+update 7,200; unfinished vehicle 5 at (13455,7251), velocity (107,26), heading
+5908, fuel -2, pit target (114,121), service state 2. The bounded run did not
+finish and is not recorded as a completion pass. Scenario 8 now resumes this
+driver's observed motion/AI/service state and seed on both sides, with the
+other drivers absent. All 7,200 subsequent updates match; it remains at the
+pit approach. This establishes the original-code behavior of the stranded
+driver, not an exact replay of the three other cars' future interactions.
+
+Port 25254 reran the final executable's ordinary one-lap native setup:
+four natural finishers at update 556, results, error zero and restoration
+`0x1f`. Debug host audio was muted; emulated audio remained enabled. No
+debugger writes to positions, controls, finish state or framebuffer were used.
+The rebuilt executable is `amiga/out/SlicksDiag.exe`.
+
+The open list now starts with the independently scoped track-actor/shared-pool
+work. No heuristic was added to force an original pit-stalled car to finish.
+
 ## Extended driving matrix (2026-09-25)
 
 The composed DOS/native matrix now passes eleven independent 7,200-update

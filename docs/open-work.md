@@ -4,31 +4,26 @@ Updated 2026-09-25. Actionable open and deferred work only.
 
 ## Remaining game completion
 
-1. Compare full driving/AI/contact updates and sustained trajectories across
-   routes, recovery, pits, collisions and active-driver combinations.
-   Investigate exhausted-fuel cars stranded on the BASIC upper route while
-   targeting the pit in native Custom setups, including mixed and identical
-   fleets. Compare the unfinished driver's trajectory with DOS before changing
-   AI. Reproduction evidence belongs in race-completion-verification.md.
-2. Complete animated boundaries, track-actor simulation/rendering/shared-pool
+1. Complete animated boundaries, track-actor simulation/rendering/shared-pool
    integration, other probing callers and collision-effect emission. Verify
-   actor ordering/reuse/capacity, foreground interaction, startup gating and
-   permanent-mark survival on representative tracks.
-3. Perform audio listening comparisons, check extreme engine frequencies
+   actor ordering/reuse/capacity and allocation-dependent RNG, foreground
+   interaction, startup gating and permanent-mark survival on representative
+   tracks.
+2. Perform audio listening comparisons, check extreme engine frequencies
     against Paula limits, and extend event/call-site and results/pause/restart
     coverage. Keep direct playback without software mixing.
 
 ## Integration and release
 
-4. Run applicable original-code oracles and muted 2 MiB/no-Fast-RAM A1200
+3. Run applicable original-code oracles and muted 2 MiB/no-Fast-RAM A1200
     regressions after integration changes: persistence, recovery, dirty-region
     integrity, DMA blanking and clean system restoration. Broaden tracks/modes.
     Refresh binary-specific debug fixtures before using them on new builds.
-5. Resolve executed source-wrap and unsupported platform-boundary cases.
-6. Audit dependencies, memory/startup behavior, launcher defaults and release
+4. Resolve executed source-wrap and unsupported platform-boundary cases.
+5. Audit dependencies, memory/startup behavior, launcher defaults and release
     documentation. Package without original game data, captured frames,
     generated reference bytes or emulator artifacts.
-7. Publish/push only when explicitly requested.
+6. Publish/push only when explicitly requested.
 
 ## Deferred
 

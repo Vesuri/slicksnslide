@@ -247,6 +247,19 @@ int main(int argc,char **argv)
             race.participation[d]=d==0;
             race.cars[d].vehicle=5;
             race.cars[d].drive_bias=race.properties[5].drive_bias;
+            /* Read-only A1200 mixed-fleet observation at update 7200.
+             * Resume the unfinished driver in isolation on both machines;
+             * this is not a replay of the other three moving finishers. */
+            if(!d) {
+                c->x=13455;c->y=7251;c->velocity_x=107;c->velocity_y=26;
+                c->speed_fixed=2898;c->measured_speed=66;c->heading=5908;
+                c->ai_last_x=13495;c->ai_last_y=7254;c->lap=2;c->checkpoint=2;
+                c->fuel=0xfffffffeU;c->fuel_capacity=3636;c->maximum_speed=80;
+                c->ai_contact_ticks=1;c->forward_drive_latch=1;
+                c->collision_safe_x=134;c->collision_safe_y=72;
+                race.random_state=4098104851U;race.game_clock_ticks=13108;
+                dword(u,DATA+0x2aaa,race.random_state);
+            }
         }
         map_car(u,&race,d);
         octet(u,DATA+0x4bce +d,race.participation[d]?-1:0);
