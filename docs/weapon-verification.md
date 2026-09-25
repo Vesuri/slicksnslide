@@ -54,8 +54,8 @@ The original-font/results gate also passes on this build (port 25205): four
 natural finishers at update 556, records, standings/statistics, native save
 and hardware restoration mask 0x1f. The composed original HUD, dirty-region,
 weapon actions/fire, moving probe and actor-slot/motion suites pass.
-Remaining end-to-end checks stay in `open-work.md`; these results alone do
-not close item 1.
+Those early runs alone did not close item 1. The later native gameplay and
+transition gates at the end of this document record its completion.
 
 ## Full firing transaction
 
@@ -259,3 +259,66 @@ These are isolated dispatch integration cases, not a claim of full driving
 trajectory equivalence. Original input/fire/finish arithmetic is covered by
 the independent executable oracles described above and in race-completion
 verification.
+
+## Native gameplay and transition gates (2026-09-25)
+
+Muted FS-UAE, A1200/68020, 2 MiB Chip RAM and no Fast RAM. The diagnostic
+configures profiles/options before original new-game initialization and queues
+ordinary menu/control input. GDB only reads state; it does not create inventory,
+projectiles, positions, impacts or HUD pixels. Production still loads original
+assets. Registered-branch cases 7/8 are explicitly diagnostic-only; normal
+registration-dependent availability is unchanged.
+
+- `NATURALW1` through `NATURALW8`, ports 25231–25238: buy each original
+  weapon and an ammunition batch, then hold the configured fire/brake key.
+  Machine gun, shotgun, rifle, mine, backgun, missile, flamer and time bomb
+  emit respectively 5, 15, 5, 1, 5, 1, 5 and 1 projectiles. Each reaches the
+  count-one sentinel and empty selection. Actual post-update ammunition-bar
+  and icon pixels pass at every inventory/selection transition, including
+  the original retained empty-selection icon. Runtime errors remain zero.
+- `NATURALW9`, port 25246: buy machine gun and shotgun plus ammunition,
+  press/release the configured cycle control, then fire until shotgun depletion
+  selects the still-loaded machine gun. Seven actual icon/bar transitions pass
+  pixel checks; 15 pellets are emitted, shotgun count ends at one and machine
+  gun count remains six. This exercises both manual and automatic selection,
+  rather than supplying selection values to a painter test.
+- `NATURALP/R/E`, ports 25239–25240: buy six-count machine-gun inventory,
+  fire once, pause/resume, then skip to the next track or end the game. The
+  second race retains count five. The retry case fails after shopping during
+  preparation, retries through the real error dialog and retains count five.
+  END GAME selected in the shop still plays the current race, then suppresses
+  next-track continuation, matching original 2d001/24c44. Pause restoration
+  compares all car, inventory and 64,000 screen bytes; clocks/RNG are unchanged.
+  All runs exit with restoration `0x1f` and no race error.
+- `NATURALC`, port 25243, then `CHAMPLOADW` in a separate process, ports
+  25244–25245: save after a real shot, exit (persisting the diagnostic's new
+  profiles/options), load and start race two. Inventory, cash and points are
+  byte-identical before subsequent shopping; machine-gun count five, selected
+  icon, weapons option and next-track position survive. The resumed shop now
+  uses the staged championship total, not the old live playlist; its 2/2
+  header is checked before publishing the loaded playlist. Both processes
+  restore the system cleanly.
+- `NATURALA`, port 25242: leave the human's purchased ammunition untouched
+  and let computers make the original single shopping attempt on successive
+  races. On race 11 an AI acquires ammunition for its previously bought gun,
+  targets another car and fires/hits at update 229. The run observes one shot,
+  one hit, no race error and restoration `0x1f`. No special AI purchasing loop
+  or injected ammunition is used. This closes the weapon-enabled AI integration
+  gate, not the separate sustained-driving/trajectory work.
+
+The final build also passes the natural four-finisher race regression on port
+25247: original kirj HUD font, finish update 556, records, standings, profile
+statistics, setup saving and restoration `0x1f`. Re-run original-code shop,
+weapon action/fire/projectile, moving-probe, actor allocation/raster, font,
+composed HUD, dirty tracking, race completion, championship codec/resume and
+storage-failure suites all pass. These results close the former first game
+completion item. Broader driving trajectories, general track actors, audio
+comparisons and release validation remain separate work in `open-work.md`.
+
+Reproduction uses `amiga/diag_weapon_case.gdb` with `SLICKS_WEAPON_CASE=1..9`,
+`diag_weapon_transitions.gdb` with `SLICKS_WEAPON_TRANSITION=P/R/E/C`,
+`diag_weapon_ai.gdb` with `SLICKS_WEAPON_TRANSITION=A`, and
+`diag_weapon_resume.gdb` with `SLICKS_CHAMPIONSHIP=weapons`. Source `amiga/env.sh`
+first. Use isolated run directories; the save case requires a fresh directory,
+and the load case must reuse that directory. Transition dump paths in the
+fixtures use `amiga/.run/weapon-transitions`, which must already exist.

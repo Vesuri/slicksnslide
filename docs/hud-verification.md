@@ -60,8 +60,14 @@ All pass, as do producer dirty-region checks. This fixes the actual gameplay
 case rather than changing the test to accept a different icon policy.
 
 The composed weapon tests supply inventory/selection values to compare the
-original painter. They do **not** prove gameplay-driven firing, cycling or
-depletion. Those producers are now integrated (see weapon-verification.md),
-but their full HUD transition gates remain in the first game-completion item. The former fourth
-item's remaining real-weapon transition check has been merged into that item;
-these painter tests alone do not complete it.
+original painter. They do **not**, by themselves, prove gameplay-driven firing,
+cycling or depletion. The separate native gates now do: all eight weapons are
+bought/fired/depleted through real shop and control events, and a two-weapon
+case checks manual cycling plus automatic selection after depletion. Actual
+icon/bar pixels are checked at each transition. Pause, results, next-track,
+retry and fresh-process championship load preserve the resulting state. See
+the native gameplay/transition evidence in `weapon-verification.md`.
+
+The final integrated build repeated `diag_hud_results.gdb` on port 25247:
+147-glyph, six-pixel kirj font; four finishers at update 556; original records,
+standings/statistics, setup saving and clean restoration `0x1f` all pass.

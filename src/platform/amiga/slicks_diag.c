@@ -46,7 +46,19 @@ unsigned char *slicks_title_small_font;
 volatile unsigned long g_slicks_load_ticks[14];
 static unsigned char shop_end_game;
 static unsigned char shop_test;
+static unsigned char shop_transition_test,shop_transition_phase;
+static unsigned char shop_resume_test;
+/* NATURALW-only parameter: 1..8 exercise each weapon; 9 buys two and cycles.
+ * Cases 7/8 test the registered branch, never normal setup. */
+volatile unsigned short g_slicks_diag_weapon_case;
+volatile unsigned short g_slicks_diag_weapon_hud_checks,g_slicks_diag_weapon_hud_failures;
+static short weapon_hud_last_count=-1;
+static signed char weapon_hud_last_selection=-2;
+__attribute__((noinline)) void slicks_diag_weapon_hud_checked(void) { __asm__ volatile("" ::: "memory"); }
 static short shop_track_position;
+/* A staged championship is not published to the live playlist until its
+ * race assets load successfully. Its shop must still show the staged total. */
+static short shop_track_total;
 volatile unsigned short g_slicks_shop_test_phase;
 volatile unsigned short g_slicks_shop_help_phase;
 struct SlicksShopMenu *g_slicks_shop_menu;
@@ -1397,9 +1409,15 @@ static void poll_driver_devices(struct SlicksRaceRuntime *race,unsigned short ti
     const struct SlicksConfiguration *c=driver_device_configuration;
     /* Shop regression: press/release the configured human fire/brake key.
      * Inventory still comes solely from the ordinary buy/sell menu actions. */
-    if(shop_test && (race->frame_count==150 || race->frame_count==250))
+    unsigned release=shop_transition_test?151:g_slicks_diag_weapon_case?850:250;
+    if(shop_test && g_slicks_diag_weapon_case==9 &&
+       (race->frame_count==120 || race->frame_count==121))
         slicks_driver_key(race->driver_controls,c->keys,g_slicks_setup_session.players.order,
-            (unsigned char)(c->keys[1]|(race->frame_count==250?128:0)));
+            (unsigned char)(c->keys[4]|(race->frame_count==121?128:0)));
+    if(shop_test && !shop_resume_test && shop_transition_test!=5 && (!shop_transition_test || !shop_track_position) &&
+       (race->frame_count==150 || race->frame_count==release))
+        slicks_driver_key(race->driver_controls,c->keys,g_slicks_setup_session.players.order,
+            (unsigned char)(c->keys[1]|(race->frame_count==release?128:0)));
     for(unsigned driver=0;driver<4;++driver) {
         struct SlicksDeviceSample sample={0,0,0};
         if(race->participation[driver]<0 && c->player_input[driver])
@@ -1429,14 +1447,15 @@ static void award_race_track(struct SlicksRaceRuntime *race)
     slicks_diag_track_rewarded();
 }
 
-static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     struct SlicksSetupSession *session)
 {
     const struct SlicksShopRules *rules=&slicks_original_shop_rules;
+    unsigned char extra=(shop_test && g_slicks_diag_weapon_case>=7 && g_slicks_diag_weapon_case<=8)?1:slicks_original_shop_extra;
     unsigned buyable=0;
     for(unsigned d=0;d<4;++d) for(unsigned i=0;i<13;++i)
         if(slicks_shop_price(rules,&session->options,session->inventory[d],
-            session->players.participation[d],session->players.vehicle[d],i,slicks_original_shop_extra)>0)
+            session->players.participation[d],session->players.vehicle[d],i,extra)>0)
             buyable=1;
     shop_end_game=0;
     if(!buyable) return 0;
@@ -1447,8 +1466,8 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     struct SlicksShopContent c={.session=session,.rules=rules,.items=slicks_original_shop_items,
         .footer=slicks_original_shop_footer,.exit_label=slicks_original_shop_exit,
         .register_label=slicks_original_shop_register,.separator=slicks_original_track_separator,
-        .extra=slicks_original_shop_extra,
-        .track=(short)(shop_track_position+1),.total=(short)g_slicks_track_playlist.count};
+        .extra=extra,
+        .track=(short)(shop_track_position+1),.total=shop_track_total?shop_track_total:(short)g_slicks_track_playlist.count};
     for(unsigned d=0;d<4;++d) if(session->players.participation[d]) {
         short p=session->players.selected[d];
         if(p<0 || p>=g_slicks_profiles.count) goto done;
@@ -1470,8 +1489,21 @@ static int run_shop(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     if(shop_test) {
         static const unsigned char keys[]={0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
-        for(unsigned i=0;i<sizeof keys;++i) platform->keys[i]=keys[i];
-        platform->key_head=sizeof keys;
+        if(g_slicks_diag_weapon_case) {
+            unsigned n=0;
+            if(!shop_resume_test && (!shop_transition_test || !shop_track_position)) {
+                if(g_slicks_diag_weapon_case==9) {
+                    platform->keys[n++]=0x44;platform->keys[n++]=0x44;
+                    platform->keys[n++]=0x4d;
+                } else for(unsigned i=1;i<g_slicks_diag_weapon_case;++i) platform->keys[n++]=0x4d;
+                platform->keys[n++]=0x44;platform->keys[n++]=0x44;
+            }
+            platform->keys[n++]=shop_transition_test==3?0x59:0x45;
+            platform->key_head=(unsigned char)n;
+        } else {
+            for(unsigned i=0;i<sizeof keys;++i) platform->keys[i]=keys[i];
+            platform->key_head=sizeof keys;
+        }
     }
     while(!state.done) {
         unsigned short raw;
@@ -1533,6 +1565,32 @@ done:
     g_slicks_shop_menu=0;
     slicks_amiga_player_menu_destroy(m); slicks_resource_archive_close(&archive);
     return result;
+}
+
+static void audit_weapon_hud(const struct SlicksRaceRuntime *race)
+{
+    if(!shop_test || !g_slicks_diag_weapon_case || g_slicks_diag_weapon_case>9) return;
+    signed char selected=race->selected_weapon[0];
+    unsigned weapon=g_slicks_diag_weapon_case==9?(unsigned)(selected<0?weapon_hud_last_selection:selected):(unsigned)g_slicks_diag_weapon_case-1U;
+    if(weapon>=8) return;
+    short count=race->weapon_inventory[0][weapon+5];
+    if(count==weapon_hud_last_count && selected==weapon_hud_last_selection) return;
+    /* Compare the actual post-update pixels with the independently verified
+     * original HUD layout. Empty selection retains the previous icon. */
+    unsigned width=selected<0?0:(unsigned)(count*20/race->weapon_capacity[weapon+5]);
+    for(unsigned x=0;x<20;++x) {
+        unsigned char expected=x<width?race->weapon_hud_colour:race->status_colours[0];
+        if(race->chunky[mult320[187]+106+x]!=expected) ++g_slicks_diag_weapon_hud_failures;
+    }
+    const struct SlicksHudIcon *icon=&race->hud_weapon_icons[weapon];
+    for(unsigned y=0;y<8;++y) for(unsigned x=0;x<16;++x) {
+        unsigned char expected=race->hud_background[mult320[y+8]+90+x];
+        if(x && x<=icon->width && y<icon->height && icon->pixels[y*icon->width+x-1])
+            expected=icon->pixels[y*icon->width+x-1];
+        if(race->chunky[mult320[y+192]+90+x]!=expected) ++g_slicks_diag_weapon_hud_failures;
+    }
+    weapon_hud_last_count=count;weapon_hud_last_selection=selected;
+    ++g_slicks_diag_weapon_hud_checks;slicks_diag_weapon_hud_checked();
 }
 
 static int prepare_race(struct SlicksAmigaPlatform *platform,
@@ -1828,6 +1886,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
     race->profile_frame = g_slicks_diag_target_frame;
+    audit_weapon_hud(race);
     race->profile_marker = slicks_diag_profile_race;
     race_checkpoint(7);
 
@@ -2872,12 +2931,18 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    unsigned char natural_results_test=(unsigned char)(argc==8 && argv[0]=='N' && argv[1]=='A' &&
-        argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && (argv[7]=='D' || argv[7]=='F' || argv[7]=='W'));
-    shop_test=(unsigned char)(natural_results_test && argv[7]=='W');
+    unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
+    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test) && argv[0]=='N' && argv[1]=='A' &&
+        argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
+        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A'));
+    if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
+    shop_test=(unsigned char)(natural_results_test && (argv[7]=='W' || shop_transition_test));
+    if(shop_test && weapon_case_test) g_slicks_diag_weapon_case=(unsigned short)(argv[8]-'0');
+    if(shop_transition_test) g_slicks_diag_weapon_case=1;
     if(natural_results_test) {
         /* Isolated input configuration, before original selection/new-game
          * setup. Never inject moving cars, finish state, or result pixels. */
+        setup_dirty=1;
         configuration=slicks_original_configuration;
         configuration.options[0]=4; configuration.options[3]=1;
         configuration.options[7]=0; configuration.options[9]=10;
@@ -2973,8 +3038,10 @@ int main(void)
     unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test);
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
-    if(argc==9 && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
+    shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');
+    if((argc==9 || shop_resume_test) && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
         championship_test=(unsigned char)(argv[5]=='S'?1:argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
+    if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
         struct DateStamp now;
@@ -3055,6 +3122,13 @@ int main(void)
             if(i==track_count) goto cleanup;
             selected_track=(unsigned short)i; track_selection[0]=(short)i;
             g_slicks_track_playlist.count=1;
+            if(shop_transition_test) {
+                /* Repeated BASIC races isolate inventory from track changes;
+                 * the AI case needs more shop visits. No race state injection. */
+                unsigned total=shop_transition_test==5?16:2;
+                for(unsigned t=1;t<total;++t) track_selection[t]=(short)i;
+                g_slicks_track_playlist.count=(short)total;
+            }
         }
     }
     g_slicks_diag_track_files = track_count;
@@ -3393,6 +3467,20 @@ int main(void)
     for (;;) {
         unsigned short code;
         unsigned char left_down;
+        if(shop_transition_test && g_slicks_diag_ingame && platform.key_head==platform.key_tail) {
+            unsigned char key=0;
+            if(shop_transition_test==5) {
+                /* Real computer shopping on successive races, then real AI
+                 * controls. Never populate AI ammunition/projectiles here. */
+                if(race->weapons.shots || race->frame_count>=450)
+                    key=race->weapons.shots?0x59:0x58;
+            } else if(!shop_transition_phase && race->frame_count>=200) {key=0x45;shop_transition_phase=1;}
+            else if(shop_transition_phase==1 && race->frame_count>=230) {
+                key=0x58;shop_transition_phase=2;
+                if(shop_transition_test==4) {championship_test=1;championship_test_stage=2;}
+            } else if(shop_transition_phase==2 && shop_track_position && race->frame_count>=100) {key=0x59;shop_transition_phase=3;}
+            if(key) championship_test_keys(&platform,&key,1);
+        }
         if(championship_test==1 && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
             static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,0x4f,0x44,0x4d,0x44,0x4d,0x44,0x45,0x4c,0x4c,0x44};
             championship_test_keys(&platform,keys,sizeof keys); championship_test_stage=1;
@@ -3566,11 +3654,11 @@ int main(void)
             if (g_slicks_diag_ingame) {
                 int pause_result=0;
                 unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
-                if((!argc || championship_test || pause_live_test || pause_transition_test) && !race->race_complete && !(code&128) &&
+                if((!argc || championship_test || pause_live_test || pause_transition_test || shop_transition_test) && !race->race_complete && !(code&128) &&
                    (scan==1 || scan==0x1d || scan==0x3b || scan==0x3c || scan==0x43 || scan==0x44)) {
                     pause_result=run_race_pause(&platform,&audio,race,chunky,race_palette,&configuration,
                         &setup_dirty,(unsigned char)(scan==0x43?4:scan==0x44?5:0),
-                        (unsigned char)(pause_nested_test?8:pause_transition_test?(pause_save_test && sequence_returns==1?1:7):pause_failure_test && pause_live_sent<=5?pause_live_sent+1:pause_live_test));
+                        (unsigned char)(shop_transition_test?7:pause_nested_test?8:pause_transition_test?(pause_save_test && sequence_returns==1?1:7):pause_failure_test && pause_live_sent<=5?pause_live_sent+1:pause_live_test));
                     if(pause_result==-3) goto cleanup;
                     if(pause_result==1) continue;
                 }
@@ -3598,7 +3686,7 @@ int main(void)
                         make_track_path(next_path,(const char *)next_name);
                         int choice=run_intermission(&platform,race,chunky,race_palette,next_path,next_name,
                             (short)playlist_position,(short)slicks_arcade_track_count(configuration.options[0],
-                                configuration.options[14],(short)g_slicks_track_playlist.count),intermission_retry_test?3:intermission_live_test?2:sequence_test,
+                                configuration.options[14],(short)g_slicks_track_playlist.count),shop_transition_test==4?0:shop_transition_test?1:intermission_retry_test?3:intermission_live_test?2:sequence_test,
                             track_names,track_count);
                         if(choice<0) goto cleanup;
                         advance=(unsigned char)(choice==1);
@@ -3619,14 +3707,14 @@ int main(void)
                         make_track_path(selected_track_path,track_names[selected_track]);
                         g_slicks_diag_ready=0; g_slicks_diag_ingame=0;
                         slicks_amiga_platform_end(&platform);
-                        if(sequence_failure_test && playlist_position==1)
+                        if((sequence_failure_test || shop_transition_test==2) && playlist_position==1)
                             g_slicks_diag_race_load_fault=6;
                         if(prepare_race(&platform,logical,chunky,mode_state,race,
                             selected_track_path,race_palette,selected_vehicle,
                             &configuration,&g_slicks_setup_session,0)) {
                             race_prepared=0; race_load_prompt=race_load_retry=1;
                             if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,1)) goto cleanup;
-                            if(sequence_failure_test) {
+                            if(sequence_failure_test || shop_transition_test==2) {
                                 platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
                             }
                             continue;
@@ -3653,7 +3741,7 @@ int main(void)
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
                     race_prepared = 0;
-                    if(completion_return_test || (sequence_test && !pause_transition_test)) {
+                    if(completion_return_test || shop_transition_test || (sequence_test && !pause_transition_test)) {
                         /* Complete the natural-race diagnostic with normal
                          * title Escape input, then verify system restoration. */
                         platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;
@@ -4198,10 +4286,15 @@ int main(void)
                     for(unsigned i=0;i<4;++i) next_config.selected_profile[i]=staged.players.selected[i];
                     previous=g_slicks_setup_session;
                     g_slicks_setup_session=staged;
+                    short previous_shop_position=shop_track_position;
                     shop_track_position=game.next_track;
+                    shop_track_total=game.track_count;
                     make_track_path(selected_track_path,track_names[resolved.tracks[game.next_track]]);
-                    if(prepare_race(&platform,logical,chunky,mode_state,race,selected_track_path,race_palette,
-                        selected_vehicle,&next_config,&g_slicks_setup_session,0)) {
+                    int prepare_status=prepare_race(&platform,logical,chunky,mode_state,race,selected_track_path,race_palette,
+                        selected_vehicle,&next_config,&g_slicks_setup_session,0);
+                    shop_track_total=0;
+                    if(prepare_status) {
+                        shop_track_position=previous_shop_position;
                         g_slicks_setup_session=previous;
                         race_prepared=0; race_load_prompt=1; race_load_retry=0;
                         if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,0)) goto cleanup;
@@ -4728,6 +4821,7 @@ int main(void)
                     g_slicks_diag_race_error=9;
                     goto cleanup;
                 }
+                audit_weapon_hud(race);
             }
             if (jump_track_test) {
                 unsigned short car;

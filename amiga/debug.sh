@@ -28,7 +28,13 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_NATURAL_RESULTS:-}" = shop ]; then
+if [ -n "${SLICKS_WEAPON_TRANSITION:-}" ]; then
+  case "$SLICKS_WEAPON_TRANSITION" in P|R|E|C|A) ;; *) exit 2;; esac
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s\n' "$SLICKS_WEAPON_TRANSITION" > "$DH0/s/startup-sequence"
+elif [ -n "${SLICKS_WEAPON_CASE:-}" ]; then
+  case "$SLICKS_WEAPON_CASE" in 1|2|3|4|5|6|7|8|9) ;; *) exit 2;; esac
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALW%s\n' "$SLICKS_WEAPON_CASE" > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_NATURAL_RESULTS:-}" = shop ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALW\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_NATURAL_RESULTS:-}" = damage ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALD\n' > "$DH0/s/startup-sequence"
@@ -42,6 +48,8 @@ elif [ "${SLICKS_RECORD_RECOVERY:-}" = read-skip ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSBL\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = save ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVE\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_CHAMPIONSHIP:-}" = weapons ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPLOADW\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = load ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPLOAD\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = edit ]; then
@@ -269,6 +277,10 @@ PREAMBLE="$RUN/connect.gdb"
 {
   printf 'set pagination off\nset confirm off\nset remotetimeout 90\n'
   printf 'target remote 127.0.0.1:%s\n' "$DEBUG_PORT"
+  if [ -n "${SLICKS_WEAPON_CASE:-}" ]; then
+    case "$SLICKS_WEAPON_CASE" in 1|2|3|4|5|6|7|8|9) ;; *) exit 2;; esac
+    printf 'set $weapon_case = %s\n' "$SLICKS_WEAPON_CASE"
+  fi
   printf 'echo \\n>>> connected. `continue` runs; Ctrl-C breaks in. <<<\\n\n'
 } > "$PREAMBLE"
 
