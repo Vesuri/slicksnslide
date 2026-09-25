@@ -97,6 +97,9 @@ static long multiply_q15_unsigned(long value, unsigned short factor)
     return (long)((signed int)product >> 15);
 }
 static unsigned short next_random(struct SlicksRaceRuntime *race);
+static void activate_track_flags(struct SlicksRaceRuntime *race);
+static unsigned char shared_actor_pool(const struct SlicksRaceRuntime *race)
+{ return race->weapons.ready || race->track_actors_ready; }
 static void draw_trail_particles(struct SlicksRaceRuntime *race,
                                  unsigned short bucket);
 static void restore_trail_particles(struct SlicksRaceRuntime *race,
@@ -1371,7 +1374,10 @@ static void advance_checkpoint(struct SlicksRaceRuntime *race,
             y >= point->y[0] && y <= point->y[1])
         {
             ++car->checkpoint;
-            (void)race_lap_limit(race); /* Original 22844 after increment. */
+            if(race_lap_limit(race)==car->lap && car->checkpoint==race->navigation.checkpoint_count) {
+                race->track_flag_activations=(signed char)(race->track_flag_activations+1);
+                if(race->track_flag_activations==1) activate_track_flags(race);
+            }
         }
     }
 }
@@ -1464,19 +1470,20 @@ static inline __attribute__((unused)) void advance_lap_checkpoints(struct Slicks
 
 #include "weapon_actors.inc"
 
-static void restore_trail_particles(struct SlicksRaceRuntime *race,
-                                    unsigned short bucket)
+static void restore_trail_priority(struct SlicksRaceRuntime *race,
+                                    unsigned short bucket,int priority)
 {
     unsigned short at;
     if (slicks_race_disable_particles)
         return;
-    at = race->weapons.ready?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
+    at = shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
     while (at) {
         unsigned index;
         --at;
-        if(race->weapons.ready) {
+        if(shared_actor_pool(race)) {
             int trail=race->weapons.trail_index[at];
             if(trail<0) {
+                if(priority>=0 && race->weapons.actors[at].priority!=priority) continue;
                 if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
                     restore_weapon_actor(race,at);
                 continue;
@@ -1486,6 +1493,7 @@ static void restore_trail_particles(struct SlicksRaceRuntime *race,
         } else index=race->trail_priority_indices[bucket][at];
         struct SlicksTrailParticle *particle =
             &race->trail_particles[index];
+        if(priority>=0 && particle->priority!=priority) continue;
         if (particle->saved_valid & 1) {
             unsigned long pixel_at =
                 mult320[(unsigned short)particle->old_y] +
@@ -1495,6 +1503,9 @@ static void restore_trail_particles(struct SlicksRaceRuntime *race,
         }
     }
 }
+
+static void restore_trail_particles(struct SlicksRaceRuntime *race,unsigned short bucket)
+{ restore_trail_priority(race,bucket,-1); }
 
 static void commit_expiring_trails(struct SlicksRaceRuntime *race);
 
@@ -1514,7 +1525,7 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
     if (race->dirty_pixel_count + race->trail_particle_count >=
         SLICKS_DIRTY_PIXEL_MAX)
         commit_expiring_trails(race);
-    if(race->weapons.ready) {
+    if(shared_actor_pool(race)) {
         unsigned out=0;
         for(unsigned i=0;i<race->trail_particle_count;++i) {
             unsigned h=race->weapons.trail_handle[i];
@@ -1528,7 +1539,7 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
         race->trail_priority_indices, race->trail_priority_counts,
         race->dirty_pixels, &race->dirty_pixel_count, race->chunky,
         race->actor_page);
-    if(race->weapons.ready) for(unsigned i=0;i<race->trail_particle_count;++i) {
+    if(shared_actor_pool(race)) for(unsigned i=0;i<race->trail_particle_count;++i) {
         unsigned h=race->weapons.trail_handle[i];
         race->weapons.trail_index[h]=(short)i;
         race->weapons.slots.state[h]=race->trail_particles[i].state;
@@ -1623,7 +1634,7 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
         return;
     if (race->trail_particle_count >= SLICKS_TRAIL_PARTICLE_MAX)
         return;
-    if(race->weapons.ready) {
+    if(shared_actor_pool(race)) {
         short h=slicks_actor_allocate(&race->weapons.slots,1);
         if(!h) return;
         race->weapons.trail_handle[race->trail_particle_count]=(unsigned char)h;
@@ -1659,6 +1670,32 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
     ++race->skidmark_count;
 }
 
+/* Original 1e7b1..1ea80, including allocation-dependent lifetime RNG. */
+static void emit_offroad_wheel(struct SlicksRaceRuntime *race,short x,short y,
+    unsigned char colour,unsigned char layer,long magnitude,unsigned char long_lived)
+{
+    if(magnitude<=200) return;
+    short radius=(short)(magnitude/120L);
+    short sx=(short)(x+random_scaled(race,(unsigned short)radius)-radius/2);
+    short sy=(short)(y+random_scaled(race,(unsigned short)radius)-radius/2);
+    if(sx<0 || sx>=320 || sy<0 || sy>=200) return;
+    int material=slicks_track_material_sample(race->material_map,race->surface_map,sx,sy,layer);
+    if(material!=2 && material!=15 && (material<22 || material>26)) {
+        unsigned before=race->trail_particle_count;
+        add_trail_component(race,sx,sy,colour,0,0,0,long_lived?30:3);
+        if(long_lived && (race->trail_particle_count>before || slicks_race_disable_particles)) {
+            unsigned char life=(unsigned char)(random_scaled(race,20)+30);
+            if(race->trail_particle_count>before) race->trail_particles[before].lifetime=life;
+        }
+    }
+    if(magnitude>250) {
+        unsigned char life=(unsigned char)(random_scaled(race,10)+15);
+        short vy=(short)(random_scaled(race,23)-11);
+        short vx=(short)(random_scaled(race,23)-11);
+        add_trail_component(race,x,y,colour,5,vx,vy,life);
+    }
+}
+
 static void emit_wheel_surface(struct SlicksRaceRuntime *race,
                                const struct SlicksRaceCar *car,
                                unsigned short car_index,
@@ -1684,10 +1721,6 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
                   wheel_sprite->wheel_y[rotation][wheel];
         unsigned char surface;
         unsigned char colour;
-        short radius;
-        short sample_x;
-        short sample_y;
-        unsigned char sampled_surface;
         if (wheel_sprite->wheel_x[rotation][wheel] < 0)
             continue;
         /* Wheels may extend beyond x=319 even when the car centre is legal.
@@ -1755,51 +1788,26 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
             colour = (unsigned char)(64 + random_scaled(race, 3));
         else
             continue;
-        if (magnitude <= 200L)
-            continue;
-        radius = (short)(magnitude / 120L);
-        sample_x = (short)(x + random_scaled(race, (unsigned short)radius) -
-                           radius / 2);
-        sample_y = (short)(y + random_scaled(race, (unsigned short)radius) -
-                           radius / 2);
-        if (sample_x < 0 || sample_x >= SLICKS_SCREEN_WIDTH ||
-            sample_y < 0 || sample_y >= SLICKS_SCREEN_HEIGHT)
-            continue;
-        sampled_surface = (unsigned char)slicks_track_material_sample(
-            race->material_map,race->surface_map,sample_x,sample_y,car->actor_layer);
-        if (sampled_surface != 2 && sampled_surface != 15 &&
-            (sampled_surface < 22 || sampled_surface > 26))
-            add_trail_component(
-                race, sample_x, sample_y, colour, 0, 0, 0,
-                (unsigned char)((surface == 11 || surface == 12)
-                    ? random_scaled(race, 20) + 30 : 3));
-        if (magnitude > 250L) {
-            unsigned char lifetime =
-                (unsigned char)(random_scaled(race, 10) + 15);
-            short velocity_x = (short)(random_scaled(race, 23) - 11);
-            short velocity_y = (short)(random_scaled(race, 23) - 11);
-            add_trail_component(
-                race, x, y, colour, 5, velocity_x, velocity_y,
-                lifetime);
-        }
+        emit_offroad_wheel(race,x,y,colour,car->actor_layer,magnitude,surface==11 || surface==12);
     }
     for (; first_particle < race->trail_particle_count; ++first_particle)
         race->trail_particles[first_particle].occlusion_limit =
             (unsigned char)(car->actor_layer * 15);
 }
 
-static void draw_trail_particles(struct SlicksRaceRuntime *race,
-                                 unsigned short bucket)
+static void draw_trail_priority(struct SlicksRaceRuntime *race,
+                                 unsigned short bucket,int priority)
 {
     unsigned short at;
     if (slicks_race_disable_particles)
         return;
-    unsigned count=race->weapons.ready?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
+    unsigned count=shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
     for (at = 0; at < count; ++at) {
         unsigned index;
-        if(race->weapons.ready) {
+        if(shared_actor_pool(race)) {
             int trail=race->weapons.trail_index[at];
             if(trail<0) {
+                if(priority>=0 && race->weapons.actors[at].priority!=priority) continue;
                 if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
                     draw_weapon_actor(race,at);
                 continue;
@@ -1808,6 +1816,7 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
             if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
         } else index=race->trail_priority_indices[bucket][at];
         struct SlicksTrailParticle *particle = &race->trail_particles[index];
+        if(priority>=0 && particle->priority!=priority) continue;
         /* 3000:39af/39ca use SAR on signed 16-bit coordinates. Negative
          * fractions round down, not toward zero into the visible border. */
         short x = particle->x < 0
@@ -1850,6 +1859,57 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,
         }
         particle->saved_valid = 1;
     }
+}
+
+static void draw_trail_particles(struct SlicksRaceRuntime *race,unsigned short bucket)
+{ draw_trail_priority(race,bucket,-1); }
+
+static void actor_priority_mask(const struct SlicksRaceRuntime *race,unsigned int mask[4])
+{
+    for(unsigned i=0;i<4;++i) mask[i]=0;
+    for(unsigned h=1;h<race->weapons.slots.high_water;++h) {
+        int t=race->weapons.trail_index[h];
+        unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
+        /* 33bee takes the signed-byte maximum starting at zero. Negative
+         * priorities never enter its ascending draw loop. */
+        if(p>=6 && p<128) mask[p>>5]|=1U<<(p&31);
+    }
+}
+
+static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *logical)
+{
+    if(!race->track_actors_ready) {
+        restore_trail_particles(race,3);restore_trail_particles(race,2);
+        restore_layered_cars(race,logical);restore_trail_particles(race,0);
+        restore_shadows(race,logical);return;
+    }
+    unsigned int mask[4];actor_priority_mask(race,mask);
+    for(int p=127;p>=6;--p) if(mask[p>>5]&(1U<<(p&31))) restore_trail_priority(race,3,p);
+    restore_trail_particles(race,2);
+    restore_trail_priority(race,3,4);
+    restore_layered_cars(race,logical);
+    restore_trail_priority(race,3,2);
+    restore_shadows(race,logical);
+    restore_trail_priority(race,3,1);
+    restore_trail_particles(race,0);
+}
+
+static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logical)
+{
+    if(!race->track_actors_ready) {
+        draw_shadows(race,logical);draw_trail_particles(race,0);
+        draw_layered_cars(race,logical);draw_trail_particles(race,2);
+        draw_trail_particles(race,3);return;
+    }
+    draw_trail_particles(race,0);
+    draw_trail_priority(race,3,1);
+    draw_shadows(race,logical);
+    draw_trail_priority(race,3,2);
+    draw_layered_cars(race,logical);
+    draw_trail_priority(race,3,4);
+    draw_trail_particles(race,2);
+    unsigned int mask[4];actor_priority_mask(race,mask);
+    for(unsigned p=6;p<128;++p) if(mask[p>>5]&(1U<<(p&31))) draw_trail_priority(race,3,p);
 }
 
 static void record_track_contact(struct SlicksRaceRuntime *race,
@@ -1923,6 +1983,7 @@ static void emit_contact_particles(struct SlicksRaceRuntime *race,
 }
 
 #include "weapon_simulation.inc"
+#include "track_actor_motion.inc"
 
 void slicks_race_set_timer(struct SlicksRaceRuntime *race,unsigned short argument)
 {
@@ -3019,14 +3080,16 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->boundary_timer=120;
     race->boundary_direction=1;
     race->boundary_palette_pending=0;
-    if(race->weapons.ready) initialize_weapon_actors(race);
+    race->track_flag_activations=0;
+    race->track_actor_scratch=0;
+    race->random_state = 0x1fadec20UL;
+    if(shared_actor_pool(race)) initialize_weapon_actors(race);
     race->pit_repair_ticks = 0;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         race->shadows[car].state = -3;
         race->shadows[car].lifetime = 0;
         race->shadows[car].saved_valid = 0;
     }
-    race->random_state = 0x1fadec20UL;
     for (car = 0; car < SLICKS_VEHICLE_COUNT; ++car)
         if (!race->properties[car].ready)
             return -1;
@@ -3170,6 +3233,11 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
             race->boundary_colours))
         race->boundary_palette_pending=1;
     if (!race->racing) {
+        if(race->track_actors_ready) {
+            restore_start_light(race,logical);
+            restore_race_actors(race,logical);
+        }
+        update_track_actor_motion(race);
         /* fe3c resets the DOS clock before the lights; fe9f advances it
          * before countdown handling. Lap timestamps start at zero (fdd1).
          * Stationary grid time therefore belongs to the first lap. */
@@ -3179,25 +3247,27 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
         if (race->countdown_ticks < 0) {
             ++race->countdown_stage;
             race->countdown_ticks = 10;
-            if (race->countdown_stage < SLICKS_START_LIGHT_COUNT)
+            if (!race->track_actors_ready && race->countdown_stage < SLICKS_START_LIGHT_COUNT)
                 draw_start_light(race, logical, race->countdown_stage);
-            else if (race->countdown_stage == SLICKS_START_LIGHT_COUNT)
+            else if (!race->track_actors_ready && race->countdown_stage == SLICKS_START_LIGHT_COUNT)
                 restore_start_light(race, logical);
             if (race->countdown_stage > 5)
                 race->racing = 1;
         }
         advance_weapon_actors(race);
+        if(race->track_actors_ready) {
+            draw_race_actors(race,logical);
+            if(race->countdown_stage<SLICKS_START_LIGHT_COUNT)
+                draw_start_light(race,logical,race->countdown_stage);
+        }
         race->actor_page ^= 1;
         ++race->frame_count;
         return;
     }
     /* Priority 0, layer-1 cars, priority 3, layer-0 cars, priorities 5/6.
      * Restore in reverse layer order, then redraw forward. */
-    restore_trail_particles(race, 3);
-    restore_trail_particles(race, 2);
-    restore_layered_cars(race, logical);
-    restore_trail_particles(race, 0);
-    restore_shadows(race, logical);
+    restore_race_actors(race,logical);
+    update_track_actor_motion(race);
     if (profile)
         race->profile_marker(1);
     if(race->poll_driver_devices) race->poll_driver_devices(race,ticks);
@@ -3215,11 +3285,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     draw_arcade_timer(race, logical);
     if (profile)
         race->profile_marker(4);
-    draw_shadows(race, logical);
-    draw_trail_particles(race, 0);
-    draw_layered_cars(race, logical);
-    draw_trail_particles(race, 2);
-    draw_trail_particles(race, 3);
+    draw_race_actors(race,logical);
     if (profile)
         race->profile_marker(5);
     /* Resource-backed post-race screens belong to the platform caller.

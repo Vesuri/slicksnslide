@@ -2,6 +2,7 @@
 #define SLICKS_WEAPON_RUNTIME_H
 #include "weapon_fire.h"
 #include "actor_slots.h"
+#include "track_actor_assets.h"
 
 #define SLICKS_WEAPON_ASSET_COUNT 19
 #define SLICKS_WEAPON_ASSET_PIXELS 64
@@ -14,7 +15,7 @@ struct SlicksWeaponActor {
     unsigned char asset,kind,priority,occlusion,colour;
     short old_x,old_y;
     unsigned char old_width,old_height,saved;
-    unsigned char saved_under[SLICKS_WEAPON_ASSET_PIXELS];
+    unsigned char saved_under[SLICKS_TRACK_ACTOR_PIXELS];
 };
 struct SlicksWeaponRuntime {
     struct SlicksWeaponRules rules;

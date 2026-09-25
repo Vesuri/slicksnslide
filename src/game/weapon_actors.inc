@@ -21,26 +21,37 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
     if(!a->kind || race->weapons.slots.state[handle]<=0) return;
     unsigned width=1,height=1;
-    const struct SlicksWeaponAsset *asset=0;
+    const unsigned char *pixels=0;
     if(a->kind==1) {
         unsigned frame=a->asset+(unsigned char)a->motion.frame;
         if(frame>=SLICKS_WEAPON_ASSET_COUNT || !race->weapons.assets[frame].ready) {
             race->collision_error=1;return;
         }
-        asset=&race->weapons.assets[frame];width=asset->width;height=asset->height;
+        const struct SlicksWeaponAsset *asset=&race->weapons.assets[frame];
+        pixels=asset->pixels;width=asset->width;height=asset->height;
+    } else if(a->kind==3) {
+        static const unsigned char frames[5][4]={{0,5,6,7},{1,1,1,1},{2,8,9,10},{3,3,3,3},{4,11,12,13}};
+        if(a->asset>=5 || (unsigned char)a->motion.frame>=4 || !race->track_actors_ready) {
+            race->collision_error=1;return;
+        }
+        const struct SlicksTrackActorAsset *asset=&race->track_actor_assets[frames[a->asset][(unsigned char)a->motion.frame]];
+        pixels=asset->pixels;width=asset->width;height=asset->height;
     }
     short left=a->motion.x>>6,top=a->motion.y>>6;
-    if(left>=320 || top>=(asset?200:SLICKS_POINT_HEIGHT) ||
+    /* The unmasked primitive suppresses a negative origin, including the
+     * setup flag's x=-1 sentinel. The masked primitive clips separately. */
+    if(pixels && !a->occlusion && left<0) { a->saved=0;return; }
+    if(left>=320 || top>=(pixels?200:SLICKS_POINT_HEIGHT) ||
        left+(int)width<=0 || top+(int)height<=0) { a->saved=0;return; }
     for(unsigned y=0;y<height;++y) for(unsigned x=0;x<width;++x) {
         int px=left+(int)x,py=top+(int)y;
-        if(px<0 || px>=320 || py<0 || py>=(asset?200:SLICKS_POINT_HEIGHT)) continue;
+        if(px<0 || px>=320 || py<0 || py>=(pixels?200:SLICKS_POINT_HEIGHT)) continue;
         unsigned long at=mult320[py]+px;
         unsigned i=y*width+x;
         a->saved_under[i]=race->chunky[at];
-        unsigned char pixel=asset?asset->pixels[i]:a->colour;
+        unsigned char pixel=pixels?pixels[i]:a->colour;
         /* The original raw mask's 190..199 tail is explicitly cleared. */
-        if((!asset || pixel) && (py>=190 || actor_pixel_visible(race,at,a->occlusion)))
+        if((!pixels || pixel) && (py>=190 || actor_pixel_visible(race,at,a->occlusion)))
             race->chunky[at]=pixel;
     }
     a->old_x=left;a->old_y=top;a->old_width=width;a->old_height=height;a->saved=1;
@@ -74,7 +85,7 @@ static void configure_weapon_actor(struct SlicksRaceRuntime *race,short handle,
 
 static void advance_weapon_actors(struct SlicksRaceRuntime *race)
 {
-    if(!race->weapons.ready) return;
+    if(!shared_actor_pool(race)) return;
     for(unsigned h=1;h<race->weapons.slots.high_water;++h) {
         if(race->weapons.trail_index[h]>=0) continue;
         struct SlicksWeaponActor *a=&race->weapons.actors[h];
@@ -98,13 +109,26 @@ static void initialize_weapon_actors(struct SlicksRaceRuntime *race)
         w->controls[d]=(struct SlicksWeaponControl){0};
         for(unsigned p=0;p<30;++p) w->projectiles[d][p]=(struct SlicksWeaponProjectile){0};
     }
-    /* The four cars are constructed before track loading (24e78); track
-     * actors follow at 24f07. Two persistent interface actors precede the
-     * transient intro actor at 251f9 and weapons notice at 25276. */
-    for(unsigned i=0;i<6U+race->navigation.actor_count;++i) (void)slicks_actor_allocate(&w->slots,1);
+    /* Cars precede track actors (24f07), then the temporary intro (251f9)
+     * and, only with weapons, the notice (25276). HUD text is not an actor. */
+    for(unsigned i=0;i<4;++i) (void)slicks_actor_allocate(&w->slots,1);
+    for(unsigned i=0;i<race->navigation.actor_count;++i) {
+        short h=slicks_actor_allocate(&w->slots,1);
+        race->track_actor_handles[i]=(unsigned char)h;
+        if(!race->track_actors_ready) continue;
+        static const signed char offset[5]={0,-2,0,-2,0};
+        static const unsigned char priority[5]={6,1,6,4,6};
+        const struct SlicksTrackActor *t=&race->navigation.actors[i];
+        struct SlicksWeaponActor *a=&w->actors[h];
+        a->kind=3;a->asset=t->kind;a->motion.frames=(t->kind==1 || t->kind==3)?1:4;
+        configure_weapon_actor(race,h,t->kind==2?-1:(short)(t->x/16+offset[t->kind]),
+            t->kind==2?1:(short)(t->y/16+offset[t->kind]),0,0,0,priority[t->kind],0);
+        /* 2501c consumes one draw for every kind, even a hidden flag. */
+        a->motion.period=(signed char)(((unsigned long)next_random(race)*8)>>15)+10;
+    }
     short intro=slicks_actor_allocate(&w->slots,1);
     if(intro) { w->actors[intro].motion.lifetime=30;w->actors[intro].motion.frames=1; }
-    short notice=slicks_actor_allocate(&w->slots,1);
+    short notice=race->weapons_enabled?slicks_actor_allocate(&w->slots,1):0;
     if(notice) { w->actors[notice].motion.lifetime=200;w->actors[notice].motion.frames=1; }
     for(unsigned d=0;d<4;++d) if(driver_role(race,d)) {
         short h=slicks_actor_allocate(&w->slots,1);

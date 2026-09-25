@@ -286,6 +286,11 @@ struct SlicksRaceRuntime {
     short boundary_level; /* DS:4c6c, initial animated-boundary level 5. */
     short boundary_timer,boundary_direction;
     unsigned char boundary_colours[15],boundary_palette_pending;
+    struct SlicksTrackActorAsset track_actor_assets[SLICKS_TRACK_ACTOR_ASSETS];
+    unsigned char track_actors_ready,track_actor_handles[SLICKS_TRACK_ACTOR_MAX];
+    short track_actor_scratch;
+    signed char track_flag_activations;
+    unsigned char track_flag_styles[205]; /* Original aliased offset/priority lookups. */
     unsigned char collision_error; /* Unsupported retained-map sample. */
     unsigned char damage_enabled; /* DS:36a6, independent master gate. */
     short countdown_ticks;

@@ -24,7 +24,7 @@ static inline signed char slicks_weapon_fire(
     const signed char roles[4],short heading,signed char layer,
     const signed char dirx[16],const signed char diry[16],
     unsigned long *random_state,const struct SlicksWeaponRules *rules,
-    const struct SlicksWeaponFireOps *ops)
+    const struct SlicksWeaponFireOps *ops,short *last_slot)
 {
     if(slicks_weapon_can_fire(control,selected,clock)) {
         unsigned type=(unsigned)selected;
@@ -33,6 +33,7 @@ static inline signed char slicks_weapon_fire(
         if(inventory[type+5]>1) {
             for(int shot=0;shot<rules->shots[type];++shot) {
                 unsigned slot=slicks_weapon_free_slot(projectiles);
+                if(last_slot) *last_slot=(short)slot;
                 if(!slot) continue;
                 struct SlicksWeaponProjectile *p=&projectiles[slot];
                 p->handle=ops->allocate(ops->context,selected);

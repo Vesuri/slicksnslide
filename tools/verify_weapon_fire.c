@@ -92,10 +92,11 @@ int main(void)
         struct Trace original={.fail=(t&512)?2:255},native=original;
         h.trace=&original;h.type=selected;
         struct SlicksWeaponFireOps ops={flash,sound,allocate,&native};
+        short last_slot=-777;word(u,BP-0x3c,last_slot);
         signed char out=slicks_weapon_fire(&control,inventory,selected,&controls,driver,clock,
-            pool,x,y,roles,heading,t%2,dx,dy,&seed,&rules,&ops);
+            pool,x,y,roles,heading,t%2,dx,dy,&seed,&rules,&ops,&last_slot);
         ck(uc_emu_start(u,0x206a5,0x20c6f,0,100000));
-        if(original.count!=native.count || memcmp(original.events,native.events,original.count*sizeof(int)) ||
+        if(last_slot!=(short)rd(u,BP-0x3c) || original.count!=native.count || memcmp(original.events,native.events,original.count*sizeof(int)) ||
            out!=(signed char)rb(u,DS+0x2fac+driver) || control.request!=rb(u,DS+0x2fb0+driver) ||
            control.cooldown!=(short)rd(u,BP-0x20+driver*2) || control.repeat_ticks!=(short)rd(u,BP-0xa+driver*2) ||
            !!(controls&2)!=rb(u,DS+0x5345+driver*5) ||

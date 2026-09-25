@@ -28,7 +28,11 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ -n "${SLICKS_TRAJECTORY:-}" ]; then
+if [ "${SLICKS_TRACK_ACTOR_TEST:-0}" = 1 ]; then
+  actor_case="${SLICKS_TRACK_ACTOR_CASE:-0}"
+  case "$actor_case" in 0|1|2|3) ;; *) exit 2;; esac
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALO%s\n' "$actor_case" > "$DH0/s/startup-sequence"
+elif [ -n "${SLICKS_TRAJECTORY:-}" ]; then
   case "$SLICKS_TRAJECTORY" in mixed) trajectory=T;; identical) trajectory=I;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s\n' "$trajectory" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_WEAPON_TRANSITION:-}" ]; then

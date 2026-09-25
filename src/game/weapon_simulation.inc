@@ -46,7 +46,7 @@ static void weapon_fire_driver(struct SlicksRaceRuntime *race,unsigned driver,un
         race->weapon_inventory[driver],race->selected_weapon[driver],controls,driver,
         race->game_clock_ticks,race->weapons.projectiles[driver],x,y,roles,
         race->cars[driver].heading,race->cars[driver].actor_layer,direction_x,direction_y,
-        &race->random_state,&race->weapons.rules,&ops);
+        &race->random_state,&race->weapons.rules,&ops,&race->track_actor_scratch);
 }
 static int weapon_track_probe(void *context,short x,short y,signed char sampling,signed char layer)
 {
@@ -102,6 +102,7 @@ static void weapon_impact_point(struct SlicksRaceRuntime *race,short x,short y,
     unsigned char colour,unsigned range,unsigned mask)
 {
     short h=allocate_weapon_actor(race,-1,1,colour);
+    race->track_actor_scratch=h; /* Shared original BP-3c, read by finish flags. */
     /* The original argument pushes evaluate Y before X, even on failure. */
     short vy=(short)(random_scaled(race,range)-(short)(range/2));
     short vx=(short)(random_scaled(race,range)-(short)(range/2));

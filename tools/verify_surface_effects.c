@@ -292,18 +292,18 @@ int main(void)
     if (race.trail_particle_count != 4 || race.random_state != 0xc393ca14UL)
         fail("class-5 actor count or random state");
     expect_particle(&race.trail_particles[0], 98, 97, 62, 0, 0, 0, 3);
-    expect_particle(&race.trail_particles[1], 99, 98, 62, 5, 3, -4, 21);
+    expect_particle(&race.trail_particles[1], 99, 98, 62, 5, -4, 3, 21);
     expect_particle(&race.trail_particles[2], 98, 101, 63, 0, 0, 0, 3);
-    expect_particle(&race.trail_particles[3], 99, 101, 63, 5, 9, 1, 15);
+    expect_particle(&race.trail_particles[3], 99, 101, 63, 5, 1, 9, 15);
 
     prepare(&race, &car, 11, 600, 0);
     emit_wheel_surface(&race, &car, 1, SLICKS_CONTROL_ACCELERATE);
     if (race.trail_particle_count != 4 || race.random_state != 0x611c93aaUL)
         fail("class-11 actor count or random state");
     expect_particle(&race.trail_particles[0], 98, 97, 65, 0, 0, 0, 43);
-    expect_particle(&race.trail_particles[1], 99, 98, 65, 5, -4, 6, 21);
+    expect_particle(&race.trail_particles[1], 99, 98, 65, 5, 6, -4, 21);
     expect_particle(&race.trail_particles[2], 99, 100, 65, 0, 0, 0, 48);
-    expect_particle(&race.trail_particles[3], 99, 101, 65, 5, -5, 6, 20);
+    expect_particle(&race.trail_particles[3], 99, 101, 65, 5, 6, -5, 20);
 
     prepare(&race, &car, 7, 602, 0);
     emit_wheel_surface(&race, &car, 1, SLICKS_CONTROL_ACCELERATE);

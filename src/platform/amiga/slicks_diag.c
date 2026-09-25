@@ -1744,6 +1744,15 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     race_checkpoint(5);
 
+    race->track_actors_ready=0;
+    if(slicks_decode_track_actor_assets(dat,(unsigned long)dat_size,arena,65536UL,
+        race->track_actor_assets)) {
+        g_slicks_diag_race_error=5;
+        goto cleanup;
+    }
+    race->track_actors_ready=1;
+    for(unsigned i=0;i<205;++i) race->track_flag_styles[i]=slicks_original_track_flag_styles[i];
+
     /* The /masks resource is independent of the visible DAT palette.
      * Reuse the DAT allocation after scenery decoding, and the sprite arena
      * after drawing. No extra persistent allocation is needed. */
@@ -2932,14 +2941,16 @@ int main(void)
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
-    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test) && argv[0]=='N' && argv[1]=='A' &&
+    unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
+    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
-        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I'));
+        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I' || argv[7]=='O'));
     if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
     shop_test=(unsigned char)(natural_results_test && (argv[7]=='W' || shop_transition_test));
     if(shop_test && weapon_case_test) g_slicks_diag_weapon_case=(unsigned short)(argv[8]-'0');
     if(shop_transition_test) g_slicks_diag_weapon_case=1;
     if(natural_results_test) {
+        if(argv[7]=='O') g_slicks_diag_audit_bitmap=1;
         /* Isolated input configuration, before original selection/new-game
          * setup. Never inject moving cars, finish state, or result pixels. */
         setup_dirty=1;
@@ -3116,9 +3127,10 @@ int main(void)
         if(natural_results_test) {
             unsigned i;
             for(i=0;i<track_count;++i) {
-                static const char basic[]="BASIC.SS"; unsigned j=0;
-                while(j<8 && track_names[i][j]==basic[j]) ++j;
-                if(j==8 && !track_names[i][8]) break;
+                static const char *const actor_tracks[]={"BASIC.SS","F1.SS","CITY.SS","WHACKO.SS"};
+                const char *name=actor_tracks[actor_case_test?argv[8]-'0':0]; unsigned j=0;
+                while(name[j] && track_names[i][j]==name[j]) ++j;
+                if(!name[j] && !track_names[i][j]) break;
             }
             if(i==track_count) goto cleanup;
             selected_track=(unsigned short)i; track_selection[0]=(short)i;
@@ -3496,7 +3508,9 @@ int main(void)
         }
         if (!g_slicks_diag_ingame)
             slicks_amiga_platform_wait_vblank(&platform);
-        if (g_slicks_diag_force_exit || (pause_live_test && pause_live_sent && race->frame_count>=150)) {
+        if (g_slicks_diag_force_exit || (natural_results_test && argv[7]=='O' &&
+            g_slicks_diag_ingame && race->frame_count>=600) ||
+            (pause_live_test && pause_live_sent && race->frame_count>=150)) {
             result = 0;
             goto cleanup;
         }

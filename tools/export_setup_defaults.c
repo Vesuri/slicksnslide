@@ -69,6 +69,8 @@ int main(int argc,char **argv)
     words(out,"selected_profile",config.selected_profile,4);
     fputs("};\nstatic const unsigned char slicks_original_mode_flags[6] = {",out);
     for(unsigned i=0;i<6;++i) fprintf(out,"%s%u",i?",":"",data[0x1157+i]);
+    fputs("};\nstatic const unsigned char slicks_original_track_flag_styles[205] = {",out);
+    for(unsigned i=0;i<205;++i) fprintf(out,"%s%u",i?",":"",data[0x1c3+i]);
     fputs("};\nstatic const unsigned char slicks_original_finish_points[4] = {",out);
     for(unsigned i=0;i<4;++i) fprintf(out,"%s%u",i?",":"",data[0x454+i]);
     fprintf(out,"};\nstatic const unsigned char slicks_original_fastest_points = %u;\n",data[0x458]);
