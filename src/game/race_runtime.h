@@ -301,7 +301,7 @@ struct SlicksRaceRuntime {
     unsigned short laps_to_run; /* Original word DS:4c18; Arcade uses 9999. */
     unsigned char finished_count;
     unsigned char race_complete;
-    unsigned char results_drawn;
+    unsigned char results_drawn; /* Legacy name: final race-frame handoff ready, not UI proof. */
     unsigned char chunky_authoritative;
     unsigned long profile_frame;
     void (*profile_marker)(unsigned char phase);

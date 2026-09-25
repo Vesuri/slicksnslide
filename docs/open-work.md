@@ -4,12 +4,12 @@ Updated 2026-09-25. Actionable open and deferred work only.
 
 ## Remaining game completion
 
-1. Finish original post-race results flow: replace the custom RESULTS overlay
-   with lap-record qualification/insertion, record display/save, and final
-   championship standings/profile statistics with original waits/fades.
-   Verify that sequence through natural fuel/damage and timed/Arcade finishes,
-   next-track intermission and final return. Keep the natural-completion and
-   upper-pit regression gates passing.
+1. Finish original post-race results flow: connect the final championship
+   standings screen and profile-statistic updates, including original waits
+   and fades. Verify post-race record load/save failures and the complete
+   sequence through natural fuel/damage and timed/Arcade finishes, next-track
+   intermission and final return. Keep the natural-completion and upper-pit
+   regression gates passing.
 2. Port original weapon firing, cycling/depletion, weapons-enabled AI and shop
    transactions; verify gameplay-driven inventory and HUD transitions.
 3. Compare full driving/AI/contact updates and sustained trajectories across

@@ -1,5 +1,39 @@
 # Natural race-completion verification
 
+## Native record-results integration (2026-09-25)
+
+The custom RESULTS overlay and its private text painter are removed.
+`results_drawn` is retained as a legacy debugger-compatible final-frame
+handoff flag, not evidence that a results screen has been drawn. Normal
+interactive races now enter post-race processing without an extra Return.
+
+The platform invokes qualification/insertion before refreshing player
+selections, loads the existing original record-table renderer/icons/fonts,
+then publishes changed tables through the transactional writer. Unchanged
+tables are not written. A save failure displays an explicit disk warning;
+recovery files are preserved. The original backdrop tint is 10/10/30 at 75%,
+rectangle (35,75)..(270,180), with table origin (40,55). The 300-count wait is
+mapped to 301 100-ms intervals and may be dismissed with a new key.
+
+Muted A1200/no-Fast-RAM `OPTIONSB`, port 25167, completes both races, enters
+both original record displays, returns to the title and restores hardware
+status `0x1f`. BASIC inserts records (markers 0/6/6/7) and writes them;
+BASICTRK has no improvement and remains byte-identical to its original.
+`verify_target_records` compares the captured native table with the actual
+AmigaDOS file: all 1,694 BASIC bytes match the independently verified encoder,
+including untouched track payload. Reproduce with:
+
+```sh
+FSUAE_RUN=.run/post-race-records-v1 DEBUG_PORT=25167 SLICKS_OPTIONS_MENU=8 amiga/debug.sh "" diag_post_race_records.gdb
+build/verify_target_records ref/TRACKS/BASIC.SS amiga/.run/post-race-records-v1/dh1/TRACKS/BASIC.SS amiga/.run/post-race-records-v1/first.records
+```
+
+After overlay removal, the 55,296 composed finish crossings and full native
+race-step completion/freeze gates still pass. Existing record renderer tests
+pass 216 command traces and 12 full-screen/font comparisons with original
+assets and native 68020 text/icons. Final championship screen ownership,
+wait/fade equivalence and broader failure-path integration remain unfinished.
+
 ## Final standings translation
 
 `verify-championship-standings` passes 65,536 original signed-score sorting,
@@ -107,9 +141,9 @@ also emitted FS-UAE BPL refresh-conflict warnings during the title transition;
 the Arcade/original-setup path did not. Hardware restoration passed in all
 three; this does not establish tear-free legacy diagnostic transitions.
 
-## Results audit: not yet original-complete
+## Earlier results audit: before native record integration
 
-The current `race_runtime.c:draw_results` is a custom black rectangle labelled
+The earlier `race_runtime.c:draw_results` was a custom black rectangle labelled
 RESULTS with driver numbers and elapsed times. It is **not** a translation
 of the original post-race screens. `results_drawn` only proves that this
 existing overlay was drawn; the completion tests do not establish original

@@ -83,13 +83,6 @@ static signed char driver_role(const struct SlicksRaceRuntime *race,unsigned dri
     return driver==0 && race->human_control ? -1 : 1;
 }
 
-static unsigned active_driver_count(const struct SlicksRaceRuntime *race)
-{
-    unsigned count=0;
-    for(unsigned driver=0;driver<4;++driver) count+=driver_role(race,driver)!=0;
-    return count;
-}
-
 static long multiply_q15_unsigned(long value, unsigned short factor)
 {
     /* The 286 helper clears the factor's high word and retains only the low
@@ -2349,39 +2342,6 @@ static void draw_hud_run(struct SlicksRaceRuntime *race,
 #endif
 }
 
-static unsigned char draw_character(const struct SlicksRaceFont *font,
-                                    unsigned char *logical,
-                                    unsigned char *chunky,
-                                    unsigned short x, unsigned short y,
-                                    unsigned char character)
-{
-    unsigned short glyph = font->lookup[character];
-    unsigned short pixel_at;
-    unsigned short row;
-    unsigned short column;
-    if (glyph >= font->glyph_count)
-        return 0;
-    pixel_at = font->offsets[glyph];
-    if (!logical && chunky) {
-        const unsigned char *source = font->pixels + pixel_at;
-        unsigned char *destination = chunky +
-            mult320[y] + x;
-        for (row = 0; row < font->height; ++row) {
-            for (column = 0; column < font->widths[glyph]; ++column)
-                if (*source++)
-                    destination[column] = SLICKS_TIMER_COLOUR;
-            destination += SLICKS_SCREEN_WIDTH;
-        }
-        return font->widths[glyph];
-    }
-    for (row = 0; row < font->height; ++row)
-        for (column = 0; column < font->widths[glyph]; ++column)
-            if (font->pixels[pixel_at + row * font->widths[glyph] + column])
-                write_pixel(logical, chunky, x + column, y + row,
-                            SLICKS_TIMER_COLOUR);
-    return font->widths[glyph];
-}
-
 int slicks_race_status_rects(const struct SlicksRaceRuntime *race,
                              unsigned short index, unsigned short timer,
                              struct SlicksStatusRect rectangles[3])
@@ -2698,58 +2658,6 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
         race->hud_weapon_selection[car]=selected;
         race->hud_valid[car] = 1;
     }
-}
-
-static void draw_results(struct SlicksRaceRuntime *race,
-                         unsigned char *logical)
-{
-    static const char heading[] = "RESULTS";
-    unsigned short at;
-    unsigned short x;
-    unsigned short y;
-    mark_dirty_rect(race, 105, 68, 215, 133);
-    for (y = 68; y < 133; ++y)
-        for (x = 105; x < 215; ++x)
-            write_pixel(logical, race->chunky, x, y, 0);
-    x = 139;
-    for (at = 0; heading[at]; ++at)
-        x += draw_character(&race->font, logical, race->chunky, x, 73,
-                            (unsigned char)heading[at]) + 1;
-    for (at = 0; at < active_driver_count(race); ++at) {
-        unsigned short car;
-        unsigned short row = 88 + at * 10;
-        for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
-            if (driver_role(race,car) && race->cars[car].finish_position == at + 1) {
-                unsigned short time = race->cars[car].finish_time_centiseconds;
-                x = 130;
-                x += draw_character(&race->font, logical, race->chunky,
-                                    x, row,
-                                    (unsigned char)('1' + at)) + 5;
-                x += draw_character(&race->font, logical, race->chunky,
-                                    x, row,
-                                    (unsigned char)('1' + car)) + 8;
-                x += draw_character(&race->font, logical, race->chunky, x,
-                                    row,
-                                    (unsigned char)('0' +
-                                        (time / 1000) % 10)) + 1;
-                x += draw_character(&race->font, logical, race->chunky, x,
-                                    row,
-                                    (unsigned char)('0' +
-                                        (time / 100) % 10)) + 1;
-                x += draw_character(&race->font, logical, race->chunky,
-                                    x, row, ':') + 1;
-                x += draw_character(&race->font, logical, race->chunky, x,
-                                    row,
-                                    (unsigned char)('0' +
-                                        (time / 10) % 10)) + 1;
-                (void)draw_character(&race->font, logical, race->chunky,
-                                     x, row,
-                                     (unsigned char)('0' + time % 10));
-                break;
-            }
-        }
-    }
-    race->results_drawn = 1;
 }
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,
@@ -3198,8 +3106,11 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     draw_trail_particles(race, 3);
     if (profile)
         race->profile_marker(5);
-    if (race->race_complete && !race->results_drawn)
-        draw_results(race, logical);
+    /* Resource-backed post-race screens belong to the platform caller.
+     * Retain the diagnostic handoff flag, but do not paint a fabricated
+     * RESULTS panel over the last native race frame. */
+    if (race->race_complete)
+        race->results_drawn=1;
     race->actor_page ^= 1;
     ++race->frame_count;
 }

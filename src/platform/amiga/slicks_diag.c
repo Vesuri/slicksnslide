@@ -19,6 +19,7 @@
 #include "../../game/profile_palette.h"
 #include "../../game/setup_session.h"
 #include "../../game/championship.h"
+#include "../../game/post_race_records.h"
 #include "../../ui/saved_file_dialog.h"
 #include "amiga_saved_files.h"
 #include "../../game/arcade_setup.h"
@@ -2164,6 +2165,101 @@ done:
     return result;
 }
 
+volatile unsigned short g_slicks_diag_record_results_phase;
+volatile struct SlicksRecordOutcome g_slicks_diag_record_outcome;
+volatile struct SlicksTrackRecords g_slicks_diag_record_table;
+volatile struct SlicksSetupStorageReport g_slicks_diag_record_save;
+__attribute__((noinline)) void slicks_diag_record_results_ready(void) { __asm__ volatile("" ::: "memory"); }
+
+/* Original 255ff..25934. Run once, before selection refresh can change the
+ * profile/vehicle associated with a completed lap. Never reinsert on Retry. */
+static int run_record_results(struct SlicksAmigaPlatform *platform,
+    const struct SlicksRaceRuntime *race,unsigned char *chunky,const unsigned char *palette,
+    const char *path,unsigned char diagnostic)
+{
+    struct SlicksResourceArchive archive={0};
+    struct SlicksAmigaPlayerMenu *m=0;
+    unsigned char *bytes=0;
+    struct SlicksTrackRecords records={0};
+    struct SlicksRecordEntrant entrants[4];
+    struct ClockData date;
+    int result=-1;
+    slicks_amiga_platform_end(platform);
+    struct UtilityBase *UtilityBase=(struct UtilityBase *)OpenLibrary((CONST_STRPTR)"utility.library",37);
+    if(!UtilityBase) goto done;
+    struct DateStamp now; DateStamp(&now);
+    Amiga2Date((unsigned long)now.ds_Days*86400UL+(unsigned long)now.ds_Minute*60UL+
+        (unsigned long)now.ds_Tick/TICKS_PER_SECOND,&date);
+    CloseLibrary((struct Library *)UtilityBase);
+    bytes=AllocMem(8192,MEMF_ANY);
+    long size=bytes?load_plain_file(path,bytes,8192):-1;
+    if(size<0 || size>=8192 || slicks_track_records(bytes,(unsigned long)size,&records)<0) goto done;
+    for(unsigned i=0;i<4;++i) {
+        short profile=g_slicks_setup_session.players.selected[i];
+        if(profile<0 || profile>=g_slicks_profiles.count) goto done;
+        entrants[i]=(struct SlicksRecordEntrant){
+            .role=g_slicks_setup_session.players.participation[i],
+            .vehicle=g_slicks_setup_session.players.vehicle[i],
+            .setting=g_slicks_profiles.setting[profile],.name=g_slicks_profiles.names[profile],
+            .best_lap=(signed int)race->cars[i].best_lap_time_units,
+            .engine=race->weapon_inventory[i][0],.tyres=race->weapon_inventory[i][1]};
+    }
+    struct SlicksRecordOutcome outcome=slicks_post_race_records(&records,entrants,
+        date.year<1997?0:(unsigned char)date.mday,(unsigned char)date.month,date.year);
+    g_slicks_diag_record_outcome=outcome;
+    g_slicks_diag_record_table=records;
+    g_slicks_diag_record_results_phase=1; slicks_diag_record_results_ready();
+    if(outcome.show) {
+        if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+        m=slicks_amiga_race_surface_create(&archive,chunky,palette);
+        if(!m || slicks_amiga_records_icons_load(m,&archive)) goto done;
+        for(unsigned long i=0;i<64000;++i) m->saved[i]=chunky[i];
+        unsigned char table[256];
+        slicks_ui_tint_table(palette,table,10,10,30,75);
+        if(slicks_ui_remap(&m->renderer.ui,35,75,270,180,table) ||
+           slicks_amiga_records_draw(m,&records,outcome.ranks,40,55,
+                slicks_original_date_separator,slicks_original_date_order)) goto done;
+        present_menu_surface(platform,m);
+        if(slicks_amiga_platform_begin(platform,0)) goto done;
+        platform->key_tail=platform->key_head;
+        g_slicks_diag_record_results_phase=2; slicks_diag_record_results_ready();
+        /* 2b73b: 301 waits of delay(100ms), or new input. PAL boundary
+         * implements the platform wait; diagnostic supplies a real key. */
+        if(diagnostic) { platform->key_tail=0; platform->keys[0]=0x40; platform->key_head=1; }
+        for(unsigned frame=0;frame<1505;++frame) {
+            unsigned short key;
+            slicks_amiga_platform_wait_vblank(platform);
+            if(g_slicks_diag_force_exit) goto done;
+            if(slicks_amiga_platform_poll_key(platform,&key) && !(key&128)) break;
+        }
+        slicks_amiga_platform_end(platform);
+        for(unsigned long i=0;i<64000;++i) chunky[i]=m->saved[i];
+    }
+    if(outcome.changed) {
+        unsigned char changed;
+        g_slicks_diag_record_save=slicks_amiga_store_track_records(path,&records,&changed);
+        if(!changed) {
+            /* Preserve on-disk recovery files and surface the failure; never
+             * silently treat an unwritten record as successfully saved. */
+            if(!m) goto done;
+            if(championship_notice(platform,m,(const unsigned char *)"TRACK RECORDS NOT SAVED - CHECK DISK")<0) goto done;
+            slicks_amiga_platform_end(platform);
+        }
+    }
+    g_slicks_diag_record_results_phase=3; slicks_diag_record_results_ready();
+    result=0;
+done:
+    slicks_amiga_platform_end(platform);
+    slicks_amiga_player_menu_destroy(m);
+    slicks_resource_archive_close(&archive);
+    if(bytes) FreeMem(bytes,8192);
+    if(!result) {
+        slicks_chunky_rows_to_amiga(chunky,platform->views[1].bitmap,0,200);
+        if(slicks_amiga_platform_set_view(platform,1,palette) || slicks_amiga_platform_begin(platform,1)) result=-1;
+    }
+    return result;
+}
+
 static void update_race_engines(struct SlicksAmigaAudio *audio,const struct SlicksRaceRuntime *race)
 {
     unsigned long speeds[4];
@@ -2990,9 +3086,11 @@ int main(void)
             platform.key_tail=0; platform.keys[0]=(unsigned char)(playlist_position?0x59:0x58);
             platform.key_head=1; ++sequence_returns;
         }
-        if((sequence_test || completion_return_test) && !pause_transition_test && g_slicks_diag_ingame && race->race_complete &&
-            sequence_returns<playlist_position+1 && platform.key_head==platform.key_tail) {
-            /* Diagnostic input only; never force race/session state. */
+        if(((original_setup && !argc) || ((sequence_test || completion_return_test) &&
+            !pause_transition_test && sequence_returns<playlist_position+1)) &&
+            g_slicks_diag_ingame && race->race_complete && platform.key_head==platform.key_tail) {
+            /* Natural completion returns to the original post-race caller;
+             * share the existing advance handler without another key wait. */
             platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
             ++sequence_returns;
         }
@@ -3075,6 +3173,8 @@ int main(void)
                      * Completed races have already paid before results. */
                     if(original_setup) slicks_race_award_track(race);
                     if(original_setup) g_slicks_setup_session.random_state=race->random_state;
+                    if(original_setup && run_record_results(&platform,race,chunky,race_palette,
+                        selected_track_path,(unsigned char)(argc!=0))) goto cleanup;
                     if(original_setup && (race->race_complete || advance))
                         slicks_setup_after_race(&g_slicks_setup_session,&configuration,&setup_resources);
                     if(original_setup && advance &&
