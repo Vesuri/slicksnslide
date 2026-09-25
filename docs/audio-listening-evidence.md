@@ -49,6 +49,7 @@ it selects a shorter waveform and scales the sample clock by the actual
 loop lengths. Playback is still direct Paula DMA, without software mixing.
 Bank changes use the existing blanking-safe restart and downward hysteresis.
 Normal-rate playback retains the original waveform.
+The sixteen reduced loops occupy 28,826 additional bytes of chip RAM.
 
 The conservative minimum period is 124; PAL hardware allows 123 and NTSC
 124 according to the Commodore hardware reference. Host tests cover all

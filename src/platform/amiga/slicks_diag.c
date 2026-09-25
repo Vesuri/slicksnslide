@@ -4919,10 +4919,6 @@ int main(void)
                     goto cleanup;
                 race->boundary_palette_pending=0;
             }
-            if (completed_now) {
-                slicks_amiga_audio_stop(&audio);
-                slicks_amiga_audio_start_music(&audio);
-            }
             update_race_engines(&audio,race);
             for (sound = 0; sound < race->sound_event_count; ++sound) {
                 const struct SlicksSoundEvent *event =
@@ -4930,6 +4926,14 @@ int main(void)
                 slicks_amiga_audio_play_effect(
                     &audio, event->sample_block, event->flags,
                     event->priority);
+            }
+            if (completed_now) {
+                /* Finish the race batch before replacing it with results.
+                 * Original 254fb stops race voices after the race loop;
+                 * dispatching this frame's effects afterwards resurrects
+                 * race sounds beneath results on otherwise idle channels. */
+                slicks_amiga_audio_stop(&audio);
+                slicks_amiga_audio_start_music(&audio);
             }
             if (g_slicks_diag_audio_in_blank) {
                 unsigned long duration =

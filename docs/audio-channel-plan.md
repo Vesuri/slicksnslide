@@ -45,6 +45,18 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- Native `NATURALF` completed a computer race after 865 effect requests,
+  entered results with no engine/effect owners remaining, returned through
+  the native result screens and restored the system (31), with zero VBI
+  spills. `OPTIONST` also passed two real race starts, two pause/end dialogs
+  and one intermission with no inherited audio owners or pending requests.
+  Fixtures: `diag_audio_results.gdb` and `diag_audio_restart.gdb`.
+  A follow-up results run passed after moving the final frame's event batch
+  before the results-music replacement, matching the original race-loop
+  exit's stop-all ordering at 254fb. The fixture also verifies the results
+  cue is requested exactly once. This prevents late race effects from being
+  newly queued on channels just cleared for results.
+
 - Expanded the composed original race-completion oracle to begin at
   2000:2b17, before lap announcements. All 6,480 sequences / 55,296 crossings
   match the exact sample IDs, flags and priorities, not just winner-call
