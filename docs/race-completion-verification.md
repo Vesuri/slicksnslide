@@ -1,5 +1,24 @@
 # Natural race-completion verification
 
+## Post-race completion gate closed (2026-09-25)
+
+The original post-race implementation is integrated and the first completion
+item is removed from the actionable list. Evidence below covers original
+record qualification/rendering/publication, final championship rendering and
+statistics, waits/fades, actual read/save Retry/Skip, two-track Arcade return,
+natural Custom results, and named-profile save/fresh-process reload.
+
+Final source build `9bc71ce`, port 25184, reruns the longer `CONFIGDR`
+upper-pit regression unchanged: update 3648, clock/deadline 6641/6640,
+four finishers, repairs 1/42/23/25 and refuels 98/82/98/97, title return and
+restoration `0x1f`. All 72 statistics bytes match the fresh-process reload.
+Final host checks pass the original record, standings, full-screen pixels,
+wait/fade, composed finish, actual race-step and storage-fault tests.
+
+This closes the post-race flow, not general AI trajectory or all-track
+fidelity work. The stranded native-setup pit case below remains explicitly
+open under driving/AI, as do broader HUD/weapon option combinations.
+
 ## Record recovery and finish statistics (2026-09-25)
 
 Both record and championship screens now use the independently verified
