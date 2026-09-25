@@ -45,6 +45,13 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- The muted native `LIVEMENU` integration passed `diag_audio_pause.gdb` on
+  A1200/2 MiB/no-Fast: thirteen pause/child-dialog checkpoints had no engine,
+  music, owners, pending starts, silent reloads or effect timers. Resume
+  restarted all four engines, without results music; the run exited with
+  restore=31 and zero audio-VBI spills. This exercises the actual menu path,
+  not only the host adapter's stop/start calls.
+
 - Restored the original sample-header gain. Original 3000:8b53 updates a
   persistent gain byte; 3000:89e2..89ff converts unsigned PCM and performs
   signed multiplication/division by 255, truncating toward zero. The new
