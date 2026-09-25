@@ -5,8 +5,11 @@
 #include <string.h>
 #include "host_archive.h"
 enum { MEMF_CHIP=1,MEMF_CLEAR=2 };
-static void *AllocMem(unsigned long n,unsigned flags) { (void)flags; return calloc(1,n); }
-static void FreeMem(void *p,unsigned long n) { (void)n; free(p); }
+static unsigned long allocated_bytes;
+static void *AllocMem(unsigned long n,unsigned flags)
+{ (void)flags; void *p=calloc(1,n); if(p) allocated_bytes+=n; return p; }
+static void FreeMem(void *p,unsigned long n)
+{ assert(allocated_bytes>=n); allocated_bytes-=n; free(p); }
 static unsigned short words[256];
 static unsigned long longs[128];
 static unsigned accesses[256];
@@ -80,11 +83,29 @@ int main(void)
     unsigned char bank[131691]; struct SlicksAmigaAudio bank_audio;
     assert(host_archive_load("ref/SLICKS.000","samples.dat",bank,sizeof bank)==sizeof bank);
     assert(!slicks_amiga_audio_create(&bank_audio,bank,sizeof bank));
-    for(unsigned i=0;i<26;++i) {
+    for(unsigned i=0;i<SLICKS_AUDIO_SAMPLE_COUNT;++i) {
         assert(bank_audio.samples[i].period==322); /* All archive rates are 11025 Hz. */
         assert((unsigned long)bank_audio.samples[i].bytes*322UL>3546895UL/25UL);
     }
+    /* Original ID 1 is the embedded WAV; engine ID 17 is NOT tS block 17. */
+    assert(bank_audio.samples[1].bytes==5534);
+    assert(bank_audio.samples[17].bytes==2050);
+    assert(bank_audio.samples[18].bytes==2700);
+    assert(bank_audio.samples[26].bytes==5960);
     slicks_amiga_audio_destroy(&bank_audio);
+    assert(!allocated_bytes);
+    const unsigned truncated[]={0,1,7,8,8715,8726,8759,sizeof bank-1};
+    for(unsigned i=0;i<sizeof truncated/sizeof truncated[0];++i) {
+        assert(slicks_amiga_audio_create(&bank_audio,bank,truncated[i])==-1);
+        assert(!allocated_bytes);
+    }
+    const unsigned corrupt[]={8715,8715+8,8715+20,8715+22,8715+34};
+    for(unsigned i=0;i<sizeof corrupt/sizeof corrupt[0];++i) {
+        unsigned char before=bank[corrupt[i]]; bank[corrupt[i]]=0xff;
+        assert(slicks_amiga_audio_create(&bank_audio,bank,sizeof bank)==-1);
+        assert(!allocated_bytes); bank[corrupt[i]]=before;
+    }
+    puts("Mixed sample bank: 27 IDs including WAV, correct engine slot and malformed/truncated cleanup pass");
     signed char sample[1000]={0}; unsigned cases=0;
     for(unsigned mask=0;mask<16;++mask) {
         struct SlicksAmigaAudio a={0}; a.ready=1; a.silence=sample; a.sound_volume=64;

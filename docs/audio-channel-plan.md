@@ -45,6 +45,18 @@ channels to effects. Retain original pitches and use deliberate arbitration.
 
 ## Implementation and verification record
 
+- Matched-pitch listening investigation found the bank has **27** entries:
+  26 tS records plus a RIFF/WAVE record at ID 1. The previous scan-to-next-tS
+  loader skipped that WAV and shifted every subsequent ID. Original startup
+  1000:a118 increments the ID for both formats. A live PC driver observation
+  selects handle 18 / logical ID 17 with 2,050 PCM bytes; the previous Amiga
+  ID 17 incorrectly contained 2,700 bytes. The loader now parses consecutive
+  tS and mono 8-bit PCM WAV records, preserving IDs and rejecting malformed
+  records instead of scanning past them. Tests cover all 27 entries, ID 1
+  (5,534 bytes), engine ID 17 (2,050), ID 18 (2,700), final ID 26 (5,960),
+  truncation, invalid WAV format and complete partial-allocation cleanup.
+  The historical claim below that the bank has only 26 samples was incorrect.
+
 - The pitch oracle now also executes original 3000:95b8..96a8 with the
   Sound Blaster branch enabled: 210 vehicle/speed/output-rate cases verify
   the driver's 8-bit fractional sample step is `frequency*256/output_rate`.

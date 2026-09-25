@@ -76,6 +76,38 @@ static unsigned long read_le32(const unsigned char *source)
            ((unsigned long)source[3] << 24);
 }
 
+/* A samples.dat entry may be tS OR RIFF/WAVE. Both consume a sound ID in
+ * original 1000:a118. Skipping to the next tS silently renumbers the bank. */
+static int wave_pcm(const unsigned char *wave,unsigned long size,
+                    const unsigned char **pcm,unsigned long *bytes,
+                    unsigned long *frequency,unsigned long *consumed)
+{
+    if(size<12 || wave[0]!='R' || wave[1]!='I' || wave[2]!='F' || wave[3]!='F' ||
+       wave[8]!='W' || wave[9]!='A' || wave[10]!='V' || wave[11]!='E') return -1;
+    unsigned long body=read_le32(wave+4);
+    if(body<4 || body>size-8) return -1;
+    unsigned long end=body+8,at=12; unsigned have_format=0;
+    *pcm=0; *bytes=0; *frequency=0; *consumed=end;
+    while(at<end) {
+        if(end-at<8) return -1;
+        unsigned long length=read_le32(wave+at+4);
+        if(length>end-at-8) return -1;
+        const unsigned char *chunk=wave+at;
+        if(chunk[0]=='f' && chunk[1]=='m' && chunk[2]=='t' && chunk[3]==' ') {
+            /* The original bank uses unsigned 8-bit mono PCM. */
+            if(length<16 || chunk[8]!=1 || chunk[9] || chunk[10]!=1 || chunk[11] ||
+               chunk[20]!=1 || chunk[21] || chunk[22]!=8 || chunk[23]) return -1;
+            *frequency=read_le32(chunk+12); have_format=1;
+        } else if(chunk[0]=='d' && chunk[1]=='a' && chunk[2]=='t' && chunk[3]=='a') {
+            if(*pcm) return -1;
+            *pcm=chunk+8; *bytes=length;
+        }
+        at+=8+length;
+        if(length&1) { if(at==end) return -1; ++at; }
+    }
+    return have_format && *pcm && *bytes && *frequency ? 0 : -1;
+}
+
 static int copy_blocks(struct SlicksAmigaAudio *audio,
                        const unsigned char *source, unsigned long size)
 {
@@ -83,20 +115,23 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
     unsigned short block = 0;
     while (block < SLICKS_AUDIO_SAMPLE_COUNT && at + 8 <= size) {
         struct SlicksAmigaSample *sample = &audio->samples[block];
-        unsigned short bytes;
-        unsigned short header;
+        unsigned long bytes,frequency;
+        const unsigned char *pcm;
         unsigned long next;
-        if (source[at] != 't' || source[at + 1] != 'S')
-            return -1;
-        bytes = read_be16(source + at + 4);
-        header = (unsigned short)(
-            at + 10 <= size && source[at + 6] == 0 &&
-            source[at + 7] == 100 ? 10 : 8);
-        if (at + header + bytes > size)
-            return -1;
-        if(!bytes || bytes==65535U) return -1;
-        unsigned short frequency=read_be16(source+at+header-2);
-        if(!frequency) return -1;
+        if(source[at]=='t' && source[at+1]=='S') {
+            unsigned header=source[at+6]==0?10:8;
+            if(size-at<header) return -1;
+            bytes=((unsigned long)source[at+3]<<16)|read_be16(source+at+4);
+            if(bytes>size-at-header) return -1;
+            frequency=read_be16(source+at+header-2);
+            pcm=source+at+header;
+            next=at+header+bytes;
+        } else {
+            unsigned long consumed;
+            if(wave_pcm(source+at,size-at,&pcm,&bytes,&frequency,&consumed)) return -1;
+            next=at+consumed;
+        }
+        if(!bytes || bytes>65534UL || !frequency) return -1;
         {
             unsigned short allocated = (unsigned short)((bytes + 1) & ~1U);
             unsigned short i;
@@ -106,19 +141,15 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
                 return -1;
             for (i = 0; i < bytes; ++i)
                 sample->data[i] =
-                    (signed char)(source[at + header + i] ^ 0x80);
+                    (signed char)(pcm[i] ^ 0x80);
             sample->bytes = allocated;
             unsigned long period=(3546895UL+frequency/2U)/frequency;
             sample->period = (unsigned short)(period>65535UL?65535UL:period);
         }
-        next = at + header + bytes;
-        while (next + 1 < size &&
-               (source[next] != 't' || source[next + 1] != 'S'))
-            ++next;
         at = next;
         ++block;
     }
-    return block == SLICKS_AUDIO_SAMPLE_COUNT ? 0 : -1;
+    return block == SLICKS_AUDIO_SAMPLE_COUNT && at==size ? 0 : -1;
 }
 
 int slicks_amiga_audio_add_music(struct SlicksAmigaAudio *audio,
