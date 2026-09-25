@@ -88,11 +88,11 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if !$checked || !$grid || g_slicks_diag_race_error || g_slicks_diag_restore_status!=0x1f
-    printf "TRACK_ACTOR_EXIT_FAILED error=%u restore=%u\n",g_slicks_diag_race_error,g_slicks_diag_restore_status
+  if !$checked || !$grid || g_slicks_diag_race_error || g_slicks_diag_restore_status!=0x1f || g_slicks_audio_vbi_spills
+    printf "TRACK_ACTOR_EXIT_FAILED error=%u restore=%u audio_spills=%lu\n",g_slicks_diag_race_error,g_slicks_diag_restore_status,g_slicks_audio_vbi_spills
     quit 1
   end
-  printf "TRACK_ACTOR_RESTORE_OK\n"
+  printf "TRACK_ACTOR_RESTORE_OK audio_spills=0\n"
   quit
 end
 continue

@@ -5,12 +5,13 @@ memory. The current implementation combines directly translated 68020
 assembly with recovered game/UI logic in native C and C++ platform support.
 It has no generated-C CPU-context emulation stage and is not a whole-PC emulator.
 
-## Current status (2026-09-25)
+## Current status (2026-09-26)
 
 The current queue is [docs/open-work.md](docs/open-work.md). Native player
 setup, CFG/PLR save/restart and correct race setup are complete, with manual
 joystick verification explicitly deferred by the user. Four-channel direct
-Paula audio now has VBI-based lifetimes and staged DMA restarts. Championship
+Paula audio now has VBI-based lifetimes and staged DMA restarts; its corrected
+pitch and matching-vehicle listening comparisons are accepted. Championship
 save/load/resume now works through native menus, including fresh-process
 resume, repeated saves, overwrite/delete confirmation and rejected-load
 state preservation. The full game is not yet
@@ -18,7 +19,8 @@ complete; further performance work is deferred.
 
 See [setup evidence](docs/player-setup-completion.md) and
 [audio evidence](docs/audio-channel-plan.md), and
-[championship evidence](docs/championship-save-resume.md). The measured facts and staged
+[championship evidence](docs/championship-save-resume.md), plus current
+[integration evidence](docs/integration-verification.md). The measured facts and staged
 implementation narrative below are historical: early Intuition screens,
 temporary fonts and intermediate control paths do not describe the current
 runtime. The general translator pipeline remains an architectural roadmap,
