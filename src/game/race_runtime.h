@@ -284,6 +284,8 @@ struct SlicksRaceRuntime {
     short fuel_option; /* DS:3024; zero disables fuel restrictions. */
     short pit_repair_ticks; /* Race-local BP-64, shared by all four cars. */
     short boundary_level; /* DS:4c6c, initial animated-boundary level 5. */
+    short boundary_timer,boundary_direction;
+    unsigned char boundary_colours[15],boundary_palette_pending;
     unsigned char collision_error; /* Unsupported retained-map sample. */
     unsigned char damage_enabled; /* DS:36a6, independent master gate. */
     short countdown_ticks;

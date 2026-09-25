@@ -4860,13 +4860,20 @@ int main(void)
                 profile_at = platform.vblank_count;
                 profile_line_at = now;
             }
-            if (g_slicks_diag_audio_in_blank) {
+            if (g_slicks_diag_audio_in_blank || race->boundary_palette_pending) {
                 slicks_amiga_platform_wait_display_blank(&platform);
                 audio_blank_at = slicks_diag_profile_raster_time();
                 if (profile) {
                     profile_at = platform.vblank_count;
                     profile_line_at = audio_blank_at;
                 }
+            }
+            if(race->boundary_palette_pending) {
+                for(unsigned colour=0;colour<15;++colour)
+                    race_palette[199*3+colour]=race->boundary_colours[colour];
+                if(slicks_amiga_platform_set_view(&platform,1,race_palette))
+                    goto cleanup;
+                race->boundary_palette_pending=0;
             }
             if (completed_now) {
                 slicks_amiga_audio_stop(&audio);

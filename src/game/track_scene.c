@@ -1,4 +1,5 @@
 #include "track_scene.h"
+#include "track_actor_assets.h"
 #include "../graphics/row_offsets.h"
 #include "../ui/track_info.h"
 
@@ -17,17 +18,18 @@ static unsigned short read_be16(const unsigned char *source)
     return ((unsigned short)source[0] << 8) | source[1];
 }
 
-static int decode_dat_images(const unsigned char *source,
+static int decode_dat_image_sequence(const unsigned char *source,
                              unsigned long source_size,
                              unsigned char *arena,
                              unsigned long arena_size,
-                             struct TrackSprite *sprites)
+                             struct TrackSprite *sprites,unsigned count,
+                             unsigned long *position)
 {
-    unsigned long source_at = 0;
+    unsigned long source_at = *position;
     unsigned long arena_at = 0;
     unsigned short image;
 
-    for (image = 0; image < SLICKS_SPRITE_COUNT; ++image) {
+    for (image = 0; image < count; ++image) {
         unsigned char format;
         unsigned char escape = 0;
         unsigned short width;
@@ -87,6 +89,40 @@ static int decode_dat_images(const unsigned char *source,
         }
 
         arena_at += pixel_count;
+    }
+    *position=source_at;
+    return 0;
+}
+
+static int decode_dat_images(const unsigned char *source,unsigned long size,
+    unsigned char *arena,unsigned long arena_size,struct TrackSprite *sprites)
+{
+    unsigned long at=0;
+    return decode_dat_image_sequence(source,size,arena,arena_size,sprites,
+        SLICKS_SPRITE_COUNT,&at);
+}
+
+int slicks_decode_track_actor_assets(const unsigned char *dat,unsigned long size,
+    unsigned char *arena,unsigned long arena_size,struct SlicksTrackActorAsset assets[14])
+{
+    static const unsigned char base[5]={79,80,81,82,89};
+    struct TrackSprite sprites[SLICKS_SPRITE_COUNT];
+    unsigned long at=0;
+    if(!dat || !arena || !assets || decode_dat_image_sequence(dat,size,arena,
+        arena_size,sprites,SLICKS_SPRITE_COUNT,&at)) return -1;
+    for(unsigned i=0;i<14;++i) {
+        if(i==5) {
+            /* Original 1bfc3 scans past material data to the animation bank. */
+            while(at+3<=size && (dat[at]!=18 || dat[at+1]!=52 || dat[at+2]!=0)) ++at;
+            if(at+3>size) return -1;
+            at+=3;
+            if(decode_dat_image_sequence(dat,size,arena,arena_size,sprites,9,&at)) return -1;
+        }
+        const struct TrackSprite *s=&sprites[i<5?base[i]:i-5];
+        unsigned long pixels=(unsigned long)s->width*s->height;
+        if(s->width>255 || s->height>255 || pixels>SLICKS_TRACK_ACTOR_PIXELS) return -1;
+        assets[i].width=(unsigned char)s->width;assets[i].height=(unsigned char)s->height;
+        for(unsigned long p=0;p<pixels;++p) assets[i].pixels[p]=s->pixels[p];
     }
     return 0;
 }

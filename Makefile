@@ -454,6 +454,11 @@ build/verify_shop_pixels: tools/verify_shop_pixels.c tools/verify_palette_remap.
 verify-shop-pixels: build/verify_shop_pixels build/font_string_test.bin
 	build/verify_shop_pixels
 .PHONY: verify-weapon-actors
+.PHONY: verify-track-actor-assets
+build/verify_track_actor_assets: tools/verify_track_actor_assets.c tools/verify_menu_icon.c src/game/track_scene.c src/game/track_actor_assets.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-actor-assets: build/verify_track_actor_assets
+	build/verify_track_actor_assets
 build/verify_weapon_actors: tools/verify_weapon_actors.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-actors: build/verify_weapon_actors
@@ -912,6 +917,15 @@ build/verify_dos_damage: tools/verify_dos_damage.c \
 
 verify-dos-damage: build/verify_dos_damage
 	build/verify_dos_damage disasm/runtime.bin
+
+.PHONY: verify-animated-boundary
+build/verify_animated_boundary: tools/verify_animated_boundary.c tools/verify_dos_damage.c \
+		src/game/animated_boundary.h src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip \
+		-I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-animated-boundary: build/verify_animated_boundary
+	build/verify_animated_boundary
 
 .PHONY: verify-drive-trajectory
 build/verify_drive_trajectory: tools/verify_drive_trajectory.c tools/verify_dos_damage.c \

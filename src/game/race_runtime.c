@@ -11,6 +11,7 @@
 #include "../ui/arcade_hud.h"
 #include "../ui/menu_icon.h"
 #include "moving_probe.h"
+#include "animated_boundary.h"
 
 #if defined(__m68k__)
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
@@ -3014,6 +3015,10 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->results_drawn=0;
     race->finished_count=0;
     race->actor_page = 0; /* First gameplay PRE after the DOS setup toggle. */
+    race->boundary_level=5;
+    race->boundary_timer=120;
+    race->boundary_direction=1;
+    race->boundary_palette_pending=0;
     if(race->weapons.ready) initialize_weapon_actors(race);
     race->pit_repair_ticks = 0;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
@@ -3160,6 +3165,10 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     race->collision_impact = 0;
     ticks = next_physics_ticks(race);
     race->game_clock_ticks += ticks;
+    if(slicks_advance_boundary(&race->boundary_level,&race->boundary_timer,
+            &race->boundary_direction,ticks,&race->random_state,
+            race->boundary_colours))
+        race->boundary_palette_pending=1;
     if (!race->racing) {
         /* fe3c resets the DOS clock before the lights; fe9f advances it
          * before countdown handling. Lap timestamps start at zero (fdd1).
