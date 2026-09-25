@@ -44,7 +44,23 @@ int main(void)
                get(u,0x3cbf0+0x4010+20*i)!=(unsigned short)profiles.statistics[i][3]) abort();
         ++cases;
     }
+    for(unsigned selected=0;selected<4;++selected) for(unsigned rank=1;rank<=4;++rank)
+    for(unsigned initial=0;initial<65536;initial+=257) {
+        struct SlicksPlayerProfiles profiles={.count=4};
+        profiles.statistics[selected][0]=profiles.statistics[selected][1]=(short)initial;
+        word(u,0x3cbf0+0x44c,selected);
+        word(u,0x3cbf0+0x400a+20*selected,initial); word(u,0x3cbf0+0x400c+20*selected,initial);
+        uint16_t cs=0x1987,ds=0x3cbf,bx=0;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_BX,&bx));
+        check(uc_emu_start(u,0x22b7c,0x22b89,0,100));
+        if(rank==1) { check(uc_reg_write(u,UC_X86_REG_BX,&bx)); check(uc_emu_start(u,0x22bdf,0x22bec,0,100)); }
+        if(slicks_finish_statistics(&profiles,(short)selected,(signed char)rank) ||
+           get(u,0x3cbf0+0x400a+20*selected)!=(unsigned short)profiles.statistics[selected][0] ||
+           get(u,0x3cbf0+0x400c+20*selected)!=(unsigned short)profiles.statistics[selected][1]) abort();
+    }
     check(uc_close(u));
+    puts("Original finish statistics: 4096 profile/rank/wrapping-word cases pass");
     printf("Original championship standings: %u signed-score/order/tie/shared-profile/statistic-wrap cases pass\n",cases);
     return 0;
 }

@@ -14,6 +14,10 @@ Updated 2026-09-25. Actionable open and deferred work only.
    transactions; verify gameplay-driven inventory and HUD transitions.
 3. Compare full driving/AI/contact updates and sustained trajectories across
    routes, recovery, pits, collisions and active-driver combinations.
+   Investigate exhausted-fuel cars stranded on the BASIC upper route while
+   targeting the pit in native Custom setups, including mixed and identical
+   fleets. Compare the unfinished driver's trajectory with DOS before changing
+   AI. Reproduction evidence belongs in race-completion-verification.md.
 4. Complete animated boundaries, track-actor simulation/rendering/shared-pool
    integration, other probing callers and collision-effect emission. Verify
    actor ordering/reuse/capacity, foreground interaction, startup gating and

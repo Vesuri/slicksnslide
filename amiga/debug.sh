@@ -28,7 +28,17 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_CHAMPIONSHIP:-}" = save ]; then
+if [ "${SLICKS_NATURAL_RESULTS:-}" = damage ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALD\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_NATURAL_RESULTS:-}" = fuel ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALF\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_RECORD_RECOVERY:-}" = retry ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSBR\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_RECORD_RECOVERY:-}" = skip ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSBS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_RECORD_RECOVERY:-}" = read-skip ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSBL\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_CHAMPIONSHIP:-}" = save ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVE\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = load ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPLOAD\n' > "$DH0/s/startup-sequence"

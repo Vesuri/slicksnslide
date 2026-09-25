@@ -1,5 +1,33 @@
 set $standings = 0
 set $saved = 0
+set $read_errors = 0
+set $save_errors = 0
+set $record_inserts = 0
+break slicks_diag_record_recovery_ready
+commands
+  silent
+  if g_slicks_diag_record_results_phase == 4
+    set $read_errors = $read_errors+1
+  else
+    if g_slicks_diag_record_results_phase != 5
+      quit 1
+    end
+    set $save_errors = $save_errors+1
+  end
+  printf "RECORD_RECOVERY phase=%u skip=%u\n",g_slicks_diag_record_results_phase,g_slicks_diag_record_skip
+  continue
+end
+break slicks_diag_record_results_ready
+commands
+  silent
+  if g_slicks_diag_record_results_phase == 1
+    set $record_inserts = $record_inserts+1
+    if $record_inserts == 1
+      dump binary memory .run/post-race-records-v1/first.records &g_slicks_diag_record_table (char *)&g_slicks_diag_record_table+sizeof(g_slicks_diag_record_table)
+    end
+  end
+  continue
+end
 break slicks_diag_setup_saved
 commands
   silent
@@ -66,6 +94,10 @@ commands
   silent
   if $standings != 3 || !$saved || $starts != 2 || $results != 2 || !$title || g_slicks_diag_restore_status != 0x1f
     printf "STANDINGS_FLOW_FAILED phase=%u\n",$standings
+    quit 1
+  end
+  if ($read_errors || $save_errors) && ($read_errors != 1 || $save_errors != (g_slicks_diag_record_skip != 2) || $record_inserts != (g_slicks_diag_record_skip == 2 ? 1 : 2))
+    printf "RECORD_RECOVERY_FAILED reads=%u saves=%u inserts=%u\n",$read_errors,$save_errors,$record_inserts
     quit 1
   end
   printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK\n"

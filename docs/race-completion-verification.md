@@ -1,5 +1,90 @@
 # Natural race-completion verification
 
+## Record recovery and finish statistics (2026-09-25)
+
+Both record and championship screens now use the independently verified
+`2b73b` wait core through native key/game-port/100-ms-delay adapters. Record
+reads have a no-allocation Retry/Skip warning; failed saves retain the one
+in-memory insertion result for Retry. Explicit Skip preserves disk contents.
+Real `.new`/`.bak` recovery files are never removed by this UI. A successful
+old-format no-op is not treated as a failed save. Cleanup-pending publication
+is reported separately and does not insert or publish again.
+
+Original per-race finish/win statistics (`22b7c`, `22bdf`) are now connected
+to the one-shot finish callback, in addition to championship match/win totals.
+The dirty flag survives early return to the title. All 4,096 rank/profile/
+wrapping-word oracle cases pass. Original PLR rules are retained: built-in
+profiles 0..2 are intentionally not serialized.
+
+- Port 25171, `OPTIONSBR`: missing record read then `.new` obstruction,
+  ordinary Enter retries both, two record insertions for two tracks (no
+  duplicate insertion on Retry), both natural finishes, final standings,
+  statistics, setup save and restoration `0x1f` pass. BASIC's complete 1,694
+  bytes match the original-format encoder after recovery.
+- Port 25173, `OPTIONSBS`: read Retry followed by save Skip. All final-screen,
+  statistic/save/title/restoration gates pass, and BASIC is byte-identical
+  to its original file after Skip.
+- Port 25175, `OPTIONSBL`: read Skip, no first-track insertion/write, second
+  record panel and final standings/statistics/save/restoration pass. BASIC
+  remains byte-identical to the original.
+- Port 25170 reached both successful retries and the title; its final
+  debugger expression referenced an unavailable local. The corrected
+  assertion was rerun successfully on port 25171 above.
+
+The new `NATURALD`/`NATURALF` diagnostic presets supply four named, persistable
+computer profiles before native selection/new-game setup, then run normal
+simulation. They never inject car positions, finish results or display data.
+They use one lap and the established mixed fleet (vehicles 5/2/0/0), to test
+the complete result/save/reload path separately from the longer service gates.
+The initial four-
+car-0 fixture on port 25176 reached three finishers by update 2400 but still
+had three at 7200. The mixed fleet on port 25178 also had three finishers at
+5400. Both initially inherited the automatic diagnostic's default **four**
+laps, not the configured five. Port 25179 exposed that same fixture mistake
+when requesting one lap; the corrected preset applies the selected count
+before starting, and the debugger now bounds the completed lap counters.
+The final preset starts through ordinary native GO input, not automatic
+preparation (which also left the post-race filename uninitialized). Port
+25180 rejected a lap assertion placed before initialization; port 25181
+exposed the filename problem. These aborted fixtures are not passing runs.
+
+`NATURAL` previously also matched the legacy `NOAUDIO` first-letter switch.
+That collision is excluded. Completion notification/music now follows the
+simulation's incomplete-to-complete edge instead of engine playback state,
+so disabled audio cannot suppress the results checkpoint. Host debug output
+remains muted while emulated audio stays enabled in the final fixture.
+
+The port 25179 read-only snapshot identifies driver 0 (vehicle 5) near
+(134,72), lap 2, exhausted fuel `0xfffffffc`, service flag 1, AI state 1 /
+service state 2, pit target (114,121), waypoint 4 and no damage. No finish
+deadline was manufactured. This native-setup trajectory case is tracked
+separately in the driving/AI open item; it is not a passing service regression.
+
+Port 25177, final-build `CONFIGDR`: the legacy upper-pit gate remains exact:
+update 3648, clock/deadline 6641/6640, ranks 4/1/2/3, repairs 1/42/23/25,
+refuels 98/82/98/97; all four finish, title returns and restoration is `0x1f`.
+
+Port 25183, corrected `NATURALD`: ordinary native GO starts BASIC with four
+named profiles, vehicles 5/2/0/0, one lap, fuel 10 and damage 300. All four
+finish naturally at update 556; clock/deadline 1012/1011. Both original
+record and championship owners pass all three phases, each profile receives
+exactly one finished-race statistic, exactly one race win is awarded, and
+positive-point match statistics agree with the final scores. The ordinary
+exit saves CFG and the 235-byte PLR, returns to title and restores `0x1f`.
+This short race does not exercise refuelling/repair; the separate CONFIGDR
+gate continues requiring actual service activity for every entrant.
+
+Port 25185 restarts a fresh `SETUPR` process from those actual files. All
+four selected names/profiles and vehicles are recovered. All 72 bytes of
+their nine-word statistics are byte-identical before save and after reload.
+Reproduce in a dedicated sandbox (debug startup recopies reference tracks):
+
+```sh
+FSUAE_RUN=.run/native-results DEBUG_PORT=25183 SLICKS_NATURAL_RESULTS=damage amiga/debug.sh "" diag_native_results.gdb
+FSUAE_RUN=.run/native-results DEBUG_PORT=25185 SLICKS_SETUP_RELOAD=1 amiga/debug.sh "" diag_results_reload.gdb
+cmp amiga/.run/native-results/saved.stats amiga/.run/native-results/reloaded.stats
+```
+
 ## Native championship screen (2026-09-25)
 
 The final results owner now loads `sskuppi.@I`/`sskuppi.@p` and `kirj.@f`
@@ -16,8 +101,7 @@ against original x86 rendering, with real artwork/fonts and the production
 track information, pause and Speed compositions remain passing.
 `verify-palette-fade` passes 336 full original-routine cases / 657,408 RGB
 writes including skipped ticks, final endpoints and unchanged base palettes.
-`verify-result-wait` passes 192 original release/key/button/timeout/demo traces;
-the shared wait core is verified but its modal adapter remains to be connected.
+`verify-result-wait` passes 192 original release/key/button/timeout/demo traces.
 
 Muted 2 MiB A1200 `OPTIONSB`, port 25169 / `diag_standings.gdb`: both natural
 Arcade races complete at updates 1408 and 1535. Final scores 7/6/2/0 order
@@ -27,9 +111,6 @@ title return and restoration `0x1f` pass. `OPTIONSB` now explicitly saves
 its isolated diagnostic setup to exercise statistics persistence.
 The first transition run on port 25168 exposed excessive nested stack use;
 it is superseded by the passing bounded-stack run above.
-
-Remaining for this item: connect the verified shared wait, finish record
-load/save recovery UI, and rerun the full natural-completion regression set.
 
 ## Native record-results integration (2026-09-25)
 
@@ -62,8 +143,8 @@ build/verify_target_records ref/TRACKS/BASIC.SS amiga/.run/post-race-records-v1/
 After overlay removal, the 55,296 composed finish crossings and full native
 race-step completion/freeze gates still pass. Existing record renderer tests
 pass 216 command traces and 12 full-screen/font comparisons with original
-assets and native 68020 text/icons. Final championship screen ownership,
-wait/fade equivalence and broader failure-path integration remain unfinished.
+assets and native 68020 text/icons. This checkpoint preceded the championship
+screen and recovery integration documented above.
 
 ## Final standings translation
 
@@ -72,7 +153,7 @@ inactive-slot, tie, shared-profile and statistic-wrap cases. It executes the
 original ordering and match/win increments, not a reference reimplementation.
 `verify-standings-draw` passes 20,736 complete original draw traces including
 gradient colours/stripes, font colour slots, names, points and tied rank
-suppression. These typed routines still need their platform screen owner.
+suppression. This checkpoint covered typed routines before their platform owner.
 
 ## Original record insertion translation
 

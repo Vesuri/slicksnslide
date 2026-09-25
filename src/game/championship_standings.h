@@ -5,6 +5,16 @@ struct SlicksChampionshipStandings {
     short points[4];
     unsigned char driver[4],place[4];
 };
+/* 22b7c / 22bdf: called once by the real finish event, not on entry to
+ * either results screen. Statistics words wrap exactly like INC word. */
+static inline int slicks_finish_statistics(struct SlicksPlayerProfiles *profiles,short selected,signed char rank)
+{
+    if(selected<0 || selected>=profiles->count || rank<1 || rank>4) return -1;
+    short *stats=profiles->statistics[selected];
+    stats[0]=(short)(unsigned short)((unsigned short)stats[0]+1U);
+    if(rank==1) stats[1]=(short)(unsigned short)((unsigned short)stats[1]+1U);
+    return 0;
+}
 /* 2a66c..2a74d: retain the original all-pairs exchange order. A library
  * sort with different equal-key behavior can change tied driver order. */
 static inline void slicks_championship_standings(struct SlicksChampionshipStandings *out,
