@@ -116,3 +116,11 @@ made GCC inline preparation into the main loop: F1 work increased from
 fixed reduced that regression but still lost: F1 266668, BASIC 192122.
 Both variants matched the final car positions and mark counts. Logs:
 `tmp/outlined-physics-{0,1}.log`, `tmp/split-physics-{0,1}.log`.
+
+Unifying point/sprite restoration into one native chain passed 768 mixed-chain
+cases, all 256 particle slots, exact write bounds/state/ABI checks, drawing and
+dirty regressions. Nevertheless all four work sums regressed: BASIC 192371,
+F1 267878, CITY 215150, WHACKO 198080 versus controls 191565, 265248,
+213077, 197491. Final positions and marks matched. Source and experiment-only
+tests are removed (`tmp/mixed-restore-{0,1,2,3}.log`,
+`tmp/verify-mixed-restore-expanded.log`). Native assembly alone is not a win.
