@@ -866,3 +866,17 @@ removal (`tmp/perf-native-memory-basic.log`). The full 600-update display audit
 passes with 32 actors and 2076 marks. Native mode-1 menu/race transitions pass
 two race starts, two pause menus, restoration 31 and zero audio spills
 (`tmp/audit-native-memory.log`, `tmp/modes-native-memory.log`).
+
+## Reject inactive ordering slots early
+
+Build draw-order chains only after checking positive slot state, and keep
+the maximum priority local until construction completes. Reverse restoration
+still includes saved retired actors. Original weapon/track ordering and full
+pixel tests pass (`tmp/verify-local-actor-max.log`). BASIC draw totals fall
+from 56566 to 55479 lines; total work from 232027 to 231355, cadence from
+329201/602 to 327955/602. The cumulative F1 build measures 381398 total work
+lines, 756 maximum, and 426201/602 cadence lines (45.4 ms); this F1 comparison
+also includes the previously retained mask/memory changes.
+The full display audit passes 600 updates, 32 actors and 2076 permanent marks
+(`tmp/perf-local-actor-max-basic.log`, `tmp/perf-local-actor-max-f1.log`,
+`tmp/audit-local-actor-max.log`).

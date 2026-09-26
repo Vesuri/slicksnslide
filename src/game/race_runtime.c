@@ -1508,27 +1508,29 @@ static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
 {
     race->actor_order_drawn=0;
     for(unsigned p=0;p<128;++p) race->actor_order_head[p]=0;
-    race->actor_order_max=0;
+    unsigned maximum=0;
     unsigned count=race->weapons.slots.high_water;
     for(unsigned i=1;i<count;++i) {
         unsigned h=reverse?i:count-i;
+        /* Retired/free slots cannot draw either a point or a sprite. Reject
+         * them before fetching the index and the larger actor records.
+         * Expiry already restored transient points and baked permanent ones;
+         * reserved retirement slots must not acquire another saved byte. */
+        if(!reverse && race->weapons.slots.state[h]<=0) continue;
         int t=race->weapons.trail_index[h];
         if(t>=0) {
             if(reverse && !(race->trail_particles[t].saved_valid&1)) continue;
-            /* Expiry already restored transient points and baked permanent
-             * ones. Retiring slots remain reserved, but must not be drawn
-             * again or acquire a saved-under byte for the release pass. */
-            if(!reverse && race->weapons.slots.state[h]<=0) continue;
         } else {
             const struct SlicksWeaponActor *a=&race->weapons.actors[h];
-            if(reverse?!a->saved:(!a->kind || race->weapons.slots.state[h]<=0)) continue;
+            if(reverse?!a->saved:!a->kind) continue;
         }
         unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
         if(p>=128) continue;
-        if(p>race->actor_order_max) race->actor_order_max=(unsigned char)p;
+        if(p>maximum) maximum=p;
         race->actor_order_next[h]=race->actor_order_head[p];
         race->actor_order_head[p]=(unsigned char)h;
     }
+    race->actor_order_max=(unsigned char)maximum;
     race->actor_order_ready=1;
 }
 
