@@ -956,3 +956,24 @@ See `tmp/perf-car-cache-v2-{basic,f1}.log`. The complete display audit passes
 600 updates, 32 actors and 2076 permanent marks (`tmp/audit-car-cache.log`).
 Native mode-4 transitions pass two starts, two pauses, full restoration (31)
 and zero audio spills (`tmp/modes-car-cache.log`).
+
+## Track-object contact bounds
+
+Build a conservative rectangle enclosing the original contact areas of cars
+whose measured speed exceeds 300. Objects outside it still run original
+movement, material/layer, damping and sprite configuration, but cannot collide
+with any car and skip the four detailed tests. Positions that could trigger
+the original signed-word distance wrap disable this shortcut. Initialize the
+bounds only when the first movable object needs them. All 40000 original DOS
+motion/contact cases pass, with added far-away and wrapped-coordinate cases;
+the 200 original flag configurations also pass
+(`tmp/verify-contact-bounds-expanded.log`).
+
+Final BASIC work/cadence are 223370/312665 lines, compared with 222732/312041:
+about 0.07 ms more work per update. F1 improves from 364440/405920 to
+358163/404685: about 0.67 ms less work, with restoration/motion falling from
+91921 to 84991 lines. This is retained for the substantially larger F1 gain,
+not represented as a BASIC improvement. Both use 603 updates and 602 cadence
+intervals (`tmp/perf-contact-bounds-v2-{basic,f1}.log`).
+The full display audit passes 600 updates, 32 actors and 2076 permanent
+marks (`tmp/audit-contact-bounds.log`). The 20 ms objective remains open.

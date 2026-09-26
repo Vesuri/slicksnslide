@@ -58,6 +58,10 @@ int main(void)
             struct SlicksRaceCar *c=&race.cars[d];
             c->x=100*(100+(int)(trial%7))+(int)((trial+d)%9-4)*100;
             c->y=8000+(int)((trial/9+d)%9-4)*100;
+            /* Exercise broad-phase rejection and its signed-word-wrap
+             * fallback against the original instructions, not a C model. */
+            if(trial%13==0)c->x+=10000;
+            if(trial%17==0)c->x+=6553600;
             c->velocity_x=(int)((trial*31+d*227)%12001)-6000;
             c->velocity_y=(int)((trial*7+d*331)%14001)-7000;
             c->measured_speed=trial%6==0?300:trial%6==1?-100:1000;

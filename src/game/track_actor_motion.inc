@@ -5,14 +5,28 @@ static void update_track_actor_motion(struct SlicksRaceRuntime *race)
     const struct SlicksMovingProbeOps probe={weapon_track_probe,weapon_car_probe,weapon_wall_probe,race};
     long car_pixel_x[4],car_pixel_y[4];
     unsigned car_pixels_ready=0;
+    long contact_left,contact_right,contact_top,contact_bottom;
+    unsigned contact_bounds_valid;
     for(unsigned i=0;i<race->navigation.actor_count;++i) {
         struct SlicksTrackActor *a=&race->navigation.actors[i];
         race->track_actor_scratch=a->kind;
         if(a->kind!=1 && a->kind!=3) continue;
         if(!car_pixels_ready) {
+            contact_left=contact_top=30004;contact_right=contact_bottom=-30004;
+            contact_bounds_valid=1;
             for(unsigned d=0;d<4;++d) {
                 car_pixel_x[d]=race->cars[d].x/100;
                 car_pixel_y[d]=race->cars[d].y/100;
+                /* Preserve the original signed-word distance wrap for
+                 * synthetic/out-of-world positions via the exact fallback. */
+                long x=car_pixel_x[d],y=car_pixel_y[d];
+                if(x < -30000 || x > 30000 || y < -30000 || y > 30000)
+                    contact_bounds_valid=0;
+                if(race->cars[d].measured_speed<=300)continue;
+                if(x-3<contact_left)contact_left=x-3;
+                if(x+3>contact_right)contact_right=x+3;
+                if(y-3<contact_top)contact_top=y-3;
+                if(y+3>contact_bottom)contact_bottom=y+3;
             }
             car_pixels_ready=1;
         }
@@ -43,6 +57,8 @@ static void update_track_actor_motion(struct SlicksRaceRuntime *race)
         }
         /* Contacts change velocities, never positions. Cache the signed
          * pixel divisions once per update with movable track objects. */
+        if(contact_bounds_valid && (actor_pixel_x<contact_left || actor_pixel_x>contact_right ||
+            actor_pixel_y<contact_top || actor_pixel_y>contact_bottom))continue;
         for(unsigned d=0;d<4;++d) {
             struct SlicksRaceCar *car=&race->cars[d];
             if(car->actor_layer!=a->layer) continue;
