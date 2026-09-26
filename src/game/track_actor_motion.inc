@@ -21,18 +21,26 @@ static void update_track_actor_motion(struct SlicksRaceRuntime *race)
         if(material<0) { race->collision_error=1;return; }
         if(material==0) a->layer=1;
         else if(material==19) a->layer=0;
-        int hit=slicks_moving_probe(a->x>>4,a->y>>4,nx>>4,ny>>4,
-            &a->x,&a->y,16,0,-1,a->layer,&probe);
-        if(hit==-2) { race->collision_error=1;return; }
-        if(!hit) { a->x=nx;a->y=ny; }
+        const unsigned moving=a->velocity_x || a->velocity_y;
+        /* With zero velocity and exclude=0, the original zero-length
+         * probe has no callbacks or writes. Keep material/layer sampling
+         * and all car contacts, but bypass motion and zero damping. */
+        if(moving) {
+            int hit=slicks_moving_probe(a->x>>4,a->y>>4,nx>>4,ny>>4,
+                &a->x,&a->y,16,0,-1,a->layer,&probe);
+            if(hit==-2) { race->collision_error=1;return; }
+            if(!hit) { a->x=nx;a->y=ny; }
+        }
         const int actor_pixel_x=a->x/16,actor_pixel_y=a->y/16;
         if(race->track_actors_ready) {
             short h=race->track_actor_handles[i];
             configure_weapon_actor(race,h,(short)(actor_pixel_x-2),(short)(actor_pixel_y-2),
                 0,0,0,a->kind==1?1:4,a->layer*15);
         }
-        a->velocity_x=(short)(a->velocity_x*10)/11;
-        a->velocity_y=(short)(a->velocity_y*10)/11;
+        if(moving) {
+            a->velocity_x=(short)(a->velocity_x*10)/11;
+            a->velocity_y=(short)(a->velocity_y*10)/11;
+        }
         /* Contacts change velocities, never positions. Cache the signed
          * pixel divisions once per update with movable track objects. */
         for(unsigned d=0;d<4;++d) {

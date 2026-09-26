@@ -738,3 +738,19 @@ shared-pool motion loop passes all 1028 original/native update batches
 (`tmp/verify-particle-motion-cache.log`). BASIC improves further to 546 maximum
 lines (35.0 ms), cadence 332320/602 lines (35.4 ms). At the same worst frame,
 advancement falls from 65 to 58 lines (`tmp/perf-particle-motion-cache-basic.log`).
+With both particle changes, F1 measures 788 maximum lines and 466760/602
+cadence lines (49.7 ms), compared with the earlier 836/475184
+(`tmp/perf-particle-cache-f1.log`).
+
+## Stationary movable track objects
+
+Zero-velocity objects still sample material/layer, configure their sprites
+and test every car contact. They bypass only the original no-callback
+zero-length ray (`exclude=0`) and zero-valued damping. Another 20000 explicit
+stationary-object cases bring original motion/layer/contact verification to
+40000 (`tmp/verify-stationary-track-motion.log`). F1 falls from 788 to 776
+maximum work lines, and cadence from 466760 to 449288/602 lines (47.8 ms)
+(`tmp/perf-stationary-track-motion.log`).
+The combined particle-motion/stationary-object build passes the 600-update
+full display audit with 32 actors and 2076 permanent marks
+(`tmp/audit-stationary-track-motion.log`).

@@ -28,7 +28,7 @@ int main(void)
     word(u,0x3cbf0 + 0x16ce,0);word(u,0x3cbf0 + 0x16d0,0xb000);
     check(uc_mem_write(u,0xa0000,packed,sizeof packed));
     unsigned cases=0;
-    for(unsigned trial=0;trial<2000;++trial) {
+    for(unsigned trial=0;trial<4000;++trial) {
         for(unsigned p=0;p<60800;++p) {
             unsigned v=(p+trial*13)%97;
             race.material_map[p]=v<2?2:v<4?19:0;
@@ -44,6 +44,9 @@ int main(void)
             a->x=(short)(16*(100+(int)(trial%7))+i%3-1);a->y=(short)(16*80+i%3-1);
             a->velocity_x=(short)((trial*11+i*13)%321-160);
             a->velocity_y=(short)((trial*17+i*7)%321-160);
+            /* Stationary objects must still sample layers and accept car
+             * impulses, including the original negative-coordinate cases. */
+            if(trial>=2000)a->velocity_x=a->velocity_y=0;
             if(trial%11==0) { a->x=-17;a->y=320; }
             word(u,0x63126 + i*2,a->x);word(u,0x631ee + i*2,a->y);
             word(u,0x632b6 + i*2,a->velocity_x);word(u,0x6337e + i*2,a->velocity_y);
