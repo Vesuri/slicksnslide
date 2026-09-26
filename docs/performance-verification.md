@@ -87,3 +87,19 @@ Restore substages21/26/27/15; draw21/70/58/128. Indexed restoration caches
 its array bases and omits priority tests already resolved by the index;
 indexed drawing also avoids those redundant tests. Original renderer,
 restoration and dirty-tracking suites pass; no target errors/audio spills.
+
+## Compact 68020 point renderer
+
+Separating the C point helper alone did not improve timing (`perf-point.log`:
+927 maximum work lines, cadence422823/602). With the native point routine,
+`tmp/perf-asm-point.log` reports maximum work903 lines (57.9ms), maximum
+wall1116, cadence413442/602 (44.0ms), still603/603 over budget. Final step570,
+audio12, C2P69, diagnostics7; restore93, advance43, update136, HUD34, draw260.
+
+`make verify-particle-draw` compares 2048 native/scalar full-frame, metadata,
+dirty-list and overflow cases and verifies the C register/stack ABI. This
+is an optimization regression against the scalar path; independent original
+x86 layering/pixel comparisons remain in the track/weapon actor suites, which
+also pass. The target routine keeps the original clipped-point height and
+mask rules, writes the authoritative chunky surface, and returns untouched
+to the existing C fallback when fewer than two dirty slots remain.

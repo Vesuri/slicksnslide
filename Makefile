@@ -1175,6 +1175,16 @@ build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphic
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
 
 .PHONY: verify-subrect-far
+build/particle_draw.bin: src/game/particle_draw.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-particle-draw
+verify-particle-draw: build/particle_draw.bin build/verify_particle_draw
+	build/verify_particle_draw build/particle_draw.bin
+
 verify-subrect-far: unpack build/sgfx_planar_subrect_blit_far.bin build/verify_subrect_far
 	build/verify_subrect_far disasm/runtime.bin build/sgfx_planar_subrect_blit_far.bin
 

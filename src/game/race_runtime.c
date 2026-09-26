@@ -16,6 +16,14 @@
 #if defined(__m68k__)
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
 _Static_assert(sizeof(struct SlicksTrailParticle) == 24, "particle stride");
+_Static_assert(__builtin_offsetof(struct SlicksTrailParticle, old_x) == 12 &&
+               __builtin_offsetof(struct SlicksTrailParticle, saved_under) == 16 &&
+               __builtin_offsetof(struct SlicksTrailParticle, colour) == 18 &&
+               __builtin_offsetof(struct SlicksTrailParticle, occlusion_limit) == 22,
+               "particle draw offsets");
+_Static_assert(sizeof(struct SlicksDirtyPixel) == 4 &&
+               __builtin_offsetof(struct SlicksDirtyPixel, y) == 2 &&
+               SLICKS_DIRTY_PIXEL_MAX == 512, "particle draw dirty-list ABI");
 _Static_assert(__builtin_offsetof(struct SlicksTrailParticle, lifetime) == 17,
                "particle lifetime offset");
 _Static_assert(__builtin_offsetof(struct SlicksTrailParticle, saved_valid) == 20,
@@ -1830,31 +1838,17 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
             (unsigned char)(car->actor_layer * 15);
 }
 
-static void draw_trail_priority(struct SlicksRaceRuntime *race,
-                                 unsigned short bucket,int priority)
+static void draw_trail_point(struct SlicksRaceRuntime *race,
+                             struct SlicksTrailParticle *particle)
 {
-    unsigned short at;
-    if (slicks_race_disable_particles)
+#if defined(__m68k__)
+    extern int slicks_draw_particle(struct SlicksTrailParticle *,unsigned char *,
+        const unsigned char *,const unsigned char *,struct SlicksDirtyPixel *,
+        unsigned short *,const unsigned int *);
+    if(!slicks_draw_particle(particle,race->chunky,race->material_map,
+        race->surface_map,race->dirty_pixels,&race->dirty_pixel_count,mult320))
         return;
-    unsigned count=shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
-    int ordered=race->actor_order_ready && (priority>=0 || bucket!=3);
-    unsigned p=priority>=0?(unsigned)priority:bucket==0?0:bucket==1?3:5;
-    for (at = ordered?race->actor_order_head[p]:0; ordered?at!=0:at<count;
-         at=ordered?race->actor_order_next[at]:at+1) {
-        unsigned index;
-        if(shared_actor_pool(race)) {
-            int trail=race->weapons.trail_index[at];
-            if(trail<0) {
-                if(!ordered && priority>=0 && race->weapons.actors[at].priority!=priority) continue;
-                if(ordered || weapon_bucket(race->weapons.actors[at].priority)==bucket)
-                    draw_weapon_actor(race,at);
-                continue;
-            }
-            index=(unsigned)trail;
-            if(!ordered && weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
-        } else index=race->trail_priority_indices[bucket][at];
-        struct SlicksTrailParticle *particle = &race->trail_particles[index];
-        if(!ordered && priority>=0 && particle->priority!=priority) continue;
+#endif
         /* 3000:39af/39ca use SAR on signed 16-bit coordinates. Negative
          * fractions round down, not toward zero into the visible border. */
         short x = particle->x < 0
@@ -1868,7 +1862,7 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
             if (particle->saved_valid & 2)
                 mark_dirty_pixel(race, particle->old_x, particle->old_y);
             particle->saved_valid = 0;
-            continue;
+            return;
         }
         if (particle->occlusion_limit) {
             unsigned long at = mult320[(unsigned short)y] +
@@ -1877,7 +1871,7 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
                 if (particle->saved_valid & 2)
                     mark_dirty_pixel(race, particle->old_x, particle->old_y);
                 particle->saved_valid = 0;
-                continue;
+                return;
             }
         }
         {
@@ -1896,6 +1890,41 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
             race->chunky[pixel_at] = particle->colour;
         }
         particle->saved_valid = 1;
+}
+
+static void draw_trail_priority(struct SlicksRaceRuntime *race,
+                                 unsigned short bucket,int priority)
+{
+    if(slicks_race_disable_particles) return;
+    if(race->actor_order_ready && (priority>=0 || bucket!=3)) {
+        unsigned p=priority>=0?(unsigned)priority:bucket==0?0:bucket==1?3:5;
+        const unsigned char *next=race->actor_order_next;
+        const short *trail_index=race->weapons.trail_index;
+        struct SlicksTrailParticle *particles=race->trail_particles;
+        for(unsigned h=race->actor_order_head[p];h;h=next[h]) {
+            int t=trail_index[h];
+            if(t<0) draw_weapon_actor(race,h);
+            else draw_trail_point(race,particles+t);
+        }
+        return;
+    }
+    unsigned count=shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
+    for(unsigned at=0;at<count;++at) {
+        unsigned index;
+        if(shared_actor_pool(race)) {
+            int trail=race->weapons.trail_index[at];
+            if(trail<0) {
+                if(priority>=0 && race->weapons.actors[at].priority!=priority) continue;
+                if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
+                    draw_weapon_actor(race,at);
+                continue;
+            }
+            index=(unsigned)trail;
+            if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
+        } else index=race->trail_priority_indices[bucket][at];
+        struct SlicksTrailParticle *particle=&race->trail_particles[index];
+        if(priority>=0 && particle->priority!=priority) continue;
+        draw_trail_point(race,particle);
     }
 }
 
