@@ -1144,3 +1144,8 @@ integration and shrinks the entry from 11742 to 1828 bytes, but BASIC work
 increases from 221019 to 222866 lines, preparation to 34058 lines and cadence
 from 306737 to 312665/602. Worst work increases from 511 to 513 lines
 (`tmp/perf-prepare-o2-basic.log`). The default O3 function is restored.
+
+Materializing the tail-update car pointer is also rejected: BASIC work rises
+from 221019 to 221722 lines, cadence 306737 to 309859/602, worst work 511 to
+512 (`tmp/perf-tail-car-address-basic.log`). The earlier beneficial pointer
+constraint remains limited to motion preparation.
