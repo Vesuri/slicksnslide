@@ -714,3 +714,21 @@ The full display audit passes 600 updates, 32 actors and 2076 permanent marks
 lines; mean cadence falls slightly from 478928 to 475184/602 lines, 51.0 to
 50.6 ms (`tmp/perf-native-restore-setup.log`). This is a small gain, not a
 completed 20 ms target.
+
+## Cache-sized particle drawing loop
+
+Particle batches keep the continuation in an address register and publish
+their dirty count at the batch boundary, instead of doing a stack call/return
+and count store for every point. The chain walker, paint body and old-point
+queue are adjacent within 256 bytes, avoiding the previous walker/paint-code
+instruction-cache alias. Single-point and overflow behavior remain intact.
+All 2048 single, 256 ordered-batch and 256 actor-chain native pixel/metadata/
+dirty-list/ABI comparisons pass (`tmp/verify-particle-cache-loop.log`).
+
+BASIC's worst work drops to 551 lines (35.3 ms), with the 148-particle worst
+frame's draw interval 142 rather than 185 lines. Mean cadence is only slightly
+lower: 333860/602 lines (35.5 ms), and 579/603 updates still exceed 20 ms
+(`tmp/perf-particle-cache-loop-basic.log`). The maximum-work reduction must not
+be presented as a comparable gain in average displayed frame rate.
+The full native display audit passes 600 updates, 32 actors and 2076 permanent
+marks (`tmp/audit-particle-cache-loop.log`).

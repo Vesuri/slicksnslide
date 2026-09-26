@@ -21,9 +21,17 @@ slicks_draw_particle:
 	movea.l 56(sp),a4
 	lea (a4,d5.l*4),a4
 	movea.l 64(sp),a6
-	bsr.s .body
+	lea .single_done(pc),a5
+	bra.s .body
+.single_done:
+	movea.l 60(sp),a5
+	move.w d5,(a5)
+	moveq #0,d0
 	movem.l (sp)+,d2-d5/a2-a6
 	rts
+; a5 is the caller's continuation, not the dirty-count pointer. Batched
+; callers publish the count only at the boundary and avoid one stack
+; call/return plus a count store for every point.
 .body:
 	move.l (a0),d0
 	asr.l #6,d0
@@ -84,9 +92,7 @@ slicks_draw_particle:
 	move.b 18(a0),(a1,d2.l)
 	move.b #1,20(a0)
 .done:
-	move.w d5,(a5)
-	moveq #0,d0
-	rts
+	jmp (a5)
 .fallback:
 	moveq #1,d0
 	movem.l (sp)+,d2-d5/a2-a6
@@ -101,6 +107,34 @@ slicks_draw_particle:
 	clr.b (a4)+
 	addq.w #1,d5
 .old_done:
+	rts
+
+; Keep the hot chain walk beside the body and old-point queue: together
+; they fit in the 68020's 256-byte instruction cache. Placing the walker
+; after both entry prologues makes it evict the paint code every point.
+.chain_loop:
+	tst.w d6
+	beq.s .chain_done
+	cmpi.w #510,d5
+	bhi.s .chain_done
+	movea.l 4(sp),a0
+	moveq #0,d0
+	move.w (a0,d6.w*2),d0
+	bmi.s .chain_done
+	mulu.w #24,d0
+	movea.l 8(sp),a0
+	adda.l d0,a0
+	bra.w .body
+.chain_continue:
+	movea.l (sp),a0
+	move.b (a0,d6.w),d6
+	bra.s .chain_loop
+.chain_done:
+	movea.l 80(sp),a5
+	move.w d5,(a5)
+	move.l d6,d0
+	lea 12(sp),sp
+	movem.l (sp)+,d2-d7/a2-a6
 	rts
 
 ; Same first seven arguments, then sorted particle-index words and count.
@@ -123,6 +157,7 @@ slicks_draw_particle_batch equ .batch_entry
 	lea (a4,d5.l*4),a4
 	move.l 88(sp),d6
 	moveq #0,d7
+	lea .batch_continue(pc),a5
 .batch_loop:
 	tst.l d6
 	beq.s .batch_done
@@ -135,11 +170,14 @@ slicks_draw_particle_batch equ .batch_entry
 	mulu.w #24,d0
 	movea.l 4(sp),a0
 	adda.l d0,a0
-	bsr.w .body
+	bra.w .body
+.batch_continue:
 	addq.l #1,d7
 	subq.l #1,d6
 	bra.s .batch_loop
 .batch_done:
+	movea.l 76(sp),a5
+	move.w d5,(a5)
 	move.l d7,d0
 	addq.l #8,sp
 	movem.l (sp)+,d2-d7/a2-a6
@@ -165,24 +203,5 @@ slicks_draw_particle_chain equ .chain_entry
 	move.w (a5),d5
 	lea (a4,d5.l*4),a4
 	move.l 96(sp),d6
-.chain_loop:
-	tst.w d6
-	beq.s .chain_done
-	cmpi.w #510,d5
-	bhi.s .chain_done
-	movea.l 4(sp),a0
-	moveq #0,d0
-	move.w (a0,d6.w*2),d0
-	bmi.s .chain_done
-	mulu.w #24,d0
-	movea.l 8(sp),a0
-	adda.l d0,a0
-	bsr.w .body
-	movea.l (sp),a0
-	move.b (a0,d6.w),d6
-	bra.s .chain_loop
-.chain_done:
-	move.l d6,d0
-	lea 12(sp),sp
-	movem.l (sp)+,d2-d7/a2-a6
-	rts
+	lea .chain_continue(pc),a5
+	bra.w .chain_loop
