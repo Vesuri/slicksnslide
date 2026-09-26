@@ -525,3 +525,8 @@ function shrinks from 4516 to 1840 bytes. Original track-render comparisons
 now also repeat draws with deferred dirty metadata and deliberate cache
 collisions (`tmp/verify-deferred-cache.log`).
 The full display audit passes 600 updates (`tmp/audit-compact-draw.log`).
+
+A separate unchanged-track-sprite wrapper passed original pixel comparisons
+but increased F1 maximum work from 970 to 979 lines and cadence sum from
+557470 to 559966 (`tmp/perf-unchanged-track.log`). Its repeated validation
+and extra call outweighed the simpler geometry path; it was removed.
