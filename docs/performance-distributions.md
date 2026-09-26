@@ -109,3 +109,10 @@ and inconsistent to retain:
 The source change is removed. Controls: `tmp/structural-control-{0,2,3}.log`
 and `tmp/motion-f1-0.log`; candidate: `tmp/outlined-motion-{0,1,2,3}.log`.
 Original actor verification: `tmp/verify-outlined-track-motion.log`.
+
+Two physics outlining variants were also removed. Isolating integration alone
+made GCC inline preparation into the main loop: F1 work increased from
+265248 to 267601 lines and BASIC 191565 to 192876. Holding both boundaries
+fixed reduced that regression but still lost: F1 266668, BASIC 192122.
+Both variants matched the final car positions and mark counts. Logs:
+`tmp/outlined-physics-{0,1}.log`, `tmp/split-physics-{0,1}.log`.
