@@ -311,6 +311,9 @@ struct SlicksRaceRuntime {
     unsigned char start_light_visible;
     unsigned char start_light_stage_mask;
     unsigned char dirty_row_count;
+    /* A C producer queued a pixel at or below SLICKS_POINT_HEIGHT; native
+     * point producers cannot reach those rows. Occupies existing padding. */
+    unsigned char dirty_pixel_hud;
     unsigned short dirty_pixel_count;
     unsigned char sound_event_count;
     unsigned short trail_particle_count;

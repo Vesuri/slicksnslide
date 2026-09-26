@@ -336,6 +336,8 @@ static void mark_dirty_pixel(struct SlicksRaceRuntime *race,
         mark_dirty_rect(race, x, y, x + 1, y + 1);
         return;
     }
+    if (y >= SLICKS_POINT_HEIGHT)
+        race->dirty_pixel_hud = 1;
     pixel = &race->dirty_pixels[race->dirty_pixel_count++];
     pixel->x = (unsigned short)x;
     pixel->y = (unsigned char)y;
@@ -3081,6 +3083,55 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
     }
     if (!race->chunky || !race->status_colours[0]) return -1;
     if (race->chunky_authoritative) logical=0;
+    /* Without weapons, unchanged bounded bars need no rectangle composition.
+     * Compute the three cached row ends directly; any difference, error,
+     * unbounded width or dirty rectangle over the strip takes the general
+     * path below, as does any queued pixel outside the point rows. */
+    if(!race->weapons_enabled && race->status_bar_cache.valid && !race->dirty_pixel_hud &&
+       race->status_bar_cache.background==race->status_colours[0]) {
+        const unsigned char background=race->status_colours[0];
+        unsigned active=0,same=1;
+        for(unsigned car=0;car<4 && same;++car) {
+            if(!driver_role(race,car)) continue;
+            const struct SlicksRaceCar *c=&race->cars[car];
+            const short left=(short)(106+car*60);
+            short fuel_end=left,damage_end=left;
+            unsigned char fuel_colour=background,damage_colour=background;
+            active|=1U<<car;
+            if(race->fuel_option) {
+                signed int width;
+                if(c->service_flags&1) width=20*(timer&1);
+                else {
+                    signed int numerator=(signed int)(c->fuel*40U);
+                    signed int denominator=(signed int)c->fuel_capacity;
+                    if(!denominator || (numerator==(-2147483647-1) && denominator==-1)) {
+                        same=0;break;
+                    }
+                    width=(signed int)((unsigned int)(numerator/denominator)+1U)/2;
+                }
+                fuel_end=(short)((unsigned short)left+(unsigned short)width);
+                if(fuel_end>(short)(left+20)) { same=0;break; }
+                fuel_colour=race->status_colours[1];
+            }
+            if(race->damage_scale && c->damage[0]>0) {
+                short width=c->damage[0]/40;
+                if(width>20) width=20;
+                damage_end=(short)(left+width);damage_colour=race->status_colours[2];
+            }
+            const short *ends=race->status_bar_cache.ends[car];
+            const unsigned char *colours=race->status_bar_cache.colours[car];
+            same=ends[0]==left && colours[0]==background &&
+                ends[1]==fuel_end && colours[1]==fuel_colour &&
+                ends[2]==damage_end && colours[2]==damage_colour;
+        }
+        if(same && active==race->status_bar_cache.active) {
+            for(unsigned i=0;i<race->dirty_row_count && same;++i) {
+                const struct SlicksDirtyRows *r=&race->dirty_rows[i];
+                if(r->top<190 && r->bottom>187 && r->left<306 && r->right>106)same=0;
+            }
+            if(same) return 0;
+        }
+    }
     /* Validate all four divisions before changing either representation. */
     for (unsigned car=0;car<4;++car) {
         if(!driver_role(race,car)) { counts[car]=weapon_draw[car]=0; continue; }
@@ -3310,23 +3361,29 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
                         write_pixel(logical,0,x,y,race->chunky[mult320[y]+x]);
         }
     }
+    /* The options byte is fixed within this pass. Reused car/cache bases
+     * avoid long displacements into the race structure for every field. */
+    const unsigned char options=(race->weapons_enabled?1:0)|
+        (race->fuel_option?2:0)|(race->damage_scale?4:0);
     for (unsigned car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         if(!driver_role(race,car)) continue;
         struct SlicksHudText commands[3];
         struct SlicksHudRun runs[3];
         const struct SlicksRaceCar *state = &race->cars[car];
-        unsigned char options=(race->weapons_enabled?1:0)|
-            (race->fuel_option?2:0)|(race->damage_scale?4:0);
+        __typeof__(race->hud_input[0]) *input=&race->hud_input[car];
+#if defined(__m68k__)
+        __asm__("" : "+a"(state), "+a"(input));
+#endif
         unsigned char place=state->finished?state->finish_position:0;
         unsigned short last=(unsigned short)state->last_lap_time_units;
         unsigned short best=(unsigned short)state->best_lap_time_units;
-        if(race->hud_valid[car] && race->hud_input[car].lap==state->lap &&
-           race->hud_input[car].place==place && race->hud_input[car].last==last &&
-           race->hud_input[car].best==best && race->hud_input[car].options==options)
+        if(race->hud_valid[car] && input->lap==state->lap &&
+           input->place==place && input->last==last &&
+           input->best==best && input->options==options)
             continue;
-        race->hud_input[car].lap=state->lap;race->hud_input[car].place=place;
-        race->hud_input[car].last=last;race->hud_input[car].best=best;
-        race->hud_input[car].options=options;
+        input->lap=state->lap;input->place=place;
+        input->last=last;input->best=best;
+        input->options=options;
         unsigned count = slicks_hud_driver_text(car, state->lap,
             place,last,best,commands);
         unsigned changed = !race->hud_valid[car] ||
@@ -3891,6 +3948,7 @@ void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race)
 {
     if (race) {
         race->dirty_row_count = 0;
+        race->dirty_pixel_hud = 0;
         race->dirty_pixel_count = 0;
     }
 }

@@ -26,6 +26,12 @@ Publish/push only when explicitly requested.
     car draw setup, then car motion/tails with register-resident state.
   - F1/CITY: remove repeated per-object work for stationary track objects.
 
+## Verification debt
+
+- `diag_fuel.gdb` and `diag_damage_race.gdb` fail identically on 5fa9458 and
+  later builds (finished car reaches lap 6; fuel fixture sees no finishers).
+  Decide whether the fixtures or the finish/lap behaviour are stale.
+
 ## Deferred
 
 - Manual joystick press/steer/release verification: deferred by the user.

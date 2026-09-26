@@ -114,3 +114,36 @@ the routine, like the C it replaced. A literal translation is not enough:
 denser code with register-resident state and hoisted per-call invariants is
 required. Final checkpoint control for later comparisons (`tmp/ckpt1-*`):
 189881 / 264529 / 211897 / 195053 work lines.
+
+## Status-bar and timer change detection
+
+Without weapons, `slicks_race_draw_status` now computes each active car's
+three cached row ends directly and returns when they, the background and the
+active mask match the cache and no dirty rectangle touches rows 187..189.
+Errors, unbounded widths, weapon HUDs and any difference take the unchanged
+general path. The old per-frame scan of every queued dirty pixel is replaced
+by `dirty_pixel_hud`, set by C `mark_dirty_pixel` for rows at or below
+`SLICKS_POINT_HEIGHT` (native point producers cannot reach them) and cleared
+with the lists; it occupies existing structure padding. `draw_timers` hoists
+its fixed options byte and uses register car/cache bases.
+
+Host HUD, Arcade HUD and dirty-tracking suites pass, including the injected
+strip-pixel invalidation case (`tmp/verify-status-fast.log`). Full display
+audits pass on F1 (600 updates, 32 actors, 2076 marks), CITY (18 actors, 1480
+marks) and WHACKO (5 actors, 1854 marks) (`tmp/audit-hudfast-{1,2,3}.log`);
+BASIC completes before update 600 in that fixture. The fuel fixture's 3
+status-pixel checks and the damage fixture's 4 have zero failures.
+
+| Track | Control (`ckpt1`) | Candidate | Change | Max lines |
+| --- | ---: | ---: | ---: | --- |
+| BASIC | 189881 | 183574 | -3.3% | 452 -> 441 |
+| F1 | 264529 | 257582 | -2.6% | 588 -> 586 |
+| CITY | 211897 | 205131 | -3.2% | 469 -> 471 |
+| WHACKO | 195053 | 189130 | -3.0% | 514 -> 487 |
+
+Final positions and marks are unchanged (`tmp/hudfast-*`).
+
+The fuel (`diag_fuel.gdb`) and damage (`diag_damage_race.gdb`) race fixtures
+fail on both this build and a rebuilt 5fa9458 with byte-identical output:
+a finished car's lap counter reaches 6, and the fuel fixture counts no
+finished cars. The status-pixel parts of both pass.
