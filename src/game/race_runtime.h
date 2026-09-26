@@ -110,24 +110,26 @@ struct SlicksSoundEvent {
 };
 
 struct SlicksRaceCar {
+    /* Contiguous, aligned 32-bit working values; no on-disk car ABI. */
     long x;
     long y;
     long speed_fixed;
     long measured_speed; /* Previous DS:684e = (abs(vx)+abs(vy))/2. */
-    unsigned char position_scale; /* Selected profile's unsigned DS:3f42. */
     long velocity_x;
     long velocity_y;
     long collision_impact;
     long pending_damage_impact;
     long ai_last_x;
     long ai_last_y;
-    short heading;
-    short speed;
-    unsigned short elapsed_centiseconds;
     unsigned int elapsed_time_units; /* DOS duration units: two per tick. */
     unsigned int current_lap_time_units;
     unsigned int last_lap_time_units;
     unsigned int best_lap_time_units;
+    unsigned int fuel; /* Signed DOS long DS:305f, stored as raw 32-bit bits. */
+    unsigned int fuel_capacity; /* DS:3063. */
+    short heading;
+    short speed;
+    unsigned short elapsed_centiseconds;
     unsigned short current_lap_centiseconds;
     unsigned short last_lap_centiseconds;
     unsigned short best_lap_centiseconds;
@@ -148,8 +150,6 @@ struct SlicksRaceCar {
     short steering_scale;
     short damage[4]; /* DOS DS:304f..3055, including steering penalty. */
     short damage_smoke_ticks; /* Original per-driver BP-2c update counter. */
-    unsigned int fuel; /* Signed DOS long DS:305f, stored as raw 32-bit bits. */
-    unsigned int fuel_capacity; /* DS:3063. */
     short fuel_upgrade; /* ES:6a7e, copied from setup inventory slot 2. */
     unsigned char service_flags; /* DS:305e; bit zero means fuel exhausted. */
     signed char damage_turn_sign;
@@ -160,6 +160,7 @@ struct SlicksRaceCar {
     short drive_setup[13];
     short drive_coefficients[7];
     unsigned short maximum_speed;
+    unsigned char position_scale; /* Selected profile's unsigned DS:3f42. */
     unsigned char waypoint;
     unsigned char vehicle;
     unsigned char style;
@@ -189,9 +190,8 @@ struct SlicksRaceCar {
     unsigned char old_width;
     unsigned char old_height;
     unsigned char saved_valid;
-    /* Same structure size, with the saved pixels on a word boundary. */
-    unsigned char saved_under[SLICKS_CAR_PIXEL_MAX];
-};
+    unsigned char saved_under[SLICKS_CAR_PIXEL_MAX] __attribute__((aligned(4)));
+} __attribute__((aligned(4)));
 
 /* Half-open original d9b6 status rectangles; colour is a semantic slot:
  * 0 background, 1 fuel, 2 damage. Palette resolution is separate. */

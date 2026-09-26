@@ -907,3 +907,23 @@ The full display audit passes 600 updates, 32 actors and 2076 marks
 `tmp/audit-hot-state-aligned.log`). Neither track meets the 20 ms target.
 Native mode-4 transitions also pass two starts, two pauses, restoration 31
 and zero audio spills (`tmp/modes-hot-state-aligned.log`).
+
+## Aligned car state and actor saved pixels
+
+Group each car's 32-bit working values and align its saved pixels/stride to
+four bytes; the car shrinks from 302 to 300 bytes. Original physics, damage,
+HUD, collision, surface and native car rendering checks pass
+(`tmp/verify-aligned-car-state.log`). BASIC work/cadence improve from
+225138/315160 to 224058/312334 lines; F1 from 370620/410912 to
+369127/409997 (603 updates, 602 cadence intervals).
+
+Actor saved pixels move to offset 36 with a 164-byte stride. Native reset,
+render offsets, assertions and oracle guards change together. Original and
+native actor/reset/dirty checks pass (`tmp/verify-aligned-actor-buffers.log`).
+This second change is effectively neutral on BASIC (224135 work lines,
+312334 cadence), while F1 falls to 368189 work / 409352 cadence lines.
+The combined runtime uses 392 additional bytes. Full native pixel auditing
+passes 600 updates, 32 actors and 2076 permanent marks
+(`tmp/audit-aligned-car-actor.log`). Timing logs are
+`tmp/perf-aligned-car-state-{basic,f1}.log` and
+`tmp/perf-aligned-actor-buffers-{basic,f1}.log`.

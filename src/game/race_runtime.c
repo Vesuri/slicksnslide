@@ -22,8 +22,12 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,cars)<32768 &&
 _Static_assert((__builtin_offsetof(struct SlicksRaceRuntime,trail_particles)&3)==0 &&
     (__builtin_offsetof(struct SlicksRaceRuntime,track_sprite_visibility)&3)==0,
     "longword-aligned particle and visibility arrays");
-_Static_assert((__builtin_offsetof(struct SlicksRaceCar,saved_under)&1)==0,
-    "car background word alignment");
+_Static_assert((sizeof(struct SlicksRaceCar)&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceCar,saved_under)&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceCar,velocity_x)&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceCar,elapsed_time_units)&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceCar,fuel)&3)==0,
+    "car working values and backgrounds have longword alignment");
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
 _Static_assert(sizeof(struct SlicksTrailParticle) == 24, "particle stride");
 _Static_assert(__builtin_offsetof(struct SlicksTrailParticle, old_x) == 12 &&

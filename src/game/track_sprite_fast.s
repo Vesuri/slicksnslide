@@ -122,7 +122,7 @@ slicks_draw_unchanged_track_sprite:
 	movea.l a3,a6
 	movea.l a1,a3
 	movea.l a5,a1
-	lea 34(a4),a2
+	lea 36(a4),a2
 	move.w d5,d4
 	tst.w d3
 	beq.s .opaque
@@ -177,7 +177,7 @@ slicks_restore_actor_sprite:
 	lea mult320,a1
 	adda.l 0(a1,d1.w*4),a0
 	adda.w d0,a0
-	lea 34(a2),a1
+	lea 36(a2),a1
 	move.w d2,d1
 	subq.w #1,d1
 	move.w #320,d3

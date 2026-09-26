@@ -9,8 +9,8 @@ static void reset_weapon_actor(struct SlicksWeaponActor *actor)
      * pixel before restoration can read it; off-screen cells are never read.
      * Point actors use their separate one-byte saved background. */
 #if defined(__m68k__)
-    _Static_assert(__builtin_offsetof(struct SlicksWeaponActor,saved_under)==34 &&
-        sizeof(struct SlicksWeaponActor)==162,
+    _Static_assert(__builtin_offsetof(struct SlicksWeaponActor,saved_under)==36 &&
+        sizeof(struct SlicksWeaponActor)==164,
         "actor reset ABI");
     extern void slicks_actor_reset_native(struct SlicksWeaponActor *);
     slicks_actor_reset_native(actor);
@@ -224,7 +224,7 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
             __builtin_offsetof(struct SlicksWeaponActor,colour)==24 &&
             __builtin_offsetof(struct SlicksWeaponActor,old_x)==26 &&
             __builtin_offsetof(struct SlicksWeaponActor,old_width)==30 &&
-            __builtin_offsetof(struct SlicksWeaponActor,saved_under)==34 &&
+            __builtin_offsetof(struct SlicksWeaponActor,saved_under)==36 &&
             __builtin_offsetof(struct SlicksActorMotion,frame)==16,"native track actor ABI");
         _Static_assert(sizeof(struct SlicksTrackActorAsset)==259 &&
             __builtin_offsetof(struct SlicksTrackActorAsset,width)==128 &&
