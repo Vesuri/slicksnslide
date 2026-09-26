@@ -90,3 +90,22 @@ effects and original track-actor suites pass (`tmp/verify-profile-scopes.log`,
 The largest measured drawing group is priorities 4 and above. Its contents
 include track sprites and points, not just static images. Avoiding necessary
 saved-under operations or reducing effects is not an acceptable optimization.
+
+## Rejected track-motion collision outlining
+
+Separating the moving-object pixel walker reduced the common function from
+3710 to 3024 bytes and its stack scratch from 116 to 64 bytes. Original track
+motion/render/setup checks passed. All four benchmark final car positions and
+mark counts matched their controls. However, the timing change was too small
+and inconsistent to retain:
+
+| Track | Control mean ms | Candidate mean ms | Control max | Candidate max |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC | 20.365 | 20.327 | 28.974 | 29.103 |
+| F1 | 28.197 | 28.158 | 37.564 | 37.821 |
+| CITY | 22.651 | 22.613 | 30.513 | 30.449 |
+| WHACKO | 20.994 | 20.925 | 32.628 | 32.692 |
+
+The source change is removed. Controls: `tmp/structural-control-{0,2,3}.log`
+and `tmp/motion-f1-0.log`; candidate: `tmp/outlined-motion-{0,1,2,3}.log`.
+Original actor verification: `tmp/verify-outlined-track-motion.log`.
