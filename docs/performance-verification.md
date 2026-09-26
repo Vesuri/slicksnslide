@@ -1138,3 +1138,9 @@ average), with drawing 105342 to 92816 lines. Worst work falls from 668 to
 220813 to 221019 lines (23.47 to 23.49 ms), identical 306737/602 cadence;
 worst work 508 to 511. See `tmp/perf-draw-packets-{basic,f1}.log`.
 Neither fixture meets the requested 20 ms limit.
+
+Compiling only `prepare_car_motion` at O2 is rejected. It outlines AI and
+integration and shrinks the entry from 11742 to 1828 bytes, but BASIC work
+increases from 221019 to 222866 lines, preparation to 34058 lines and cadence
+from 306737 to 312665/602. Worst work increases from 511 to 513 lines
+(`tmp/perf-prepare-o2-basic.log`). The default O3 function is restored.
