@@ -796,3 +796,9 @@ The candidate was removed; local speed alone did not justify retaining it.
 Evidence: `tmp/verify-native-contact-compact.log`,
 `tmp/perf-native-contact-burst-basic.log`, and
 `tmp/perf-native-contact-compact-basic.log`.
+
+Word-aligning track assets (259 to 260 bytes) also passed the original sprite,
+weapon and track-actor checks, but F1 cadence increased from 440294/602 to
+443050/602, with maximum work 772 rather than 771 lines. Removed rather than
+retained on an alignment assumption (`tmp/verify-track-asset-alignment.log`,
+`tmp/perf-track-asset-alignment-f1.log`).
