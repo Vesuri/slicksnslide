@@ -14,6 +14,7 @@ commands
   printf "SPARSE_CONVERTED=%u\n",g_slicks_diag_sparse_converted
   printf "SIMULATION_MAX prepare=%lu weapons=%lu tail=%lu\n",g_slicks_diag_bench_max_simulation[0],g_slicks_diag_bench_max_simulation[1],g_slicks_diag_bench_max_simulation[2]
   printf "TAIL_MAX wheels=%lu collision_surface=%lu smoke_contact=%lu finish=%lu\n",g_slicks_diag_bench_max_tail[0],g_slicks_diag_bench_max_tail[1],g_slicks_diag_bench_max_tail[2],g_slicks_diag_bench_max_tail[3]
+  printf "DRAW_MAX index=%lu low=%lu cars_p3=%lu high=%lu cars_only=%lu p3_only=%lu rect_pixels=%lu sparse=%u\n",g_slicks_diag_bench_max_actors[4],g_slicks_diag_bench_max_actors[5],g_slicks_diag_bench_max_actors[6],g_slicks_diag_bench_max_actors[7],g_slicks_diag_bench_max_car_draw[0],g_slicks_diag_bench_max_car_draw[1],g_slicks_diag_bench_max_rect_pixels,g_slicks_diag_bench_max_sparse
   printf "BENCHMARK_MAX restore=%lu advance=%lu update=%lu hud=%lu draw=%lu audio=%lu c2p=%lu diag=%lu particles=%u\n",g_slicks_diag_bench_max_stages[0],g_slicks_diag_bench_max_stages[1],g_slicks_diag_bench_max_stages[2],g_slicks_diag_bench_max_stages[3],g_slicks_diag_bench_max_stages[4],g_slicks_diag_bench_max_stages[5],g_slicks_diag_bench_max_stages[6],g_slicks_diag_bench_max_stages[7],g_slicks_diag_bench_max_particles
   quit
 end

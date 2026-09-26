@@ -332,3 +332,19 @@ restore77 and advance78. Further simulation/rendering work is required.
 lines.56320 consecutive native allocation comparisons passed, but moving the
 existing cursor helper out of line did not improve the target measurement.
 The experiment was removed; the earlier inline allocation-only cursor stays.
+
+## Four-track rendering breakdown
+
+`tmp/perf-draw-track-{0,1,2,3}.log` measures native-menu BASIC/F1/CITY/WHACKO,
+603 updates each. Worst work in raster lines:716/1284/1014/791; mean cadence
+in ms:41.0/79.9/61.0/44.6. All updates exceed20ms. Extra nested callbacks
+separate car sprites from priority-three particles. F1's worst frame spends
+463lines drawing, of which only41 are car sprites; high-priority actors
+alone consume346. Restore275 and C2P263 are also substantial.
+
+The first rectangle-area counter sampled after the dirty list was cleared,
+so its zero values in those four logs are invalid. It now accumulates area
+inside conversion and snapshots that value. `tmp/perf-draw-area.log` confirms
+F1's worst update converts5440 rectangle pixels plus164 sparse pixels.
+Car/dirty/shared-actor regression tests pass. General gameplay is clearly
+slower than BASIC alone; stock-A1200 50FPS is still unfinished.

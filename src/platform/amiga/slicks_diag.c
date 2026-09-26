@@ -293,6 +293,12 @@ volatile unsigned long g_slicks_diag_bench_max_stages[8];
 volatile unsigned short g_slicks_diag_bench_max_particles;
 volatile unsigned long g_slicks_diag_bench_max_simulation[3];
 volatile unsigned long g_slicks_diag_bench_max_tail[4];
+volatile unsigned long g_slicks_diag_bench_max_actors[8];
+volatile unsigned long g_slicks_diag_bench_max_car_draw[2];
+volatile unsigned long g_slicks_diag_bench_max_rect_pixels;
+static unsigned long g_slicks_diag_profile_rect_pixels;
+volatile unsigned short g_slicks_diag_bench_max_sparse;
+static unsigned long g_slicks_diag_profile_car_draw[2],g_slicks_diag_profile_car_at;
 static unsigned long g_slicks_diag_profile_tail[4], g_slicks_diag_profile_tail_at;
 volatile unsigned long g_slicks_diag_bench_work_over;
 volatile unsigned long g_slicks_diag_bench_wall_max;
@@ -405,6 +411,15 @@ unsigned long slicks_diag_profile_raster_time(void)
 static void slicks_diag_profile_race(unsigned char phase)
 {
     unsigned long now = slicks_diag_profile_raster_time();
+    if(phase>=49 && phase<=52) {
+        if(phase==49) {
+            g_slicks_diag_profile_car_draw[0]=g_slicks_diag_profile_car_draw[1]=0;
+        } else if(phase>50) {
+            g_slicks_diag_profile_car_draw[phase-51]+=now-g_slicks_diag_profile_car_at;
+        }
+        g_slicks_diag_profile_car_at=now;
+        return;
+    }
     if(phase>=39 && phase<=44) {
         if(phase==39) {
             for(unsigned i=0;i<4;++i) g_slicks_diag_profile_tail[i]=0;
@@ -5040,11 +5055,13 @@ int main(void)
             slicks_chunky_pixels_to_amiga(
                 chunky, platform.views[1].bitmap,
                 race->dirty_pixels, race->dirty_pixel_count);
+            g_slicks_diag_profile_rect_pixels=0;
             for (dirty = 0; dirty < race->dirty_row_count; ++dirty) {
                 const struct SlicksDirtyRows *rows = &race->dirty_rows[dirty];
                 unsigned long equivalent_rows =
                     (unsigned long)(rows->right - rows->left) *
                     (rows->bottom - rows->top) / 320UL;
+                g_slicks_diag_profile_rect_pixels+=(rows->right-rows->left)*(rows->bottom-rows->top);
                 slicks_chunky_rect_to_amiga(
                     chunky, platform.views[1].bitmap,
                     rows->left, rows->top, rows->right, rows->bottom,
@@ -5152,6 +5169,14 @@ int main(void)
                             g_slicks_diag_bench_max_simulation[i]=g_slicks_diag_profile_actor_lines[21+i];
                         for(unsigned i=0;i<4;++i)
                             g_slicks_diag_bench_max_tail[i]=g_slicks_diag_profile_tail[i];
+                        for(unsigned i=0;i<4;++i) {
+                            g_slicks_diag_bench_max_actors[i]=g_slicks_diag_profile_actor_lines[1+i];
+                            g_slicks_diag_bench_max_actors[4+i]=g_slicks_diag_profile_actor_lines[11+i];
+                        }
+                        for(unsigned i=0;i<2;++i)
+                            g_slicks_diag_bench_max_car_draw[i]=g_slicks_diag_profile_car_draw[i];
+                        g_slicks_diag_bench_max_sparse=g_slicks_diag_sparse_converted;
+                        g_slicks_diag_bench_max_rect_pixels=g_slicks_diag_profile_rect_pixels;
                     }
                     if (work > PAL_RASTER_LINES)
                         ++g_slicks_diag_bench_work_over;

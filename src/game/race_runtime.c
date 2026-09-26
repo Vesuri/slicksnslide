@@ -641,16 +641,24 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
 static void draw_layered_cars(struct SlicksRaceRuntime *race,
                               unsigned char *logical)
 {
+    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    if(profile)race->profile_marker(49);
     unsigned short pass, car;
     /* 2000:3e7d..3eba: nonzero layer has priority 3, zero has 4.
      * Car slots 1..4 precede particle slots at equal priority (3000:3c12).
      * Priority-3 particles therefore sit between the two car groups. */
     for (pass = 0; pass < 2; ++pass) {
         for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
-            if (driver_role(race,car) && (!race->cars[car].actor_layer) == pass)
+            if (driver_role(race,car) && (!race->cars[car].actor_layer) == pass) {
+                if(profile)race->profile_marker(50);
                 draw_car(race, logical, car);
-        if (!pass)
+                if(profile)race->profile_marker(51);
+            }
+        if (!pass) {
+            if(profile)race->profile_marker(50);
             draw_trail_particles(race, 1);
+            if(profile)race->profile_marker(52);
+        }
     }
 }
 
