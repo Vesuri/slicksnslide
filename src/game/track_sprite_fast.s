@@ -373,9 +373,21 @@ slicks_draw_sprite_chain:
 	tst.b 32(a0)
 	movea.l 28(a0),a0
 	beq.s .opaque
+	cmpi.w #5,d4
+	beq.w .visible5
+	cmpi.w #8,d4
+	beq.w .visible8
+	cmpi.w #4,d4
+	beq.w .visible4
 	jsr slicks_draw_sprite_visible_regs+SLICKS_SPRITE_TEST_BASE
 	bra.s .painted
 .opaque:
+	cmpi.w #5,d4
+	beq.w .opaque5
+	cmpi.w #8,d4
+	beq.w .opaque8
+	cmpi.w #4,d4
+	beq.w .opaque4
 	jsr slicks_draw_sprite_opaque_regs+SLICKS_SPRITE_TEST_BASE
 .painted:
 	move.b #1,32(a4)
@@ -446,3 +458,102 @@ slicks_draw_sprite_chain:
 	move.l (sp)+,d0
 	movem.l (sp)+,d2-d7/a2-a6
 	rts
+
+; Validated cached rectangles only. Exact row widths avoid the generic
+; longword-count and tail tests on every row; register contracts are unchanged.
+.visible5:
+	subq.w #1,d3
+.visible5_row:
+	move.l (a0),d1
+	move.l d1,(a2)+
+	move.l (a1)+,d6
+	eor.l d1,d6
+	and.l (a3)+,d6
+	eor.l d6,d1
+	move.l d1,(a0)+
+	move.b (a0),d1
+	move.b d1,(a2)+
+	move.b (a1)+,d6
+	eor.b d1,d6
+	and.b (a3)+,d6
+	eor.b d6,d1
+	move.b d1,(a0)+
+	adda.w #315,a0
+	dbf d3,.visible5_row
+	bra.w .painted
+.opaque5:
+	subq.w #1,d3
+.opaque5_row:
+	move.l (a0),d1
+	move.l d1,(a2)+
+	and.l (a3)+,d1
+	or.l (a1)+,d1
+	move.l d1,(a0)+
+	move.b (a0),d1
+	move.b d1,(a2)+
+	and.b (a3)+,d1
+	or.b (a1)+,d1
+	move.b d1,(a0)+
+	adda.w #315,a0
+	dbf d3,.opaque5_row
+	bra.w .painted
+.visible4:
+	subq.w #1,d3
+.visible4_row:
+	move.l (a0),d1
+	move.l d1,(a2)+
+	move.l (a1)+,d6
+	eor.l d1,d6
+	and.l (a3)+,d6
+	eor.l d6,d1
+	move.l d1,(a0)+
+	adda.w #316,a0
+	dbf d3,.visible4_row
+	bra.w .painted
+.visible8:
+	subq.w #1,d3
+.visible8_row:
+	move.l (a0),d1
+	move.l d1,(a2)+
+	move.l (a1)+,d6
+	eor.l d1,d6
+	and.l (a3)+,d6
+	eor.l d6,d1
+	move.l d1,(a0)+
+	move.l (a0),d1
+	move.l d1,(a2)+
+	move.l (a1)+,d6
+	eor.l d1,d6
+	and.l (a3)+,d6
+	eor.l d6,d1
+	move.l d1,(a0)+
+	adda.w #312,a0
+	dbf d3,.visible8_row
+	bra.w .painted
+.opaque4:
+	subq.w #1,d3
+.opaque4_row:
+	move.l (a0),d1
+	move.l d1,(a2)+
+	and.l (a3)+,d1
+	or.l (a1)+,d1
+	move.l d1,(a0)+
+	adda.w #316,a0
+	dbf d3,.opaque4_row
+	bra.w .painted
+.opaque8:
+	subq.w #1,d3
+.opaque8_row:
+	move.l (a0),d1
+	move.l d1,(a2)+
+	and.l (a3)+,d1
+	or.l (a1)+,d1
+	move.l d1,(a0)+
+	move.l (a0),d1
+	move.l d1,(a2)+
+	and.l (a3)+,d1
+	or.l (a1)+,d1
+	move.l d1,(a0)+
+	adda.w #312,a0
+	dbf d3,.opaque8_row
+	bra.w .painted

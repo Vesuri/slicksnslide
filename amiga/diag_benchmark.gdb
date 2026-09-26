@@ -39,6 +39,22 @@ commands
       set $i=$i+1
     end
     printf "TRACK_SPRITE_LOAD masked=%u pixels=%u unmasked=%u pixels=%u\n",$masked,$masked_pixels,$unmasked,$unmasked_pixels
+    set $width=1
+    while $width<=16
+      set $count=0
+      set $i=1
+      while $i<$race->weapons.slots.high_water
+        set $a=&$race->weapons.actors[$i]
+        if $a->kind==3 && $a->saved && $a->old_width==$width
+          set $count=$count+1
+        end
+        set $i=$i+1
+      end
+      if $count
+        printf "TRACK_SPRITE_WIDTH width=%u count=%u\n",$width,$count
+      end
+      set $width=$width+1
+    end
   end
   printf "BENCHMARK_LAST step=%lu audio=%lu c2p=%lu diag=%lu restore=%lu advance=%lu update=%lu hud=%lu draw=%lu\n",g_slicks_diag_profile_step_lines,g_slicks_diag_profile_audio_lines,g_slicks_diag_profile_c2p_lines,g_slicks_diag_profile_diag_lines,g_slicks_diag_profile_restore_lines,g_slicks_diag_profile_advance_lines,g_slicks_diag_profile_update_lines,g_slicks_diag_profile_hud_lines,g_slicks_diag_profile_draw_lines
   printf "ACTOR_RESTORE index=%lu high=%lu cars_p3=%lu low=%lu\n",g_slicks_diag_profile_actor_lines[1],g_slicks_diag_profile_actor_lines[2],g_slicks_diag_profile_actor_lines[3],g_slicks_diag_profile_actor_lines[4]

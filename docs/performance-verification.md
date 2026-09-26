@@ -1149,3 +1149,25 @@ Materializing the tail-update car pointer is also rejected: BASIC work rises
 from 221019 to 221722 lines, cadence 306737 to 309859/602, worst work 511 to
 512 (`tmp/perf-tail-car-address-basic.log`). The earlier beneficial pointer
 constraint remains limited to motion preparation.
+
+## Exact narrow cached-sprite rows
+
+With batched setup and drawing packets in place, retest specialized cached
+row loops. Four/eight-pixel rows alone save only about 792 F1 work lines
+(`tmp/perf-packet-rows-f1.log`); an end-of-run width histogram shows 20 of 31
+visible F1 sprites are five pixels wide, versus two four-pixel and nine
+eight-pixel sprites. The histogram runs only after timing finishes.
+
+Retain exact 4/5/8-pixel opaque and foreground-masked loops for validated
+cached rectangles, avoiding generic per-row count/tail tests. Other widths
+and cold/mismatched packets retain existing paths. All 1920 native chain
+cases/22074 draws pass exact pixel/state/write-bound/ABI checks
+(`tmp/verify-packet-rows5.log`). The full display audit passes 600 updates,
+32 actors and 2076 permanent marks (`tmp/audit-packet-rows5.log`).
+
+F1 work falls from 304615 to 298781 lines (32.38 to 31.76 ms average), drawing
+92816 to 87017 lines; worst work 649 to 642. Cadence is effectively unchanged
+at 375630/602 versus 375626/602. BASIC is nearly neutral: 221019 to 220851
+work lines, worst 511 to 508, cadence 306737 to 306424/602
+(`tmp/perf-packet-rows5-{basic,f1}.log`). These are CPU-work improvements,
+not a claim of 50 FPS; both fixtures still exceed 20 ms.
