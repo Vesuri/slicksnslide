@@ -1493,6 +1493,22 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
         return;
     int ordered=race->actor_order_ready && (priority>=0 || bucket!=3);
     unsigned p=priority>=0?(unsigned)priority:bucket==0?0:bucket==1?3:5;
+    if(ordered) {
+        const unsigned char *next=race->actor_order_next;
+        const short *trail_index=race->weapons.trail_index;
+        struct SlicksTrailParticle *particles=race->trail_particles;
+        unsigned char *chunky=race->chunky;
+        for(unsigned h=race->actor_order_head[p];h;h=next[h]) {
+            int t=trail_index[h];
+            if(t<0) { restore_weapon_actor(race,h);continue; }
+            struct SlicksTrailParticle *particle=particles+t;
+            if(particle->saved_valid&1) {
+                chunky[mult320[(unsigned short)particle->old_y]+(unsigned short)particle->old_x]=particle->saved_under;
+                particle->saved_valid=2;
+            }
+        }
+        return;
+    }
     at = ordered?race->actor_order_head[p]:shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
     while (at) {
         unsigned index;
@@ -1508,7 +1524,7 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
                 continue;
             }
             index=(unsigned)trail;
-            if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
+            if(!ordered && weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
         } else index=race->trail_priority_indices[bucket][handle];
         struct SlicksTrailParticle *particle =
             &race->trail_particles[index];
@@ -1829,16 +1845,16 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
         if(shared_actor_pool(race)) {
             int trail=race->weapons.trail_index[at];
             if(trail<0) {
-                if(priority>=0 && race->weapons.actors[at].priority!=priority) continue;
-                if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
+                if(!ordered && priority>=0 && race->weapons.actors[at].priority!=priority) continue;
+                if(ordered || weapon_bucket(race->weapons.actors[at].priority)==bucket)
                     draw_weapon_actor(race,at);
                 continue;
             }
             index=(unsigned)trail;
-            if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
+            if(!ordered && weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
         } else index=race->trail_priority_indices[bucket][at];
         struct SlicksTrailParticle *particle = &race->trail_particles[index];
-        if(priority>=0 && particle->priority!=priority) continue;
+        if(!ordered && priority>=0 && particle->priority!=priority) continue;
         /* 3000:39af/39ca use SAR on signed 16-bit coordinates. Negative
          * fractions round down, not toward zero into the visible border. */
         short x = particle->x < 0

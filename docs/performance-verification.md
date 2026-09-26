@@ -77,3 +77,13 @@ low includes priorities 0..2 and shadows. These grouped measurements must
 not be attributed solely to cars or solely to point particles. Instrumentation
 runs only on the diagnostic target frame and contributes to its measured time.
 Maximum work 1028 lines, mean cadence 493592/602 lines, all603 over budget.
+
+## Indexed restore specialization
+
+`tmp/perf-indexed.log`: maximum work 915 lines (58.7 ms), maximum wall 1116,
+cadence 419076/602 lines (44.6 ms), all603 over budget. Final step 590,
+audio10, C2P69, diagnostics6; restore91, advance46, update135, HUD34, draw279.
+Restore substages21/26/27/15; draw21/70/58/128. Indexed restoration caches
+its array bases and omits priority tests already resolved by the index;
+indexed drawing also avoids those redundant tests. Original renderer,
+restoration and dirty-tracking suites pass; no target errors/audio spills.
