@@ -1217,3 +1217,20 @@ extra rendering complexity. Its recoverable local-only patch is
 restoration/drawing with cached setup and specialized drawing rows. A future
 attempt needs substantially cheaper dependency bookkeeping, not merely more
 conservative overlap tests.
+
+## Reuse collision probes until an impulse
+
+Keep a lazily calculated car-pair probe while the current car's velocity is
+unchanged. Any impulse invalidates it before the next candidate; the original
+pre-collision speed denominator and sequential contact/latch behavior remain.
+Collision/damage checks and all eleven 7200-update original DOS driving
+scenarios pass (`tmp/verify-cached-car-probe.log`,
+`tmp/verify-cached-car-probe-trajectory.log`). A focused regression reverses the
+probe at the first contact and requires detecting a second car that overlaps
+only the updated probe (`tmp/verify-cached-car-probe-invalidation.log`).
+
+The gain is small: BASIC work 220851 to 220679 lines, F1 298781 to 298494,
+over 603 updates (23.46/31.73 ms average). BASIC worst work is 509 versus 508
+and cadence 306737 versus 306424/602; F1 maximum/cadence remain 642 and
+375630/602. This reduces repeated arithmetic, not the frame cadence
+(`tmp/perf-cached-car-probe-{basic,f1}.log`). The 20 ms goal remains open.

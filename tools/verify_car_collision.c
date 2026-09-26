@@ -112,6 +112,23 @@ int main(void)
     ok &= check(!current->touching_car && other->touching_car,
                 "only the scanned car clears its latch after separation");
 
+    /* First contact reverses the probe from x=1019 to x=981. The second
+     * candidate overlaps only the new probe; the contact latch suppresses
+     * another impulse but must not suppress detecting that overlap. */
+    memset(&race,0,sizeof race);
+    race.participation_ready=1;
+    race.participation[0]=race.participation[1]=race.participation[3]=1;
+    race.properties[0].collision_radius=2;
+    race.properties[0].collision_weight=18;
+    race.cars[3].x=1000;race.cars[3].y=1000;race.cars[3].velocity_x=1000;
+    race.cars[0].x=1100;race.cars[0].y=1000;race.cars[0].velocity_x=-1000;
+    race.cars[1].x=900;race.cars[1].y=1000;
+    slicks_race_resolve_car_collisions(&race,3);
+    ok &= check(race.cars[3].velocity_x==-1000 && race.cars[0].velocity_x==1000 &&
+                race.cars[1].velocity_x==0 && race.collision_count==1 &&
+                race.cars[1].touching_car && race.cars[3].collision_partner==1,
+                "collision impulse must invalidate the cached probe for the next pair");
+
     if (!ok)
         return 1;
     puts("car collision: DOS fixed-point oracle matched");

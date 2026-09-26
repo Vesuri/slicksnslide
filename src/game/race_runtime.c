@@ -2741,6 +2741,8 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
     long extent = (long)pa->collision_radius * 50L;
     unsigned short other;
     unsigned char hit = 0;
+    unsigned char probe_ready = 0;
+    long probe_x = 0, probe_y = 0;
 
     /* 2000:2d27..31bd tests each updated car against all four entrants.  The
      * .omi byte is a full collision-box width: DOS compares a point ten fixed
@@ -2760,11 +2762,14 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
         if (a->actor_layer != b->actor_layer)
             continue;
         pb = &race->properties[b->vehicle];
-        /* Every candidate recomputes this from the current velocity. An
-         * earlier pair in the same scan may already have changed it; the
-         * measured-speed denominator remains the pre-collision value. */
-        long probe_x = a->x + a->velocity_x * 10L / (speed + 1L);
-        long probe_y = a->y + a->velocity_y * 10L / (speed + 1L);
+        /* Reuse only while the current car's velocity is unchanged. An
+         * impulse invalidates the probe before the next candidate, retaining
+         * the original pre-collision speed denominator. */
+        if(!probe_ready) {
+            probe_x = a->x + a->velocity_x * 10L / (speed + 1L);
+            probe_y = a->y + a->velocity_y * 10L / (speed + 1L);
+            probe_ready = 1;
+        }
         if (probe_x < b->x - extent || probe_x > b->x + extent ||
             probe_y < b->y - extent || probe_y > b->y + extent)
             continue;
@@ -2785,6 +2790,7 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
                     pb->collision_weight;
             b->velocity_x += delta_vx * ratio / 100L;
             b->velocity_y += delta_vy * ratio / 100L;
+            probe_ready = 0;
             /* 2000:30b0..317f stores a one-update impact magnitude for both
              * cars. Keep the three signed divisions separate: their
              * truncation points are part of the DOS result. */
