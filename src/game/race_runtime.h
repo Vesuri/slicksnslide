@@ -361,6 +361,12 @@ struct SlicksRaceRuntime {
         unsigned char asset,frame,occlusion,valid;
         unsigned char write_mask[SLICKS_TRACK_ACTOR_PIXELS];
     } track_sprite_visibility[64];
+    /* Bar commands only, never saved pixels. Producer dirty bounds invalidate
+     * reuse when other drawing touches the status strip. */
+    struct {
+        short ends[4][3];
+        unsigned char colours[4][3],background,active,valid;
+    } status_bar_cache;
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

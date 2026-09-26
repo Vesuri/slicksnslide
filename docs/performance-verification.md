@@ -625,3 +625,12 @@ pass (`tmp/verify-final-status-bars.log`). BASIC's worst update drops from
 588/603 rather than 603/603 updates exceeding 20 ms. At the worst update,
 sparse conversion drops from 139 to 9 pixels and C2P from 92 to 43 lines
 (`tmp/perf-final-status-bars.log`). The overall performance goal remains open.
+The full display audit passes 600 updates (`tmp/audit-final-status-bars.log`).
+
+Caching just the final bar widths/colours avoids rereading unchanged pixels
+when neither producer rectangles nor sparse dirty points touch the strip.
+Startup and fallback rendering invalidate this metadata. Original HUD and
+explicit point/rectangle repaint-invalidation tests pass
+(`tmp/verify-status-cache-final.log`). BASIC improves to 595 maximum lines
+(38.1 ms), cadence 335128/602 (35.7 ms), with 574/603 updates over budget
+(`tmp/perf-status-cache.log`). No screen-pixel shadow or per-row flags are used.

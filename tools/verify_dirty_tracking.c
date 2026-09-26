@@ -390,6 +390,16 @@ int main(void)
                memcmp(pixels,expected,sizeof pixels) || race.dirty_pixel_count || race.dirty_row_count) {
                 fprintf(stderr,"Unchanged status bars generated dirty work scenario=%u\n",scenario);return 1;
             }
+            if(race.fuel_option || race.damage_scale)for(unsigned source=0;source<2;++source) {
+                pixels[188*320+108]=99;
+                if(source)mark_dirty_rect(&race,108,188,109,189);
+                else mark_dirty_pixel(&race,108,188);
+                if(slicks_race_draw_status(&race,logical,(scenario&8)?1:0) ||
+                   memcmp(pixels,expected,sizeof pixels)) {
+                    fprintf(stderr,"Status cache ignored producer dirty source=%u\n",source);return 1;
+                }
+                slicks_race_clear_dirty_rows(&race);
+            }
         }
         memset(&race,0,sizeof race);
         memset(pixels,77,sizeof pixels); memset(expected,77,sizeof expected);

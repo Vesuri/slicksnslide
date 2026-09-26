@@ -2819,7 +2819,9 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
     struct SlicksHudWeapon weapons[4];
     int weapon_draw[4];
     if (!race) return -1;
-    if (!race->fuel_option && !race->damage_scale && !race->weapons_enabled) return 0;
+    if (!race->fuel_option && !race->damage_scale && !race->weapons_enabled) {
+        race->status_bar_cache.valid=0;return 0;
+    }
     if (!race->chunky || !race->status_colours[0]) return -1;
     if (race->chunky_authoritative) logical=0;
     /* Validate all four divisions before changing either representation. */
@@ -2860,8 +2862,11 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
            weapons[car].bar_right>base->right || (used&1)))bounded=0;
     }
     if(bounded) {
+        __typeof__(race->status_bar_cache) next={0};
+        next.background=race->status_colours[0];
         for(unsigned car=0;car<4;++car) if(counts[car]) {
             const struct SlicksStatusRect *base=&rectangles[car][0];
+            next.active|=1U<<car;
             for(int y=187;y<190;++y) {
                 int end=base->left;
                 unsigned char foreground=race->status_colours[0];
@@ -2872,6 +2877,31 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
                 if(y==187 && weapon_draw[car]) {
                     end=weapons[car].bar_right;foreground=race->weapon_hud_colour;
                 }
+                next.ends[car][y-187]=(short)end;next.colours[car][y-187]=foreground;
+            }
+        }
+        unsigned paint=1;
+        unsigned same=race->status_bar_cache.valid &&
+            next.background==race->status_bar_cache.background && next.active==race->status_bar_cache.active;
+        for(unsigned car=0;car<4 && same;++car)for(unsigned y=0;y<3;++y)
+            if(next.ends[car][y]!=race->status_bar_cache.ends[car][y] ||
+               next.colours[car][y]!=race->status_bar_cache.colours[car][y])same=0;
+        if(same) {
+            paint=0;
+            for(unsigned i=0;i<race->dirty_row_count && !paint;++i) {
+                const struct SlicksDirtyRows *r=&race->dirty_rows[i];
+                if(r->top<190 && r->bottom>187 && r->left<306 && r->right>106)paint=1;
+            }
+            for(unsigned i=0;i<race->dirty_pixel_count && !paint;++i) {
+                const struct SlicksDirtyPixel *p=&race->dirty_pixels[i];
+                if(p->y>=187 && p->y<190 && p->x>=106 && p->x<306)paint=1;
+            }
+        }
+        if(paint)for(unsigned car=0;car<4;++car) if(counts[car]) {
+            const struct SlicksStatusRect *base=&rectangles[car][0];
+            for(int y=187;y<190;++y) {
+                int end=next.ends[car][y-187];
+                unsigned char foreground=next.colours[car][y-187];
                 unsigned char *row=race->chunky+mult320[y];
                 for(int x=base->left;x<base->right;++x) {
                     unsigned char colour=x<end?foreground:race->status_colours[0];
@@ -2882,9 +2912,11 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
                 }
             }
         }
+        if(paint) { race->status_bar_cache=next;race->status_bar_cache.valid=1; }
         for(unsigned car=0;car<4;++car)if(weapon_draw[car])draw_weapon_icon(race,logical,&weapons[car]);
         return 0;
     }
+    race->status_bar_cache.valid=0;
     for (unsigned car=0;car<4;++car)
     for (int i=0;i<counts[car];++i) {
         const struct SlicksStatusRect *rect=&rectangles[car][i];
@@ -3325,6 +3357,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
+    race->status_bar_cache.valid=0;
     for(unsigned i=0;i<64;++i)race->track_sprite_visibility[i].valid=0;
     if(race->track_actors_ready) {
         /* Seed saved-under from actual scenery before the very first actor
