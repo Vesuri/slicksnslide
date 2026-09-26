@@ -783,3 +783,16 @@ updates, 32 actors and 2076 marks (`tmp/audit-aligned-backgrounds.log`), also
 covering the retained minimal point-slot initialization. The emulator log
 confirms 68020, real speed, cycle-exact mode and disabled JIT; these remain
 emulator measurements, not physical-machine measurements.
+
+## Native collision-burst experiment (rejected)
+
+A complete native RNG/allocation/particle-initialization burst passed 4870
+original/scalar-composition cases, including full records, allocation failure,
+colour thresholds, guards and ABI. Although the local smoke/contact interval
+fell to four lines, full BASIC cadence regressed from 330428/602 to
+336356/602 lines. Tightening the hot loop to fit the instruction cache still
+gave 336044/602 and 548 maximum work lines, versus the retained 541.
+The candidate was removed; local speed alone did not justify retaining it.
+Evidence: `tmp/verify-native-contact-compact.log`,
+`tmp/perf-native-contact-burst-basic.log`, and
+`tmp/perf-native-contact-compact-basic.log`.
