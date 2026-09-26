@@ -303,3 +303,15 @@ all eleven driving scenarios plus native packed-mask pixel checks passed.
 Exhaustive material/visibility invariants and4864 original weapon images
 also passed. Nevertheless the representation change and specialized loops
 were removed: this representative test did not demonstrate a useful gain.
+
+## Direct strided dirty-rectangle C2P
+
+`tmp/perf-stride-c2p.log`: maximum717lines (46.0ms), mean cadence384347/602
+lines (40.9ms). Worst C2P145→139lines against the direct-link baseline.
+Kalms' converter now has a320-byte source-stride entry; dirty rectangles no
+longer copy into packed scratch first. Its pipelined preload skips gaps
+before reading the next row, but never skips after the final row.1419
+rectangle/full-row/sparse cases verify every store and final byte, including
+bottom/right edges; source reads stay inside64000+32bytes. Original packed
+entry remains available and the particle lifecycle regressions still pass.
+All603updates remain over budget.

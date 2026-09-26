@@ -24,9 +24,10 @@ symbols="$(m68k-amiga-elf-objdump -t "$test_dir/writers.elf")"
 rect_address="$(awk '$NF == "slicks_chunky_rect_to_amiga" {print $1}' <<< "$symbols")"
 pixels_address="$(awk '$NF == "slicks_chunky_pixels_to_amiga" {print $1}' <<< "$symbols")"
 particles_address="$(awk '$NF == "slicks_advance_particles" {print $1}' <<< "$symbols")"
+rows_address="$(awk '$NF == "slicks_chunky_rows_to_amiga" {print $1}' <<< "$symbols")"
 test -n "$rect_address" && test -n "$pixels_address"
 "${CC:-cc}" -O2 -Wall -Wextra -Werror -I"$unicorn_prefix/include" \
   tools/verify_planar_writes.c -L"$unicorn_prefix/lib" -lunicorn \
   -o "$test_dir/verify"
-"$test_dir/verify" "$test_dir/writers.bin" "$rect_address" "$pixels_address" "$particles_address" disasm/runtime.bin
+"$test_dir/verify" "$test_dir/writers.bin" "$rect_address" "$pixels_address" "$particles_address" disasm/runtime.bin "$rows_address"
 printf 'Verifier artifacts: %s\n' "$test_dir"

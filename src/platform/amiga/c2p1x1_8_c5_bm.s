@@ -1,5 +1,7 @@
 ; Mikael Kalms' Public Domain c2p1x1_8_c5_bm, imported from the
 ; Kalms C2P collection in Vette/tmp/kalms-c2p/bitmap.
+; Slicks adaptation: optional320-byte source stride for dirty rectangles;
+; retain the original packed-source entry and final-value-only plane stores.
 
 ;
 ; Date: 1999-03-07			Mikael Kalms (Scout/C-Lous & more)
@@ -31,6 +33,7 @@
 C2P1X1_8_C5_BM_CHUNKYX	rs.w	1
 C2P1X1_8_C5_BM_CHUNKYY	rs.w	1
 C2P1X1_8_C5_BM_ROWMOD	rs.l	1
+C2P1X1_8_C5_BM_SOURCEMOD rs.l 1
 C2P1X1_8_C5_BM_SIZEOF	rs.b	0
 
 
@@ -48,7 +51,16 @@ C2P1X1_8_C5_BM_SIZEOF	rs.b	0
 _c2p1x1_8_c5_bm
 c2p1x1_8_c5_bm
 	movem.l	d2-d7/a2-a6,-(sp)
-	subq.l	#C2P1X1_8_C5_BM_SIZEOF,sp
+	moveq #0,d6
+	bra.s .source_setup
+	XDEF c2p1x1_8_c5_bm_stride320
+c2p1x1_8_c5_bm_stride320 equ .stride320
+.stride320
+	movem.l d2-d7/a2-a6,-(sp)
+	move.l #320,d6
+.source_setup
+	lea -C2P1X1_8_C5_BM_SIZEOF(sp),sp
+	move.l d6,C2P1X1_8_C5_BM_SOURCEMOD(sp)
 					; A few sanity checks
 	cmpi.b	#8,bm_Depth(a1)		; At least 8 valid bplptrs?
 	blo	.exit
@@ -65,6 +77,11 @@ c2p1x1_8_c5_bm
 	beq	.exit
 	move.w	d1,C2P1X1_8_C5_BM_CHUNKYY(sp)
 	beq	.exit
+	tst.l C2P1X1_8_C5_BM_SOURCEMOD(sp)
+	beq.s .source_ready
+	sub.w d0,C2P1X1_8_C5_BM_SOURCEMOD+2(sp)
+	bmi .exit
+.source_ready
 
 	ext.l	d2			; Offs to first pixel to draw in bpl
 	mulu.w	d4,d3
@@ -75,6 +92,8 @@ c2p1x1_8_c5_bm
 	sub.w	d0,d4
 	bmi	.exit
 	bne	.c2p_mod
+	tst.l C2P1X1_8_C5_BM_SOURCEMOD(sp)
+	bne .c2p_mod
 
 	mulu.w	d0,d1
 	add.l	a0,d1
@@ -441,7 +460,7 @@ c2p1x1_8_c5_bm
 	move.l	a1,(a6)+
 
 .exit
-	addq.l	#C2P1X1_8_C5_BM_SIZEOF,sp
+	lea C2P1X1_8_C5_BM_SIZEOF(sp),sp
 	movem.l	(sp)+,d2-d7/a2-a6
 .earlyexit
 	rts
@@ -536,6 +555,19 @@ c2p1x1_8_c5_bm
 	add.l	d0,a5
 	add.l	d0,a6
 .modx1
+	; The pipeline preloads the next32 pixels before finishing this block.
+	; Skip the source gap BEFORE that preload, except after the last row:
+	; its unused lookahead stays within the existing32-byte tail padding.
+	move.l a2,d0
+	sub.l #32,d0
+	cmp.l a0,d0
+	bne.s .modx1load
+	cmpi.w #1,C2P1X1_8_C5_BM_CHUNKYY+20(sp)
+	beq.s .modx1load
+	move.l C2P1X1_8_C5_BM_SOURCEMOD+20(sp),d0
+	adda.l d0,a0
+	adda.l d0,a2
+.modx1load
 	move.l	(a0)+,d0
 	move.l	(a0)+,d2
 	move.l	(a0)+,d1
@@ -724,6 +756,16 @@ c2p1x1_8_c5_bm
 	add.l	d0,a5
 	add.l	d0,a6
 .modx2
+	move.l a2,d0
+	sub.l #32,d0
+	cmp.l a0,d0
+	bne.s .modx2load
+	cmpi.w #1,C2P1X1_8_C5_BM_CHUNKYY(sp)
+	beq.s .modx2load
+	move.l C2P1X1_8_C5_BM_SOURCEMOD(sp),d0
+	adda.l d0,a0
+	adda.l d0,a2
+.modx2load
 	move.l	(a0)+,d0
 	move.l	(a0)+,d2
 	move.l	(a0)+,d1

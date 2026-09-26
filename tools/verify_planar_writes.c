@@ -16,6 +16,18 @@ static uint8_t chunky[SCREEN];
 static unsigned case_number, violations;
 static unsigned check_final_store;
 static unsigned packed_size, maximum_lookahead;
+static unsigned maximum_chunky_lookahead;
+static void chunky_read_hook(uc_engine *uc,uc_mem_type type,uint64_t address,
+    int size,int64_t value,void *user) {
+    (void)type;(void)value;(void)user;
+    uint64_t end=address+size;
+    if(address<CHUNKY || end>CHUNKY+SCREEN+32) {
+        fprintf(stderr,"Chunky source read outside allocation: %llx + %d\n",
+            (unsigned long long)address,size);
+        ++violations;uc_emu_stop(uc);
+    } else if(end>CHUNKY+SCREEN && end-CHUNKY-SCREEN>maximum_chunky_lookahead)
+        maximum_chunky_lookahead=(unsigned)(end-CHUNKY-SCREEN);
+}
 static void read_hook(uc_engine *uc, uc_mem_type type, uint64_t address,
                       int size, int64_t value, void *user) {
     (void)type; (void)value; (void)user;
@@ -304,16 +316,17 @@ static void verify_dos_lifecycle(uc_engine *native,uint32_t entry,const char *pa
     printf("DOS/68020 point lifecycle: %u consecutive update comparisons passed (redraw pixels excluded).\n",passes);
 }
 int main(int argc,char **argv) {
-    if(argc!=6) { fprintf(stderr,"usage: %s code.bin rect-address pixels-address particles-address runtime.bin\n",argv[0]); return 2; }
+    if(argc!=7) { fprintf(stderr,"usage: %s code.bin rect-address pixels-address particles-address runtime.bin rows-address\n",argv[0]); return 2; }
     FILE *f=fopen(argv[1],"rb"); if(!f) { perror(argv[1]); return 1; }
     uint8_t code[32768]; size_t length=fread(code,1,sizeof code,f); fclose(f);
-    uc_engine *uc; uc_hook hook, reads;
+    uc_engine *uc; uc_hook hook, reads,chunky_reads;
     check(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&uc));
     check(uc_ctl_set_cpu_model(uc,UC_CPU_M68K_M68020));
     check(uc_mem_map(uc,0,0x200000,UC_PROT_ALL));
     check(uc_mem_write(uc,CODE,code,length));
     check(uc_hook_add(uc,&hook,UC_HOOK_MEM_WRITE,write_hook,NULL,PLANES-4096,PLANES+SCREEN+4095));
     check(uc_hook_add(uc,&reads,UC_HOOK_MEM_READ,read_hook,NULL,SCRATCH,SCRATCH+SCREEN+4095));
+    check(uc_hook_add(uc,&chunky_reads,UC_HOOK_MEM_READ,chunky_read_hook,NULL,CHUNKY-4096,CHUNKY+SCREEN+4095));
     for(unsigned i=0;i<SCREEN;i++) {
         chunky[i]=(uint8_t)((i*73U)^(i>>3)^(i>>9));
         initial[i]=(uint8_t)(i*29U+17U);
@@ -338,6 +351,14 @@ int main(int argc,char **argv) {
         put32(uc,STACK+20,right); put32(uc,STACK+24,bottom);
         put32(uc,STACK+28,SCRATCH);
         run(uc,rect);
+    }
+    for(unsigned t=0;t<sizeof tops/sizeof tops[0];++t)
+    for(unsigned h=0;h<sizeof heights/sizeof heights[0];++h) {
+        unsigned top=tops[t],bottom=top+heights[h];if(bottom>200)continue;
+        reset(uc);
+        for(unsigned y=top;y<bottom;++y)for(unsigned x=0;x<320;++x)expect_pixel(x,y);
+        put32(uc,STACK+12,top);put32(uc,STACK+16,bottom);
+        run(uc,(uint32_t)strtoul(argv[6],NULL,16));
     }
     check_final_store=0; /* Sparse writes may update one byte in several steps. */
     for(unsigned count=0;count<=512;count=count<8?count+1:count+63) {
@@ -377,6 +398,7 @@ int main(int argc,char **argv) {
     printf("Sparse pixels survive a subsequent overlapping rectangle conversion.\n");
     printf("Planar writers passed %u cases: every destination write in bounds and every final byte correct.\n",case_number);
     printf("Maximum packed-source lookahead: %u bytes.\n",maximum_lookahead);
+    printf("Maximum chunky-source lookahead: %u bytes (allocation padding32).\n",maximum_chunky_lookahead);
     printf("Every rectangle destination store already contains its final plane value.\n");
     verify_retirement(uc,(uint32_t)strtoul(argv[4],NULL,16));
     verify_dos_lifecycle(uc,(uint32_t)strtoul(argv[4],NULL,16),argv[5]);
