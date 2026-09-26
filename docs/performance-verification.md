@@ -814,3 +814,15 @@ car-update, 58008 draw and 23918 C2P lines. F1 has 389278 (41.4 ms average
 work), including 138756 draw, 98218 restore/track-motion, 78465 car-update
 and 28180 C2P lines. Mean cadence remains 35.3/47.3 ms, respectively.
 Evidence: `tmp/perf-average-stage-basic.log`, `tmp/perf-average-stage-f1.log`.
+
+## Register-entry track sprite painting
+
+The native unchanged-sprite dispatcher now enters the existing pixel loops
+with register arguments, avoiding another C argument frame and duplicate
+register saves. Public C entries retain their ABI. Original sprite, weapon
+and track rendering tests pass (`tmp/verify-register-sprite-entry.log`).
+F1 drawing totals drop from 138756 to 133634 lines, total measured work from
+389278 to 384217, maximum from 772 to 763, and cadence from 444353/602 to
+433689/602 (46.2 ms). The complete display audit passes 600 updates,
+32 actors and 2076 marks (`tmp/perf-register-sprite-entry-f1.log`,
+`tmp/audit-register-sprite-entry.log`). Still above the 20 ms target.

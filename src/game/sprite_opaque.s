@@ -10,8 +10,19 @@ slicks_draw_sprite_opaque:
 	movea.l 36(sp),a2
 	movea.l 40(sp),a3
 	move.w 46(sp),d4
-	beq.w .done
 	move.w 50(sp),d3
+	bsr.w slicks_draw_sprite_opaque_regs
+	movem.l (sp)+,d2-d5/a2-a3
+	rts
+
+	xdef slicks_draw_sprite_opaque_regs
+; Private register ABI for callers already preserving the render registers.
+; a0 destination, a1 pixels, a2 saved, a3 opacity, d4 width, d3 height.
+; Clobbers d0-d5/a0-a3; no nested C argument frame or duplicate saves.
+slicks_draw_sprite_opaque_regs:
+	tst.w d4
+	beq.w .done
+	tst.w d3
 	beq.w .done
 	subq.w #1,d3
 	move.w #320,d2
@@ -50,7 +61,6 @@ slicks_draw_sprite_opaque:
 	adda.w d2,a0
 	dbf d3,.row
 .done:
-	movem.l (sp)+,d2-d5/a2-a3
 	rts
 
 	xdef slicks_draw_sprite_visible
@@ -62,8 +72,17 @@ slicks_draw_sprite_visible:
 	movea.l 40(sp),a2
 	movea.l 44(sp),a3
 	move.w 50(sp),d4
-	beq.w .done
 	move.w 54(sp),d3
+	bsr.w slicks_draw_sprite_visible_regs
+	movem.l (sp)+,d2-d6/a2-a3
+	rts
+
+	xdef slicks_draw_sprite_visible_regs
+; Same private register ABI; also clobbers d6.
+slicks_draw_sprite_visible_regs:
+	tst.w d4
+	beq.w .done
+	tst.w d3
 	beq.w .done
 	subq.w #1,d3
 	move.w #320,d2
@@ -108,5 +127,4 @@ slicks_draw_sprite_visible:
 	adda.w d2,a0
 	dbf d3,.row
 .done:
-	movem.l (sp)+,d2-d6/a2-a3
 	rts

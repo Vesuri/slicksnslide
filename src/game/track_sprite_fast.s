@@ -2,6 +2,8 @@
 	xdef slicks_draw_unchanged_track_sprite
 	xref slicks_draw_sprite_opaque
 	xref slicks_draw_sprite_visible
+	xref slicks_draw_sprite_opaque_regs
+	xref slicks_draw_sprite_visible_regs
 	xref mult320
 	ifnd SLICKS_SPRITE_TEST_BASE
 SLICKS_SPRITE_TEST_BASE equ 0
@@ -115,23 +117,24 @@ slicks_draw_unchanged_track_sprite:
 	lea mult320,a4
 	adda.l 0(a4,d7.w*4),a6
 	adda.w d4,a6
-	move.l d6,-(sp)
-	move.l d5,-(sp)
-	move.l a1,-(sp)
-	lea 34(a2),a0
-	move.l a0,-(sp)
-	move.l a5,-(sp)
-	move.l a6,-(sp)
+	movea.l a6,a0
+	movea.l a2,a4
+	movea.l a3,a6
+	movea.l a1,a3
+	movea.l a5,a1
+	lea 34(a4),a2
+	move.w d5,d4
 	tst.w d3
 	beq.s .opaque
-	jsr slicks_draw_sprite_visible+SLICKS_SPRITE_TEST_BASE
+	move.w d6,d3
+	jsr slicks_draw_sprite_visible_regs+SLICKS_SPRITE_TEST_BASE
 	bra.s .painted
 .opaque:
-	jsr slicks_draw_sprite_opaque+SLICKS_SPRITE_TEST_BASE
+	move.w d6,d3
+	jsr slicks_draw_sprite_opaque_regs+SLICKS_SPRITE_TEST_BASE
 .painted:
-	lea 24(sp),sp
-	move.b #1,32(a2)
-	clr.b 6(a3)
+	move.b #1,32(a4)
+	clr.b 6(a6)
 	moveq #1,d0
 	bra.s .return
 .fallback:
