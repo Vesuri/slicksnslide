@@ -237,3 +237,12 @@ without allocation or display-control changes. All banks/range boundaries
 and262144 RGB values match framework encoding;20000 original boundary
 updates match colours/timers/RNG. Target build and race complete without
 reported errors or VBI spills.
+
+## Split simulation timing
+
+`tmp/perf-simulation.log`: maximum760lines atframe209, mean cadence
+384347/602lines (40.9ms). The worst simulation236lines splits into
+motion/control preparation50, weapons1 and per-car tails182lines.
+All603updates remain over budget. The benchmark now rejects main-loop
+audio blanking spills too, and raster reads retry a high-bit transition.
+This is diagnostic evidence, not a completed performance target.

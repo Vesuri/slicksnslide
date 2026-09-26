@@ -2468,15 +2468,20 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
 
 static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
 {
+    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    if(profile) race->profile_marker(30);
     unsigned char controls[SLICKS_RACE_CAR_COUNT];
     unsigned short car;
     /* 02eb..14e8 completes motion for every driver before the separate
      * 21a7..3d94 tail loop. Pair collisions must see all new positions. */
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if(driver_role(race,car)) controls[car] = prepare_car_motion(race, car, ticks);
+    if(profile) race->profile_marker(31);
     update_weapon_projectiles(race,ticks);
+    if(profile) race->profile_marker(32);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if(driver_role(race,car)) finish_car_update(race, car, ticks, controls[car]);
+    if(profile) race->profile_marker(33);
 }
 
 static long absolute_long(long value)

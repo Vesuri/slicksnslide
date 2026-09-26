@@ -291,6 +291,7 @@ volatile unsigned long g_slicks_diag_bench_work_max;
 volatile unsigned long g_slicks_diag_bench_work_max_frame;
 volatile unsigned long g_slicks_diag_bench_max_stages[8];
 volatile unsigned short g_slicks_diag_bench_max_particles;
+volatile unsigned long g_slicks_diag_bench_max_simulation[3];
 volatile unsigned long g_slicks_diag_bench_work_over;
 volatile unsigned long g_slicks_diag_bench_wall_max;
 volatile unsigned long g_slicks_diag_bench_cadence_sum;
@@ -301,7 +302,7 @@ volatile unsigned long g_slicks_diag_profile_advance_lines;
 volatile unsigned long g_slicks_diag_profile_update_lines;
 volatile unsigned long g_slicks_diag_profile_hud_lines;
 volatile unsigned long g_slicks_diag_profile_draw_lines;
-volatile unsigned long g_slicks_diag_profile_actor_lines[16];
+volatile unsigned long g_slicks_diag_profile_actor_lines[24];
 static unsigned long g_slicks_diag_profile_actor_at;
 static const struct SlicksAmigaPlatform *g_slicks_diag_profile_platform;
 static unsigned long g_slicks_diag_profile_race_at;
@@ -388,12 +389,14 @@ unsigned long slicks_diag_profile_raster_time(void)
     unsigned long frame_before;
     unsigned long frame_after;
     unsigned short line;
+    unsigned short high,high_after;
     do {
         frame_before = platform->vblank_count;
-        line = (unsigned short)(((CUSTOM_WORD(REG_VPOSR) & 7) << 8) |
-                                (CUSTOM_WORD(REG_VHPOSR) >> 8));
+        high=CUSTOM_WORD(REG_VPOSR)&7;
+        line=(unsigned short)((high<<8)|(CUSTOM_WORD(REG_VHPOSR)>>8));
+        high_after=CUSTOM_WORD(REG_VPOSR)&7;
         frame_after = platform->vblank_count;
-    } while (frame_before != frame_after);
+    } while (frame_before != frame_after || high!=high_after);
     return frame_before * PAL_RASTER_LINES + line;
 }
 
@@ -401,7 +404,7 @@ static void slicks_diag_profile_race(unsigned char phase)
 {
     unsigned long now = slicks_diag_profile_raster_time();
     if(phase>=10) {
-        if(phase!=10 && phase!=20)
+        if(phase!=10 && phase!=20 && phase!=30)
             g_slicks_diag_profile_actor_lines[phase-10]=now-g_slicks_diag_profile_actor_at;
         g_slicks_diag_profile_actor_at=now;
         return;
@@ -5134,6 +5137,8 @@ int main(void)
                         g_slicks_diag_bench_max_stages[6]=g_slicks_diag_profile_c2p_lines;
                         g_slicks_diag_bench_max_stages[7]=g_slicks_diag_profile_diag_lines;
                         g_slicks_diag_bench_max_particles=race->trail_particle_count;
+                        for(unsigned i=0;i<3;++i)
+                            g_slicks_diag_bench_max_simulation[i]=g_slicks_diag_profile_actor_lines[21+i];
                     }
                     if (work > PAL_RASTER_LINES)
                         ++g_slicks_diag_bench_work_over;
