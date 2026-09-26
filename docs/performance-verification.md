@@ -214,3 +214,13 @@ Instrumentation can alter display-phase timing and BIOS-clock HUD updates;
 compare subsequent runs using this same instrumentation. Measurements still
 contain no per-update debugger stops. The maximum's simulation cost, not
 only the final checkpoint's rendering, must be optimized.
+
+## Cache unchanged HUD command inputs
+
+`tmp/perf-hud-input.log`: maximum752lines atframe147, cadence382640/602
+(40.7ms), all603 over budget. Final HUD7lines instead of40. Cache key is
+lap, finish place, last/best lap words and status options; existing invalidation
+and output comparisons remain. The original composed HUD oracle passes768
+full-screen transitions plus dirty/cache and Arcade checks. Maximum-stage
+audio170lines includes boundary-palette rebuilding, not just sound work;
+that interval must not be attributed entirely to PCM playback.

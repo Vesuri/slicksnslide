@@ -338,6 +338,10 @@ struct SlicksRaceRuntime {
     unsigned char actor_order_next[SLICKS_ACTOR_CAPACITY];
     unsigned char actor_order_ready;
     unsigned char actor_order_max;
+    struct {
+        unsigned short lap,last,best;
+        unsigned char place,options;
+    } hud_input[4];
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

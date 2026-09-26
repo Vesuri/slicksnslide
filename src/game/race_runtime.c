@@ -2912,14 +2912,22 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
         struct SlicksHudText commands[3];
         struct SlicksHudRun runs[3];
         const struct SlicksRaceCar *state = &race->cars[car];
-        unsigned count = slicks_hud_driver_text(car, state->lap,
-            state->finished ? state->finish_position : 0,
-            (unsigned short)state->last_lap_time_units,
-            (unsigned short)state->best_lap_time_units, commands);
-        unsigned changed = !race->hud_valid[car] ||
-            count != race->hud_run_count[car];
         unsigned char options=(race->weapons_enabled?1:0)|
             (race->fuel_option?2:0)|(race->damage_scale?4:0);
+        unsigned char place=state->finished?state->finish_position:0;
+        unsigned short last=(unsigned short)state->last_lap_time_units;
+        unsigned short best=(unsigned short)state->best_lap_time_units;
+        if(race->hud_valid[car] && race->hud_input[car].lap==state->lap &&
+           race->hud_input[car].place==place && race->hud_input[car].last==last &&
+           race->hud_input[car].best==best && race->hud_input[car].options==options)
+            continue;
+        race->hud_input[car].lap=state->lap;race->hud_input[car].place=place;
+        race->hud_input[car].last=last;race->hud_input[car].best=best;
+        race->hud_input[car].options=options;
+        unsigned count = slicks_hud_driver_text(car, state->lap,
+            place,last,best,commands);
+        unsigned changed = !race->hud_valid[car] ||
+            count != race->hud_run_count[car];
         signed char selected=race->weapons_enabled?race->selected_weapon[car]:-1;
         /* Selection changes call the original status painter, not 1ddc0's
          * full text/background redraw. In particular, empty selection keeps
