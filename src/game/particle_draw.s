@@ -1,6 +1,7 @@
 	section code,code
 	xdef slicks_draw_particle
 	xdef slicks_draw_particle_batch
+	xdef slicks_draw_particle_chain
 
 ; C ABI: particle, chunky, material, surface, dirty_pixels, dirty_count,
 ;        mult320. Returns 1 WITHOUT changes if the dirty list needs the
@@ -141,5 +142,47 @@ slicks_draw_particle_batch equ .batch_entry
 .batch_done:
 	move.l d7,d0
 	addq.l #8,sp
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
+; Same first seven arguments, then actor next-byte table, signed trail-index
+; word table and first handle. Return the first unprocessed handle (zero at
+; end, or a sprite/dirty-overflow boundary). No intermediate index array.
+slicks_draw_particle_chain equ .chain_entry
+.chain_entry:
+	movem.l d2-d7/a2-a6,-(sp)
+	lea -12(sp),sp
+	move.l 88(sp),(sp)
+	move.l 92(sp),4(sp)
+	move.l 60(sp),8(sp)
+	movea.l 64(sp),a1
+	movea.l 68(sp),a2
+	movea.l 72(sp),a3
+	movea.l 76(sp),a4
+	movea.l 80(sp),a5
+	movea.l 84(sp),a6
+	moveq #0,d5
+	move.w (a5),d5
+	lea (a4,d5.l*4),a4
+	move.l 96(sp),d6
+.chain_loop:
+	tst.w d6
+	beq.s .chain_done
+	cmpi.w #510,d5
+	bhi.s .chain_done
+	movea.l 4(sp),a0
+	moveq #0,d0
+	move.w (a0,d6.w*2),d0
+	bmi.s .chain_done
+	mulu.w #24,d0
+	movea.l 8(sp),a0
+	adda.l d0,a0
+	bsr.w .body
+	movea.l (sp),a0
+	move.b (a0,d6.w),d6
+	bra.s .chain_loop
+.chain_done:
+	move.l d6,d0
+	lea 12(sp),sp
 	movem.l (sp)+,d2-d7/a2-a6
 	rts

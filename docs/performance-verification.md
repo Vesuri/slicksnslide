@@ -282,3 +282,14 @@ passes into assembly produced720lines maximum versus719, with mean cadence
 storage/ABI regressions and1920 original point-lifecycle comparisons passed,
 but the extra production path and adapter-only test were removed because
 there was no useful end-to-end improvement.
+
+## Direct particle-order traversal
+
+`tmp/perf-particle-chain.log`: final draw133→117lines; maximum720lines
+atframe222 remains effectively unchanged, mean cadence384968/602lines.
+The native point path now traverses the existing shared actor links, removing
+the intermediate400-byte stack list and its construction pass. Sprite
+boundaries and dirty-overflow suffixes still return to the existing caller.
+2048 single,256 batch and256 scattered actor-chain pixel/metadata/dirty/ABI
+cases pass, including early sprite boundaries; original actor/shared-pool
+full-frame tests also pass. This is not an end-to-end50FPS result.

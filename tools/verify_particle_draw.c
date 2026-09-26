@@ -85,10 +85,12 @@ int main(int argc,char **argv)
             if(v!=0x11223300+i)fail("native point preserved register");
         }
     }
-    uint32_t batch_entry=0x10000+((uint32_t)code[size-4]<<24)+((uint32_t)code[size-3]<<16)+((uint32_t)code[size-2]<<8)+code[size-1];
-    for(unsigned trial=0;trial<256;++trial) {
+    uint32_t batch_entry=0x10000+((uint32_t)code[size-8]<<24)+((uint32_t)code[size-7]<<16)+((uint32_t)code[size-6]<<8)+code[size-5];
+    uint32_t chain_entry=0x10000+((uint32_t)code[size-4]<<24)+((uint32_t)code[size-3]<<16)+((uint32_t)code[size-2]<<8)+code[size-1];
+    for(unsigned trial=0;trial<512;++trial) {
+        unsigned limit=trial<256 || (trial&32)?32:trial%33;
         struct SlicksTrailParticle points[32];
-        unsigned char packed_points[32*24],got_points[32*24],order[64],stack[40],count_bytes[2];
+        unsigned char packed_points[32*24],got_points[32*24],order[64],stack[44],count_bytes[2];
         memset(&race,0,sizeof race);race.chunky=pixels;
         memset(pixels,40,sizeof pixels);memset(dirty,0,sizeof dirty);
         memset(race.material_map,1,sizeof race.material_map);
@@ -110,17 +112,29 @@ int main(int argc,char **argv)
         ck(uc_mem_write(u,0x81000,order,sizeof order));
         be32(stack,0x18000);for(unsigned i=0;i<7;++i)be32(stack+4+i*4,addresses[i]);
         be32(stack+32,0x81000);be32(stack+36,32);
+        if(trial>=256) {
+            unsigned char next[200]={0},map[400];memset(map,255,sizeof map);
+            for(unsigned h=1;h<=32;++h) {
+                unsigned handle=1+((h-1)*73)%199;
+                next[handle]=h==32?0:1+(h*73)%199;
+                if(h<=limit)be16(map+handle*2,32-h);
+            }
+            ck(uc_mem_write(u,0x82000,next,sizeof next));
+            ck(uc_mem_write(u,0x83000,map,sizeof map));
+            be32(stack+32,0x82000);be32(stack+36,0x83000);be32(stack+40,1);
+        }
         ck(uc_mem_write(u,0x90000,stack,sizeof stack));uint32_t sp=0x90000;
         ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i) {
             uint32_t v=0x55667700+i;ck(uc_reg_write(u,preserved[i],&v));
         }
-        ck(uc_emu_start(u,batch_entry,0x18000,0,100000));
+        ck(uc_emu_start(u,trial<256?batch_entry:chain_entry,0x18000,0,100000));
         uint32_t result;ck(uc_reg_read(u,UC_M68K_REG_D0,&result));
         unsigned processed=0;
-        for(;processed<32 && race.dirty_pixel_count<=510;++processed)
+        for(;processed<limit && race.dirty_pixel_count<=510;++processed)
             draw_trail_point(&race,&points[31-processed]);
-        if(result!=processed)fail("batch point processed prefix");
+        unsigned expected_result=trial<256?processed:processed==32?0:1+(processed*73)%199;
+        if(result!=expected_result)fail("batch/chain point processed prefix");
         for(unsigned i=0;i<32;++i)packed(packed_points+i*24,&points[i]);
         for(unsigned i=0;i<race.dirty_pixel_count;++i) {
             be16(dirty+i*4,race.dirty_pixels[i].x);dirty[i*4+2]=race.dirty_pixels[i].y;
@@ -138,6 +152,6 @@ int main(int argc,char **argv)
             if(v!=0x55667700+i)fail("batch preserved register");
         }
     }
-    uc_close(u);puts("68020 point draw: 2048 single + 256 ordered-batch full-frame, metadata, dirty-list, overflow and ABI cases pass");
+    uc_close(u);puts("68020 point draw: 2048 single + 256 ordered-batch + 256 actor-chain full-frame, metadata, dirty-list, overflow and ABI cases pass");
     return 0;
 }

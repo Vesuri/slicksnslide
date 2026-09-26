@@ -1937,25 +1937,20 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
         const short *trail_index=race->weapons.trail_index;
         struct SlicksTrailParticle *particles=race->trail_particles;
 #if defined(__m68k__)
-        extern unsigned slicks_draw_particle_batch(struct SlicksTrailParticle *,
+        extern unsigned slicks_draw_particle_chain(struct SlicksTrailParticle *,
             unsigned char *,const unsigned char *,const unsigned char *,
             struct SlicksDirtyPixel *,unsigned short *,const unsigned int *,
-            const unsigned short *,unsigned);
-        unsigned short indices[SLICKS_ACTOR_CAPACITY];
+            const unsigned char *,const short *,unsigned);
         for(unsigned h=race->actor_order_head[p];h;) {
             int t=trail_index[h];
             if(t<0) { draw_weapon_actor(race,h);h=next[h];continue; }
-            unsigned n=0;
-            do {
-                indices[n++]=(unsigned short)t;
-                h=next[h];
-                if(!h) break;
-                t=trail_index[h];
-            } while(t>=0);
-            unsigned done=slicks_draw_particle_batch(particles,race->chunky,
+            unsigned remaining=slicks_draw_particle_chain(particles,race->chunky,
                 race->material_map,race->surface_map,race->dirty_pixels,
-                &race->dirty_pixel_count,mult320,indices,n);
-            for(;done<n;++done) draw_trail_point(race,particles+indices[done]);
+                &race->dirty_pixel_count,mult320,next,trail_index,h);
+            if(remaining==h) {
+                draw_trail_point(race,particles+t);
+                h=next[h];
+            } else h=remaining;
         }
 #else
         for(unsigned h=race->actor_order_head[p];h;h=next[h]) {
