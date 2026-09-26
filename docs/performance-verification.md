@@ -462,3 +462,20 @@ fix, the suppression benchmark (`tmp/perf-sprite-dirty-batch.log`) measured
 1021lines maximum and569040/602lines mean cadence (60.6ms), versus68.2ms.
 Those timing numbers precede the lifecycle correction; fresh production
 benchmarks are required, and50FPS remains unfinished.
+
+## Four-track baseline after dirty/lifecycle fixes
+
+`tmp/perf-dirty-final-{0,1,2,3}.log`,603 measured updates per track:
+
+| Track | Maximum work (raster lines / ms) | Mean cadence (ms) |
+| --- | --- | --- |
+| BASIC | 685 / 43.9 | 40.1 |
+| F1 | 1019 / 65.3 | 60.5 |
+| CITY | 824 / 52.8 | 46.5 |
+| WHACKO | 708 / 45.4 | 40.6 |
+
+Cadence sums are376868/567766/436231/381587 over602 intervals. All603
+updates on every track exceed20ms. These runs exclude the expensive debug
+bitmap audit, retain profiling, use four native-menu CPU drivers, and run
+muted sequentially with emulator cleanup after each. The performance goal
+is not complete; F1 still spends352lines drawing at its worst update.
