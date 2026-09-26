@@ -337,6 +337,7 @@ struct SlicksRaceRuntime {
     unsigned char actor_order_head[128];
     unsigned char actor_order_next[SLICKS_ACTOR_CAPACITY];
     unsigned char actor_order_ready;
+    unsigned char actor_order_max;
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

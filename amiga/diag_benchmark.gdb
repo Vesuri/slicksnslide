@@ -10,6 +10,7 @@ commands
   printf "BENCHMARK_LAST step=%lu audio=%lu c2p=%lu diag=%lu restore=%lu advance=%lu update=%lu hud=%lu draw=%lu\n",g_slicks_diag_profile_step_lines,g_slicks_diag_profile_audio_lines,g_slicks_diag_profile_c2p_lines,g_slicks_diag_profile_diag_lines,g_slicks_diag_profile_restore_lines,g_slicks_diag_profile_advance_lines,g_slicks_diag_profile_update_lines,g_slicks_diag_profile_hud_lines,g_slicks_diag_profile_draw_lines
   printf "ACTOR_RESTORE index=%lu high=%lu cars_p3=%lu low=%lu\n",g_slicks_diag_profile_actor_lines[1],g_slicks_diag_profile_actor_lines[2],g_slicks_diag_profile_actor_lines[3],g_slicks_diag_profile_actor_lines[4]
   printf "ACTOR_DRAW index=%lu low=%lu cars_p3=%lu high=%lu\n",g_slicks_diag_profile_actor_lines[11],g_slicks_diag_profile_actor_lines[12],g_slicks_diag_profile_actor_lines[13],g_slicks_diag_profile_actor_lines[14]
+  printf "BENCHMARK_LOAD particles=%u dirty_pixels=%u dirty_ranges=%u dirty_equivalent_rows=%u\n",g_slicks_diag_particles,g_slicks_diag_dirty_pixels,g_slicks_diag_dirty_ranges,g_slicks_diag_dirty_rows
   quit
 end
 break slicks_diag_system_restored

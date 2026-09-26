@@ -103,3 +103,12 @@ x86 layering/pixel comparisons remain in the track/weapon actor suites, which
 also pass. The target routine keeps the original clipped-point height and
 mask rules, writes the authoritative chunky surface, and returns untouched
 to the existing C fallback when fewer than two dirty slots remain.
+
+## Bound priority traversal by populated maximum
+
+`tmp/perf-priority-bound.log`: maximum work899 lines, maximum wall1118,
+cadence412198/602 lines (43.9ms), all603 over budget. Final step568, audio11,
+C2P69, diagnostics7; restore87, advance43, update136, HUD34, draw264.
+The optimization removes the priority bitmap construction and bounds visits
+by the highest indexed nonnegative signed-byte priority. Original saturated
+pool priority/restoration tests pass, including high and negative priorities.

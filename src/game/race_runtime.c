@@ -1481,12 +1481,14 @@ static inline __attribute__((unused)) void advance_lap_checkpoints(struct Slicks
 static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
 {
     for(unsigned p=0;p<128;++p) race->actor_order_head[p]=0;
+    race->actor_order_max=0;
     unsigned count=race->weapons.slots.high_water;
     for(unsigned i=1;i<count;++i) {
         unsigned h=reverse?i:count-i;
         int t=race->weapons.trail_index[h];
         unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
         if(p>=128) continue;
+        if(p>race->actor_order_max) race->actor_order_max=(unsigned char)p;
         race->actor_order_next[h]=race->actor_order_head[p];
         race->actor_order_head[p]=(unsigned char)h;
     }
@@ -1931,23 +1933,6 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
 static void draw_trail_particles(struct SlicksRaceRuntime *race,unsigned short bucket)
 { draw_trail_priority(race,bucket,-1); }
 
-static void actor_priority_mask(const struct SlicksRaceRuntime *race,unsigned int mask[4])
-{
-    for(unsigned i=0;i<4;++i) mask[i]=0;
-    if(race->actor_order_ready) {
-        for(unsigned p=6;p<128;++p)
-            if(race->actor_order_head[p]) mask[p>>5]|=1U<<(p&31);
-        return;
-    }
-    for(unsigned h=1;h<race->weapons.slots.high_water;++h) {
-        int t=race->weapons.trail_index[h];
-        unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
-        /* 33bee takes the signed-byte maximum starting at zero. Negative
-         * priorities never enter its ascending draw loop. */
-        if(p>=6 && p<128) mask[p>>5]|=1U<<(p&31);
-    }
-}
-
 static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *logical)
 {
     if(!race->track_actors_ready) {
@@ -1959,8 +1944,8 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
     if(profile) race->profile_marker(10);
     build_actor_order(race,1);
     if(profile) race->profile_marker(11);
-    unsigned int mask[4];actor_priority_mask(race,mask);
-    for(int p=127;p>=6;--p) if(mask[p>>5]&(1U<<(p&31))) restore_trail_priority(race,3,p);
+    for(int p=race->actor_order_max;p>=6;--p)
+        if(race->actor_order_head[p]) restore_trail_priority(race,3,p);
     restore_trail_particles(race,2);
     restore_trail_priority(race,3,4);
     if(profile) race->profile_marker(12);
@@ -1994,8 +1979,8 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
     if(profile) race->profile_marker(23);
     draw_trail_priority(race,3,4);
     draw_trail_particles(race,2);
-    unsigned int mask[4];actor_priority_mask(race,mask);
-    for(unsigned p=6;p<128;++p) if(mask[p>>5]&(1U<<(p&31))) draw_trail_priority(race,3,p);
+    for(unsigned p=6;p<=race->actor_order_max;++p)
+        if(race->actor_order_head[p]) draw_trail_priority(race,3,p);
     if(profile) race->profile_marker(24);
     race->actor_order_ready=0;
 }
