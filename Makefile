@@ -1376,5 +1376,15 @@ todo:
 	@printf '\nTracked work markers:\n'
 	@! git grep -nE 'TODO|FIXME|HACK' -- ':!PROJECT.md' ':!docs/open-work.md' || true
 
+build/memory_test.bin: tools/memory_test.s src/platform/amiga/memory.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_memory: tools/verify_memory.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-memory
+verify-memory: build/memory_test.bin build/verify_memory
+	build/verify_memory build/memory_test.bin
+
 clean:
 	rm -rf build

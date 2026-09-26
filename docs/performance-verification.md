@@ -848,3 +848,21 @@ physics quanta passed original integration/damage checks and all eleven
 BASIC total work from 232434 to 233177 lines and preparation from 36465 to
 37318. Cadence also worsened, 329825/602 to 332009/602. Removed the candidate
 (`tmp/perf-physics-constants-basic.log`).
+
+## Bounded native memory primitives
+
+Replace the linked byte-at-a-time memcpy/memset with 68020 block loops,
+preserving arbitrary alignment and exact bounds. The external support file
+is untouched; its old definitions are renamed locally at compilation and
+discarded by section collection. Entries use .text because elf2hunk cannot
+resolve cross-section PC-relative references to the standard runtime names.
+24912 copy/clear/fill tests cover all small lengths, alignments, lengths over
+64 KiB, exact read/write bounds, full bytes/canaries and ABI
+(`tmp/verify-native-memory.log`).
+
+BASIC work decreases from 232434 to 232027 lines over 603 updates; cadence
+from 329825/602 to 329201/602, a modest gain rather than a major bottleneck
+removal (`tmp/perf-native-memory-basic.log`). The full 600-update display audit
+passes with 32 actors and 2076 marks. Native mode-1 menu/race transitions pass
+two race starts, two pause menus, restoration 31 and zero audio spills
+(`tmp/audit-native-memory.log`, `tmp/modes-native-memory.log`).
