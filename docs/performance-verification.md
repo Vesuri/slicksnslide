@@ -1246,3 +1246,20 @@ A shared balanced vector-sector classifier passed 655360 original AI cases
 but did not improve BASIC: work 220831 versus 220679 lines, maximum 511
 versus 509, unchanged cadence 306737/602. The original comparisons remain
 (`tmp/verify-balanced-vector.log`, `tmp/perf-balanced-vector-basic.log`).
+
+## Particle drawing offset table
+
+The native point walkers use a 512-byte table of the 256 fixed particle
+offsets instead of multiplying each index by 24. Expanded batch/chain tests
+exercise every slot, including 255, while comparing complete pixels,
+metadata, ordering, overflow behavior and preserved registers. Original
+track/weapon rendering and producer dirty-coverage regressions also pass
+(`tmp/verify-particle-offsets{,-regression}.log`). The target display audit
+passes 600 updates, 32 actors and 2076 marks (`tmp/audit-particle-offsets.log`).
+
+Over 603 measured updates, BASIC work improves from 220679 to 220022 lines
+(23.39 ms average), maximum 509 to 508, cadence 306737 to 306425/602.
+F1 improves from 298494 to 296373 lines (31.51 ms), maximum 642 to 638,
+with cadence unchanged at 375630/602. Drawing falls from 53240/87032 to
+52668/85332 lines respectively (`tmp/perf-particle-offsets-{basic,f1}.log`).
+This is a modest retained saving; neither case meets the 20 ms target.

@@ -89,19 +89,21 @@ int main(int argc,char **argv)
     uint32_t chain_entry=0x10000+((uint32_t)code[size-4]<<24)+((uint32_t)code[size-3]<<16)+((uint32_t)code[size-2]<<8)+code[size-1];
     for(unsigned trial=0;trial<512;++trial) {
         unsigned limit=trial<256 || (trial&32)?32:trial%33;
-        struct SlicksTrailParticle points[32];
-        unsigned char packed_points[32*24],got_points[32*24],order[64],stack[44],count_bytes[2];
+        struct SlicksTrailParticle points[256];
+        unsigned char packed_points[256*24],got_points[256*24],order[64],stack[44],count_bytes[2];
         memset(&race,0,sizeof race);race.chunky=pixels;
         memset(pixels,40,sizeof pixels);memset(dirty,0,sizeof dirty);
         memset(race.material_map,1,sizeof race.material_map);
         memset(race.surface_map,trial&7,sizeof race.surface_map);
-        for(unsigned i=0;i<32;++i) {
+        for(unsigned i=0;i<256;++i) {
             points[i]=(struct SlicksTrailParticle){.x=6400+(trial&63),.y=6400,
                 .old_x=99,.old_y=100,.saved_valid=trial&3,.colour=i,
                 .occlusion_limit=(unsigned char)((i+trial)%20)};
             if(i%7==0) points[i].x=-1;
-            packed(packed_points+i*24,&points[i]);be16(order+i*2,31-i);
+            packed(packed_points+i*24,&points[i]);
         }
+        /* Exercise every pool offset, including slot 255, in both walkers. */
+        for(unsigned i=0;i<32;++i)be16(order+i*2,(trial+31-i)&255);
         race.dirty_pixel_count=trial%4?0:500+(trial%13);
         be16(count_bytes,race.dirty_pixel_count);
         ck(uc_mem_write(u,0x20000,packed_points,sizeof packed_points));
@@ -117,7 +119,7 @@ int main(int argc,char **argv)
             for(unsigned h=1;h<=32;++h) {
                 unsigned handle=1+((h-1)*73)%199;
                 next[handle]=h==32?0:1+(h*73)%199;
-                if(h<=limit)be16(map+handle*2,32-h);
+                if(h<=limit)be16(map+handle*2,(trial+32-h)&255);
             }
             ck(uc_mem_write(u,0x82000,next,sizeof next));
             ck(uc_mem_write(u,0x83000,map,sizeof map));
@@ -132,10 +134,10 @@ int main(int argc,char **argv)
         uint32_t result;ck(uc_reg_read(u,UC_M68K_REG_D0,&result));
         unsigned processed=0;
         for(;processed<limit && race.dirty_pixel_count<=510;++processed)
-            draw_trail_point(&race,&points[31-processed]);
+            draw_trail_point(&race,&points[(trial+31-processed)&255]);
         unsigned expected_result=trial<256?processed:processed==32?0:1+(processed*73)%199;
         if(result!=expected_result)fail("batch/chain point processed prefix");
-        for(unsigned i=0;i<32;++i)packed(packed_points+i*24,&points[i]);
+        for(unsigned i=0;i<256;++i)packed(packed_points+i*24,&points[i]);
         for(unsigned i=0;i<race.dirty_pixel_count;++i) {
             be16(dirty+i*4,race.dirty_pixels[i].x);dirty[i*4+2]=race.dirty_pixels[i].y;
         }

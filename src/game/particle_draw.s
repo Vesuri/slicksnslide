@@ -121,7 +121,7 @@ slicks_draw_particle:
 	moveq #0,d0
 	move.w (a0,d6.w*2),d0
 	bmi.s .chain_done
-	mulu.w #24,d0
+	move.w .particle_offsets(pc,d0.w*2),d0
 	movea.l 8(sp),a0
 	adda.l d0,a0
 	bra.w .body
@@ -167,7 +167,7 @@ slicks_draw_particle_batch equ .batch_entry
 	moveq #0,d0
 	move.w (a0)+,d0
 	move.l a0,(sp)
-	mulu.w #24,d0
+	move.w .particle_offsets(pc,d0.w*2),d0
 	movea.l 4(sp),a0
 	adda.l d0,a0
 	bra.w .body
@@ -205,3 +205,12 @@ slicks_draw_particle_chain equ .chain_entry
 	move.l 96(sp),d6
 	lea .chain_continue(pc),a5
 	bra.w .chain_loop
+
+; The fixed 256-slot pool fits in signed word offsets. Keep the multiply
+; table outside the hot instruction loop; all entries are below 32768.
+.particle_offsets:
+particle_offset_value set 0
+	rept 256
+	dc.w particle_offset_value
+particle_offset_value set particle_offset_value+24
+	endr
