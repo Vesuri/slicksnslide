@@ -2962,10 +2962,11 @@ int main(void)
         --argc;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
+    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && argv[7]=='M' && argv[8]>='0' && argv[8]<='3');
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
-    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test) && argv[0]=='N' && argv[1]=='A' &&
+    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
-        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || argv[7]=='O'));
+        (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || argv[7]=='O' || gameplay_benchmark));
     if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
     shop_test=(unsigned char)(natural_results_test && (argv[7]=='W' || shop_transition_test));
     if(shop_test && weapon_case_test) g_slicks_diag_weapon_case=(unsigned short)(argv[8]-'0');
@@ -2977,10 +2978,10 @@ int main(void)
         setup_dirty=1;
         configuration=slicks_original_configuration;
         configuration.options[0]=4; configuration.options[3]=1;
-        if(argv[7]=='T' || argv[7]=='I' || argv[7]=='Q') configuration.options[3]=4;
+        if(argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || gameplay_benchmark) configuration.options[3]=4;
         configuration.options[7]=0; configuration.options[9]=10;
         if(shop_test) { configuration.options[7]=1; configuration.options[4]=1000; }
-        configuration.options[10]=(argv[7]=='D' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q')?300:0;
+        configuration.options[10]=(argv[7]=='D' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || gameplay_benchmark)?300:0;
         g_slicks_profiles.count=7;
         static const unsigned char fleet[4]={5,2,0,0};
         /* Observed PC audio-comparison fleet; input selection only. */
@@ -3161,7 +3162,7 @@ int main(void)
             unsigned i;
             for(i=0;i<track_count;++i) {
                 static const char *const actor_tracks[]={"BASIC.SS","F1.SS","CITY.SS","WHACKO.SS"};
-                const char *name=actor_tracks[actor_case_test?argv[8]-'0':0]; unsigned j=0;
+                const char *name=actor_tracks[(actor_case_test || gameplay_benchmark)?argv[8]-'0':0]; unsigned j=0;
                 while(name[j] && track_names[i][j]==name[j]) ++j;
                 if(!name[j] && !track_names[i][j]) break;
             }
@@ -3275,7 +3276,7 @@ int main(void)
         g_slicks_diag_audit_bitmap = 1;
         g_slicks_diag_target_frame = 5;
     }
-    if (argc > 0 && ((const char *)argv)[0] == 'M') {
+    if (gameplay_benchmark || (argc > 0 && ((const char *)argv)[0] == 'M')) {
         g_slicks_diag_profile_all = 1;
         g_slicks_diag_target_frame = 700;
     }

@@ -187,3 +187,19 @@ cadence341646/602 (36.4ms),574/603 over budget. Final step424,audio9,C2P59,
 diagnostics7; restore65,advance46,update130,HUD33,draw146. Mapping loops now
 walk compact particle/handle arrays with cached counts and bases. The effect
 is small; original actor and dirty-tracking suites pass.
+
+## Native-setup benchmark coverage
+
+`SLICKS_GAMEPLAY_BENCHMARK=0..3` selects BASIC/F1/CITY/WHACKO using
+native setup and ordinary GO input. Four computer profiles select vehicles
+5/2/0/0, setting100, Custom four laps, fuel10, damage300, weapons off,
+seed0x1234. No moving-car state or framebuffer is injected. Target frame700;
+the full-frame bitmap audit is disabled for timing, and emulated audio runs
+with muted host output. This complements, not replaces, the legacy baseline.
+
+First BASIC run `tmp/perf-native-basic.log`:603updates, all over20ms;
+maximum work772lines (49.5ms), atframe209; maximumwall953,
+cadence388563/602 (41.4ms). Final step378,audio7,C2P57,diagnostics9;
+restore50,advance39,update81,HUD40,draw142.103particles,18dirty pixels,
+6 sparse conversions,4rectangles,1equivalent C2P row. The last checkpoint
+alone is not representative of the maximum.
