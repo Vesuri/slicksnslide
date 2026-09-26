@@ -12,6 +12,7 @@
 #include "../ui/menu_icon.h"
 #include "moving_probe.h"
 #include "animated_boundary.h"
+#include "track_material_sample.h"
 
 #if defined(__m68k__)
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,cars)<32768 &&
@@ -1921,7 +1922,7 @@ static void emit_offroad_wheel(struct SlicksRaceRuntime *race,short x,short y,
     short sx=(short)(x+random_scaled(race,(unsigned short)radius)-radius/2);
     short sy=(short)(y+random_scaled(race,(unsigned short)radius)-radius/2);
     if(sx<0 || sx>=320 || sy<0 || sy>=200) return;
-    int material=slicks_track_material_sample(race->material_map,race->surface_map,sx,sy,layer);
+    int material=slicks_track_material_sample_inline(race->material_map,race->surface_map,sx,sy,layer);
     if(material!=2 && material!=15 && (material<22 || material>26)) {
         unsigned before=race->trail_particle_count;
         add_trail_component(race,sx,sy,colour,0,0,0,long_lived?30:3);
@@ -1967,7 +1968,7 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
             continue;
         /* Wheels may extend beyond x=319 even when the car centre is legal.
          * Original b089 wraps the linear address, not the visible rectangle. */
-        int material=slicks_track_material_sample(race->material_map,race->surface_map,
+        int material=slicks_track_material_sample_inline(race->material_map,race->surface_map,
             x,y,car->actor_layer);
         if(material<0) { race->collision_error=1; continue; }
         surface=(unsigned char)material;

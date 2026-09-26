@@ -31,7 +31,7 @@ static void update_track_actor_motion(struct SlicksRaceRuntime *race)
             car_pixels_ready=1;
         }
         short nx=(short)(a->x+a->velocity_x),ny=(short)(a->y+a->velocity_y);
-        int material=slicks_track_material_sample(race->material_map,race->surface_map,nx/16,ny/16,0);
+        int material=slicks_track_material_sample_inline(race->material_map,race->surface_map,nx/16,ny/16,0);
         if(material<0) { race->collision_error=1;return; }
         if(material==0) a->layer=1;
         else if(material==19) a->layer=0;

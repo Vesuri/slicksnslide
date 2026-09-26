@@ -1085,3 +1085,21 @@ from 222200/311398 to 221739/308921; F1 is nearly neutral at 323580/379640
 versus 323895/379639 (603 updates, 602 intervals). See
 `tmp/perf-shared-ai-car-base-{basic,f1}.log`. This is a small code-generation
 gain, not a change to decisions or physics.
+
+## Inline exact material sampling
+
+Share the existing material-sampling arithmetic between an out-of-line public
+API and inline wheel/track-object callers. This lets the compiler remove call
+setup, known-nonnull checks and the unused upper-layer branch for lower-map
+object samples. Signed packed-plane and 16-bit raw-address wrapping remain
+unchanged. Original map tests pass 3438 coordinate/layer/boundary cases and
+reject 1008 unretained addresses; original track-object, offroad, surface and
+setup checks pass (`tmp/verify-inline-material.log`).
+
+BASIC work falls from 221739 to 220813 lines (23.47 ms average), cadence
+308921 to 306737/602. F1 falls from 323580 to 316948 (33.69 ms), cadence
+379640 to 377172/602; its restoration/motion stage falls from 67394 to
+61532 lines. Both have 603 measured updates. Worst work remains 508/668
+lines, well above one vblank (`tmp/perf-inline-material-{basic,f1}.log`).
+The combined pointer/sampler build passes the full display audit: 600 updates,
+32 actors and 2076 permanent marks (`tmp/audit-inline-material.log`).

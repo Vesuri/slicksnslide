@@ -228,10 +228,12 @@ verify-dos-ai: build/verify_dos_ai
 .PHONY: verify-weapon-fire
 .PHONY: verify-weapon-simulation
 .PHONY: verify-projectile-map
-build/verify_projectile_map: tools/verify_projectile_map.c src/game/track_scene.c src/game/track_scene.h | build
+build/verify_projectile_map: tools/verify_projectile_map.c src/game/track_scene.c src/game/track_scene.h src/game/track_material_sample.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-projectile-map: build/verify_projectile_map
 	./build/verify_projectile_map
+
+build/verify_track_actor_motion build/verify_surface_effects build/verify_dos_damage build/verify_drive_trajectory build/verify_offroad_pool build/verify_weapon_actors_native build/verify_track_actor_render_native: src/game/track_material_sample.h
 build/verify_weapon_simulation: tools/verify_weapon_simulation.c src/game/race_runtime.c src/game/weapon_simulation.inc src/game/weapon_actors.inc src/game/weapon_runtime.h src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-simulation: build/verify_weapon_simulation
