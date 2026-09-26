@@ -634,3 +634,13 @@ explicit point/rectangle repaint-invalidation tests pass
 (`tmp/verify-status-cache-final.log`). BASIC improves to 595 maximum lines
 (38.1 ms), cadence 335128/602 (35.7 ms), with 574/603 updates over budget
 (`tmp/perf-status-cache.log`). No screen-pixel shadow or per-row flags are used.
+The full display audit passes 600 updates, 32 actors and 2076 marks
+(`tmp/audit-status-cache.log`).
+
+Collision bursts now reuse their car position and signed base velocity
+divisions across all emitted points. Original damage/contact/effect comparisons
+pass (`tmp/verify-contact-divisions.log`). The measured difference is marginal:
+BASIC 596 maximum lines and cadence 334796/602 versus 595 and 335128/602;
+the collision/smoke phase at that worst update falls from 42 to 40 lines
+(`tmp/perf-contact-divisions.log`). RNG ordering and full-pool behavior remain
+unchanged; no large speedup is claimed for this small arithmetic cleanup.

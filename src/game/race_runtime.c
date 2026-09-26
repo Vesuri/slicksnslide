@@ -2146,17 +2146,22 @@ static void emit_contact_particles(struct SlicksRaceRuntime *race,
     unsigned char lifetime = car->collision_partner ? 35 : 50;
     if (!car->actor_contact || car->previous_actor_contact) return;
     car->collision_partner = 0;
+    /* Emitting a point does not change its car. Preserve signed truncation,
+     * but perform these four invariant divisions once for the whole burst. */
+    const short origin_x=(short)(car->x/100L),origin_y=(short)(car->y/100L);
+    const short base_vx=(short)((signed int)car->velocity_x/divisor);
+    const short base_vy=(short)((signed int)car->velocity_y/divisor);
     /* 23b0f..23c94: RNG order is colour, Y jitter, then X jitter.
      * Consume all three draws even if the native particle pool is full. */
     for (unsigned short i=0;i<count;++i) {
         unsigned char colour = random_scaled(race,3) == 0 ?
             (unsigned char)(index*5+3) : race->collision_colour;
-        short vy = (short)((short)((signed int)car->velocity_y / divisor) +
+        short vy = (short)(base_vy +
                             random_scaled(race,radius*2) - radius);
-        short vx = (short)((short)((signed int)car->velocity_x / divisor) +
+        short vx = (short)(base_vx +
                             random_scaled(race,radius*2) - radius);
         unsigned short first = race->trail_particle_count;
-        add_trail_component(race,(short)(car->x/100L),(short)(car->y/100L),
+        add_trail_component(race,origin_x,origin_y,
                             colour,3,vx,vy,lifetime);
         if(shared_actor_pool(race)) race->track_actor_scratch=
             race->trail_particle_count>first?race->weapons.trail_handle[first]:0;
