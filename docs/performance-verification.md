@@ -557,3 +557,27 @@ end-to-end result: 947 maximum lines and 553388/602 mean cadence lines
 (`tmp/perf-point-reset.log`). Keep the full metadata reset. Its additional
 display audit was cancelled and its owned emulator closed after the timing
 rejection; no audit completion is claimed for this discarded experiment.
+
+## Retained sprite optimizations: four-track recheck
+
+`tmp/perf-retained-sprites-{0,1,2,3}.log`, 603 measured updates each:
+
+| Track | Maximum work (lines / ms) | Mean cadence (ms) |
+| --- | --- | --- |
+| BASIC | 674 / 43.2 | 39.6 |
+| F1 | 946 / 60.6 | 58.7 |
+| CITY | 775 / 49.7 | 42.8 |
+| WHACKO | 712 / 45.6 | 40.0 |
+
+Cadence sums are 372170/551230/401494/375635 over 602 intervals. All measured
+updates still exceed 20 ms. Debug sessions were muted, sequential and closed
+after each run. Stock PAL 68020/2 MiB Chip RAM settings are unchanged.
+
+`make verify-particle-advance` now runs the actual native update assembly
+against original DOS lifetime and signed-word motion fragments for 514
+batches (0..256 particles on both pages). It also checks compaction, full
+saved particle records, permanent pixels, dirty saturation, priority buckets,
+canaries and the callee-saved ABI. The original retirement oracle separately
+checks all 256 state bytes. Reused Unicorn execution requires explicit
+instruction hooks at fragment boundaries; varying `until` alone initially
+let cached translated blocks run through a boundary in the test harness.

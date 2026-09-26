@@ -1200,6 +1200,16 @@ build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_ef
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-particle-draw
+build/particle_advance.bin: tools/particle_advance_test.s src/game/particle_runtime.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_particle_advance: tools/verify_particle_advance.c tools/verify_dos_particle_expiry.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-particle-advance
+verify-particle-advance: unpack build/particle_advance.bin build/verify_particle_advance
+	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin
+
 build/car_draw.bin: tools/car_draw_test.s src/game/car_draw.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
