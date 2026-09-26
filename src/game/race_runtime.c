@@ -1504,6 +1504,7 @@ static inline __attribute__((unused)) void advance_lap_checkpoints(struct Slicks
 
 static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
 {
+    race->actor_order_drawn=0;
     for(unsigned p=0;p<128;++p) race->actor_order_head[p]=0;
     race->actor_order_max=0;
     unsigned count=race->weapons.slots.high_water;
@@ -1526,6 +1527,26 @@ static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
         race->actor_order_next[h]=race->actor_order_head[p];
         race->actor_order_head[p]=(unsigned char)h;
     }
+    race->actor_order_ready=1;
+}
+
+static void restore_actor_order(struct SlicksRaceRuntime *race)
+{
+    if(!race->actor_order_drawn) { build_actor_order(race,1);return; }
+    /* No actor simulation/allocation occurs between the draw and the next
+     * restoration. Reverse the exact chains that painted the backgrounds,
+     * rather than loading every actor's priority and sorting them again.
+     * Clipped actors are harmless: restoration still checks saved validity. */
+    unsigned char *next=race->actor_order_next;
+    for(unsigned p=0;p<=race->actor_order_max;++p) {
+        unsigned h=race->actor_order_head[p],previous=0;
+        while(h) {
+            unsigned following=next[h];
+            next[h]=(unsigned char)previous;previous=h;h=following;
+        }
+        race->actor_order_head[p]=(unsigned char)previous;
+    }
+    race->actor_order_drawn=0;
     race->actor_order_ready=1;
 }
 
@@ -2017,7 +2038,7 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
     if(race->sprite_dirty_deferred)finish_sprite_dirty_batch(race);
     race->sprite_dirty_count=0;race->sprite_dirty_deferred=1;
     if(profile) race->profile_marker(10);
-    build_actor_order(race,1);
+    restore_actor_order(race);
     if(profile) race->profile_marker(11);
     for(int p=race->actor_order_max;p>=6;--p)
         if(race->actor_order_head[p]) restore_trail_priority(race,3,p);
@@ -2058,6 +2079,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
         if(race->actor_order_head[p]) draw_trail_priority(race,3,p);
     finish_sprite_dirty_batch(race);
     if(profile) race->profile_marker(24);
+    race->actor_order_drawn=1;
     race->actor_order_ready=0;
 }
 

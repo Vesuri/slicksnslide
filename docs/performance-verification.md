@@ -530,3 +530,23 @@ A separate unchanged-track-sprite wrapper passed original pixel comparisons
 but increased F1 maximum work from 970 to 979 lines and cadence sum from
 557470 to 559966 (`tmp/perf-unchanged-track.log`). Its repeated validation
 and extra call outweighed the simpler geometry path; it was removed.
+
+## Reuse draw ordering for the following restoration
+
+Between drawing actors and their next restoration, the production loop does
+not run actor simulation or allocation. Reverse the actual per-priority draw
+chains instead of rescanning actor state and priorities. Saved-background
+validity still gates restoration; fresh startup and callers without a prior
+draw retain the independent scan. Pool initialization invalidates reuse.
+
+512 mixed active/retired/clipped sprite and point ordering cases match the
+independent restoration scan. Original weapon/track render, overlapping
+shared pools, permanent marks and dirty coverage pass
+(`tmp/verify-reverse-order.log`). F1 (`tmp/perf-reverse-order.log`) improves
+to 947 lines maximum work (60.7 ms), and 551229/602 lines mean cadence
+(58.7 ms). The restoration-order phase falls from 15 to 2 lines in the final
+sample. The 20 ms performance goal is still unfinished.
+The full native display audit passes 600 updates, 32 actors and 2076 marks
+(`tmp/audit-reverse-order.log`). A new baseline regression also verifies
+point allocation/drawing/restoration and subsequent sprite reuse for all
+199 handles with deliberately poisoned stale sprite metadata.

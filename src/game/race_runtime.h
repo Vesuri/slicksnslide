@@ -338,6 +338,7 @@ struct SlicksRaceRuntime {
     unsigned char actor_order_next[SLICKS_ACTOR_CAPACITY];
     unsigned char actor_order_ready;
     unsigned char actor_order_max;
+    unsigned char actor_order_drawn;
     struct {
         unsigned short lap,last,best;
         unsigned char place,options;

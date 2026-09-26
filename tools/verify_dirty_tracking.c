@@ -198,8 +198,89 @@ static int verify_sprite_dirty_batch(void)
     return 0;
 }
 
+static int verify_restore_order(void)
+{
+    static struct SlicksRaceRuntime race;
+    for(unsigned trial=0;trial<512;++trial) {
+        memset(&race,0,sizeof race);
+        unsigned count=1+trial%199;
+        race.weapons.slots.high_water=count;
+        for(unsigned h=1;h<count;++h) {
+            unsigned active=(h+trial)%5!=0,saved=active && (h*3+trial)%4!=0;
+            unsigned priority=(h*17+trial)%256;
+            race.weapons.slots.state[h]=active?1:-2;
+            if(h&1) {
+                race.weapons.trail_index[h]=h;
+                race.trail_particles[h].priority=priority;
+                race.trail_particles[h].saved_valid=saved;
+            } else {
+                race.weapons.trail_index[h]=-1;
+                race.weapons.actors[h].kind=active?3:0;
+                race.weapons.actors[h].priority=priority;
+                race.weapons.actors[h].saved=saved;
+            }
+        }
+        unsigned char heads[128],next[200];
+        build_actor_order(&race,1);
+        memcpy(heads,race.actor_order_head,sizeof heads);memcpy(next,race.actor_order_next,sizeof next);
+        build_actor_order(&race,0);race.actor_order_drawn=1;restore_actor_order(&race);
+        for(unsigned p=0;p<128;++p) {
+            unsigned expected=heads[p];
+            for(unsigned h=race.actor_order_head[p];h;h=race.actor_order_next[h]) {
+                int t=race.weapons.trail_index[h];
+                unsigned saved=t>=0?race.trail_particles[t].saved_valid&1:race.weapons.actors[h].saved;
+                if(!saved)continue;
+                if(h!=expected) { fprintf(stderr,"Reverse draw order trial=%u priority=%u\n",trial,p);return 1; }
+                expected=next[expected];
+            }
+            if(expected)return 1;
+        }
+        if(race.actor_order_drawn || !race.actor_order_ready)return 1;
+        /* With no preceding draw, retain the independent restoration scan. */
+        restore_actor_order(&race);
+        if(memcmp(heads,race.actor_order_head,sizeof heads))return 1;
+    }
+    puts("Reverse draw order: 512 mixed active/retired/clipped sprite and point chains match independent restoration ordering");
+    return 0;
+}
+
+static int verify_point_slot_reuse(void)
+{
+    static struct SlicksRaceRuntime race;
+    static unsigned char pixels[64000];
+    for(unsigned h=1;h<200;++h) {
+        memset(&race,0,sizeof race);memset(pixels,77,sizeof pixels);
+        race.chunky=pixels;race.weapons.ready=1;
+        slicks_actor_slots_init(&race.weapons.slots);
+        race.weapons.slots.high_water=h+1;
+        for(unsigned i=1;i<h;++i)race.weapons.slots.state[i]=-3;
+        for(unsigned i=0;i<200;++i)race.weapons.trail_index[i]=-1;
+        /* A freed sprite slot may still contain any old motion/image data. */
+        memset(&race.weapons.actors[h],0xa5,sizeof race.weapons.actors[h]);
+        add_trail_component(&race,100,100,111,3,0,0,20);
+        if(race.trail_particle_count!=1 || race.weapons.trail_handle[0]!=h ||
+           race.weapons.actors[h].kind || race.weapons.actors[h].saved)return 1;
+        advance_weapon_actors(&race);
+        draw_trail_priority(&race,1,3);
+        if(pixels[32100]!=111)return 1;
+        restore_trail_priority(&race,1,3);
+        if(pixels[32100]!=77)return 1;
+        race.weapons.trail_index[h]=-1;race.weapons.slots.state[h]=0;
+        race.trail_particle_count=0;
+        advance_weapon_actors(&race);
+        if(allocate_weapon_actor(&race,0,1,0)!=(short)h)return 1;
+        struct SlicksWeaponActor expected={.kind=1};expected.motion.frames=1;
+        if(memcmp(&race.weapons.actors[h],&expected,
+            __builtin_offsetof(struct SlicksWeaponActor,saved_under)))return 1;
+    }
+    puts("Point slot reuse: all 199 poisoned sprite slots draw/restore as points and reset correctly when reused as sprites");
+    return 0;
+}
+
 int main(void)
 {
+    if(verify_point_slot_reuse())return 1;
+    if(verify_restore_order())return 1;
     if(verify_sprite_dirty_batch())return 1;
     if (verify_hud_renderer()) return 1;
     static struct SlicksRaceRuntime race;
