@@ -58,3 +58,12 @@ and weapon sprites are not the main remaining actor cost. Clipping and
 source row multiplication now happen once per row instead of per pixel;
 the same original renderer/restoration suites pass. No target errors or
 audio spills, and the owned emulator exited.
+
+## Rejected fused car-rendering experiment
+
+`tmp/perf-cars.log`: maximum work 1027 lines, cadence 499520 / 602;
+no improvement over the row baseline. The implementation was removed.
+Retained supplemental regression coverage compares all 256 combinations of
+rotation/body ramp/mask against the existing scalar VGA renderer and checks
+saved backgrounds and restoration. This is optimization regression coverage,
+not an independent original-executable oracle.

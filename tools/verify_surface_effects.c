@@ -116,6 +116,42 @@ int main(void)
         }
     }
 
+    /* Optimization regression: the chunky path must match the retained
+     * scalar VGA renderer for every rotation, body ramp and masking mode.
+     * This is supplemental to the DOS instruction oracles, not a new oracle. */
+    for(unsigned trial=0;trial<256;++trial) {
+        static unsigned char expected[64000],saved[100];
+        prepare(&race,&car,0,0,0);
+        race.chunky=pixels;
+        race.cars[0]=car;
+        race.cars[0].heading=(trial&15)*SLICKS_HEADING_STEP;
+        race.cars[0].style=(trial>>4)&7;
+        race.cars[0].actor_layer=trial>>7;
+        for(unsigned base=0;base<4;++base) {
+            race.sprites[0][base].width=7;race.sprites[0][base].height=9;
+            for(unsigned i=0;i<63;++i)
+                race.sprites[0][base].pixels[i]=(i+base)%11;
+        }
+        for(unsigned i=0;i<64000;++i) {
+            pixels[i]=(unsigned char)(i*19+trial);
+            race.material_map[i]=(i+trial)%4;
+            race.surface_map[i]=(i+trial)%8;
+            write_pixel(logical,0,i%320,i/320,pixels[i]);
+        }
+        draw_car(&race,logical,0);
+        memcpy(expected,pixels,sizeof expected);
+        memcpy(saved,race.cars[0].saved_under,63);
+        restore_car(&race,logical,&race.cars[0]);
+        draw_car(&race,0,0);
+        if(memcmp(expected,pixels,sizeof expected) ||
+           memcmp(saved,race.cars[0].saved_under,63))
+            fail("chunky car draw differs from scalar renderer");
+        restore_car(&race,0,&race.cars[0]);
+        for(unsigned i=0;i<64000;++i)
+            if(pixels[i]!=(unsigned char)(i*19+trial))
+                fail("chunky car restoration differs");
+    }
+
     /* Every mixed car-layer combination: priority 4 must cover priority 3,
      * irrespective of player number, and restoration must recover scenery. */
     for (unsigned int test = 0; test < 32; ++test) {
