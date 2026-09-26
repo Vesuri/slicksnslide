@@ -1263,3 +1263,14 @@ F1 improves from 298494 to 296373 lines (31.51 ms), maximum 642 to 638,
 with cadence unchanged at 375630/602. Drawing falls from 53240/87032 to
 52668/85332 lines respectively (`tmp/perf-particle-offsets-{basic,f1}.log`).
 This is a modest retained saving; neither case meets the 20 ms target.
+
+## Rejected separate native draw-order scan
+
+A compact 68020 shared-pool ordering loop passed 4096 mixed pool-size,
+priority, lifecycle, guard and ABI comparisons against the existing scalar
+ordering (`tmp/verify-native-actor-order.log`). BASIC work improved slightly
+from 220022 to 219615 lines, maximum 508 to 505, cadence 306425 to
+304241/602. However F1 work regressed from 296373 to 297188, with cadence
+unchanged at 375630/602 (maximum 638 to 637). The extra helper and tests
+are removed; this mixed result does not justify another production path
+(`tmp/perf-native-actor-order-{basic,f1}.log`).
