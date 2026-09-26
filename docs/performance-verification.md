@@ -325,3 +325,10 @@ cases pass, including all256colours at all eight bit positions in the last
 screen byte, preserving neighbours and subsequent rectangle conversion.
 The maximum now occurs atframe209: C2P107lines, simulation195, draw178,
 restore77 and advance78. Further simulation/rendering work is required.
+
+## Rejected standalone native emission allocator
+
+`tmp/perf-native-cursor.log`: maximum711lines versus709, mean cadence383126/602
+lines.56320 consecutive native allocation comparisons passed, but moving the
+existing cursor helper out of line did not improve the target measurement.
+The experiment was removed; the earlier inline allocation-only cursor stays.
