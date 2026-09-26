@@ -91,5 +91,44 @@ int main(int argc,char **argv)
         if(memcmp(pixels,actual,sizeof pixels))fail("restore width/tail/alignment");
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=0x90004)fail("restore tail stack");
     }
-    uc_close(u);puts("68020 car draw/restore: 1024 full-frame rotation/ramp/mask/ABI + 512 restore width/tail/alignment comparisons pass");return 0;
+    /* Exercise every byte-sized mask, especially equal material with surface
+     * just above/below the residual threshold. Both contiguous and rotated /
+     * recoloured entry paths must keep the original combined comparison. */
+    for(unsigned mask=0;mask<256;++mask)
+    for(unsigned mode=0;mode<3;++mode) {
+        unsigned char source[64],saved[64],stack[48];
+        unsigned offset=100*320+100;
+        memset(before,0xa5,sizeof before);memcpy(pixels,before,sizeof pixels);
+        memset(&race,0,sizeof race);
+        for(unsigned i=0;i<64;++i)source[i]=(i%9)?(unsigned char)(i%13):0;
+        for(unsigned i=0;i<64;++i) {
+            int material=(int)(mask>>3)+(int)((i/8)%5)-2;
+            if(material<0)material=0;
+            unsigned at=offset+(i/8)*320+i%8;
+            race.material_map[at]=(unsigned char)material;
+            race.surface_map[at]=(unsigned char)((i%8)|0xf8);
+            unsigned pixel=source[mode==2?63-i:i];
+            if(pixel && (!mask || (((unsigned)material<<3)|(race.surface_map[at]&7))<=mask)) {
+                if(mode && pixel<=5)pixel+=5;
+                pixels[at]=(unsigned char)pixel;
+            }
+        }
+        ck(uc_mem_write(u,0x20000,source,sizeof source));
+        ck(uc_mem_write(u,0x30000,before,sizeof before));
+        ck(uc_mem_write(u,0x40000,race.material_map,sizeof race.material_map));
+        ck(uc_mem_write(u,0x50000,race.surface_map,sizeof race.surface_map));
+        const uint32_t args[]={0x30000+offset,0x20000+(mode==2?63:0),0x60000,
+            0x40000+offset,0x50000+offset,8,8,mode==2?(uint32_t)-1:1,
+            mode==2?(uint32_t)-8:8,mode?5:0,mask};
+        be32(stack,0x18000);for(unsigned i=0;i<11;++i)be32(stack+4+i*4,args[i]);
+        ck(uc_mem_write(u,0x90000,stack,sizeof stack));uint32_t sp=0x90000;
+        ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
+        ck(uc_emu_start(u,0x10000,0x18000,0,100000));
+        ck(uc_mem_read(u,0x30000,actual,sizeof actual));
+        ck(uc_mem_read(u,0x60000,saved,sizeof saved));
+        if(memcmp(actual,pixels,sizeof pixels))fail("native material/residual mask boundary");
+        for(unsigned i=0;i<64;++i)if(saved[i]!=0xa5)fail("native mask saved background");
+        ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=0x90004)fail("mask boundary stack");
+    }
+    uc_close(u);puts("68020 car draw/restore: 1024 full-frame rotation/ramp/mask/ABI + 512 restore width/tail/alignment + 768 all-mask boundary comparisons pass");return 0;
 }

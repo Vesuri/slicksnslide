@@ -826,3 +826,18 @@ F1 drawing totals drop from 138756 to 133634 lines, total measured work from
 433689/602 (46.2 ms). The complete display audit passes 600 updates,
 32 actors and 2076 marks (`tmp/perf-register-sprite-entry-f1.log`,
 `tmp/audit-register-sprite-entry.log`). Still above the 20 ms target.
+
+## Material-first masked car pixels
+
+The native masked pixel loops compare material to the mask's upper bits first;
+only equality reads/tests the surface's low three bits. The source pixel is
+loaded once, and mask zero retains its unmasked meaning. Existing car,
+weapon and surface oracles pass, plus 768 new cases covering every mask byte
+at material/residual boundaries (`tmp/verify-mask-material-first.log`,
+`tmp/verify-mask-boundaries.log`). Matched BASIC control/candidate totals are
+233522/232434 work lines and 57841/56921 drawing lines over 603 updates,
+about 0.12 ms less work per update. Cadence improves from 331073/602 to
+329825/602; maximum work is effectively unchanged at 536/537 lines.
+The full display audit passes 600 updates, 32 actors and 2076 marks
+(`tmp/perf-material-control-basic.log`, `tmp/perf-mask-material-first-basic.log`,
+`tmp/audit-material-first.log`).

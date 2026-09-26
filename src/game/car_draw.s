@@ -24,6 +24,13 @@ slicks_draw_car_chunky:
 	add.l a6,d4
 	moveq #0,d6
 	move.b 91(sp),d6
+	; Compare material first; only equality needs the surface's low 3 bits.
+	; This is exactly (material*8 + (surface&7)) <= original mask.
+	; Keep the original byte for the special mask=0 unmasked path.
+	move.w d6,d5
+	lsr.w #3,d5
+	movea.w d5,a5
+	andi.w #7,d6
 	; Track/effect frames are contiguous and need no player colour ramp.
 	; Keep rotated/recoloured car sprites on the general path below.
 	tst.b 87(sp)
@@ -33,7 +40,7 @@ slicks_draw_car_chunky:
 	cmpa.w d0,a6
 	beq.w .contiguous
 .general:
-	tst.b d6
+	tst.b 91(sp)
 	bne.s .masked_row
 .row:
 	move.w d0,d7
@@ -61,18 +68,18 @@ slicks_draw_car_chunky:
 	subq.w #1,d7
 .masked_pixel:
 	move.b (a1),(a2)+
-	tst.b (a0)
+	move.b (a0),d2
 	beq.s .masked_skip
-	moveq #0,d2
-	move.b (a3),d2
-	lsl.w #3,d2
 	moveq #0,d5
+	move.b (a3),d5
+	cmpa.w d5,a5
+	blo.s .masked_skip
+	bhi.s .masked_colour
 	move.b (a4),d5
 	andi.w #7,d5
-	or.w d5,d2
-	cmp.w d6,d2
+	cmp.w d6,d5
 	bhi.s .masked_skip
-	move.b (a0),d2
+.masked_colour:
 	cmpi.b #5,d2
 	bhi.s .masked_write
 	add.b 87(sp),d2
@@ -97,7 +104,7 @@ slicks_draw_car_chunky:
 	rts
 
 .contiguous:
-	tst.b d6
+	tst.b 91(sp)
 	bne.s .contiguous_masked_row
 .contiguous_row:
 	move.w d0,d7
@@ -121,15 +128,16 @@ slicks_draw_car_chunky:
 	move.b (a1),(a2)+
 	move.b (a0)+,d3
 	beq.s .contiguous_masked_skip
-	moveq #0,d2
-	move.b (a3),d2
-	lsl.w #3,d2
 	moveq #0,d5
+	move.b (a3),d5
+	cmpa.w d5,a5
+	blo.s .contiguous_masked_skip
+	bhi.s .contiguous_masked_write
 	move.b (a4),d5
 	andi.w #7,d5
-	or.w d5,d2
-	cmp.w d6,d2
+	cmp.w d6,d5
 	bhi.s .contiguous_masked_skip
+.contiguous_masked_write:
 	move.b d3,(a1)
 .contiguous_masked_skip:
 	addq.l #1,a1
