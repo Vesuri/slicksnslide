@@ -32,3 +32,18 @@ Work excludes synchronization waits; actual update cadence must also meet
 the target. This legacy benchmark is a reproducible optimization baseline,
 not proof of general gameplay across tracks, vehicles and particle loads.
 The fixture rejects race errors, missing measurements and audio VBI spills.
+
+## Stable actor-priority index
+
+`tmp/perf-order.log`: same benchmark, 603 updates. Maximum work 1033 lines
+(66.2 ms), maximum wall 1117 lines, cadence 495776 / 602 = 823.5 lines
+(52.8 ms). All updates still exceed budget. Final frame: step 686, audio 10,
+C2P 69, diagnostics 7; restore 162, advance 44, update 130, HUD 37, draw 308.
+The index preserves ascending handle order for drawing and descending order
+for restoration, rebuilding after actor changes. It adds 329 bytes to runtime
+state and does not replace producer-side dirty tracking.
+
+`verify-track-actors`, `verify-weapon-actors`, `verify-dirty-tracking` pass,
+including original full-screen comparisons, saturated mixed-priority pools,
+edge clipping, exact restoration and permanent-mark survival. Target build
+passes. The owned muted emulator exited after measurement.

@@ -333,6 +333,10 @@ struct SlicksRaceRuntime {
     void (*finish_reward)(struct SlicksRaceRuntime *,unsigned,signed char);
     void (*track_reward)(struct SlicksRaceRuntime *);
     unsigned char track_rewarded;
+    /* Transient stable priority lists; handle zero is the sentinel. */
+    unsigned char actor_order_head[128];
+    unsigned char actor_order_next[SLICKS_ACTOR_CAPACITY];
+    unsigned char actor_order_ready;
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

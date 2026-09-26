@@ -1470,27 +1470,46 @@ static inline __attribute__((unused)) void advance_lap_checkpoints(struct Slicks
 
 #include "weapon_actors.inc"
 
+static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
+{
+    for(unsigned p=0;p<128;++p) race->actor_order_head[p]=0;
+    unsigned count=race->weapons.slots.high_water;
+    for(unsigned i=1;i<count;++i) {
+        unsigned h=reverse?i:count-i;
+        int t=race->weapons.trail_index[h];
+        unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
+        if(p>=128) continue;
+        race->actor_order_next[h]=race->actor_order_head[p];
+        race->actor_order_head[p]=(unsigned char)h;
+    }
+    race->actor_order_ready=1;
+}
+
 static void restore_trail_priority(struct SlicksRaceRuntime *race,
                                     unsigned short bucket,int priority)
 {
     unsigned short at;
     if (slicks_race_disable_particles)
         return;
-    at = shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
+    int ordered=race->actor_order_ready && (priority>=0 || bucket!=3);
+    unsigned p=priority>=0?(unsigned)priority:bucket==0?0:bucket==1?3:5;
+    at = ordered?race->actor_order_head[p]:shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
     while (at) {
         unsigned index;
-        --at;
+        unsigned handle;
+        if(ordered) { handle=at;at=race->actor_order_next[at]; }
+        else handle=--at;
         if(shared_actor_pool(race)) {
-            int trail=race->weapons.trail_index[at];
+            int trail=race->weapons.trail_index[handle];
             if(trail<0) {
-                if(priority>=0 && race->weapons.actors[at].priority!=priority) continue;
-                if(weapon_bucket(race->weapons.actors[at].priority)==bucket)
-                    restore_weapon_actor(race,at);
+                if(priority>=0 && race->weapons.actors[handle].priority!=priority) continue;
+                if(weapon_bucket(race->weapons.actors[handle].priority)==bucket)
+                    restore_weapon_actor(race,handle);
                 continue;
             }
             index=(unsigned)trail;
             if(weapon_bucket(race->trail_particles[index].priority)!=bucket) continue;
-        } else index=race->trail_priority_indices[bucket][at];
+        } else index=race->trail_priority_indices[bucket][handle];
         struct SlicksTrailParticle *particle =
             &race->trail_particles[index];
         if(priority>=0 && particle->priority!=priority) continue;
@@ -1802,7 +1821,10 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
     if (slicks_race_disable_particles)
         return;
     unsigned count=shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
-    for (at = 0; at < count; ++at) {
+    int ordered=race->actor_order_ready && (priority>=0 || bucket!=3);
+    unsigned p=priority>=0?(unsigned)priority:bucket==0?0:bucket==1?3:5;
+    for (at = ordered?race->actor_order_head[p]:0; ordered?at!=0:at<count;
+         at=ordered?race->actor_order_next[at]:at+1) {
         unsigned index;
         if(shared_actor_pool(race)) {
             int trail=race->weapons.trail_index[at];
@@ -1867,6 +1889,11 @@ static void draw_trail_particles(struct SlicksRaceRuntime *race,unsigned short b
 static void actor_priority_mask(const struct SlicksRaceRuntime *race,unsigned int mask[4])
 {
     for(unsigned i=0;i<4;++i) mask[i]=0;
+    if(race->actor_order_ready) {
+        for(unsigned p=6;p<128;++p)
+            if(race->actor_order_head[p]) mask[p>>5]|=1U<<(p&31);
+        return;
+    }
     for(unsigned h=1;h<race->weapons.slots.high_water;++h) {
         int t=race->weapons.trail_index[h];
         unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
@@ -1883,6 +1910,7 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
         restore_layered_cars(race,logical);restore_trail_particles(race,0);
         restore_shadows(race,logical);return;
     }
+    build_actor_order(race,1);
     unsigned int mask[4];actor_priority_mask(race,mask);
     for(int p=127;p>=6;--p) if(mask[p>>5]&(1U<<(p&31))) restore_trail_priority(race,3,p);
     restore_trail_particles(race,2);
@@ -1892,6 +1920,7 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
     restore_shadows(race,logical);
     restore_trail_priority(race,3,1);
     restore_trail_particles(race,0);
+    race->actor_order_ready=0;
 }
 
 static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logical)
@@ -1901,6 +1930,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
         draw_layered_cars(race,logical);draw_trail_particles(race,2);
         draw_trail_particles(race,3);return;
     }
+    build_actor_order(race,0);
     draw_trail_particles(race,0);
     draw_trail_priority(race,3,1);
     draw_shadows(race,logical);
@@ -1910,6 +1940,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
     draw_trail_particles(race,2);
     unsigned int mask[4];actor_priority_mask(race,mask);
     for(unsigned p=6;p<128;++p) if(mask[p>>5]&(1U<<(p&31))) draw_trail_priority(race,3,p);
+    race->actor_order_ready=0;
 }
 
 static void record_track_contact(struct SlicksRaceRuntime *race,
