@@ -252,3 +252,14 @@ collision/surface27, smoke/contact61, finish6. Per-car callbacks add overhead;
 the measured tail is193lines versus182 with only the outer markers.
 Original composed trajectory (three7200-update scenarios), surface-effects
 and car-collision oracles still pass with instrumentation enabled.
+
+## Allocation-only emission cursor
+
+`tmp/perf-emission-cursor.log`: worst work729lines (46.7ms), versus777 with
+the same tail instrumentation. Tail193→143lines: wheels93→66,
+smoke/contact61→43. Mean cadence386219/602lines (41.1ms); all603updates
+still exceed20ms. The cursor is enabled only during allocation-only car
+tails and discarded before actor retirement, preserving lowest-free-slot
+selection.112640 batch selections match the DOS-verified scalar allocator;
+8192 original/native allocation cases and all eleven7200-update composed
+driving scenarios pass, as do surface-effect tuples and RNG checks.

@@ -59,4 +59,21 @@ static inline void slicks_actor_slots_init(struct SlicksActorSlots *pool)
     for(unsigned i=0;i<SLICKS_ACTOR_CAPACITY;++i) pool->state[i]=0;
     pool->high_water=1; pool->capacity=SLICKS_ACTOR_CAPACITY;
 }
+/* Allocation-only batch: start cursor at 1 and discard it BEFORE any slot
+ * can be released. Other allocations are safe; frees/resets are not. */
+static inline short slicks_actor_allocate_batch(struct SlicksActorSlots *pool,
+    unsigned short *cursor)
+{
+    if(!pool->capacity) return 0;
+    unsigned short slot=*cursor;
+    while(slot<pool->high_water && pool->state[slot]) ++slot;
+    *cursor=slot;
+    if(slot>=pool->high_water) {
+        if(pool->high_water>=pool->capacity) return 0;
+        slot=pool->high_water++;
+    }
+    pool->state[slot]=1;
+    *cursor=(unsigned short)(slot+1);
+    return (short)slot;
+}
 #endif

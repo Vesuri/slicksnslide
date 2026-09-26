@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
 #include <unicorn/m68k.h>
@@ -13,6 +14,25 @@ static void bigword(unsigned char *p,unsigned v) { p[0]=v>>8;p[1]=v; }
 static void biglong(unsigned char *p,unsigned v) { bigword(p,v>>16);bigword(p+2,v); }
 int main(void)
 {
+    for(unsigned trial=0;trial<512;++trial) {
+        struct SlicksActorSlots scalar,batch;
+        slicks_actor_slots_init(&scalar);
+        scalar.high_water=1+trial%200;
+        scalar.capacity=trial%17?200:0;
+        for(unsigned i=1;i<scalar.high_water;++i)
+            scalar.state[i]=(i+trial)%3 ? (signed char)(i%2?1:-3) : 0;
+        batch=scalar;
+        unsigned short cursor=1;
+        for(unsigned i=0;i<220;++i) {
+            short expected=slicks_actor_allocate(&scalar,1);
+            short actual=slicks_actor_allocate_batch(&batch,&cursor);
+            if(expected!=actual || memcmp(&scalar,&batch,sizeof scalar)) {
+                fprintf(stderr,"Batch allocation trial=%u index=%u\n",trial,i);
+                return 1;
+            }
+        }
+    }
+    puts("Allocation-only cursor: 112640 selections match DOS-verified scalar semantics");
     unsigned char bytes[300000];FILE *f=fopen("disasm/runtime.bin","rb");if(!f)return 2;
     size_t n=fread(bytes,1,sizeof bytes,f);fclose(f);
     uc_engine *u;ck(uc_open(UC_ARCH_X86,UC_MODE_16,&u));ck(uc_mem_map(u,0,0x100000,UC_PROT_ALL));

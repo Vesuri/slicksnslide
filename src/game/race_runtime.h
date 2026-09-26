@@ -342,6 +342,7 @@ struct SlicksRaceRuntime {
         unsigned short lap,last,best;
         unsigned char place,options;
     } hud_input[4];
+    unsigned short emission_slot_cursor;
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

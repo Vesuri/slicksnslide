@@ -1711,7 +1711,9 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
     if (race->trail_particle_count >= SLICKS_TRAIL_PARTICLE_MAX)
         return;
     if(shared_actor_pool(race)) {
-        short h=slicks_actor_allocate(&race->weapons.slots,1);
+        short h=race->emission_slot_cursor ?
+            slicks_actor_allocate_batch(&race->weapons.slots,&race->emission_slot_cursor) :
+            slicks_actor_allocate(&race->weapons.slots,1);
         if(!h) return;
         race->weapons.trail_handle[race->trail_particle_count]=(unsigned char)h;
         race->weapons.trail_index[h]=(short)race->trail_particle_count;
@@ -2486,8 +2488,12 @@ static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
     update_weapon_projectiles(race,ticks);
     if(profile) race->profile_marker(32);
     if(profile) race->profile_marker(39);
+    /* These tails allocate but never retire slots. Retirement happens in
+     * the subsequent actor-advance phase, after this cursor is disabled. */
+    race->emission_slot_cursor=1;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if(driver_role(race,car)) finish_car_update(race, car, ticks, controls[car]);
+    race->emission_slot_cursor=0;
     if(profile) race->profile_marker(33);
 }
 
