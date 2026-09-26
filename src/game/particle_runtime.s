@@ -36,38 +36,8 @@ slicks_advance_particles:
 	subq.b	#1,17(a0)
 	bne.s	.motion
 	tst.l	76(sp)			; DOS page zero defers expiry
-	bne.s	.retire
+	bne.w	.retire
 	move.b	#1,17(a0)
-	bra.s	.motion
-.retire:
-	move.b	#-2,23(a0)		; state 1 -> -1 -> -2 on expiry pass
-	tst.b	21(a0)
-	beq.s	.retire_pixel
-	move.b	#-6,23(a0)		; state 5 -> -5 -> -6
-.retire_pixel:
-	btst	#1,20(a0)
-	beq.w	.retain_retired
-	tst.b	21(a0)			; permanent DOS state-5 mark
-	beq.s	.queue_expiry
-	moveq	#0,d0
-	move.w	14(a0),d0
-	lea	mult320,a5
-	move.l	(a5,d0.w*4),d0
-	moveq	#0,d1
-	move.w	12(a0),d1
-	add.l	d1,d0
-	movea.l	72(sp),a5		; authoritative chunky surface
-	move.b	18(a0),0(a5,d0.l)
-.queue_expiry:
-	moveq	#0,d0
-	move.w	(a4),d0
-	cmpi.w	#512,d0
-	bcc.w	.retain_retired
-	move.w	12(a0),0(a3,d0.l*4)
-	move.b	15(a0),2(a3,d0.l*4)
-	clr.b	3(a3,d0.l*4)
-	addq.w	#1,(a4)
-	bra.s	.retain_retired
 .motion:
 	move.w	8(a0),d0
 	add.w	2(a0),d0		; DOS ADD word, then signed storage
@@ -84,7 +54,57 @@ slicks_advance_particles:
 	movem.l	d0-d4/a5,(a6)
 .no_copy:
 	cmpa.w	#0,a2
-	beq.s	.keep_entry
+	bne.w	.legacy_buckets
+.keep_entry:
+	addq.w	#1,d5
+	adda.w	#24,a6
+.next_source:
+	addq.w	#1,d6
+	adda.w	#24,a0
+	dbf	d7,.particle
+.done:
+	move.w	d5,d0
+	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; Cold retirement and legacy buckets live outside the shared-pool motion
+; loop so its instruction fetches do not evict each other from the I-cache.
+.retire:
+	move.b	#-2,23(a0)		; state 1 -> -1 -> -2 on expiry pass
+	tst.b	21(a0)
+	beq.s	.retire_pixel
+	move.b	#-6,23(a0)		; state 5 -> -5 -> -6
+.retire_pixel:
+	btst	#1,20(a0)
+	beq.s	.retain_retired
+	tst.b	21(a0)			; permanent DOS state-5 mark
+	beq.s	.queue_expiry
+	moveq	#0,d0
+	move.w	14(a0),d0
+	lea	mult320,a5
+	move.l	(a5,d0.w*4),d0
+	moveq	#0,d1
+	move.w	12(a0),d1
+	add.l	d1,d0
+	movea.l	72(sp),a5		; authoritative chunky surface
+	move.b	18(a0),0(a5,d0.l)
+.queue_expiry:
+	moveq	#0,d0
+	move.w	(a4),d0
+	cmpi.w	#512,d0
+	bcc.s	.retain_retired
+	move.w	12(a0),0(a3,d0.l*4)
+	move.b	15(a0),2(a3,d0.l*4)
+	clr.b	3(a3,d0.l*4)
+	addq.w	#1,(a4)
+.retain_retired:
+	clr.b	20(a0)			; no next-frame restore/draw for dead point
+	cmp.w	d6,d5
+	beq.w	.keep_entry
+	movem.l	(a0),d0-d4/a5
+	movem.l	d0-d4/a5,(a6)
+	bra.w	.keep_entry
+.legacy_buckets:
 	moveq	#0,d4
 	move.b	19(a6),d0
 	beq.s	.bucket_ready
@@ -103,21 +123,4 @@ slicks_advance_particles:
 	add.w	d0,d1
 	move.b	d5,0(a1,d1.l)
 	addq.w	#1,0(a2,d4.l*2)
-	bra.s	.keep_entry
-.retain_retired:
-	clr.b	20(a0)			; no next-frame restore/draw for dead point
-	cmp.w	d6,d5
-	beq.s	.keep_entry
-	movem.l	(a0),d0-d4/a5
-	movem.l	d0-d4/a5,(a6)
-.keep_entry:
-	addq.w	#1,d5
-	adda.w	#24,a6
-.next_source:
-	addq.w	#1,d6
-	adda.w	#24,a0
-	dbf	d7,.particle
-.done:
-	move.w	d5,d0
-	movem.l	(sp)+,d2-d7/a2-a6
-	rts
+	bra.w	.keep_entry

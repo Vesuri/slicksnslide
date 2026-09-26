@@ -732,3 +732,9 @@ lower: 333860/602 lines (35.5 ms), and 579/603 updates still exceed 20 ms
 be presented as a comparable gain in average displayed frame rate.
 The full native display audit passes 600 updates, 32 actors and 2076 permanent
 marks (`tmp/audit-particle-cache-loop.log`).
+
+Moving particle retirement and legacy-bucket code outside the contiguous
+shared-pool motion loop passes all 1028 original/native update batches
+(`tmp/verify-particle-motion-cache.log`). BASIC improves further to 546 maximum
+lines (35.0 ms), cadence 332320/602 lines (35.4 ms). At the same worst frame,
+advancement falls from 65 to 58 lines (`tmp/perf-particle-motion-cache-basic.log`).
