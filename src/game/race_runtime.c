@@ -2545,6 +2545,10 @@ static unsigned char prepare_car_motion(struct SlicksRaceRuntime *race,
                        unsigned short car_index, unsigned short timestep)
 {
     struct SlicksRaceCar *car = &race->cars[car_index];
+#if defined(__m68k__)
+    /* Keep one address-register base across the inlined motion helpers. */
+    __asm__("" : "+a"(car));
+#endif
     consume_idle_fuel(race, car, timestep);
     unsigned char controls =
         driver_role(race,car_index)<0

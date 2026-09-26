@@ -1050,3 +1050,14 @@ one track sprite. See `tmp/perf-sprite-draw-chain-{basic,f1}.log`. The target
 remains unmet; neither work averages nor maxima are at 20 ms.
 The full display audit passes 600 updates, 32 actors and 2076 permanent
 marks (`tmp/audit-sprite-draw-chain.log`).
+
+## Car address-register base
+
+Materialize the car pointer once at entry to target `prepare_car_motion`,
+using an empty address-register constraint. Arithmetic/control flow and host
+behavior are unchanged; the target function occupies 12142 bytes. BASIC work
+falls from 223829 to 222200 lines over 603 updates, preparation from 33999
+to 31964, cadence from 314537 to 311398/602. F1 work falls from 325926 to
+323895, cadence 380575 to 379639/602. Both complete native benchmarks pass
+their race-error/audio-spill checks (`tmp/perf-car-address-base-{basic,f1}.log`).
+Work averages remain about 23.62/34.43 ms, above the requested 20 ms.
