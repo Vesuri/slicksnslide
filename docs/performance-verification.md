@@ -1103,3 +1103,10 @@ BASIC work falls from 221739 to 220813 lines (23.47 ms average), cadence
 lines, well above one vblank (`tmp/perf-inline-material-{basic,f1}.log`).
 The combined pointer/sampler build passes the full display audit: 600 updates,
 32 actors and 2076 permanent marks (`tmp/audit-inline-material.log`).
+
+Inlining the separate eight-argument car-collision sampler is rejected:
+BASIC work increases from 220813 to 221481 lines and cadence from 306737
+to 308297/602. Worst work rises from 508 to 511. Original collision/AI/map
+checks and eleven full driving scenarios pass, but the target code-generation
+trade-off is unfavorable (`tmp/verify-inline-car-sample.log`,
+`tmp/perf-inline-car-sample-basic.log`). Its out-of-line API/body is restored.
