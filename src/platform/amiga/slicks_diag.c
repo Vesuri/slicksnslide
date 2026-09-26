@@ -179,6 +179,7 @@ volatile unsigned char g_slicks_diag_start_light_stage_mask;
 volatile unsigned short g_slicks_diag_dirty_ranges;
 volatile unsigned short g_slicks_diag_dirty_rows;
 volatile unsigned short g_slicks_diag_dirty_pixels;
+volatile unsigned short g_slicks_diag_sparse_converted;
 volatile unsigned long g_slicks_diag_dirty_c2p_calls;
 volatile unsigned long g_slicks_diag_dirty_c2p_rows;
 volatile unsigned short g_slicks_diag_restore_status;
@@ -5016,6 +5017,8 @@ int main(void)
             /* Both paths consume the same authoritative chunky surface.
              * Sparse updates include particle restoration/expiry and HUD
              * changes; a later rectangle conversion must preserve them. */
+            slicks_race_prune_dirty_pixels(race);
+            g_slicks_diag_sparse_converted=race->dirty_pixel_count;
             slicks_chunky_pixels_to_amiga(
                 chunky, platform.views[1].bitmap,
                 race->dirty_pixels, race->dirty_pixel_count);

@@ -252,5 +252,28 @@ int main(void)
         puts("Status HUD: exact pixels, VGA/chunky agreement, dirty saturation and BIOS-rate clock verified");
     }
     puts("Dirty tracking preserves particle and HUD updates at sparse-list capacity.");
+    for(unsigned trial=0;trial<64;++trial) {
+        struct SlicksDirtyPixel original[SLICKS_DIRTY_PIXEL_MAX];
+        memset(&race,0,sizeof race);
+        for(unsigned i=0;i<SLICKS_DIRTY_PIXEL_MAX;++i)
+            mark_dirty_pixel(&race,(i*7+trial)%320,(i*3+trial)%200);
+        memcpy(original,race.dirty_pixels,sizeof original);
+        for(unsigned i=0;i<trial%17;++i) {
+            short x=(i*37+trial)%320,y=(i*23+trial)%200;
+            mark_dirty_rect(&race,x,y,x+33,y+17);
+        }
+        slicks_race_prune_dirty_pixels(&race);
+        for(unsigned i=0;i<SLICKS_DIRTY_PIXEL_MAX;++i)
+            if(!covered(&race,original[i].x,original[i].y)) {
+                fprintf(stderr,"Pruning lost dirty coverage trial=%u point=%u\n",trial,i);return 1;
+            }
+        for(unsigned i=0;i<race.dirty_pixel_count;++i)
+            for(unsigned r=0;r<race.dirty_row_count;++r) {
+                const struct SlicksDirtyRows *rect=&race.dirty_rows[r];
+                unsigned x=race.dirty_pixels[i].x,y=race.dirty_pixels[i].y;
+                if(x>=rect->left && x<rect->right && y>=rect->top && y<rect->bottom) return 1;
+            }
+    }
+    puts("Sparse pruning preserves coverage at capacity and removes rectangle-covered pixels.");
     return 0;
 }

@@ -158,3 +158,13 @@ Only actor metadata is cleared on reuse; saved=0 guards the old bytes until
 the renderer captures every visible pixel. Inactive zero-state weapon slots
 skip their no-op advancement. Original projectile, track/weapon actor and
 dirty/restoration suites pass. Target reported no errors/audio spills.
+
+## Prune sparse pixels covered by pending C2P rectangles
+
+`tmp/perf-prune.log`: maximum work767 lines, maximum wall898,
+cadence348822/602 (37.1ms),582/603 over budget. Whole-race cadence is not
+meaningfully improved. Final C2P drops69 to59 lines, with sparse conversions
+reduced76 to11. Step438,audio9,diagnostics7. The pruning cost is included in
+the C2P interval. Capacity/edge/merged-rectangle coverage tests and planar
+write checks pass. Both conversion paths still read the authoritative chunky
+surface; no shadow framebuffer or per-row boolean array is introduced.

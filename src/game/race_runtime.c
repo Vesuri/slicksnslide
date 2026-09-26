@@ -3424,6 +3424,22 @@ void slicks_race_award_track(struct SlicksRaceRuntime *race)
     if(race->track_reward) race->track_reward(race);
 }
 
+void slicks_race_prune_dirty_pixels(struct SlicksRaceRuntime *race)
+{
+    unsigned out=0;
+    for(unsigned i=0;i<race->dirty_pixel_count;++i) {
+        struct SlicksDirtyPixel pixel=race->dirty_pixels[i];
+        unsigned r;
+        for(r=0;r<race->dirty_row_count;++r) {
+            const struct SlicksDirtyRows *rect=&race->dirty_rows[r];
+            if(pixel.x>=rect->left && pixel.x<rect->right &&
+               pixel.y>=rect->top && pixel.y<rect->bottom) break;
+        }
+        if(r==race->dirty_row_count) race->dirty_pixels[out++]=pixel;
+    }
+    race->dirty_pixel_count=(unsigned short)out;
+}
+
 void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race)
 {
     if (race) {

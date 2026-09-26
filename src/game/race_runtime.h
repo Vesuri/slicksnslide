@@ -405,5 +405,7 @@ void slicks_race_set_timer(struct SlicksRaceRuntime *race,unsigned short argumen
 void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
                                         unsigned short current);
 void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race);
+/* Drop sparse conversions already covered by a pending rectangle. */
+void slicks_race_prune_dirty_pixels(struct SlicksRaceRuntime *race);
 
 #endif

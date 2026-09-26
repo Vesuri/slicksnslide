@@ -11,6 +11,7 @@ commands
   printf "ACTOR_RESTORE index=%lu high=%lu cars_p3=%lu low=%lu\n",g_slicks_diag_profile_actor_lines[1],g_slicks_diag_profile_actor_lines[2],g_slicks_diag_profile_actor_lines[3],g_slicks_diag_profile_actor_lines[4]
   printf "ACTOR_DRAW index=%lu low=%lu cars_p3=%lu high=%lu\n",g_slicks_diag_profile_actor_lines[11],g_slicks_diag_profile_actor_lines[12],g_slicks_diag_profile_actor_lines[13],g_slicks_diag_profile_actor_lines[14]
   printf "BENCHMARK_LOAD particles=%u dirty_pixels=%u dirty_ranges=%u dirty_equivalent_rows=%u\n",g_slicks_diag_particles,g_slicks_diag_dirty_pixels,g_slicks_diag_dirty_ranges,g_slicks_diag_dirty_rows
+  printf "SPARSE_CONVERTED=%u\n",g_slicks_diag_sparse_converted
   quit
 end
 break slicks_diag_system_restored
