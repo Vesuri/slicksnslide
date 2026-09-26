@@ -300,6 +300,8 @@ volatile unsigned long g_slicks_diag_initial_cache_control;
 static unsigned long g_slicks_diag_profile_rect_pixels;
 volatile unsigned short g_slicks_diag_bench_max_sparse;
 static unsigned long g_slicks_diag_profile_car_draw[2],g_slicks_diag_profile_car_at;
+static unsigned long g_slicks_diag_profile_sprite[3],g_slicks_diag_profile_sprite_at;
+volatile unsigned long g_slicks_diag_bench_max_sprite[3];
 static unsigned long g_slicks_diag_profile_tail[4], g_slicks_diag_profile_tail_at;
 volatile unsigned long g_slicks_diag_bench_work_over;
 volatile unsigned long g_slicks_diag_bench_wall_max;
@@ -412,6 +414,15 @@ unsigned long slicks_diag_profile_raster_time(void)
 static void slicks_diag_profile_race(unsigned char phase)
 {
     unsigned long now = slicks_diag_profile_raster_time();
+    if(phase>=59 && phase<=63) {
+        if(phase==59) {
+            for(unsigned i=0;i<3;++i)g_slicks_diag_profile_sprite[i]=0;
+        } else if(phase>=61) {
+            g_slicks_diag_profile_sprite[phase-61]+=now-g_slicks_diag_profile_sprite_at;
+        }
+        g_slicks_diag_profile_sprite_at=now;
+        return;
+    }
     if(phase>=49 && phase<=52) {
         if(phase==49) {
             g_slicks_diag_profile_car_draw[0]=g_slicks_diag_profile_car_draw[1]=0;
@@ -5202,6 +5213,8 @@ int main(void)
                         for(unsigned i=0;i<2;++i)
                             g_slicks_diag_bench_max_car_draw[i]=g_slicks_diag_profile_car_draw[i];
                         g_slicks_diag_bench_max_sparse=g_slicks_diag_sparse_converted;
+                        for(unsigned i=0;i<3;++i)
+                            g_slicks_diag_bench_max_sprite[i]=g_slicks_diag_profile_sprite[i];
                         g_slicks_diag_bench_max_rect_pixels=g_slicks_diag_profile_rect_pixels;
                     }
                     if (work > PAL_RASTER_LINES)

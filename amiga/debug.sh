@@ -11,6 +11,15 @@ GDB="${GDB:-m68k-amiga-elf-gdb}"
 # Opt in only when audible output is needed for a sound investigation.
 AUDIO_ARGS=(--audio_driver=dummy)
 if [ "${FSUAE_SOUND:-0}" = 1 ]; then AUDIO_ARGS=(); fi
+WARP_ARGS=()
+if [ "${SLICKS_DEBUG_WARP:-0}" = 1 ]; then
+  # Revs uses warp for unattended correctness checks. Keep benchmark
+  # pacing unchanged so existing performance runs remain comparable.
+  if [ -n "${SLICKS_GAMEPLAY_BENCHMARK:-}" ] || [ "${SLICKS_BENCHMARK:-0}" = 1 ]; then
+    echo 'Warp is disabled for performance fixtures.' >&2; exit 2
+  fi
+  WARP_ARGS=(--warp_mode=1)
+fi
 # Installed FS-UAE uses SDL2. Record its actual emulated Paula output through
 # SDL's disk backend, never the host speakers. SDL3 uses different variables.
 if [ -n "${SLICKS_AUDIO_CAPTURE_FILE:-}" ]; then
@@ -286,6 +295,7 @@ cp -f ../ref/TRACKS/*.SS "$DH1/TRACKS/"
 fsuae_claim_port
 "$FSUAE" \
   "${AUDIO_ARGS[@]}" \
+  "${WARP_ARGS[@]}" \
   "${LUA_ARGS[@]}" \
   --amiga_model=A1200 --chip_memory=2048 --fast_memory=0 \
   --kickstart_file="$ROM" \

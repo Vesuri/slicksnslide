@@ -123,6 +123,8 @@ int slicks_decode_track_actor_assets(const unsigned char *dat,unsigned long size
         if(s->width>255 || s->height>255 || pixels>SLICKS_TRACK_ACTOR_PIXELS) return -1;
         assets[i].width=(unsigned char)s->width;assets[i].height=(unsigned char)s->height;
         for(unsigned long p=0;p<pixels;++p) assets[i].pixels[p]=s->pixels[p];
+        assets[i].opacity_ready=(unsigned char)!!slicks_make_sprite_opacity(assets[i].pixels,
+            pixels,assets[i].opacity,sizeof assets[i].opacity);
     }
     return 0;
 }

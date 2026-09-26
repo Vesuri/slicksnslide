@@ -56,8 +56,19 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
     if(!a->kind || race->weapons.slots.state[handle]<=0) return;
+    /* Per-sprite probes are intentionally opt-in: four callbacks for every
+     * tiny sprite measurably perturb a chip-RAM-only 68020. */
+#ifdef SLICKS_PROFILE_SPRITES
+    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+#else
+    const int profile=0;
+#endif
+    if(profile)race->profile_marker(60);
     unsigned width=1,height=1;
     const unsigned char *pixels=0;
+#if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
+    const unsigned char *opacity=0;
+#endif
     if(a->kind==1) {
         unsigned frame=a->asset+(unsigned char)a->motion.frame;
         if(frame>=SLICKS_WEAPON_ASSET_COUNT || !race->weapons.assets[frame].ready) {
@@ -72,6 +83,9 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         }
         const struct SlicksTrackActorAsset *asset=&race->track_actor_assets[frames[a->asset][(unsigned char)a->motion.frame]];
         pixels=asset->pixels;width=asset->width;height=asset->height;
+#if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
+        if(asset->opacity_ready)opacity=asset->opacity;
+#endif
     }
     short left=a->motion.x>>6,top=a->motion.y>>6;
     /* The unmasked primitive suppresses a negative origin, including the
@@ -83,8 +97,32 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     int y0=top<0?-top:0,y1=(pixels?200:SLICKS_POINT_HEIGHT)-top;
     if(x1>(int)width) x1=width;
     if(y1>(int)height) y1=height;
+    if(profile)race->profile_marker(61);
 #if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
-    if(pixels && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
+    if(opacity && (!a->occlusion || top>=190) && left>=0 && top>=0 &&
+       left+(int)width<=320 && top+(int)height<=200) {
+        extern void slicks_draw_sprite_opaque(unsigned char *,const unsigned char *,
+            unsigned char *,const unsigned char *,unsigned,unsigned);
+        slicks_draw_sprite_opaque(race->chunky+mult320[top]+left,pixels,a->saved_under,opacity,width,height);
+    } else if(opacity && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
+        __typeof__(race->track_sprite_visibility[0]) *cache=&race->track_sprite_visibility[handle&63];
+        if(!cache->valid || cache->x!=left || cache->y!=top || cache->asset!=a->asset ||
+           cache->frame!=(unsigned char)a->motion.frame || cache->occlusion!=a->occlusion) {
+            unsigned i=0;
+            for(unsigned y=0;y<height;++y) {
+                unsigned row=mult320[top+y]+left;
+                for(unsigned x=0;x<width;++x,++i)
+                    cache->write_mask[i]=pixels[i] && (top+y>=190 ||
+                        ((race->material_map[row+x]<<3)|(race->surface_map[row+x]&7))<=a->occlusion)?255:0;
+            }
+            cache->x=left;cache->y=top;cache->asset=a->asset;
+            cache->frame=a->motion.frame;cache->occlusion=a->occlusion;cache->valid=1;
+        }
+        extern void slicks_draw_sprite_visible(unsigned char *,const unsigned char *,
+            unsigned char *,const unsigned char *,unsigned,unsigned);
+        slicks_draw_sprite_visible(race->chunky+mult320[top]+left,pixels,a->saved_under,
+            cache->write_mask,width,height);
+    } else if(pixels && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
         extern void slicks_draw_car_chunky(unsigned char *,const unsigned char *,unsigned char *,
             const unsigned char *,const unsigned char *,unsigned,unsigned,int,int,unsigned,unsigned);
         unsigned masked=a->occlusion && top<190 ? (unsigned)(190-top) : 0;
@@ -122,6 +160,7 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
             }
         }
     }
+    if(profile)race->profile_marker(62);
     a->old_x=left;a->old_y=top;a->old_width=width;a->old_height=height;a->saved=1;
     __typeof__(race->sprite_dirty_previous[0]) *previous=&race->sprite_dirty_previous[handle];
     unsigned unchanged=race->sprite_dirty_deferred && previous->kind &&
@@ -134,6 +173,7 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         mark_dirty_rect(race,left,top,left+width,top+height);
     }
     previous->kind=0;
+    if(profile)race->profile_marker(63);
 }
 
 static void finish_sprite_dirty_batch(struct SlicksRaceRuntime *race)

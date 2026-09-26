@@ -2039,7 +2039,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
         draw_trail_particles(race,3);return;
     }
     int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
-    if(profile) race->profile_marker(20);
+    if(profile) { race->profile_marker(59);race->profile_marker(20); }
     build_actor_order(race,0);
     if(profile) race->profile_marker(21);
     draw_trail_particles(race,0);
@@ -3246,6 +3246,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
+    for(unsigned i=0;i<64;++i)race->track_sprite_visibility[i].valid=0;
     if(race->track_actors_ready) {
         /* Seed saved-under from actual scenery before the very first actor
          * draw. Later frames never deinterleave the VGA surface again. */

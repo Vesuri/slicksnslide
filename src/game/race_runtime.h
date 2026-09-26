@@ -352,6 +352,14 @@ struct SlicksRaceRuntime {
     unsigned char sprite_dirty_handles[SLICKS_ACTOR_CAPACITY];
     unsigned short sprite_dirty_count;
     unsigned char sprite_dirty_deferred;
+    /* Foreground maps and track assets are immutable during a race. A
+     * checked direct-mapped cache shares visibility masks across repeated
+     * stationary draws; collisions only cause recomputation. */
+    struct {
+        short x,y;
+        unsigned char asset,frame,occlusion,valid;
+        unsigned char write_mask[SLICKS_TRACK_ACTOR_PIXELS];
+    } track_sprite_visibility[64];
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

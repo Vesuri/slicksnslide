@@ -42,6 +42,8 @@ int main(void)
     }
     unsigned cases=0;
     for(unsigned asset=0;asset<14;++asset)for(unsigned trial=0;trial<128;++trial) {
+        /* Each oracle case replaces the foreground maps (a new race). */
+        for(unsigned i=0;i<64;++i)race.track_sprite_visibility[i].valid=0;
         unsigned page=trial&1,limit=(trial&2)?15:0;
         short x=(short)(100+trial%4),y=(short)(50+trial%8);
         if(trial&16)x=-1;
@@ -74,10 +76,22 @@ int main(void)
         if(memcmp(native,dos,64000)) {
             for(unsigned i=0;i<64000;++i)if(native[i]!=dos[i]){fprintf(stderr,"Track actor %u trial=%u xy=%d,%d mask=%u pixel=%u,%u native=%u DOS=%u\n",asset,trial,x,y,limit,i%320,i/320,native[i],dos[i]);break;}return 1;
         }
+        restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();
+        /* Same key must hit the visibility cache without changing pixels. */
+        draw_weapon_actor(&race,1);if(memcmp(native,dos,64000))abort();
+        restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();
+        /* Handles 1 and 65 share a cache slot. A different position must
+         * evict, and drawing 1 again must revalidate rather than reuse it. */
+        race.weapons.actors[65]=race.weapons.actors[1];race.weapons.slots.state[65]=1;
+        race.weapons.actors[65].motion.x+=64;
+        draw_weapon_actor(&race,65);restore_weapon_actor(&race,65);
+        if(memcmp(native,before,64000))abort();
+        draw_weapon_actor(&race,1);if(memcmp(native,dos,64000))abort();
         restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();++cases;
     }
     printf("Track actor rendering: %u original full-screen/foreground/edge comparisons and restoration checks pass\n",cases);
     for(unsigned trial=0;trial<64;++trial) {
+        for(unsigned i=0;i<64;++i)race.track_sprite_visibility[i].valid=0;
         race.participation_ready=1;memset(race.participation,0,sizeof race.participation);
         race.navigation.actor_count=0;race.trail_particle_count=0;
         memset(race.trail_priority_counts,0,sizeof race.trail_priority_counts);

@@ -93,6 +93,12 @@ int main(int argc, char **argv)
                argv[argument], objects, navigation.zone_count, navigation.actor_count,
                count[22], count[23], count[24], count[25], count[26],
                count[13], count[14], upper_count[13], upper_count[14]);
+        {
+            unsigned kinds[5]={0};
+            for(unsigned i=0;i<navigation.actor_count;++i)
+                if(navigation.actors[i].kind<5)++kinds[navigation.actors[i].kind];
+            printf("  actor kinds 0..4=%u,%u,%u,%u,%u\n",kinds[0],kinds[1],kinds[2],kinds[3],kinds[4]);
+        }
         if (getenv("SLICKS_INSPECT_PITS")) {
             unsigned pit;
             printf("  pit pixels lower=%lu upper=%lu routes=%u\n",

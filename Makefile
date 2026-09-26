@@ -481,7 +481,7 @@ build/verify_weapon_actors_native: tools/verify_weapon_actors.c tools/native_spr
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -DSLICKS_NATIVE_SPRITE_TEST -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 build/verify_track_actor_render_native: tools/verify_track_actor_render.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -DSLICKS_NATIVE_SPRITE_TEST -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-verify-weapon-actors: build/verify_weapon_actors build/verify_weapon_actors_native build/verify_track_actor_render_native build/car_draw.bin
+verify-weapon-actors: build/verify_weapon_actors build/verify_weapon_actors_native build/verify_track_actor_render_native build/car_draw.bin build/sprite_opaque.bin
 	build/verify_weapon_actors
 	build/verify_weapon_actors_native
 	build/verify_track_actor_render_native
@@ -1183,6 +1183,16 @@ build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphic
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
 
 .PHONY: verify-subrect-far
+build/sprite_opaque.bin: tools/sprite_opaque_test.s src/game/sprite_opaque.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_sprite_opacity: tools/verify_sprite_opacity.c src/game/sprite_opacity.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-sprite-opacity
+verify-sprite-opacity: build/sprite_opaque.bin build/verify_sprite_opacity
+	build/verify_sprite_opacity build/sprite_opaque.bin
+
 build/particle_draw.bin: tools/particle_draw_test.s src/game/particle_draw.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 

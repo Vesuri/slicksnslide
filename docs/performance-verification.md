@@ -479,3 +479,32 @@ updates on every track exceed20ms. These runs exclude the expensive debug
 bitmap audit, retain profiling, use four native-menu CPU drivers, and run
 muted sequentially with emulator cleanup after each. The performance goal
 is not complete; F1 still spends352lines drawing at its worst update.
+
+## Cached sprite visibility and native word merges
+
+Track assets now carry decoded transparency metadata. In-bounds sprites use
+native long/word/byte merges that save the original chunky background. Masked
+sprites cache their foreground visibility by handle, position, asset, frame
+and occlusion threshold; cache collisions regenerate it, and race startup
+invalidates all entries. No displayed-pixel shadow is introduced.
+
+4096 native merge/ABI/canary cases, the original 2432 weapon and 1792 track
+render comparisons (including repeated cache hits and forced collisions),
+and a 600-update full native display audit pass. See local logs
+`tmp/verify-visibility-cache-hits.log` and `tmp/audit-cached-visibility.log`.
+
+F1 (`tmp/perf-cached-visibility.log`) measures 991 lines maximum work
+(63.5 ms) and 563710/602 lines mean cadence (60.0 ms), versus 1019 lines
+and 60.5 ms previously. The gain is small, and the 20 ms goal remains open.
+A tested transparent-run implementation did not improve the baseline and
+was discarded (`tmp/perf-sprite-spans.log`).
+
+Optional `SLICKS_PROFILE_SPRITES` probes split sprite setup, painting and
+dirty bookkeeping. They measured 66/107/75 lines at the worst F1 update,
+but increased maximum work to 1093 lines, so are disabled by default.
+Do not compare those detailed runs directly with lighter production profiles.
+
+Correctness-only debug runs may use `SLICKS_DEBUG_WARP=1`; the runner rejects
+this option for gameplay benchmarks. The missing-pixel positive control also
+passes in warp mode (`tmp/audit-warp-control.log`). Normal run.sh audio and
+benchmark pacing are unchanged.
