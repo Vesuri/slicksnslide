@@ -1394,3 +1394,25 @@ bytes was also neutral (192571); incoming ABI stack alignment is not proven
 by this experiment. Both changes are removed rather than adding another
 loop for an inconclusive saving. Logs: `tmp/verify-sparse-{stride-once,aligned-base}.log`,
 `tmp/perf-sparse-{stride-once,aligned-base}-basic.log`.
+
+## In-bounds upper-layer material sampling
+
+For positive visible coordinates, the packed upper-map address is exactly
+the raw address, so the sampled class is simply `upper[y*320+x]&31`.
+Use that proven bounded path; preserve the original signed, truncated,
+wrapped calculations elsewhere and retain missing-map failures.
+
+All 121600 visible coordinate/layer cases match original b089, in addition
+to 3438 signed/boundary cases. All eleven 7200-update original driving
+scenarios, off-road allocation/RNG tuples and track actor checks pass.
+The target display audit passes 600 updates, 32 actors and 2076 marks.
+Logs: `tmp/verify-bounded-material{,-exhaustive,-regression,-track}.log`
+(the regression command completed driving then used a nonexistent standalone
+offroad target; the corrected track target includes that oracle),
+`tmp/audit-bounded-material.log`.
+
+Outer-only BASIC improves from 192624 to 191189 work lines (20.32 ms),
+maximum 454 to 451, over-budget 335 to 320, cadence 246521 to 243382/602.
+F1 improves 265846 to 264678 (28.14 ms), maximum unchanged at 585,
+cadence 374070 to 373782/602. Both remain above the target
+(`tmp/perf-bounded-material-{basic,f1}.log`).

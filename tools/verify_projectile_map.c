@@ -59,5 +59,20 @@ int main(void)
         ++checked;
     }
     printf("Original raw material and projectile map: %u signed-coordinate/layer/boundary cases match; %u unretained addresses rejected\n",checked,rejected);
+    /* Cover the entire optimized visible-coordinate domain against b089,
+     * including the original zero-filled map rows 185..189. */
+    for(unsigned layer=0;layer<2;++layer)
+    for(unsigned y=0;y<190;++y)for(unsigned x=0;x<320;++x) {
+        registers(u);word(u,0x8f000,0);word(u,0x8f002,0x7000);
+        word(u,0x8f004,x);word(u,0x8f006,y);word(u,0x8f008,layer);
+        ck(uc_emu_start(u,0x1b089,0x70000,0,10000));
+        uint16_t ax;ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if(slicks_track_material_sample(lower,upper,(short)x,(short)y,(signed char)layer)!=(unsigned char)ax) {
+            fprintf(stderr,"Visible material mismatch xy=%u,%u layer=%u\n",x,y,layer);return 1;
+        }
+    }
+    if(slicks_track_material_sample(0,upper,0,0,1)!=-1 ||
+       slicks_track_material_sample(lower,0,0,0,1)!=-1)return 1;
+    puts("Original visible material sampler: all 60800 coordinates on both layers match (121600 cases); missing-map faults retained");
     ck(uc_close(u));return 0;
 }
