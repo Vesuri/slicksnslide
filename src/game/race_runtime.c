@@ -87,16 +87,83 @@ unsigned char slicks_race_disable_particles;
 
 /* These are the signed tables used by the original race engine at DS:06c3
  * and DS:06d3.  Position is kept in the original 100-units-per-pixel scale. */
-static const signed char direction_x[16] = {
+#define direction_x slicks_car_direction_x
+#define direction_y slicks_car_direction_y
+/* External only so the native motion core reads the same tables. */
+const signed char slicks_car_direction_x[16] = {
     100, 92, 71, 38, 0, -38, -71, -92,
     -100, -92, -71, -38, 0, 38, 71, 92
 };
-static const signed char direction_y[16] = {
+const signed char slicks_car_direction_y[16] = {
     0, 38, 71, 92, 100, 92, 71, 38,
     0, -38, -71, -92, -100, -92, -71, -38
 };
 
 static long absolute_long(long value);
+
+#if defined(__m68k__) && defined(SLICKS_SHADOW_CHECK)
+/* Diagnostic-only dual execution for native replacements. The verified C
+ * reference runs first on the live state; per-kilobyte hashes of the
+ * compared window record its result before the snapshot is restored and the
+ * native routine runs. A mismatch captures the first differing kilobyte from
+ * both versions and continues from the reference result. The window is the
+ * leading hot working state (cars, counters, RNG); a site may only write
+ * inside it. Never enabled in normal builds. */
+#define SLICKS_SHADOW_WINDOW 32768U
+#define SLICKS_SHADOW_BLOCKS (SLICKS_SHADOW_WINDOW/1024U)
+_Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLICKS_SHADOW_WINDOW &&
+    __builtin_offsetof(struct SlicksRaceRuntime,cars)+sizeof(struct SlicksRaceCar)*4<=SLICKS_SHADOW_WINDOW,
+    "shadow window covers the native motion write set");
+unsigned char *slicks_shadow_state;
+volatile unsigned long slicks_shadow_calls[8],slicks_shadow_mismatches[8];
+volatile unsigned long slicks_shadow_first_site,slicks_shadow_first_block,
+    slicks_shadow_first_frame;
+unsigned char slicks_shadow_native[1024],slicks_shadow_reference[1024];
+static unsigned long shadow_hashes[SLICKS_SHADOW_BLOCKS];
+static unsigned long shadow_block_hash(const unsigned long *p)
+{
+    unsigned long h=0x811c9dc5UL;
+    for(unsigned i=0;i<256;++i) h=((h<<5)|(h>>27))^p[i];
+    return h;
+}
+static void shadow_reference_done(struct SlicksRaceRuntime *race)
+{
+    const unsigned long *p=(const unsigned long *)race;
+    for(unsigned b=0;b<SLICKS_SHADOW_BLOCKS;++b) shadow_hashes[b]=shadow_block_hash(p+b*256U);
+    __builtin_memcpy(race,slicks_shadow_state,SLICKS_SHADOW_WINDOW);
+}
+static int shadow_native_done(struct SlicksRaceRuntime *race,unsigned site)
+{
+    const unsigned long *p=(const unsigned long *)race;
+    ++slicks_shadow_calls[site];
+    for(unsigned b=0;b<SLICKS_SHADOW_BLOCKS;++b)
+        if(shadow_block_hash(p+b*256U)!=shadow_hashes[b]) {
+            if(!slicks_shadow_mismatches[0]++) {
+                slicks_shadow_first_site=site;slicks_shadow_first_block=b;
+                slicks_shadow_first_frame=race->frame_count;
+                __builtin_memcpy(slicks_shadow_native,p+b*256U,1024);
+            }
+            ++slicks_shadow_mismatches[site];
+            __builtin_memcpy(race,slicks_shadow_state,SLICKS_SHADOW_WINDOW);
+            return (int)b;
+        }
+    return -1;
+}
+#define SLICKS_SHADOW_CALL(site,reference,native) do { \
+    if(!slicks_shadow_state) { native; break; } \
+    __builtin_memcpy(slicks_shadow_state,race,SLICKS_SHADOW_WINDOW); \
+    reference; shadow_reference_done(race); native; \
+    int shadow_block_=shadow_native_done(race,site); \
+    if(shadow_block_>=0) { \
+        reference; \
+        if(slicks_shadow_first_site==(site) && slicks_shadow_mismatches[0]==1) \
+            __builtin_memcpy(slicks_shadow_reference, \
+                (unsigned char *)race+(unsigned)shadow_block_*1024U,1024); \
+    } \
+} while(0)
+#else
+#define SLICKS_SHADOW_CALL(site,reference,native) do { native; } while(0)
+#endif
 static void weapon_ai_request(struct SlicksRaceRuntime *race,unsigned driver);
 
 /* Original 1991f is stateful: query at its race consumers, not eagerly when
@@ -1349,6 +1416,17 @@ static void resolve_track_velocity(struct SlicksRaceRuntime *race,
     car->y = (short)(y * 100 + 50);
 }
 
+#if defined(__m68k__)
+/* Blocked-ray response for the native motion core (car_motion.s). */
+void slicks_resolve_track_velocity(struct SlicksRaceRuntime *race,
+    struct SlicksRaceCar *car,int x,int y);
+void slicks_resolve_track_velocity(struct SlicksRaceRuntime *race,
+    struct SlicksRaceCar *car,int x,int y)
+{
+    resolve_track_velocity(race,car,(short)x,(short)y);
+}
+#endif
+
 static int move_car_through_track(struct SlicksRaceRuntime *race,
                                   struct SlicksRaceCar *car,
                                   long previous_x, long previous_y,
@@ -2448,7 +2526,8 @@ static long scaled_position(long position,long velocity,unsigned char scale)
     return (signed int)((unsigned int)(signed int)position+(unsigned int)delta);
 }
 
-static void integrate_car_motion(struct SlicksRaceRuntime *race,
+/* Verified reference; native m68k builds use car_motion.s except SHADOW=1. */
+static __attribute__((unused)) void integrate_car_motion_reference(struct SlicksRaceRuntime *race,
                                  struct SlicksRaceCar *car,
                                  unsigned short timestep, unsigned char active_drive)
 {
@@ -2518,6 +2597,21 @@ static void integrate_car_motion(struct SlicksRaceRuntime *race,
          * uses that Y rather than the incoming quantum. */
         clamp_car_to_track(car);
     }
+}
+
+static void integrate_car_motion(struct SlicksRaceRuntime *race,
+                                 struct SlicksRaceCar *car,
+                                 unsigned short timestep, unsigned char active_drive)
+{
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_MOTION)
+    extern void slicks_integrate_car_motion(struct SlicksRaceRuntime *,
+        struct SlicksRaceCar *,unsigned,unsigned);
+    SLICKS_SHADOW_CALL(1,
+        integrate_car_motion_reference(race,car,timestep,active_drive),
+        slicks_integrate_car_motion(race,car,timestep,active_drive));
+#else
+    integrate_car_motion_reference(race,car,timestep,active_drive);
+#endif
 }
 
 static void apply_throttle(struct SlicksRaceCar *car, unsigned short ticks)

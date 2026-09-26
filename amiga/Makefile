@@ -20,14 +20,18 @@ CPPFLAGS = $(CCFLAGS) -fno-rtti -fno-exceptions -fno-use-cxa-atexit -fcheck-new 
 	-include "$(REPO)/src/platform/amiga/framework/SASCCompat.h" \
 	-I"$(REPO)/src/platform/amiga/framework"
 ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
-VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)"
+VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)" -Iobj
+# SHADOW=1: diagnostic dual execution of native replacements (never release).
+ifeq ($(SHADOW),1)
+CCFLAGS += -DSLICKS_SHADOW_CHECK
+endif
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 
 OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/framework_runtime.o \
 	obj/framework_amiga_hardware.o obj/framework_bitmap.o \
 	obj/framework_copper_list.o obj/framework_palette24.o \
 	obj/resource_archive.o obj/amiga_audio.o obj/amiga_player_menu.o obj/amiga_shop.o obj/amiga_setup_storage.o obj/track_scene.o \
-	obj/race_runtime.o obj/particle_runtime.o obj/particle_draw.o obj/actor_allocate.o obj/car_draw.o obj/sprite_opaque.o obj/track_sprite_fast.o \
+	obj/race_runtime.o obj/car_motion.o obj/particle_runtime.o obj/particle_draw.o obj/actor_allocate.o obj/car_draw.o obj/sprite_opaque.o obj/track_sprite_fast.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o obj/memory.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
 	obj/sgfx_planar_blit.o obj/sgfx_transparent_blit.o \
@@ -43,7 +47,8 @@ OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/fra
 	obj/sgfx_chunky_transparent_blit.o \
 	obj/title_state.o obj/native_bridge.o obj/vga_to_chunky.o \
 	obj/sgfx_chunky_asset_to_planar.o \
-	obj/c2p1x1_8_c5_bm.o obj/sgfx_clear_full.o obj/sgfx_mode_setup.o
+	obj/c2p1x1_8_c5_bm.o obj/sgfx_clear_full.o obj/sgfx_mode_setup.o \
+	obj/pc_sampler.o
 
 .PHONY: all clean verify-runtime
 
@@ -135,12 +140,22 @@ obj/particle_draw.o: $(REPO)/src/game/particle_draw.s | obj
 obj/actor_allocate.o: $(REPO)/src/game/actor_allocate.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
+obj/race_offsets.i: $(REPO)/src/game/race_offsets.c $(REPO)/src/game/race_runtime.h Makefile | obj
+	$(CC) $(CCFLAGS) -S -o obj/race_offsets.s $<
+	sed -n 's/^@@//p' obj/race_offsets.s > $@
+
+obj/car_motion.o: $(REPO)/src/game/car_motion.s obj/race_offsets.i | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
 obj/car_draw.o: $(REPO)/src/game/car_draw.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/gcc8_c_support.o: $(SUPPORT)/gcc8_c_support.c Makefile | obj
 	# Runtime implementations must not be folded into calls to themselves.
 	$(CC) $(CCFLAGS) -fno-builtin -Dmemcpy=slicks_support_memcpy -Dmemset=slicks_support_memset -c -o $@ $<
+
+obj/pc_sampler.o: $(REPO)/src/platform/amiga/pc_sampler.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/memory.o: $(REPO)/src/platform/amiga/memory.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<

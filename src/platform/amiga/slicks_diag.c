@@ -8,6 +8,10 @@
 #include <proto/graphics.h>
 #include <proto/utility.h>
 #include <utility/date.h>
+#include <hardware/cia.h>
+#include <hardware/intbits.h>
+#include <proto/cia.h>
+#include <resources/cia.h>
 
 #include "../../game/race_runtime.h"
 #include "../../game/driver_input.h"
@@ -328,6 +332,77 @@ volatile unsigned long g_slicks_diag_profile_actor_lines[24];
 static unsigned long g_slicks_diag_profile_actor_at;
 static const struct SlicksAmigaPlatform *g_slicks_diag_profile_platform;
 static unsigned long g_slicks_diag_profile_race_at;
+
+/* NATURALS<track>: statistical PC sampling of measured race updates.
+ * GDB stops are only serviced at vsync, so debugger interrupts phase-lock
+ * to the beam; this target-side CIA-B timer samples wall time instead.
+ * Diagnostic only: normal play and the other benchmark modes never start it. */
+extern void slicks_pc_sampler_handler(void);
+volatile unsigned char *g_slicks_pc_samples;
+volatile unsigned long g_slicks_pc_sample_count;
+volatile unsigned long g_slicks_pc_sample_capacity;
+volatile unsigned long g_slicks_pc_sample_missed;
+volatile unsigned long g_slicks_pc_sample_period = 0x2545f491UL;
+volatile unsigned char *g_slicks_pc_sample_timer;
+volatile unsigned char g_slicks_pc_sampling, g_slicks_pc_sampler_bit = 0xff;
+static struct Library *g_slicks_pc_ciab;
+static struct Interrupt g_slicks_pc_interrupt;
+
+static void pc_sampler_start(void)
+{
+    static const unsigned long capacities[] = {16384, 8192, 4096};
+    volatile unsigned char *control;
+    unsigned bit;
+    if (g_slicks_pc_sampler_bit != 0xff) return;
+    for (unsigned i = 0; i < 3 && !g_slicks_pc_samples; ++i) {
+        g_slicks_pc_samples = AllocMem(capacities[i] * 8, MEMF_ANY);
+        if (g_slicks_pc_samples) g_slicks_pc_sample_capacity = capacities[i];
+    }
+    g_slicks_pc_ciab = OpenResource((CONST_STRPTR)CIABNAME);
+    if (!g_slicks_pc_samples || !g_slicks_pc_ciab) return;
+    g_slicks_pc_interrupt.is_Node.ln_Type = NT_INTERRUPT;
+    g_slicks_pc_interrupt.is_Node.ln_Name = (char *)"Slicks PC sampler";
+    g_slicks_pc_interrupt.is_Code = slicks_pc_sampler_handler;
+    for (bit = CIAICRB_TA; bit <= CIAICRB_TB; ++bit) {
+        /* Touch only a timer whose interrupt vector was actually free. */
+        if (AddICRVector(g_slicks_pc_ciab, (WORD)bit, &g_slicks_pc_interrupt))
+            continue;
+        control = (volatile unsigned char *)(bit == CIAICRB_TA ? 0xbfde00UL : 0xbfdf00UL);
+        g_slicks_pc_sample_timer =
+            (volatile unsigned char *)(bit == CIAICRB_TA ? 0xbfd400UL : 0xbfd600UL);
+        *control = 0;                     /* stopped, continuous, E clock */
+        g_slicks_pc_sample_timer[0] = 0xe8;
+        g_slicks_pc_sample_timer[0x100] = 0x03;
+        *control = CIACRAF_LOAD | CIACRAF_START;
+        g_slicks_pc_sampler_bit = (unsigned char)bit;
+        *(volatile unsigned short *)0xdff09aUL = INTF_SETCLR | INTF_EXTER;
+        return;
+    }
+}
+
+static void pc_sampler_stop(void)
+{
+    if (g_slicks_pc_sampler_bit >= 0xfe) return;
+    *(volatile unsigned char *)(g_slicks_pc_sampler_bit == CIAICRB_TA ?
+        0xbfde00UL : 0xbfdf00UL) = 0;
+    RemICRVector(g_slicks_pc_ciab, (WORD)g_slicks_pc_sampler_bit, &g_slicks_pc_interrupt);
+    g_slicks_pc_sampler_bit = 0xfe;       /* stopped; samples stay for GDB */
+}
+
+static void pc_sampler_release(void)
+{
+    pc_sampler_stop();
+    if (g_slicks_pc_samples)
+        FreeMem((APTR)g_slicks_pc_samples, g_slicks_pc_sample_capacity * 8);
+    g_slicks_pc_samples = 0;
+#ifdef SLICKS_SHADOW_CHECK
+    {
+        extern unsigned char *slicks_shadow_state;
+        if (slicks_shadow_state) FreeMem(slicks_shadow_state, 32768);
+        slicks_shadow_state = 0;
+    }
+#endif
+}
 
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
@@ -1978,6 +2053,13 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     race_checkpoint(6);
     if(weapon_hud_fixture) set_weapon_hud_fixture(race);
     if(session) race->random_state=session->random_state;
+#ifdef SLICKS_SHADOW_CHECK
+    {
+        extern unsigned char *slicks_shadow_state;
+        if (!slicks_shadow_state)
+            slicks_shadow_state = AllocMem(32768, MEMF_ANY);
+    }
+#endif
     if (slicks_race_start(race, logical, chunky) != 0) {
         g_slicks_diag_race_error = 7;
         goto cleanup;
@@ -3051,7 +3133,7 @@ int main(void)
     if(!continuous_diagnostics)g_slicks_diag_target_frame=0;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
-    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
+    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
     unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
@@ -3370,7 +3452,8 @@ int main(void)
         /* Mode 2 retains outer work/cadence timing but does not invoke
          * intra-update profiling callbacks. Keep mode 1 for comparisons
          * against the historical detailed benchmark. */
-        g_slicks_diag_profile_all = gameplay_benchmark && argv[7]=='B'?2:1;
+        g_slicks_diag_profile_all = gameplay_benchmark && (argv[7]=='B' || argv[7]=='S')?2:1;
+        g_slicks_pc_sampling = (unsigned char)(gameplay_benchmark && argv[7]=='S');
         if(gameplay_benchmark && argv[7]>='1' && argv[7]<='6')
             g_slicks_diag_profile_all=(unsigned char)(argv[7]-'0'+2);
         g_slicks_diag_target_frame = 700;
@@ -4967,6 +5050,8 @@ int main(void)
                 profile ? slicks_diag_profile_raster_time() : 0;
             unsigned long frame_start = profile_line_at;
             unsigned char bench_racing = race->racing;
+            if (g_slicks_pc_sampling && bench_racing)
+                pc_sampler_start();
             if (g_slicks_diag_profile_all && bench_racing) {
                 if (g_slicks_diag_bench_previous) {
                     g_slicks_diag_bench_cadence_sum +=
@@ -5295,6 +5380,7 @@ int main(void)
                 slicks_diag_results_ready();
             }
             if (race->frame_count == g_slicks_diag_target_frame) {
+                pc_sampler_stop();
                 sync_chunky_to_logical(chunky, logical);
                 g_slicks_diag_checksum = checksum_planes(logical);
                 g_slicks_diag_display_checksum =
@@ -5314,6 +5400,7 @@ int main(void)
     }
 
 cleanup:
+    pc_sampler_release();
     g_slicks_diag_ready = 0;
     g_slicks_diag_ingame = 0;
     slicks_resource_archive_close(&archive);

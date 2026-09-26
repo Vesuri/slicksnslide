@@ -1,6 +1,6 @@
 # Open work
 
-Updated 2026-09-26. Actionable open and deferred work only.
+Updated 2026-09-27. Actionable open and deferred work only.
 
 Publish/push only when explicitly requested.
 
@@ -18,6 +18,13 @@ Publish/push only when explicitly requested.
     work and Chip-RAM traffic; retain only full-workload improvements.
   - Verify retained changes against original-code and display-integrity tests,
     then remeasure all four tracks including particle-heavy frames.
+  - Profile with the target-side CIA-B sampler (`amiga/pc_profile.sh`), not
+    GDB interrupts; verify native replacements with `amiga/shadow_check.sh`
+    plus the host DOS oracles. See `docs/performance-profiling.md`.
+  - Replace hot compiled C with dense 68020 code that shrinks executed code
+    volume: particle restore/order/advance/emission, HUD change detection,
+    car draw setup, then car motion/tails with register-resident state.
+  - F1/CITY: remove repeated per-object work for stationary track objects.
 
 ## Deferred
 
