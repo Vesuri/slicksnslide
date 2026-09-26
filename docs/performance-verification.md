@@ -1241,3 +1241,8 @@ the extra guards make BASIC slower (220974 versus 220679 work lines, 511
 versus 509 maximum, 307966 versus 306737/602 cadence). Probe reuse remains;
 the broad-phase checks are removed (`tmp/verify-car-probe-bounds.log`,
 `tmp/perf-car-probe-bounds-basic.log`).
+
+A shared balanced vector-sector classifier passed 655360 original AI cases
+but did not improve BASIC: work 220831 versus 220679 lines, maximum 511
+versus 509, unchanged cadence 306737/602. The original comparisons remain
+(`tmp/verify-balanced-vector.log`, `tmp/perf-balanced-vector-basic.log`).
