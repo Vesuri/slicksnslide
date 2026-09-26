@@ -694,3 +694,10 @@ and 612 / 350708 for the word variant, versus the retained 596 / 334796
 (`tmp/perf-div100-basic.log`, `tmp/perf-div100-word-basic.log`). The compiler's
 reciprocal multiplication remains. Experiment-only helpers/tests were removed;
 arithmetic evidence remains in the ignored verification logs.
+
+Dedicated four/eight-pixel opacity and visibility row loops passed 4096
+native cases and the original full-screen actor comparisons, but did not
+improve F1: 837 maximum lines and 480485/602 cadence versus 836/478928
+(`tmp/perf-small-sprite-rows.log`). Removed. Asset inspection confirms these
+widths are used, alongside five/six-pixel objects and nine-to-eleven-pixel flags;
+the failed measurement is not evidence that the small rows were unreachable.
