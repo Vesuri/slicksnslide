@@ -1180,3 +1180,40 @@ Cadence remains 375630/602. Generic restoration is restored; only specialized
 drawing is retained (`tmp/verify-restore-rows.log`,
 `tmp/verify-restore-row5.log`, `tmp/perf-restore-rows-f1.log`,
 `tmp/perf-restore-row5-f1.log`).
+
+## Overlap-aware stationary sprite retention (rejected)
+
+A two-phase prototype kept unchanged track sprites in chunky memory when
+their complete old bounds had no dependency on old restoration or new drawing
+footprints. A conservative 16x8 overlap-cell grid expanded connected old sprite
+bounds; late invalidations restored saved backgrounds in original reverse
+priority order. It excluded the HUD and countdown and preserved the existing
+producer-side C2P bounds lists. No displayed-pixel snapshots were added.
+
+The compositional test passed 6144 complete frames with exact pixels,
+actor/car/shadow/particle state and dirty coverage against full redraws,
+including movement, animation, layer/priority changes, overlapping sprites,
+retired/reused slots and permanent-mark expiry. Expanded cases deferred
+209152 sprites and performed 7205 late restorations. Particle advancement ran
+the actual native routine, already independently checked against DOS.
+Original rendering/setup regressions passed. A native point-to-overlap-grid
+helper passed 2056 signed/wrapped-coordinate, bounds, state and ABI cases.
+See `tmp/verify-track-retain{,-expanded,-regression,-points,-native-points,-adaptive}.log`.
+
+However, dependency bookkeeping outweighed much of the saving on the target.
+Initial F1 work increased from 298781 to 308655 lines. Streamlined point marking
+and closure improved it to 289911, then 289477 with the native point scan,
+but worst work increased from 642 to 683 lines and cadence stayed 375630/602.
+An adaptive fallback (at least eight candidates, no more than two particles
+per track object) gave 292289 work lines but still 669 maximum, unchanged
+cadence. BASIC was effectively neutral at 220951 versus 220851 work lines,
+508 maximum, slightly worse cadence 307966 versus 306424/602.
+See `tmp/perf-track-retain{-points,-native-points,-adaptive}-f1.log`,
+`tmp/perf-track-retain-f1.log`, and `tmp/perf-track-retain-adaptive-basic.log`.
+
+The prototype is removed rather than retaining a worst-frame regression and
+extra rendering complexity. Its recoverable local-only patch is
+`tmp/track-retain-experiment.patch`; the retained build continues full native
+restoration/drawing with cached setup and specialized drawing rows. A future
+attempt needs substantially cheaper dependency bookkeeping, not merely more
+conservative overlap tests.
