@@ -1171,3 +1171,12 @@ at 375630/602 versus 375626/602. BASIC is nearly neutral: 221019 to 220851
 work lines, worst 511 to 508, cadence 306737 to 306424/602
 (`tmp/perf-packet-rows5-{basic,f1}.log`). These are CPU-work improvements,
 not a claim of 50 FPS; both fixtures still exceed 20 ms.
+
+Matching specialized restoration loops are rejected. Exact native restoration,
+original weapon/track rendering and permanent-mark checks pass, but 4/5/8-pixel
+loops increase F1 work from 298781 to 300409 lines. A smaller fall-through
+five-pixel-only version still gives 299747 lines and 644 maximum versus 642.
+Cadence remains 375630/602. Generic restoration is restored; only specialized
+drawing is retained (`tmp/verify-restore-rows.log`,
+`tmp/verify-restore-row5.log`, `tmp/perf-restore-rows-f1.log`,
+`tmp/perf-restore-row5-f1.log`).
