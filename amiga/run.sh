@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Boot the Slicks native-graphics diagnostic on the target A1200 configuration.
-# Click a mouse button or press Escape to exit the diagnostic.
+# Boot native Slicks on the target A1200 configuration, with audio enabled.
+# Exit through the native menus to restore system state.
 set -euo pipefail
 cd "$(dirname "$0")"
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
@@ -13,7 +13,7 @@ SETPATCH="${SETPATCH:-../tmp/SetPatch}"
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make)"; exit 1; }
 [ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
 
-RUN=.run; DH0="$RUN/dh0"; DH1="$RUN/dh1"
+RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state"
 if [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"

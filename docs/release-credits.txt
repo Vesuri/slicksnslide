@@ -1,0 +1,16 @@
+Components and provenance
+=========================
+
+Original game and data: Slicks'n'Slide by Timo Kauppinen. Original data is not
+included. Obtain it separately under its applicable distribution terms.
+
+Amiga display/platform framework: dA JoRMaS AmigaHardware, Bitmap, CopperList
+and Palette24Bit, from DanceDiverse3; see src/platform/amiga/framework/README.md.
+
+Chunky-to-planar conversion: Mikael Kalms' Public Domain c2p1x1_8_c5_bm routine,
+1999-03-07. Its attribution is retained in the source.
+
+The native binary is built with the existing Amiga GCC/vasm/elf2hunk toolchain
+and linked toolchain support objects. No host emulator, compiler, ROM or
+AmigaOS component is included in this package. This notice does not assign a
+new license to the original game, platform framework or toolchain components.

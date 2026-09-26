@@ -1248,6 +1248,11 @@ amiga-run: amiga
 amiga-debug: amiga
 	cd amiga && . ./env.sh && ./debug.sh
 
+RELEASE_ARCHIVE ?= build/release/slicks-$(shell git rev-parse --short HEAD).zip
+.PHONY: release-package
+release-package: amiga
+	$(PYTHON) tools/package_release.py $(RELEASE_ARCHIVE)
+
 amiga-check: amiga
 	cd amiga && . ./env.sh && ./diag_run.sh
 

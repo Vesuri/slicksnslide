@@ -1,0 +1,50 @@
+Slicks'n'Slide native Amiga port
+==============================
+
+Target: PAL Amiga 1200, 68020, AGA, 2 MiB chip RAM, no Fast RAM required.
+Use AmigaOS 3.x with SetPatch run before starting. Free memory matters: close
+other applications, or boot to a minimal shell. Exit through the native menus
+to restore the OS display, interrupts and DMA state.
+
+Installation
+------------
+This package deliberately contains no original game files, Kickstart ROM,
+SetPatch, save files, captured pictures or reference-emulator artifacts.
+Supply your own matching Slicks'n'Slide 1.51 data:
+
+    SlicksDiag
+    SLICKS.000
+    SLICKS.DAT
+    TRACKS/<your .SS files>
+
+Run SetPatch from your AmigaOS installation. Change directory to the directory
+above, then run SlicksDiag without arguments. Diagnostic arguments are for
+development tests, not normal play. No DOS executable or PC emulator is needed
+at runtime. The program uses OS libraries and its own direct AGA/Paula backend;
+there is no SDL runtime or software audio mixer on the Amiga.
+
+Controls and persistence
+------------------------
+Use arrow keys and Enter in menus; Escape backs out. Configure driver controls
+and profiles in the native menus. F1 opens help. In the tuning/shop screen,
+Amiga Help replaces PC Scroll Lock and saves the first available
+TUNING00.BMP through TUNING98.BMP. Existing captures are not overwritten.
+
+The directory must be writable to save configuration, profiles, championships,
+track records and captures. Do not delete .new/.bak files after a recovery
+warning: they can contain the last valid version. Retain them before diagnosing
+a failed save. A failed save does not imply the in-memory configuration is lost.
+
+Validation limits
+-----------------
+Native six-mode transitions, load-failure recovery, persisted championship
+resume, track actors, audio lifecycle and bitmap checks have been exercised on
+the 2 MiB/no-Fast-RAM A1200 setup. Original-code differential tests are recorded
+in the source repository. This does not establish every possible track/player
+combination, hardware joystick input, or a 50 FPS guarantee. Performance work
+is ongoing; do not interpret a PAL 50 Hz display as 50 simulation updates/sec.
+
+Source/build: https://github.com/Vesuri/slicks
+See docs/open-work.md for current actions and docs/integration-verification.md
+for historical test evidence. This archive is a development build, not a
+redistribution of the original game.
