@@ -1175,7 +1175,7 @@ build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphic
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
 
 .PHONY: verify-subrect-far
-build/particle_draw.bin: src/game/particle_draw.s | build
+build/particle_draw.bin: tools/particle_draw_test.s src/game/particle_draw.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build

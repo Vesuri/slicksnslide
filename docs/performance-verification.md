@@ -126,3 +126,15 @@ Restoration indexes only saved actors; drawing indexes only live sprite
 actors, while preserving point eligibility and stable ordering. Original
 track/weapon/dirty regressions pass. No target errors/audio spills; owned
 benchmark emulator exited. This is still not a general 50FPS result.
+
+## Consecutive point batches
+
+`tmp/perf-batch.log`: maximum work803 lines (51.5ms), maximum wall931,
+cadence354128/602 (37.7ms),581/603 updates over budget. Final step450,
+audio10,C2P69,diagnostics7; restore71,advance45,update141,HUD33,draw156.
+109 particles/76 dirty pixels remain unchanged. Native batches retain
+surface/mask/dirty pointers across points and stop at sprite actors; overflow
+returns the untouched suffix to the existing fallback. Tests now cover 2048
+single points and256 overlapping/reversed-order batches, partial overflow,
+saved metadata and all preserved registers. Original rendering/dirty suites
+pass; no target errors/audio spills, owned emulator exited.

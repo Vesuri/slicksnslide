@@ -85,6 +85,59 @@ int main(int argc,char **argv)
             if(v!=0x11223300+i)fail("native point preserved register");
         }
     }
-    uc_close(u);puts("68020 point draw: 2048 scalar-equivalent full-frame, metadata, dirty-list, overflow and ABI cases pass");
+    uint32_t batch_entry=0x10000+((uint32_t)code[size-4]<<24)+((uint32_t)code[size-3]<<16)+((uint32_t)code[size-2]<<8)+code[size-1];
+    for(unsigned trial=0;trial<256;++trial) {
+        struct SlicksTrailParticle points[32];
+        unsigned char packed_points[32*24],got_points[32*24],order[64],stack[40],count_bytes[2];
+        memset(&race,0,sizeof race);race.chunky=pixels;
+        memset(pixels,40,sizeof pixels);memset(dirty,0,sizeof dirty);
+        memset(race.material_map,1,sizeof race.material_map);
+        memset(race.surface_map,trial&7,sizeof race.surface_map);
+        for(unsigned i=0;i<32;++i) {
+            points[i]=(struct SlicksTrailParticle){.x=6400+(trial&63),.y=6400,
+                .old_x=99,.old_y=100,.saved_valid=trial&3,.colour=i,
+                .occlusion_limit=(unsigned char)((i+trial)%20)};
+            if(i%7==0) points[i].x=-1;
+            packed(packed_points+i*24,&points[i]);be16(order+i*2,31-i);
+        }
+        race.dirty_pixel_count=trial%4?0:500+(trial%13);
+        be16(count_bytes,race.dirty_pixel_count);
+        ck(uc_mem_write(u,0x20000,packed_points,sizeof packed_points));
+        ck(uc_mem_write(u,0x30000,pixels,sizeof pixels));
+        ck(uc_mem_write(u,0x40000,race.material_map,sizeof race.material_map));
+        ck(uc_mem_write(u,0x50000,race.surface_map,sizeof race.surface_map));
+        ck(uc_mem_write(u,0x60000,dirty,sizeof dirty));ck(uc_mem_write(u,0x70000,count_bytes,2));
+        ck(uc_mem_write(u,0x81000,order,sizeof order));
+        be32(stack,0x18000);for(unsigned i=0;i<7;++i)be32(stack+4+i*4,addresses[i]);
+        be32(stack+32,0x81000);be32(stack+36,32);
+        ck(uc_mem_write(u,0x90000,stack,sizeof stack));uint32_t sp=0x90000;
+        ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
+        for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i) {
+            uint32_t v=0x55667700+i;ck(uc_reg_write(u,preserved[i],&v));
+        }
+        ck(uc_emu_start(u,batch_entry,0x18000,0,100000));
+        uint32_t result;ck(uc_reg_read(u,UC_M68K_REG_D0,&result));
+        unsigned processed=0;
+        for(;processed<32 && race.dirty_pixel_count<=510;++processed)
+            draw_trail_point(&race,&points[31-processed]);
+        if(result!=processed)fail("batch point processed prefix");
+        for(unsigned i=0;i<32;++i)packed(packed_points+i*24,&points[i]);
+        for(unsigned i=0;i<race.dirty_pixel_count;++i) {
+            be16(dirty+i*4,race.dirty_pixels[i].x);dirty[i*4+2]=race.dirty_pixels[i].y;
+        }
+        ck(uc_mem_read(u,0x20000,got_points,sizeof got_points));
+        ck(uc_mem_read(u,0x30000,actual,sizeof actual));
+        ck(uc_mem_read(u,0x60000,got_dirty,sizeof got_dirty));
+        ck(uc_mem_read(u,0x70000,count_bytes,2));
+        if(memcmp(packed_points,got_points,sizeof got_points)||memcmp(pixels,actual,sizeof pixels)||
+           memcmp(dirty,got_dirty,sizeof dirty)||((count_bytes[0]<<8)|count_bytes[1])!=race.dirty_pixel_count)
+            fail("batch point state/order mismatch");
+        ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=0x90004)fail("batch stack");
+        for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i) {
+            uint32_t v;ck(uc_reg_read(u,preserved[i],&v));
+            if(v!=0x55667700+i)fail("batch preserved register");
+        }
+    }
+    uc_close(u);puts("68020 point draw: 2048 single + 256 ordered-batch full-frame, metadata, dirty-list, overflow and ABI cases pass");
     return 0;
 }

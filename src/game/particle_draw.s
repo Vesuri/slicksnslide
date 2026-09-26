@@ -1,5 +1,6 @@
 	section code,code
 	xdef slicks_draw_particle
+	xdef slicks_draw_particle_batch
 
 ; C ABI: particle, chunky, material, surface, dirty_pixels, dirty_count,
 ;        mult320. Returns 1 WITHOUT changes if the dirty list needs the
@@ -19,6 +20,10 @@ slicks_draw_particle:
 	movea.l 56(sp),a4
 	lea (a4,d5.l*4),a4
 	movea.l 64(sp),a6
+	bsr.s .body
+	movem.l (sp)+,d2-d5/a2-a6
+	rts
+.body:
 	move.l (a0),d0
 	asr.l #6,d0
 	move.l 4(a0),d1
@@ -80,7 +85,6 @@ slicks_draw_particle:
 .done:
 	move.w d5,(a5)
 	moveq #0,d0
-	movem.l (sp)+,d2-d5/a2-a6
 	rts
 .fallback:
 	moveq #1,d0
@@ -96,4 +100,46 @@ slicks_draw_particle:
 	clr.b (a4)+
 	addq.w #1,d5
 .old_done:
+	rts
+
+; Same first seven arguments, then sorted particle-index words and count.
+; Return number processed; caller handles the suffix on dirty-list overflow.
+; Sprite actors split batches so saved-under priority order stays exact.
+slicks_draw_particle_batch equ .batch_entry
+.batch_entry:
+	movem.l d2-d7/a2-a6,-(sp)
+	subq.l #8,sp
+	move.l 84(sp),(sp)
+	move.l 56(sp),4(sp)
+	movea.l 60(sp),a1
+	movea.l 64(sp),a2
+	movea.l 68(sp),a3
+	movea.l 72(sp),a4
+	movea.l 76(sp),a5
+	movea.l 80(sp),a6
+	moveq #0,d5
+	move.w (a5),d5
+	lea (a4,d5.l*4),a4
+	move.l 88(sp),d6
+	moveq #0,d7
+.batch_loop:
+	tst.l d6
+	beq.s .batch_done
+	cmpi.w #510,d5
+	bhi.s .batch_done
+	movea.l (sp),a0
+	moveq #0,d0
+	move.w (a0)+,d0
+	move.l a0,(sp)
+	mulu.w #24,d0
+	movea.l 4(sp),a0
+	adda.l d0,a0
+	bsr.w .body
+	addq.l #1,d7
+	subq.l #1,d6
+	bra.s .batch_loop
+.batch_done:
+	move.l d7,d0
+	addq.l #8,sp
+	movem.l (sp)+,d2-d7/a2-a6
 	rts
