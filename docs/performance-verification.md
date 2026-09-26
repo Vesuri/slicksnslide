@@ -418,3 +418,21 @@ faster here. The production O3 setting is restored.
 restoration helper passed512 overlap/state/sprite-boundary/ABI cases, but
 did not improve the complete update. The helper and its dedicated tests
 were removed; production retains the existing restoration path.
+
+## Stronger display audit for dirty-region optimization
+
+The earlier bitmap audit only checked writes outside declared dirty areas;
+it could not detect a missing conversion. Debug audit runs now reuse their
+existing snapshot buffer for a full reference C2P and compare all64000
+display bytes after the bounds check. There is no new production shadow
+buffer or full-frame conversion. `tmp/audit-missing-control.log` confirms
+that the native BITMAPMISS positive control detects its deliberately omitted
+pixel at frame1,x0,y100,plane0. The bounded `diag_dirty_sprites.gdb` fixture
+checks600 native updates without debugger memory writes.
+
+This stronger check found the same stale pixel at frame111,x312,y169,plane1
+both with unchanged-sprite suppression (`tmp/audit-sprite-dirty-full.log`)
+and with the preceding dirty-marking behavior (`tmp/audit-sprite-control.log`).
+Thus that failure predates the suppression optimization. The tracing fixture
+reports nearby actors and dirty rectangles to distinguish conversion failures
+from missing producer notifications.

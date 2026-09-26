@@ -1319,7 +1319,7 @@ static void snapshot_display(unsigned char *snapshot, const struct BitMap *bitma
         destination[at] = source[at];
 }
 
-static int audit_display(const unsigned char *snapshot,
+static int audit_display(unsigned char *snapshot,
                          const struct BitMap *bitmap,
                          const struct SlicksRaceRuntime *race)
 {
@@ -1360,6 +1360,25 @@ static int audit_display(const unsigned char *snapshot,
         g_slicks_diag_audit_plane = within_row / 40U;
         g_slicks_diag_audit_before = snapshot[at];
         g_slicks_diag_audit_after = current[at];
+        slicks_diag_bitmap_audit_failed();
+        return -1;
+    }
+    /* The write-bounds check above cannot detect missing dirty regions.
+     * Reuse its debug-only snapshot buffer for an independently full-frame
+     * conversion, then compare every displayed byte. Production never does
+     * this extra conversion and allocates no shadow for dirty tracking. */
+    struct BitMap reference=*bitmap;
+    for(unsigned p=0;p<8;++p)reference.Planes[p]=snapshot+p*40;
+    slicks_chunky_rows_to_amiga(race->chunky,&reference,0,200);
+    for(at=0;at<64000UL;++at)if(snapshot[at]!=current[at]) {
+        unsigned row=at/320UL,within=at-mult320[row];
+        g_slicks_diag_audit_frame=race->frame_count;
+        g_slicks_diag_audit_offset=at;
+        g_slicks_diag_audit_x=(within%40)*8;
+        g_slicks_diag_audit_y=row;
+        g_slicks_diag_audit_plane=within/40;
+        g_slicks_diag_audit_before=snapshot[at];
+        g_slicks_diag_audit_after=current[at];
         slicks_diag_bitmap_audit_failed();
         return -1;
     }
@@ -3347,7 +3366,8 @@ int main(void)
             (argc > 7 && ((const char *)argv)[7] == 'C') ? 2 : 1;
     if (argc > 0 && ((const char *)argv)[0] == 'B') {
         g_slicks_diag_audit_bitmap =
-            (argc > 6 && ((const char *)argv)[6] == 'F') ? 2 : 1;
+            (argc > 6 && ((const char *)argv)[6] == 'F') ? 2 :
+            (argc > 6 && ((const char *)argv)[6] == 'M') ? 3 : 1;
         g_slicks_diag_target_frame = 700;
     }
     if (argc > 0 && ((const char *)argv)[0] == 'L')
@@ -5085,6 +5105,9 @@ int main(void)
              * pixel outside the countdown's declared updates. */
             if (g_slicks_diag_audit_bitmap == 2 && race->frame_count == 1)
                 platform.views[1].bitmap->Planes[0][100UL * 320UL] ^= 0x80;
+            /* Positive control for a missing update, not an extra write. */
+            if (g_slicks_diag_audit_bitmap == 3 && race->frame_count == 1)
+                race->chunky[mult320[100]] ^= 1;
             if (g_slicks_diag_audit_bitmap &&
                 audit_display(title_asset, platform.views[1].bitmap, race) != 0)
                 goto cleanup;

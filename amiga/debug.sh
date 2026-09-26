@@ -253,6 +253,8 @@ elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUTC\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUT\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag BITMAPMISS\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag BITMAPFAULT\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 1 ]; then
