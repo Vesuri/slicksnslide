@@ -995,3 +995,12 @@ Skipping the pure steering-delta calculation when neither turn bit is set
 regresses BASIC work from 223370 to 224560 lines and cadence from 312665 to
 316390/602; preparation rises from 34183 to 35743 lines
 (`tmp/perf-straight-steering-basic.log`). The branch candidate is removed.
+
+Exact keyed reuse of the unit-tick steering calculation is also rejected.
+One million signed-key/tick-wrap checks and eleven original 7200-update
+driving scenarios pass (`tmp/verify-steering-cache-keys.log`,
+`tmp/verify-cached-steering.log`), but BASIC work increases to 224226 lines
+when inlined, or 224744 with a separate helper, versus 223370. Cadence is
+315473/315785 rather than 312665/602. Both the cache and its experimental
+test are removed (`tmp/perf-cached-steering-basic.log`,
+`tmp/perf-cached-steering-leaf-basic.log`).
