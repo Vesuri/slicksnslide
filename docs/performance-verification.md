@@ -1344,3 +1344,19 @@ copies, but changed surrounding inlining and regressed BASIC to 199258 work
 lines, maximum 467, cadence 257755/602. Reverted rather than retaining a
 local code-generation improvement with worse complete-frame timing
 (`tmp/verify-particle-wide-args.log`, `tmp/perf-particle-wide-args-basic.log`).
+
+## Keep the point-chain particle base in a register
+
+The native point walker keeps its particle base in the otherwise unused d7,
+avoiding a Chip-RAM stack read for each point. The public ABI still preserves
+d7; standalone and indexed-batch behavior is unchanged. All 256 pool offsets,
+2048 single cases and 512 batch/chain cases pass exact pixel, state, dirty
+list, overflow and register checks. Full target display auditing passes
+600 updates, 32 actors and 2076 marks.
+
+Outer-only BASIC work falls 198250 to 197950 lines, maximum 466 to 465,
+cadence 255259 to 254945/602. F1 falls 271503 to 271325, maximum 596 to
+595, unchanged cadence 375345/602. This is another small retained saving,
+not the 20 ms goal. Logs: `tmp/verify-particle-base-register.log`,
+`tmp/perf-particle-base-register-{basic,f1}.log`,
+`tmp/audit-particle-base-register.log`.

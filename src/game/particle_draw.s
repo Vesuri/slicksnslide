@@ -122,7 +122,7 @@ slicks_draw_particle:
 	move.w (a0,d6.w*2),d0
 	bmi.s .chain_done
 	move.w .particle_offsets(pc,d0.w*2),d0
-	movea.l 8(sp),a0
+	movea.l d7,a0
 	adda.l d0,a0
 	bra.w .body
 .chain_continue:
@@ -192,7 +192,7 @@ slicks_draw_particle_chain equ .chain_entry
 	lea -12(sp),sp
 	move.l 88(sp),(sp)
 	move.l 92(sp),4(sp)
-	move.l 60(sp),8(sp)
+	move.l 60(sp),d7		; persistent particle base across the chain
 	movea.l 64(sp),a1
 	movea.l 68(sp),a2
 	movea.l 72(sp),a3
