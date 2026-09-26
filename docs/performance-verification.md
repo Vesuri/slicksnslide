@@ -1234,3 +1234,10 @@ over 603 updates (23.46/31.73 ms average). BASIC worst work is 509 versus 508
 and cadence 306737 versus 306424/602; F1 maximum/cadence remain 642 and
 375630/602. This reduces repeated arithmetic, not the frame cadence
 (`tmp/perf-cached-car-probe-{basic,f1}.log`). The 20 ms goal remains open.
+
+A further conservative broad-phase rejection is not retained: even with a
+proven under-20-unit probe displacement in a checked nonwrapping domain,
+the extra guards make BASIC slower (220974 versus 220679 work lines, 511
+versus 509 maximum, 307966 versus 306737/602 cadence). Probe reuse remains;
+the broad-phase checks are removed (`tmp/verify-car-probe-bounds.log`,
+`tmp/perf-car-probe-bounds-basic.log`).
