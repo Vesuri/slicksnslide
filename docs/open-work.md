@@ -4,10 +4,6 @@ Updated 2026-09-26. Actionable open and deferred work only.
 
 ## Integration and release
 
-1. Complete muted 2 MiB/no-Fast-RAM A1200 regressions for six-mode race/menu
-    transitions and race-load/next-track failure recovery. Check dirty-region
-    integrity, DMA blanking and clean system restoration. Rerun applicable
-    original-code oracles after changes; refresh binary-specific debug fixtures.
 2. Refresh graphics trace validation for the expanded primitive table;
     resolve the screen-transition source-wrap call from 185ff to 2b8de
     and remaining unsupported platform-boundary cases.

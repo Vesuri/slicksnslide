@@ -46,6 +46,8 @@ unsigned char *slicks_title_small_font;
 volatile unsigned long g_slicks_load_ticks[14];
 static unsigned char shop_end_game;
 static unsigned char shop_test;
+static unsigned char mode_transition_test;
+volatile unsigned short g_slicks_diag_mode_case;
 static unsigned char shop_transition_test,shop_transition_phase;
 static unsigned char shop_resume_test;
 /* NATURALW-only parameter: 1..8 exercise each weapon; 9 buys two and cycles.
@@ -1487,6 +1489,9 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     platform->key_tail=platform->key_head;
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_shop_menu=&state; slicks_diag_shop_ready();
+    if(mode_transition_test) {
+        platform->key_tail=0; platform->keys[0]=0x45; platform->key_head=1;
+    }
     if(shop_test) {
         static const unsigned char keys[]={0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
@@ -3022,13 +3027,22 @@ int main(void)
     if(record_recovery_test) { g_slicks_diag_record_faults=3; g_slicks_diag_record_skip=argv[8]=='S'?1:argv[8]=='L'?2:0; }
     unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J'));
     unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]=='J');
+    mode_transition_test=(unsigned char)(argc==9 && argv[0]=='O' && argv[1]=='P' &&
+        argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S' &&
+        argv[7]=='T' && argv[8]>='0' && argv[8]<='5');
+    if(mode_transition_test) {
+        g_slicks_diag_mode_case=(unsigned short)(argv[8]-'0');
+        g_slicks_diag_audit_bitmap=1;
+    }
     unsigned char options_test=(unsigned char)((record_recovery_test || intermission_live_test || argc==7 || (argc==8 && (argv[7]=='A' || argv[7]=='B' || argv[7]=='C' || argv[7]=='D' || argv[7]=='E' || argv[7]=='F' || argv[7]=='H' || argv[7]=='J' || argv[7]=='K' || argv[7]=='L' || argv[7]=='M' || argv[7]=='N' || argv[7]=='P' || argv[7]=='Q' || argv[7]=='R' || argv[7]=='S' || argv[7]=='T' || argv[7]=='U' || argv[7]=='V' || argv[7]=='W' || argv[7]=='Z'))) && argv[0]=='O' && argv[1]=='P' &&
         argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S');
+    options_test|=mode_transition_test;
     unsigned char controllers_test=(unsigned char)(options_test && argc==8 && argv[7]=='C');
     unsigned char collisions_test=(unsigned char)(options_test && argc==8 && argv[7]=='D');
     unsigned char weapons_test=(unsigned char)(options_test && argc==8 && (argv[7]=='E' || argv[7]=='F'));
     unsigned char joystick_test=(unsigned char)(options_test && argc==8 && argv[7]=='Q');
     unsigned char arcade_test=(unsigned char)(options_test && (argc==8 || intermission_live_test || record_recovery_test) && (argv[7]=='A' || argv[7]=='B' || argv[7]=='P' || argv[7]=='T' || argv[7]=='U' || argv[7]=='Z'));
+    arcade_test|=mode_transition_test;
     unsigned char arcade_save_test=(unsigned char)(arcade_test && argv[7]=='Z');
     unsigned char sequence_test=(unsigned char)(arcade_test && (argv[7]=='B' || argv[7]=='P' || argv[7]=='T' || argv[7]=='U'));
     unsigned char pause_save_test=(unsigned char)(sequence_test && argv[7]=='P');
@@ -3437,6 +3451,12 @@ int main(void)
                 0x3d,0x4e,0x4e,0x4e,0x4e,0x4e,0x4d,0x4d,0x4d,0x3d};
             for(unsigned i=0;i<sizeof arcade_keys;++i) platform.keys[i]=arcade_keys[i];
             platform.key_head=sizeof arcade_keys;
+            if(mode_transition_test) {
+                /* Select each mode using the original minimum/increment keys. */
+                unsigned n=5;
+                for(unsigned i=0;i<g_slicks_diag_mode_case;++i) platform.keys[n++]=0x4e;
+                platform.key_head=(unsigned char)n;
+            }
         }
     }
     if(player_menu_test) {
@@ -4655,6 +4675,7 @@ int main(void)
             platform.key_tail=0;
             const unsigned char *next=arcade_save_test?arcade_save_keys:sequence_test?sequence_keys:keys;
             unsigned count=arcade_save_test?sizeof arcade_save_keys:sequence_test?sizeof sequence_keys:sizeof keys;
+            if(mode_transition_test) { next=sequence_keys+3; count=3; }
             for(unsigned i=0;i<count;++i) platform.keys[i]=next[i];
             platform.key_head=(unsigned char)count; options_test_stage=1;
         }

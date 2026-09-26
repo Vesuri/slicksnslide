@@ -128,3 +128,26 @@ passes the full BASIC coverage gate, retaining the genuine source-overrun
 notice. `tmp/audio-pcm-identity` passes the explicitly partial bounds/schema
 audit; it lacks the complete BASIC title sequence and is not claimed as full
 sequence coverage. The source-wrap compatibility implementation remains open.
+
+### Six-mode native transitions and load recovery
+
+`SLICKS_MODE_TRANSITION=0..5` selects the mode through native Options keys,
+selects BASIC/BASICTRK through Tracks, races 100 updates, skips to the next
+race, then ends the game after another 100 updates. Human shops exit through
+Escape; computer purchases still run. All six cases passed two starts, two
+pause menus, one intermission, the requested runtime mode, per-frame bitmap
+auditing, restoration 31 and zero audio blanking spills. No debugger writes
+to target state were used. Logs: `tmp/integration-mode-0.log` through `-5.log`.
+
+Both initial load failures (`SLICKS_SETUP_FAILURE=1/2`) passed warning dismissal,
+Players-menu access and successful GO retry. Session and configuration dumps
+were unchanged across each failure. Next-track failure (`SLICKS_OPTIONS_MENU=11`)
+passed retry, two races and exactly-once rewards; session dumps before failure,
+after failure and before retry matched. These existing failure fixtures stop
+at successful recovery, not at hardware restoration. The six-mode checks above
+cover restoration separately. Logs: `tmp/integration-load-failure-1.log`,
+`-2.log`, `tmp/integration-next-track-failure.log`.
+
+The applicable original-code options, race-menu, intermission, setup-session,
+shop and dirty-tracking gates passed again (`tmp/integration-final-oracles.log`).
+All owned Slicks emulators exited; an unrelated Pokeri run was left untouched.

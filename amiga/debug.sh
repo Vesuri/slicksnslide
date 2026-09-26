@@ -39,7 +39,10 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_AUDIO_PITCH_TEST:-0}" = 3 ]; then
+if [ -n "${SLICKS_MODE_TRANSITION:-}" ]; then
+  case "$SLICKS_MODE_TRANSITION" in 0|1|2|3|4|5) ;; *) exit 2;; esac
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONST%s\n' "$SLICKS_MODE_TRANSITION" > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_AUDIO_PITCH_TEST:-0}" = 3 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUDIOFALL\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUDIO_PITCH_TEST:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUDIOHIGH\n' > "$DH0/s/startup-sequence"
