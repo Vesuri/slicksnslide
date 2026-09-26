@@ -41,6 +41,36 @@ int main(void)
     ck(uc_ctl_set_cpu_model(native,UC_CPU_M68K_M68020));ck(uc_mem_map(native,0,0x100000,UC_PROT_ALL));
     f=fopen("build/actor_allocate.bin","rb");if(!f)return 2;
     n=fread(bytes,1,sizeof bytes,f);fclose(f);ck(uc_mem_write(native,0x10000,bytes,n));
+    unsigned reset_entry=0x10000+((unsigned)bytes[n-4]<<24)+
+        ((unsigned)bytes[n-3]<<16)+((unsigned)bytes[n-2]<<8)+bytes[n-1];
+    for(unsigned t=0;t<256;++t) {
+        unsigned char before[256],after[256],stack[8];
+        for(unsigned i=0;i<256;++i)before[i]=(unsigned char)(i*37+t);
+        unsigned offset=2*(t%32);
+        ck(uc_mem_write(native,0x20000,before,sizeof before));
+        biglong(stack,0x18000);biglong(stack+4,0x20000+offset);
+        ck(uc_mem_write(native,0x90000,stack,sizeof stack));
+        uint32_t sp=0x90000;
+        ck(uc_reg_write(native,UC_M68K_REG_A7,&sp));
+        const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,
+            UC_M68K_REG_D5,UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,
+            UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
+        for(unsigned r=0;r<11;++r) {
+            uint32_t value=0x12345600+r;
+            ck(uc_reg_write(native,regs[r],&value));
+        }
+        ck(uc_emu_start(native,reset_entry,0x18000,0,1000));
+        ck(uc_mem_read(native,0x20000,after,sizeof after));
+        memset(before+offset,0,33);
+        if(memcmp(before,after,sizeof before))return 1;
+        for(unsigned r=0;r<11;++r) {
+            uint32_t value;ck(uc_reg_read(native,regs[r],&value));
+            if(value!=0x12345600+r)return 1;
+        }
+        ck(uc_reg_read(native,UC_M68K_REG_A7,&sp));
+        if(sp!=0x90004)return 1;
+    }
+    puts("Native metadata reset: 256 alignments/patterns, canaries and preserved registers match");
     unsigned seed=127;
     for(unsigned t=0;t<8192;++t) {
         struct SlicksActorSlots pool; slicks_actor_slots_init(&pool);

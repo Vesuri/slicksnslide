@@ -263,3 +263,13 @@ tails and discarded before actor retirement, preserving lowest-free-slot
 selection.112640 batch selections match the DOS-verified scalar allocator;
 8192 original/native allocation cases and all eleven7200-update composed
 driving scenarios pass, as do surface-effect tuples and RNG checks.
+
+## Native actor metadata clear
+
+`tmp/perf-actor-reset.log`: worst719lines atframe222 (46.1ms), mean cadence
+384970/602lines (41.0ms), still603 over budget. The new worst frame has171
+particles: draw196, simulation166, C2P143, restore78 and advance61lines.
+Reset clears the same33bytes with longword stores rather than a byte loop;
+saved-under storage remains untouched.256 native canary/ABI cases pass,
+along with8192 allocation cases,2432 original actor drawings,128 saturated
+shared-pool reuse cases, and4096 original projectile-loop cases.

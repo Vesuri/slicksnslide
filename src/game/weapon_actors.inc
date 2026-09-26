@@ -8,7 +8,14 @@ static void reset_weapon_actor(struct SlicksWeaponActor *actor)
     /* saved=0 invalidates the old background. Drawing saves every visible
      * pixel before restoration can read it; off-screen cells are never read.
      * Point actors use their separate one-byte saved background. */
+#if defined(__m68k__)
+    _Static_assert(__builtin_offsetof(struct SlicksWeaponActor,saved_under)==33,
+        "actor reset ABI");
+    extern void slicks_actor_reset_native(struct SlicksWeaponActor *);
+    slicks_actor_reset_native(actor);
+#else
     __builtin_memset(actor,0,__builtin_offsetof(struct SlicksWeaponActor,saved_under));
+#endif
 }
 
 static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
