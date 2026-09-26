@@ -298,6 +298,8 @@ volatile unsigned long g_slicks_diag_profile_advance_lines;
 volatile unsigned long g_slicks_diag_profile_update_lines;
 volatile unsigned long g_slicks_diag_profile_hud_lines;
 volatile unsigned long g_slicks_diag_profile_draw_lines;
+volatile unsigned long g_slicks_diag_profile_actor_lines[16];
+static unsigned long g_slicks_diag_profile_actor_at;
 static const struct SlicksAmigaPlatform *g_slicks_diag_profile_platform;
 static unsigned long g_slicks_diag_profile_race_at;
 
@@ -395,6 +397,12 @@ unsigned long slicks_diag_profile_raster_time(void)
 static void slicks_diag_profile_race(unsigned char phase)
 {
     unsigned long now = slicks_diag_profile_raster_time();
+    if(phase>=10) {
+        if(phase!=10 && phase!=20)
+            g_slicks_diag_profile_actor_lines[phase-10]=now-g_slicks_diag_profile_actor_at;
+        g_slicks_diag_profile_actor_at=now;
+        return;
+    }
     if (!phase) {
         g_slicks_diag_profile_race_at = now;
         return;

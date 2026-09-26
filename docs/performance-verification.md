@@ -67,3 +67,13 @@ Retained supplemental regression coverage compares all 256 combinations of
 rotation/body ramp/mask against the existing scalar VGA renderer and checks
 saved backgrounds and restoration. This is optimization regression coverage,
 not an independent original-executable oracle.
+
+## Actor substage profile
+
+`tmp/perf-detail.log`: final-frame restore index/high/cars+priority3/low
+19/34/29/76 raster lines; draw index/low/cars+priority3/high 22/91/61/134.
+High includes priorities 4..127 (restore also includes priority-mask work);
+low includes priorities 0..2 and shadows. These grouped measurements must
+not be attributed solely to cars or solely to point particles. Instrumentation
+runs only on the diagnostic target frame and contributes to its measured time.
+Maximum work 1028 lines, mean cadence 493592/602 lines, all603 over budget.

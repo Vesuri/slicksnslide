@@ -1910,16 +1910,22 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
         restore_layered_cars(race,logical);restore_trail_particles(race,0);
         restore_shadows(race,logical);return;
     }
+    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    if(profile) race->profile_marker(10);
     build_actor_order(race,1);
+    if(profile) race->profile_marker(11);
     unsigned int mask[4];actor_priority_mask(race,mask);
     for(int p=127;p>=6;--p) if(mask[p>>5]&(1U<<(p&31))) restore_trail_priority(race,3,p);
     restore_trail_particles(race,2);
     restore_trail_priority(race,3,4);
+    if(profile) race->profile_marker(12);
     restore_layered_cars(race,logical);
+    if(profile) race->profile_marker(13);
     restore_trail_priority(race,3,2);
     restore_shadows(race,logical);
     restore_trail_priority(race,3,1);
     restore_trail_particles(race,0);
+    if(profile) race->profile_marker(14);
     race->actor_order_ready=0;
 }
 
@@ -1930,16 +1936,22 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
         draw_layered_cars(race,logical);draw_trail_particles(race,2);
         draw_trail_particles(race,3);return;
     }
+    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    if(profile) race->profile_marker(20);
     build_actor_order(race,0);
+    if(profile) race->profile_marker(21);
     draw_trail_particles(race,0);
     draw_trail_priority(race,3,1);
     draw_shadows(race,logical);
     draw_trail_priority(race,3,2);
+    if(profile) race->profile_marker(22);
     draw_layered_cars(race,logical);
+    if(profile) race->profile_marker(23);
     draw_trail_priority(race,3,4);
     draw_trail_particles(race,2);
     unsigned int mask[4];actor_priority_mask(race,mask);
     for(unsigned p=6;p<128;++p) if(mask[p>>5]&(1U<<(p&31))) draw_trail_priority(race,3,p);
+    if(profile) race->profile_marker(24);
     race->actor_order_ready=0;
 }
 
