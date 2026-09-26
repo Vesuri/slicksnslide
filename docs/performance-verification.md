@@ -595,3 +595,11 @@ slot reuse (`tmp/verify-shared-buckets.log`). BASIC measures 667 maximum work
 lines (42.8 ms), versus 674, with cadence sum 371876/602 (39.6 ms);
 advancement at the worst frame falls from 77 to 68 lines
 (`tmp/perf-shared-buckets.log`). This is a small reduction, not a 50 FPS result.
+The full native display audit passes 600 updates, 32 actors and 2076 marks
+(`tmp/audit-shared-buckets.log`).
+
+A fused native handle-remapping experiment passed 1428 batch cases, including
+all shared state/index/handle arrays and guards, but was slower: BASIC maximum
+685 lines and cadence 375602/602, versus 667 and 371876/602. Final-frame
+advancement rose from 40 to 50 lines (`tmp/perf-fused-particle-maps.log`).
+It was removed; the simpler two C mapping passes remain.
