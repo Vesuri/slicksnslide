@@ -1386,3 +1386,11 @@ Both interactive launches pass native-menu/audio checks, with checkpoints
 race starts, pause/resume and hardware restoration. Evidence:
 `tmp/perf-optin-diagnostics-{basic,f1}.log`,
 `tmp/native-{debug,plain}-launch.log`, `tmp/modes-optin-diagnostics.log`.
+
+A duplicated sparse-conversion loop that hoisted the stride check passed
+all planar-write checks but was essentially neutral in BASIC: work 192593
+versus 192624 lines. Changing the six-byte stack scratch header to eight
+bytes was also neutral (192571); incoming ABI stack alignment is not proven
+by this experiment. Both changes are removed rather than adding another
+loop for an inconclusive saving. Logs: `tmp/verify-sparse-{stride-once,aligned-base}.log`,
+`tmp/perf-sparse-{stride-once,aligned-base}-basic.log`.
