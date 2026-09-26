@@ -237,39 +237,31 @@ struct SlicksTrailParticle {
 };
 
 struct SlicksRaceRuntime {
+    /* Keep working state before large resources/maps. The 68020 can then
+     * address hot fields with short displacements instead of full 32-bit
+     * extensions. This is a private native layout, never an on-disk format. */
     struct SlicksTrackNavigation navigation;
-    struct SlicksCarSprite
-        sprites[SLICKS_VEHICLE_COUNT][SLICKS_CAR_BASE_DIRECTIONS];
-    struct SlicksCarProperties properties[SLICKS_VEHICLE_COUNT];
-    struct SlicksRaceFont font;
-    unsigned char hud_background[320*16];
     unsigned char hud_background_ready;
     unsigned char hud_colours[3]; /* Racing, finished, track information. */
     char hud_track_name[9];
     unsigned short hud_record_time;
     unsigned char hud_track_ready;
-    struct SlicksHudIcon hud_weapon_icons[8];
     short weapon_inventory[4][13];
     signed char weapon_capacity[13], selected_weapon[4];
     unsigned char weapons_enabled, weapon_hud_colour;
-    struct SlicksWeaponRuntime weapons;
     unsigned char setup_inventory_ready;
     unsigned char hud_status_options[4];
     signed char hud_weapon_selection[4];
-    struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     struct SlicksRaceCar cars[SLICKS_RACE_CAR_COUNT];
     struct SlicksCarShadow shadows[SLICKS_RACE_CAR_COUNT];
     unsigned char actor_page; /* DOS expiry phase before display-page toggle. */
-    struct SlicksTrailParticle trail_particles[SLICKS_TRAIL_PARTICLE_MAX];
+    struct SlicksTrailParticle trail_particles[SLICKS_TRAIL_PARTICLE_MAX] __attribute__((aligned(4)));
     unsigned char trail_priority_indices
         [SLICKS_TRAIL_PRIORITY_COUNT][SLICKS_TRAIL_PARTICLE_MAX];
     unsigned short trail_priority_counts[SLICKS_TRAIL_PRIORITY_COUNT];
     struct SlicksDirtyRows dirty_rows[SLICKS_DIRTY_ROW_MAX];
     struct SlicksDirtyPixel dirty_pixels[SLICKS_DIRTY_PIXEL_MAX];
     struct SlicksSoundEvent sound_events[SLICKS_SOUND_EVENT_MAX];
-    unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
-    unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
-    unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
     unsigned long frame_count;
     unsigned long physics_tick_phase;
     unsigned long physics_tick_period;
@@ -287,7 +279,6 @@ struct SlicksRaceRuntime {
     short boundary_level; /* DS:4c6c, initial animated-boundary level 5. */
     short boundary_timer,boundary_direction;
     unsigned char boundary_colours[15],boundary_palette_pending;
-    struct SlicksTrackActorAsset track_actor_assets[SLICKS_TRACK_ACTOR_ASSETS];
     unsigned char track_actors_ready,track_actor_handles[SLICKS_TRACK_ACTOR_MAX];
     short track_actor_scratch;
     signed char track_flag_activations;
@@ -354,6 +345,23 @@ struct SlicksRaceRuntime {
     unsigned char sprite_dirty_handles[SLICKS_ACTOR_CAPACITY];
     unsigned short sprite_dirty_count;
     unsigned char sprite_dirty_deferred;
+    /* Bar commands only, never saved pixels. Producer dirty bounds invalidate
+     * reuse when other drawing touches the status strip. */
+    struct {
+        short ends[4][3];
+        unsigned char colours[4][3],background,active,valid;
+    } status_bar_cache;
+    struct SlicksWeaponRuntime weapons;
+    /* Bulk data is normally accessed through a base pointer in its consumer. */
+    struct SlicksCarSprite
+        sprites[SLICKS_VEHICLE_COUNT][SLICKS_CAR_BASE_DIRECTIONS];
+    struct SlicksCarProperties properties[SLICKS_VEHICLE_COUNT];
+    struct SlicksRaceFont font;
+    unsigned char hud_background[320*16];
+    struct SlicksHudIcon hud_weapon_icons[8];
+    struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
+    unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
+    struct SlicksTrackActorAsset track_actor_assets[SLICKS_TRACK_ACTOR_ASSETS];
     /* Foreground maps and track assets are immutable during a race. A
      * checked direct-mapped cache shares visibility masks across repeated
      * stationary draws; collisions only cause recomputation. */
@@ -361,13 +369,9 @@ struct SlicksRaceRuntime {
         short x,y;
         unsigned char asset,frame,occlusion,valid;
         unsigned char write_mask[SLICKS_TRACK_ACTOR_PIXELS];
-    } track_sprite_visibility[64];
-    /* Bar commands only, never saved pixels. Producer dirty bounds invalidate
-     * reuse when other drawing touches the status strip. */
-    struct {
-        short ends[4][3];
-        unsigned char colours[4][3],background,active,valid;
-    } status_bar_cache;
+    } track_sprite_visibility[64] __attribute__((aligned(4)));
+    unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
+    unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

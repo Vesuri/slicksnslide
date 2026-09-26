@@ -24,13 +24,14 @@ struct SlicksWeaponRuntime {
     struct SlicksWeaponControl controls[4];
     struct SlicksWeaponProjectile projectiles[4][30];
     struct SlicksActorSlots slots;
-    struct SlicksWeaponActor actors[SLICKS_ACTOR_CAPACITY];
-    struct SlicksWeaponAsset assets[SLICKS_WEAPON_ASSET_COUNT];
     /* The dense 24-byte fast trail ABI is unchanged. These maps preserve
      * shared allocation and actor-ID drawing order when holes are reused. */
     short trail_index[SLICKS_ACTOR_CAPACITY];
     unsigned char trail_handle[256];
     unsigned char ready,bullet_colour,impact_colour;
     unsigned long shots,hits,explosions;
+    /* Keep slot lookup and counters ahead of the large sprite storage. */
+    struct SlicksWeaponActor actors[SLICKS_ACTOR_CAPACITY];
+    struct SlicksWeaponAsset assets[SLICKS_WEAPON_ASSET_COUNT];
 };
 #endif

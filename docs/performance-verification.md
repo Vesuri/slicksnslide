@@ -880,3 +880,30 @@ also includes the previously retained mask/memory changes.
 The full display audit passes 600 updates, 32 actors and 2076 permanent marks
 (`tmp/perf-local-actor-max-basic.log`, `tmp/perf-local-actor-max-f1.log`,
 `tmp/audit-local-actor-max.log`).
+
+## Compact working-state layout
+
+Move bulk resources/maps behind private native working state, and put weapon
+slot lookups ahead of sprite storage. Car state moves from offset 65974 to
+3168; RNG/order fields move from about 200 KiB to 15 KiB. Target assertions
+keep key working fields within short displacement range. No game-file layout
+or existing particle/sprite record ABI changes. The car-preparation function
+shrinks from 14774 to 13086 code bytes.
+
+The first layout lost four-byte particle alignment and regressed advancement.
+Explicit alignment for particle and visibility arrays restores that cost;
+total runtime storage remains 216220 bytes, unchanged from the control.
+Original actor, HUD, collision and surface checks pass, as do rebuilt native
+car/particle/actor and dirty-region comparisons (`tmp/verify-hot-state-layout.log`,
+`tmp/verify-hot-state-aligned.log`). This work exposed a verifier-only map
+initialization overrun; its separate bounds fix passes AddressSanitizer
+(`tmp/verify-surface-effects-asan.log`).
+
+Aligned BASIC total work is 225138 lines over 603 updates, maximum 518 and
+cadence 315160/602 (33.6 ms), versus 231355/534/327955. F1 is
+370620/737/410912 (43.8 ms cadence), versus 381398/756/426201.
+The full display audit passes 600 updates, 32 actors and 2076 marks
+(`tmp/perf-hot-state-aligned-basic.log`, `tmp/perf-hot-state-aligned-f1.log`,
+`tmp/audit-hot-state-aligned.log`). Neither track meets the 20 ms target.
+Native mode-4 transitions also pass two starts, two pauses, restoration 31
+and zero audio spills (`tmp/modes-hot-state-aligned.log`).

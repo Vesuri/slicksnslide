@@ -14,6 +14,14 @@
 #include "animated_boundary.h"
 
 #if defined(__m68k__)
+_Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,cars)<32768 &&
+    __builtin_offsetof(struct SlicksRaceRuntime,random_state)<32768 &&
+    __builtin_offsetof(struct SlicksRaceRuntime,actor_order_head)<32768 &&
+    __builtin_offsetof(struct SlicksRaceRuntime,weapons.trail_index)<32768,
+    "keep working state within short 68020 displacements");
+_Static_assert((__builtin_offsetof(struct SlicksRaceRuntime,trail_particles)&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceRuntime,track_sprite_visibility)&3)==0,
+    "longword-aligned particle and visibility arrays");
 _Static_assert((__builtin_offsetof(struct SlicksRaceCar,saved_under)&1)==0,
     "car background word alignment");
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
