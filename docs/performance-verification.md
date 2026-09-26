@@ -977,3 +977,14 @@ not represented as a BASIC improvement. Both use 603 updates and 602 cadence
 intervals (`tmp/perf-contact-bounds-v2-{basic,f1}.log`).
 The full display audit passes 600 updates, 32 actors and 2076 permanent
 marks (`tmp/audit-contact-bounds.log`). The 20 ms objective remains open.
+
+## Rejected homogeneous sprite-block branches
+
+Native branches for fully transparent/opaque longwords preserve saved pixels
+and pass original/native actor and car tests (`tmp/verify-sprite-homogeneous.log`).
+They nevertheless increase F1 work from 358163 to 361052 lines, draw from
+123057 to 124880 and cadence from 404685 to 405920/602. Keeping only the
+foreground-masked variant is also worse: 361478 work, 125631 draw and
+406842/602 cadence (`tmp/perf-sprite-homogeneous-f1.log`,
+`tmp/perf-sprite-visible-blocks-f1.log`). Both variants are removed; production
+retains the straight-line longword blend.
