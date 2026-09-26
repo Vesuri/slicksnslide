@@ -841,3 +841,10 @@ about 0.12 ms less work per update. Cadence improves from 331073/602 to
 The full display audit passes 600 updates, 32 actors and 2076 marks
 (`tmp/perf-material-control-basic.log`, `tmp/perf-mask-material-first-basic.log`,
 `tmp/audit-material-first.log`).
+
+Hoisting per-car force denominators, velocity factors and heading across
+physics quanta passed original integration/damage checks and all eleven
+7200-update trajectories (`tmp/verify-physics-constants.log`), but increased
+BASIC total work from 232434 to 233177 lines and preparation from 36465 to
+37318. Cadence also worsened, 329825/602 to 332009/602. Removed the candidate
+(`tmp/perf-physics-constants-basic.log`).
