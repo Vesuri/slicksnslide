@@ -8,6 +8,9 @@ from pathlib import Path
 
 
 TARGETS = {
+    # The surface-event tracer shares this CSV with graphics calls. Older
+    # captures label this known target "unknown"; keep its schema explicit.
+    0x0E6B1: ("surface_event", ("x", "y", "sprite", "car", "long_lived")),
     0x00D9F: (
         "far_fill",
         ("destination_offset", "destination_segment", "count", "value_word"),
@@ -70,8 +73,8 @@ TARGETS = {
 
 # This exported primitive is not reached by the bounded BASIC.SS race, but it
 # remains instrumented so other modes can add coverage without rebuilding.
-OPTIONAL_TARGETS = {0x29E35}
-STRIDE_FREE_TARGETS = {0x00D9F, 0x201B6, 0x2AD92, 0x2ADB7}
+OPTIONAL_TARGETS = {0x29E35, 0x0E6B1}
+STRIDE_FREE_TARGETS = {0x00D9F, 0x0E6B1, 0x201B6, 0x2AD92, 0x2ADB7}
 
 
 def number(value: str) -> int:
@@ -85,6 +88,8 @@ def signed_word(value: int) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("trace", type=Path)
+    parser.add_argument("--partial", action="store_true",
+                        help="audit observed calls without requiring the full BASIC title sequence")
     args = parser.parse_args()
 
     rows_by_target: dict[int, int] = Counter()
@@ -120,7 +125,8 @@ def main() -> None:
             if target not in TARGETS:
                 raise SystemExit(f"unknown primitive target 0x{target:05x}")
             expected_name, arg_names = TARGETS[target]
-            if row["name"] != expected_name:
+            legacy_surface = target == 0x0E6B1 and row["name"] == "unknown"
+            if row["name"] != expected_name and not legacy_surface:
                 raise SystemExit(
                     f"target 0x{target:05x}: expected {expected_name}, got {row['name']}"
                 )
@@ -258,6 +264,8 @@ def main() -> None:
             if target == 0x2B8DE:
                 (dest_x, dest_y, source_x, source_y, width, height,
                  _, _, screen_base) = arguments
+                # 3b8d:007b reads only the low byte of the height argument.
+                height &= 0xFF
                 source_width = number(row["source_width"])
                 source_height = number(row["source_height"])
                 source_sizes[(target, source_width, source_height)] += count
@@ -284,7 +292,7 @@ def main() -> None:
                     reject("blit destination outside 64 KiB plane")
 
     missing_targets = set(TARGETS).difference(OPTIONAL_TARGETS, rows_by_target)
-    if missing_targets:
+    if missing_targets and not args.partial:
         rendered = ", ".join(f"0x{target:05x}" for target in sorted(missing_targets))
         raise SystemExit(f"missing primitive targets: {rendered}")
 
@@ -294,7 +302,7 @@ def main() -> None:
         (0x19954, 222, 114, 1, 4, 0x3EA4, 4, 0),
         (0x19954, 222, 114, 1, 4, 0x3EA4, 4, 0x7FBC),
     }
-    if not expected_title_numbers.issubset(title_number_calls):
+    if not args.partial and not expected_title_numbers.issubset(title_number_calls):
         raise SystemExit("missing observed BASIC title numeric calls")
     expected_title_sprites = {
         (205, 99, 0xE53A541BE078BFA2),
@@ -302,7 +310,7 @@ def main() -> None:
         (221, 99, 0xFA4DD06703F903A8),
         (229, 100, 0xFA4DD06703F903A8),
     }
-    if not expected_title_sprites.issubset(title_status_sprites):
+    if not args.partial and not expected_title_sprites.issubset(title_status_sprites):
         raise SystemExit("missing observed BASIC title status sprites")
 
     for target in sorted(OPTIONAL_TARGETS.difference(rows_by_target)):
@@ -381,7 +389,8 @@ def main() -> None:
                 f"{violation_calls[reason]} calls"
             )
         raise SystemExit(1)
-    print("primitive argument and bounds checks: passed")
+    print("primitive argument and bounds checks: passed" +
+          (" (partial trace; full BASIC sequence not checked)" if args.partial else ""))
 
 
 if __name__ == "__main__":

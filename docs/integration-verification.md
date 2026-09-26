@@ -116,3 +116,15 @@ restoration test passed `SLICKS_RESTORE_OK STATUS=1f` and removed its PID file;
 a deliberately failing debugger preserved exit status 1 and also removed its
 PID file. The subsequent process inventory showed no FS-UAE processes. The
 normal launcher and interactive debugger behavior are unchanged.
+
+### Expanded primitive-trace audit
+
+The validator explicitly recognizes surface-event target `0e6b1` and the
+legacy `unknown` label for that target only. Unknown addresses and malformed
+argument lists still fail. Subrectangle height uses the low byte, matching
+`3b8d:007b`, avoiding false overruns from unrelated upper argument bits.
+Six synthetic regression checks pass. The historical `tmp/pc-fixed` trace
+passes the full BASIC coverage gate, retaining the genuine source-overrun
+notice. `tmp/audio-pcm-identity` passes the explicitly partial bounds/schema
+audit; it lacks the complete BASIC title sequence and is not claimed as full
+sequence coverage. The source-wrap compatibility implementation remains open.
