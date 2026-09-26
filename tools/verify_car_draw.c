@@ -71,5 +71,25 @@ int main(int argc,char **argv)
             if(v!=0x12345600+i)fail("car preserved register");
         }
     }
-    uc_close(u);puts("68020 car draw/restore: 1024 full-frame rotation/ramp/mask, background and ABI comparisons pass");return 0;
+    for(unsigned width=1;width<=16;++width)
+    for(unsigned height=1;height<=8;++height)
+    for(unsigned align=0;align<4;++align) {
+        unsigned char saved[132],stack[20];
+        for(unsigned i=0;i<sizeof saved;++i)saved[i]=(unsigned char)(i*53+width);
+        memset(before,0xa5,sizeof before);memcpy(pixels,before,sizeof pixels);
+        unsigned offset=100*320+100+align;
+        for(unsigned y=0;y<height;++y)
+            memcpy(pixels+offset+y*320,saved+align+y*width,width);
+        ck(uc_mem_write(u,0x30000,before,sizeof before));
+        ck(uc_mem_write(u,0x60000,saved,sizeof saved));
+        be32(stack,0x18000);be32(stack+4,0x30000+offset);
+        be32(stack+8,0x60000+align);be32(stack+12,width);be32(stack+16,height);
+        ck(uc_mem_write(u,0x90000,stack,sizeof stack));
+        uint32_t sp=0x90000;ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
+        ck(uc_emu_start(u,restore,0x18000,0,100000));
+        ck(uc_mem_read(u,0x30000,actual,sizeof actual));
+        if(memcmp(pixels,actual,sizeof pixels))fail("restore width/tail/alignment");
+        ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=0x90004)fail("restore tail stack");
+    }
+    uc_close(u);puts("68020 car draw/restore: 1024 full-frame rotation/ramp/mask/ABI + 512 restore width/tail/alignment comparisons pass");return 0;
 }

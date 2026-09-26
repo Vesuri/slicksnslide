@@ -88,24 +88,37 @@ slicks_draw_car_chunky:
 
 ; C ABI: destination, saved, width, height. Caller clips before saving.
 slicks_restore_car_chunky:
-	movem.l d2-d3,-(sp)
-	movea.l 12(sp),a0
-	movea.l 16(sp),a1
-	move.w 22(sp),d0
+	movem.l d2-d4,-(sp)
+	movea.l 16(sp),a0
+	movea.l 20(sp),a1
+	move.w 26(sp),d0
 	beq.s .done
-	move.w 26(sp),d1
+	move.w 30(sp),d1
 	beq.s .done
 	subq.w #1,d1
 	move.w #320,d3
 	sub.w d0,d3
+	move.w d0,d4
+	andi.w #3,d4
+	lsr.w #2,d0
 	subq.w #1,d0
 .row:
 	move.w d0,d2
-.pixel:
+	bmi.s .tail
+.long:
+	move.l (a1)+,(a0)+
+	dbf d2,.long
+.tail:
+	btst #1,d4
+	beq.s .byte
+	move.w (a1)+,(a0)+
+.byte:
+	btst #0,d4
+	beq.s .next_row
 	move.b (a1)+,(a0)+
-	dbf d2,.pixel
+.next_row:
 	adda.w d3,a0
 	dbf d1,.row
 .done:
-	movem.l (sp)+,d2-d3
+	movem.l (sp)+,d2-d4
 	rts

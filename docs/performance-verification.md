@@ -361,3 +361,13 @@ original weapon images and128 shared-pool cases;1792 original track images,
 64 ordering cases and permanent-mark restoration checks also pass. The
 native test facade checks destination/saved-buffer write bounds and runs
 the actual production fast path, not a duplicate blitter implementation.
+
+## Wider saved-background restoration
+
+`tmp/perf-wide-restore-{0,1}.log`: BASIC715lines maximum; F11174lines
+(75.3ms), mean cadence667020/602lines (71.0ms). Restoration now uses
+longwords with exact word/byte tails on68020, preserving arbitrary source
+and destination alignment.512 additional width/height/alignment cases and
+all original scalar/native actor comparisons pass. F1's parent restore
+interval also includes moving-track-object simulation; it must not all be
+attributed to copying saved pixels.
