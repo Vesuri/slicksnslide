@@ -289,6 +289,8 @@ volatile unsigned char g_slicks_diag_profile_all;
 volatile unsigned long g_slicks_diag_bench_frames;
 volatile unsigned long g_slicks_diag_bench_work_max;
 volatile unsigned long g_slicks_diag_bench_work_max_frame;
+volatile unsigned long g_slicks_diag_bench_max_stages[8];
+volatile unsigned short g_slicks_diag_bench_max_particles;
 volatile unsigned long g_slicks_diag_bench_work_over;
 volatile unsigned long g_slicks_diag_bench_wall_max;
 volatile unsigned long g_slicks_diag_bench_cadence_sum;
@@ -4894,6 +4896,7 @@ int main(void)
                 race->cars[0].special_drive_target = 0;
             }
             if(weapon_hud_fixture) set_weapon_hud_fixture(race);
+            if(g_slicks_diag_profile_all) race->profile_frame=race->frame_count+1;
             slicks_race_step(race, logical);
             /* Completion is a simulation edge, independent of whether
              * engine playback is enabled or currently owns a channel. */
@@ -5122,6 +5125,15 @@ int main(void)
                     if (work > g_slicks_diag_bench_work_max) {
                         g_slicks_diag_bench_work_max = work;
                         g_slicks_diag_bench_work_max_frame = race->frame_count;
+                        g_slicks_diag_bench_max_stages[0]=g_slicks_diag_profile_restore_lines;
+                        g_slicks_diag_bench_max_stages[1]=g_slicks_diag_profile_advance_lines;
+                        g_slicks_diag_bench_max_stages[2]=g_slicks_diag_profile_update_lines;
+                        g_slicks_diag_bench_max_stages[3]=g_slicks_diag_profile_hud_lines;
+                        g_slicks_diag_bench_max_stages[4]=g_slicks_diag_profile_draw_lines;
+                        g_slicks_diag_bench_max_stages[5]=g_slicks_diag_profile_audio_lines;
+                        g_slicks_diag_bench_max_stages[6]=g_slicks_diag_profile_c2p_lines;
+                        g_slicks_diag_bench_max_stages[7]=g_slicks_diag_profile_diag_lines;
+                        g_slicks_diag_bench_max_particles=race->trail_particle_count;
                     }
                     if (work > PAL_RASTER_LINES)
                         ++g_slicks_diag_bench_work_over;

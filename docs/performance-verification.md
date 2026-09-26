@@ -203,3 +203,14 @@ cadence388563/602 (41.4ms). Final step378,audio7,C2P57,diagnostics9;
 restore50,advance39,update81,HUD40,draw142.103particles,18dirty pixels,
 6 sparse conversions,4rectangles,1equivalent C2P row. The last checkpoint
 alone is not representative of the maximum.
+
+## Worst-update stage capture
+
+`tmp/perf-max-basic.log`: phase callbacks now run on every measured update,
+including actor substages, and their overhead is included. Maximum783lines
+atframe209: restore76,advance78,simulation230,HUD40,draw167,audio14,C2P117,
+diagnostics13;148particles. Mean cadence391708/602lines (41.7ms).
+Instrumentation can alter display-phase timing and BIOS-clock HUD updates;
+compare subsequent runs using this same instrumentation. Measurements still
+contain no per-update debugger stops. The maximum's simulation cost, not
+only the final checkpoint's rendering, must be optimized.

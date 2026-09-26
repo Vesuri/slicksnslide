@@ -12,6 +12,7 @@ commands
   printf "ACTOR_DRAW index=%lu low=%lu cars_p3=%lu high=%lu\n",g_slicks_diag_profile_actor_lines[11],g_slicks_diag_profile_actor_lines[12],g_slicks_diag_profile_actor_lines[13],g_slicks_diag_profile_actor_lines[14]
   printf "BENCHMARK_LOAD particles=%u dirty_pixels=%u dirty_ranges=%u dirty_equivalent_rows=%u\n",g_slicks_diag_particles,g_slicks_diag_dirty_pixels,g_slicks_diag_dirty_ranges,g_slicks_diag_dirty_rows
   printf "SPARSE_CONVERTED=%u\n",g_slicks_diag_sparse_converted
+  printf "BENCHMARK_MAX restore=%lu advance=%lu update=%lu hud=%lu draw=%lu audio=%lu c2p=%lu diag=%lu particles=%u\n",g_slicks_diag_bench_max_stages[0],g_slicks_diag_bench_max_stages[1],g_slicks_diag_bench_max_stages[2],g_slicks_diag_bench_max_stages[3],g_slicks_diag_bench_max_stages[4],g_slicks_diag_bench_max_stages[5],g_slicks_diag_bench_max_stages[6],g_slicks_diag_bench_max_stages[7],g_slicks_diag_bench_max_particles
   quit
 end
 break slicks_diag_system_restored
