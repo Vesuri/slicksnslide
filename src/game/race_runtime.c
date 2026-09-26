@@ -1690,7 +1690,7 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
         if(!h) return;
         race->weapons.trail_handle[race->trail_particle_count]=(unsigned char)h;
         race->weapons.trail_index[h]=(short)race->trail_particle_count;
-        race->weapons.actors[h]=(struct SlicksWeaponActor){0};
+        reset_weapon_actor(&race->weapons.actors[h]);
     }
     particle_index = race->trail_particle_count++;
     particle = &race->trail_particles[particle_index];

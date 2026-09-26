@@ -148,3 +148,13 @@ The compact byte scan matches the original x86 allocator directly over8192
 pool states (returns, high-water and every slot), alongside the scalar
 implementation. Improvement is limited in this benchmark, but the worst
 frame is lower. Original actor/dirty suites and target build pass.
+
+## Recycle actor metadata without clearing invalid backgrounds
+
+`tmp/perf-recycle.log`: maximum work770 lines, maximum wall919,
+cadence347888/602 (37.0ms),582/603 over budget. Final step437, audio10,
+C2P69,diagnostics7; restore71,advance47,update130,HUD33,draw152.
+Only actor metadata is cleared on reuse; saved=0 guards the old bytes until
+the renderer captures every visible pixel. Inactive zero-state weapon slots
+skip their no-op advancement. Original projectile, track/weapon actor and
+dirty/restoration suites pass. Target reported no errors/audio spills.

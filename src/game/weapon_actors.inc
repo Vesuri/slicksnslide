@@ -3,6 +3,14 @@
 static unsigned weapon_bucket(unsigned priority)
 { return priority==0?0:priority==3?1:priority==5?2:3; }
 
+static void reset_weapon_actor(struct SlicksWeaponActor *actor)
+{
+    /* saved=0 invalidates the old background. Drawing saves every visible
+     * pixel before restoration can read it; off-screen cells are never read.
+     * Point actors use their separate one-byte saved background. */
+    __builtin_memset(actor,0,__builtin_offsetof(struct SlicksWeaponActor,saved_under));
+}
+
 static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
@@ -87,7 +95,7 @@ static short allocate_weapon_actor(struct SlicksRaceRuntime *race,int asset,
     short h=slicks_actor_allocate(&race->weapons.slots,1);
     if(!h) return 0;
     struct SlicksWeaponActor *a=&race->weapons.actors[h];
-    *a=(struct SlicksWeaponActor){0};
+    reset_weapon_actor(a);
     a->kind=asset<0?2:1;a->asset=asset<0?0:(unsigned char)asset;
     a->motion.frames=(unsigned char)frames;a->colour=colour;
     race->weapons.trail_index[h]=-1;
@@ -111,6 +119,7 @@ static void advance_weapon_actors(struct SlicksRaceRuntime *race)
     if(!shared_actor_pool(race)) return;
     for(unsigned h=1;h<race->weapons.slots.high_water;++h) {
         if(race->weapons.trail_index[h]>=0) continue;
+        if(!race->weapons.slots.state[h]) continue;
         struct SlicksWeaponActor *a=&race->weapons.actors[h];
         signed char *state=&race->weapons.slots.state[h];
         /* Reserved car/shadow slots are advanced by their existing owners. */
