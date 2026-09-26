@@ -372,6 +372,19 @@ int main(int argc,char **argv) {
         put32(uc,STACK+12,PIXELS); put32(uc,STACK+16,count);
         run(uc,pixels);
     }
+    /* Every colour at every bit position, including the final screen byte. */
+    for(unsigned colour=0;colour<256;++colour)
+    for(unsigned bit=0;bit<8;++bit) {
+        unsigned x=312+bit,y=199,at=y*320+x;
+        chunky[at]=(uint8_t)colour;
+        check(uc_mem_write(uc,CHUNKY+at,chunky+at,1));
+        reset(uc);
+        put16(uc,PIXELS,x);
+        uint8_t row=y;check(uc_mem_write(uc,PIXELS+2,&row,1));
+        expect_pixel(x,y);
+        put32(uc,STACK+12,PIXELS);put32(uc,STACK+16,1);
+        run(uc,pixels);
+    }
     /* Composition regression: sparse pixels are not a bitplane-only overlay.
      * Re-converting an enclosing rectangle from the same chunky source must
      * preserve every sparse pixel, including those sharing plane bytes. */

@@ -179,69 +179,26 @@ slicks_chunky_pixels_to_amiga:
 	move.l	d0,d2
 	lsr.w	#3,d0
 	add.l	d0,d6
-	moveq	#7,d0
 	and.w	#7,d2
-	sub.w	d2,d0
-	move.l	d0,d2
-
-	btst	#0,d3
-	beq.s	.p0_clear
-	bset	d2,0(a0,d6.l)
-	bra.s	.p1
-.p0_clear:
-	bclr	d2,0(a0,d6.l)
-.p1:
-	btst	#1,d3
-	beq.s	.p1_clear
-	bset	d2,0(a1,d6.l)
-	bra.s	.p2
-.p1_clear:
-	bclr	d2,0(a1,d6.l)
-.p2:
-	btst	#2,d3
-	beq.s	.p2_clear
-	bset	d2,0(a2,d6.l)
-	bra.s	.p3
-.p2_clear:
-	bclr	d2,0(a2,d6.l)
-.p3:
-	btst	#3,d3
-	beq.s	.p3_clear
-	bset	d2,0(a3,d6.l)
-	bra.s	.p4
-.p3_clear:
-	bclr	d2,0(a3,d6.l)
-.p4:
-	btst	#4,d3
-	beq.s	.p4_clear
-	bset	d2,0(a4,d6.l)
-	bra.s	.p5
-.p4_clear:
-	bclr	d2,0(a4,d6.l)
-.p5:
-	btst	#5,d3
-	beq.s	.p5_clear
-	bset	d2,0(a5,d6.l)
-	bra.s	.p6
-.p5_clear:
-	bclr	d2,0(a5,d6.l)
-.p6:
+	; BFINS numbers bits from the most-significant end of the byte and
+	; takes the low bit of d3. Preserve every neighbouring screen pixel.
+	bfins d3,0(a0,d6.l){d2:1}
+	lsr.b #1,d3
+	bfins d3,0(a1,d6.l){d2:1}
+	lsr.b #1,d3
+	bfins d3,0(a2,d6.l){d2:1}
+	lsr.b #1,d3
+	bfins d3,0(a3,d6.l){d2:1}
+	lsr.b #1,d3
+	bfins d3,0(a4,d6.l){d2:1}
+	lsr.b #1,d3
+	bfins d3,0(a5,d6.l){d2:1}
+	lsr.b #1,d3
 	movea.l	d4,a6
-	btst	#6,d3
-	beq.s	.p6_clear
-	bset	d2,0(a6,d6.l)
-	bra.s	.p7
-.p6_clear:
-	bclr	d2,0(a6,d6.l)
-.p7:
+	bfins d3,0(a6,d6.l){d2:1}
+	lsr.b #1,d3
 	movea.l	d5,a6
-	btst	#7,d3
-	beq.s	.p7_clear
-	bset	d2,0(a6,d6.l)
-	bra.s	.pixel_next
-.p7_clear:
-	bclr	d2,0(a6,d6.l)
-.pixel_next:
+	bfins d3,0(a6,d6.l){d2:1}
 	movea.l	d1,a6
 	dbf	d7,.pixel
 	addq.l	#6,sp

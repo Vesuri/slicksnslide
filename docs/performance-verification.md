@@ -315,3 +315,13 @@ rectangle/full-row/sparse cases verify every store and final byte, including
 bottom/right edges; source reads stay inside64000+32bytes. Original packed
 entry remains available and the particle lifecycle regressions still pass.
 All603updates remain over budget.
+
+## Sparse bitfield writes
+
+`tmp/perf-sparse-bfins.log`: maximum709lines (45.4ms), mean cadence382793/602
+lines (40.8ms). Still603 over budget. Sparse pixels use68020 BFINS with a
+one-bit width rather than eight conditional set/clear branches.3467 writer
+cases pass, including all256colours at all eight bit positions in the last
+screen byte, preserving neighbours and subsequent rectangle conversion.
+The maximum now occurs atframe209: C2P107lines, simulation195, draw178,
+restore77 and advance78. Further simulation/rendering work is required.
