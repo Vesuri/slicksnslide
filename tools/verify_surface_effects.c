@@ -134,8 +134,10 @@ int main(void)
         }
         for(unsigned i=0;i<64000;++i) {
             pixels[i]=(unsigned char)(i*19+trial);
-            race.material_map[i]=(i+trial)%4;
-            race.surface_map[i]=(i+trial)%8;
+            if(i<sizeof race.material_map) {
+                race.material_map[i]=(i+trial)%4;
+                race.surface_map[i]=(i+trial)%8;
+            }
             write_pixel(logical,0,i%320,i/320,pixels[i]);
         }
         draw_car(&race,logical,0);
