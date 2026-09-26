@@ -131,7 +131,7 @@ static void verify_disabled_weapon_gate(uc_engine *uc)
             for(unsigned bit=0;bit<4;++bit)
                 expected|=!!readbyte(uc,0x65344+index*5+bit)<<bit;
             if(cs*16U+ip!=0x70000 || sp!=0xf004 ||
-               ai_controls(&race,index,1)!=expected || expected!=SLICKS_CONTROL_BRAKE ||
+               ai_controls(&race,index,1,&race.cars[index])!=expected || expected!=SLICKS_CONTROL_BRAKE ||
                car->ai_stuck_ticks!=(short)readword(uc,0x668fa+index*2)) {
                 fputs("Weapons-disabled crowded AI differs from original tail\n",stderr); exit(1);
             }
@@ -1055,7 +1055,7 @@ static void verify_service_order(uc_engine *uc)
         word(uc,0x8effc,index); uint16_t cx=index*2;
         check(uc_reg_write(uc,UC_X86_REG_CX,&cx));
         run_slice_data(uc,0x1f1de,0x1f5e5,index,1,0x3cbf);
-        unsigned actual=ai_controls(&race,index,1);
+        unsigned actual=ai_controls(&race,index,1,&race.cars[index]);
         check(uc_mem_read(uc,data+0x5344+index*5,controls,5));
         unsigned expected=controls[0]|controls[1]<<1|controls[2]<<2|controls[3]<<3;
         if(actual!=expected || controls[4]!=1 ||
@@ -1133,7 +1133,7 @@ static void verify_service_stall(uc_engine *uc)
             unsigned expected=0;
             for(unsigned bit=0;bit<4;++bit)
                 expected|=!!readbyte(uc,data+0x5344+5*index+bit)<<bit;
-            unsigned actual=ai_controls(&race,index,ticks);
+            unsigned actual=ai_controls(&race,index,ticks,&race.cars[index]);
             if(cs*16U+ip!=0x70000 || sp!=0xf004 || actual!=expected ||
                car->ai_state!=readbyte(uc,data+0x692a+index) ||
                car->ai_service_state!=readbyte(uc,data+0x6936+index) ||
@@ -1878,7 +1878,7 @@ int main(int argc,char **argv)
         check(uc_mem_read(uc,0x65344,controls,sizeof controls));
         unsigned expected=(controls[0]?1:0)|(controls[1]?2:0)|
                           (controls[2]?4:0)|(controls[3]?8:0);
-        unsigned actual=ai_controls(&race,0,1);
+        unsigned actual=ai_controls(&race,0,1,&race.cars[0]);
         if(ip || final_sp!=0xf004 || expected!=actual || car->ai_control_latch!=actual) {
             fprintf(stderr,"AI mismatch target=%u heading=%d speed=%ld velocity=%ld,%ld DOS=%u native=%u ip=%x sp=%x\n",
                 target,car->heading,car->measured_speed,car->velocity_x,car->velocity_y,expected,actual,ip,final_sp);

@@ -1073,3 +1073,15 @@ why: weapons-disabled benchmarks do not load weapon assets or set
 establish its benefit for armed races. The speculative shortcut is removed
 (`tmp/perf-no-weapon-request-basic.log`); it needs an armed-race comparison
 before reconsideration.
+
+## Shared AI/motion car pointer
+
+Pass the already-materialized car pointer into AI control preparation rather
+than deriving a second base from the race/index. Target preparation shrinks
+from 12142 to 11742 bytes. Original AI checks, including 655360 full route
+decisions, and all eleven 7200-update driving scenarios pass
+(`tmp/verify-shared-ai-car-base.log`). BASIC work/cadence improve slightly
+from 222200/311398 to 221739/308921; F1 is nearly neutral at 323580/379640
+versus 323895/379639 (603 updates, 602 intervals). See
+`tmp/perf-shared-ai-car-base-{basic,f1}.log`. This is a small code-generation
+gain, not a change to decisions or physics.

@@ -1045,9 +1045,8 @@ static void ai_complete_service(const struct SlicksRaceRuntime *race,
 
 static unsigned char ai_controls(struct SlicksRaceRuntime *race,
                                  unsigned short car_index,
-                                 unsigned short ticks)
+                                 unsigned short ticks,struct SlicksRaceCar *car)
 {
-    struct SlicksRaceCar *car = &race->cars[car_index];
     weapon_ai_request(race,car_index);
     ai_watchdog(car, ticks);
     ai_contact_transition(car);
@@ -2553,7 +2552,7 @@ static unsigned char prepare_car_motion(struct SlicksRaceRuntime *race,
     unsigned char controls =
         driver_role(race,car_index)<0
             ? (race->participation_ready ? race->driver_controls[car_index] : race->controls)
-            : ai_controls(race, car_index, timestep);
+            : ai_controls(race, car_index, timestep,car);
     controls=apply_finish_gate(race,car_index,controls);
     short steering_input = profile_steering_input(car->position_scale,
         driver_role(race,car_index));
