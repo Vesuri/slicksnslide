@@ -685,3 +685,12 @@ Compiling only track-object motion at `O2` was slower too: F1 859 maximum
 lines and 489224/602 cadence, with the restore-plus-motion interval rising
 from 183 to 202 lines at the worst update (`tmp/perf-track-motion-o2.log`).
 Restored its original `O3` compilation.
+
+Explicit signed divide-by-100 instructions were also rejected. The compiled
+long-quotient helper matched x86 IDIV over 231083 cases; a bounded word-quotient
+variant with full-width fallback matched 231089, including its exact range
+edges. BASIC was 597 maximum lines / 336688 cadence lines for the long variant
+and 612 / 350708 for the word variant, versus the retained 596 / 334796
+(`tmp/perf-div100-basic.log`, `tmp/perf-div100-word-basic.log`). The compiler's
+reciprocal multiplication remains. Experiment-only helpers/tests were removed;
+arithmetic evidence remains in the ignored verification logs.
