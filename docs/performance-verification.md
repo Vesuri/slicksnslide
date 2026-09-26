@@ -179,3 +179,11 @@ ramps, and preserve masking. 1024 scalar/native full-frame comparisons cover
 all rotations, masking, ramps, full palette values, screen edges, saved
 backgrounds, restoration and preserved registers. Original actor/dirty
 regressions pass; no target errors/audio spills; owned emulator exited.
+
+## Cache shared-particle map bases
+
+`tmp/perf-map.log`: maximum work755 lines, maximum wall883,
+cadence341646/602 (36.4ms),574/603 over budget. Final step424,audio9,C2P59,
+diagnostics7; restore65,advance46,update130,HUD33,draw146. Mapping loops now
+walk compact particle/handle arrays with cached counts and bases. The effect
+is small; original actor and dirty-tracking suites pass.

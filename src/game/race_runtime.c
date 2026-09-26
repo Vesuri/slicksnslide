@@ -1592,13 +1592,18 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
     if (race->dirty_pixel_count + race->trail_particle_count >=
         SLICKS_DIRTY_PIXEL_MAX)
         commit_expiring_trails(race);
-    if(shared_actor_pool(race)) {
-        unsigned out=0;
-        for(unsigned i=0;i<race->trail_particle_count;++i) {
-            unsigned h=race->weapons.trail_handle[i];
-            race->weapons.trail_index[h]=-1;
-            if(race->trail_particles[i].state<0) race->weapons.slots.state[h]=0;
-            else race->weapons.trail_handle[out++]=(unsigned char)h;
+    int shared=shared_actor_pool(race);
+    unsigned char *handles=race->weapons.trail_handle;
+    short *indices=race->weapons.trail_index;
+    signed char *states=race->weapons.slots.state;
+    if(shared) {
+        unsigned char *src=handles,*dst=handles;
+        const struct SlicksTrailParticle *particle=race->trail_particles;
+        for(unsigned left=race->trail_particle_count;left;--left,++particle) {
+            unsigned h=*src++;
+            indices[h]=-1;
+            if(particle->state<0) states[h]=0;
+            else *dst++=(unsigned char)h;
         }
     }
     race->trail_particle_count = slicks_advance_particles(
@@ -1606,10 +1611,14 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
         race->trail_priority_indices, race->trail_priority_counts,
         race->dirty_pixels, &race->dirty_pixel_count, race->chunky,
         race->actor_page);
-    if(shared_actor_pool(race)) for(unsigned i=0;i<race->trail_particle_count;++i) {
-        unsigned h=race->weapons.trail_handle[i];
-        race->weapons.trail_index[h]=(short)i;
-        race->weapons.slots.state[h]=race->trail_particles[i].state;
+    if(shared) {
+        const struct SlicksTrailParticle *particle=race->trail_particles;
+        unsigned count=race->trail_particle_count;
+        for(unsigned i=0;i<count;++i,++particle) {
+            unsigned h=*handles++;
+            indices[h]=(short)i;
+            states[h]=particle->state;
+        }
     }
 }
 
