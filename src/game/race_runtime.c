@@ -2427,6 +2427,8 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
                               unsigned short car_index, unsigned short timestep,
                               unsigned char controls)
 {
+    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    if(profile) race->profile_marker(40);
     struct SlicksRaceCar *car = &race->cars[car_index];
     unsigned char jump_sound;
     /* 2000:21fc..2243 refreshes measured speed before the later car-pair
@@ -2434,6 +2436,7 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
     car->measured_speed = (absolute_long(car->velocity_x) +
                            absolute_long(car->velocity_y)) / 2L;
     emit_wheel_surface(race, car, car_index, controls);
+    if(profile) race->profile_marker(41);
     if (!car->finished) advance_car_clock(car, timestep);
     /* 227b6 precedes layer sampling, and 22a61 precedes pair collisions.
      * Finished entrants still traverse checkpoints and cross the line; only
@@ -2452,9 +2455,11 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
     if (update_track_sampling(race, car) < 0)
         race->collision_error = 1;
     consume_car_damage(race, car_index);
+    if(profile) race->profile_marker(42);
     emit_damage_smoke(race,car);
     emit_contact_sound(race, car);
     emit_contact_particles(race, car, car_index);
+    if(profile) race->profile_marker(43);
     /* 2000:3c94..3cae consumes the jump request before state advancement.
      * DS:4c51 is slot 7 in the sample-handle table starting at DS:4c4a. */
     if (jump_sound)
@@ -2464,6 +2469,7 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
         ai_update_contact_age(car, timestep);
     car->previous_actor_contact = car->actor_contact;
     car->actor_contact = 0;
+    if(profile) race->profile_marker(44);
 }
 
 static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
@@ -2479,6 +2485,7 @@ static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
     if(profile) race->profile_marker(31);
     update_weapon_projectiles(race,ticks);
     if(profile) race->profile_marker(32);
+    if(profile) race->profile_marker(39);
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
         if(driver_role(race,car)) finish_car_update(race, car, ticks, controls[car]);
     if(profile) race->profile_marker(33);

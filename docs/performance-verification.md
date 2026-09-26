@@ -246,3 +246,9 @@ motion/control preparation50, weapons1 and per-car tails182lines.
 All603updates remain over budget. The benchmark now rejects main-loop
 audio blanking spills too, and raster reads retry a high-bit transition.
 This is diagnostic evidence, not a completed performance target.
+
+`tmp/perf-tail.log` further splits the worst tail: wheels93lines,
+collision/surface27, smoke/contact61, finish6. Per-car callbacks add overhead;
+the measured tail is193lines versus182 with only the outer markers.
+Original composed trajectory (three7200-update scenarios), surface-effects
+and car-collision oracles still pass with instrumentation enabled.

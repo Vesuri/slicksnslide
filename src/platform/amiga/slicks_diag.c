@@ -292,6 +292,8 @@ volatile unsigned long g_slicks_diag_bench_work_max_frame;
 volatile unsigned long g_slicks_diag_bench_max_stages[8];
 volatile unsigned short g_slicks_diag_bench_max_particles;
 volatile unsigned long g_slicks_diag_bench_max_simulation[3];
+volatile unsigned long g_slicks_diag_bench_max_tail[4];
+static unsigned long g_slicks_diag_profile_tail[4], g_slicks_diag_profile_tail_at;
 volatile unsigned long g_slicks_diag_bench_work_over;
 volatile unsigned long g_slicks_diag_bench_wall_max;
 volatile unsigned long g_slicks_diag_bench_cadence_sum;
@@ -403,6 +405,15 @@ unsigned long slicks_diag_profile_raster_time(void)
 static void slicks_diag_profile_race(unsigned char phase)
 {
     unsigned long now = slicks_diag_profile_raster_time();
+    if(phase>=39 && phase<=44) {
+        if(phase==39) {
+            for(unsigned i=0;i<4;++i) g_slicks_diag_profile_tail[i]=0;
+        } else if(phase>40) {
+            g_slicks_diag_profile_tail[phase-41]+=now-g_slicks_diag_profile_tail_at;
+        }
+        g_slicks_diag_profile_tail_at=now;
+        return;
+    }
     if(phase>=10) {
         if(phase!=10 && phase!=20 && phase!=30)
             g_slicks_diag_profile_actor_lines[phase-10]=now-g_slicks_diag_profile_actor_at;
@@ -5139,6 +5150,8 @@ int main(void)
                         g_slicks_diag_bench_max_particles=race->trail_particle_count;
                         for(unsigned i=0;i<3;++i)
                             g_slicks_diag_bench_max_simulation[i]=g_slicks_diag_profile_actor_lines[21+i];
+                        for(unsigned i=0;i<4;++i)
+                            g_slicks_diag_bench_max_tail[i]=g_slicks_diag_profile_tail[i];
                     }
                     if (work > PAL_RASTER_LINES)
                         ++g_slicks_diag_bench_work_over;
