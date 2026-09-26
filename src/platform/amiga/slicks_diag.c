@@ -4964,7 +4964,7 @@ int main(void)
             if(race->boundary_palette_pending) {
                 for(unsigned colour=0;colour<15;++colour)
                     race_palette[199*3+colour]=race->boundary_colours[colour];
-                if(slicks_amiga_platform_set_view(&platform,1,race_palette))
+                if(slicks_amiga_platform_update_palette(&platform,1,199,5,race_palette+199*3))
                     goto cleanup;
                 race->boundary_palette_pending=0;
             }

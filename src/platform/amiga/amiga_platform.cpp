@@ -13,6 +13,7 @@
 #include "amiga_platform.h"
 #include "amiga_joystick.h"
 #include "amiga_audio.h"
+#include "copper_palette.h"
 #include "framework/AmigaHardware.h"
 #include "framework/Bitmap.h"
 #include "framework/CopperList.h"
@@ -37,6 +38,8 @@
 static struct SlicksAmigaPlatform *active_platform;
 static Bitmap *framework_bitmaps[SLICKS_AMIGA_VIEW_COUNT];
 static CopperList *framework_copper[SLICKS_AMIGA_VIEW_COUNT];
+static unsigned short palette_words[SLICKS_AMIGA_VIEW_COUNT][2][256];
+static unsigned char palette_valid[SLICKS_AMIGA_VIEW_COUNT];
 
 static unsigned char expand_vga_component(unsigned char value)
 {
@@ -51,6 +54,7 @@ static unsigned long build_copper(unsigned short view_index,
     unsigned long at;
     CopperList *list = framework_copper[view_index];
     Bitmap *bitmap = framework_bitmaps[view_index];
+    palette_valid[view_index]=0;
 
     for (colour = 0; colour < 256; ++colour) {
         unsigned long r = expand_vga_component(palette[colour * 3]);
@@ -66,7 +70,11 @@ static unsigned long build_copper(unsigned short view_index,
                             false, false, true, 0x9c);
     list->showBitmap(at, *bitmap);
     at += 16;
+    unsigned long palette_at=at;
     at = list->setPalette24Bit(at, aga_palette, 0, 0, 255, true);
+    if(slicks_copper_palette_map(list->data(),palette_at,at,palette_words[view_index]))
+        return 0;
+    palette_valid[view_index]=1;
     return at;
 }
 
@@ -263,6 +271,19 @@ int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,
     if (build_copper(view, vga_palette) != COPPER_LONGS - 1)
         return -1;
     return validate_framework_view(view);
+}
+
+int slicks_amiga_platform_update_palette(struct SlicksAmigaPlatform *platform,
+    unsigned short view,unsigned short first,unsigned short count,const unsigned char *rgb)
+{
+    if(!platform || view>=SLICKS_AMIGA_VIEW_COUNT || !rgb ||
+       first>256 || count>256-first || !framework_copper[view] || !palette_valid[view]) return -1;
+    CopperList *list=framework_copper[view];
+    for(unsigned c=0;c<count;++c) {
+        list->setColor(palette_words[view][0][first+c],slicks_copper_vga_word(rgb+c*3,0),1);
+        list->setColor(palette_words[view][1][first+c],slicks_copper_vga_word(rgb+c*3,1),1);
+    }
+    return 0;
 }
 
 int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,

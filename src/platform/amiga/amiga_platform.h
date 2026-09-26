@@ -44,6 +44,8 @@ void slicks_amiga_platform_destroy(struct SlicksAmigaPlatform *platform);
 int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,
                                   unsigned short view,
                                   const unsigned char *vga_palette);
+int slicks_amiga_platform_update_palette(struct SlicksAmigaPlatform *platform,
+    unsigned short view,unsigned short first,unsigned short count,const unsigned char *rgb);
 int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
                                unsigned short view);
 void slicks_amiga_platform_show(struct SlicksAmigaPlatform *platform,

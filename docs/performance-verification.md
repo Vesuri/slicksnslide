@@ -224,3 +224,16 @@ and output comparisons remain. The original composed HUD oracle passes768
 full-screen transitions plus dirty/cache and Arcade checks. Maximum-stage
 audio170lines includes boundary-palette rebuilding, not just sound work;
 that interval must not be attributed entirely to PCM playback.
+
+## Incremental framework copper palette updates
+
+`tmp/perf-palette.log`: maximum749lines atframe209; worst audio/palette
+interval13lines instead of the earlier170-line rebuild spike. Mean cadence
+381539/602lines (40.6ms), all603 over budget. Peak remains dominated by
+simulation230, draw166 and C2P117lines. The framework still builds the full
+display/copperlist. Palette MOVE indices are discovered from its output;
+its existing `setColor` updates only the five changed high/low colour words,
+without allocation or display-control changes. All banks/range boundaries
+and262144 RGB values match framework encoding;20000 original boundary
+updates match colours/timers/RNG. Target build and race complete without
+reported errors or VBI spills.
