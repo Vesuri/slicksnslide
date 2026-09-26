@@ -67,8 +67,8 @@ int main(int argc,char **argv)
     static unsigned char dirty[2048],got_dirty[2048];
     const int preserved[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
-    for(unsigned trial=0;trial<514;++trial) {
-        unsigned count=trial%257,page=trial/257,out=0,ncounts[4]={0};
+    for(unsigned trial=0;trial<1028;++trial) {
+        unsigned count=trial%257,page=(trial%514)/257,out=0,ncounts[4]={0},collect=trial<514;
         unsigned dirty_count=trial%4==0?512:trial%4==1?511:trial%4==2?500:0;
         unsigned original_dirty_count=dirty_count;
         memset(initial,0xcc,sizeof initial);memset(indices,0xcc,sizeof indices);memset(dirty,0xcc,sizeof dirty);
@@ -99,13 +99,13 @@ int main(int argc,char **argv)
                 p[20]=0;
             } else {
                 unsigned bucket=p[19]==0?0:p[19]==3?1:p[19]==5?2:3;
-                indices[bucket*256+ncounts[bucket]++]=out;
+                if(collect)indices[bucket*256+ncounts[bucket]++]=out;
             }
             /* In-place updates also change source slots before compaction. */
             memcpy(expected+i*24,p,24);memcpy(expected+out*24,p,24);++out;
         }
         unsigned char stack[36],counts[8]={0},got_counts[8],dc[2];
-        const unsigned args[]={0x18000,0x20000,count,0x50000,0x51000,0x60000,0x61000,0x30000,page};
+        const unsigned args[]={0x18000,0x20000,count,collect?0x50000:0,collect?0x51000:0,0x60000,0x61000,0x30000,page};
         for(unsigned i=0;i<9;++i)be32(stack+4*i,args[i]);
         check(uc_mem_write(native,0x20000,initial,sizeof initial));
         memset(got_indices,0xcc,sizeof got_indices);memset(got_dirty,0xcc,sizeof got_dirty);
@@ -136,6 +136,6 @@ int main(int argc,char **argv)
         check(uc_reg_read(native,UC_M68K_REG_A7,&sp));if(sp!=0x90004)return 1;
         check(uc_reg_read(native,UC_M68K_REG_PC,&result));if(result!=0x18000)return 1;
     }
-    puts("Native particle update: 514 batches match DOS lifetime/motion, retirement bookkeeping, compaction, permanent pixels, dirty saturation and ABI");
+    puts("Native particle update: 1028 legacy/shared batches match DOS lifetime/motion, retirement bookkeeping, compaction, permanent pixels, dirty saturation and ABI");
     check(uc_close(native));check(uc_close(dos));return 0;
 }

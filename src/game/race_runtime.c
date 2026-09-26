@@ -1641,7 +1641,7 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
     }
     race->trail_particle_count = slicks_advance_particles(
         race->trail_particles, race->trail_particle_count,
-        race->trail_priority_indices, race->trail_priority_counts,
+        shared?0:race->trail_priority_indices, shared?0:race->trail_priority_counts,
         race->dirty_pixels, &race->dirty_pixel_count, race->chunky,
         race->actor_page);
     if(shared) {
@@ -1665,9 +1665,12 @@ static void commit_expiring_trails(struct SlicksRaceRuntime *race)
     unsigned short at;
     if (slicks_race_disable_particles)
         return;
-    for (at = 0; at < race->trail_priority_counts[0]; ++at) {
+    unsigned shared=shared_actor_pool(race);
+    unsigned count=shared?race->trail_particle_count:race->trail_priority_counts[0];
+    for (at = 0; at < count; ++at) {
         struct SlicksTrailParticle *particle = &race->trail_particles[
-            race->trail_priority_indices[0][at]];
+            shared?at:race->trail_priority_indices[0][at]];
+        if(shared && particle->priority!=0)continue;
         if (race->actor_page && particle->permanent && particle->lifetime == 1 &&
             (particle->saved_valid & 2)) {
             unsigned long pixel_at =
@@ -1773,17 +1776,21 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
      * marks (1000:e934) use DOS state 5. The 30..49-tick variant does not. */
     particle->permanent = (priority == 0 && lifetime == 3);
     particle->state = particle->permanent ? 5 : 1;
-    if (priority == 0)
-        bucket = 0;
-    else if (priority == 3)
-        bucket = 1;
-    else if (priority == 5)
-        bucket = 2;
-    else
-        bucket = 3;
-    race->trail_priority_indices[bucket]
-        [race->trail_priority_counts[bucket]++] =
-            (unsigned char)particle_index;
+    if(!shared_actor_pool(race)) {
+        /* The shared handle chains own ordering in production. Legacy
+         * isolated-particle callers still need their four index buckets. */
+        if (priority == 0)
+            bucket = 0;
+        else if (priority == 3)
+            bucket = 1;
+        else if (priority == 5)
+            bucket = 2;
+        else
+            bucket = 3;
+        race->trail_priority_indices[bucket]
+            [race->trail_priority_counts[bucket]++] =
+                (unsigned char)particle_index;
+    }
     ++race->skidmark_count;
 }
 

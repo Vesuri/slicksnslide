@@ -6,6 +6,7 @@
 ; unsigned short slicks_advance_particles(particles, count, indices, counts,
 ;                                         dirty_pixels, dirty_count, chunky,
 ;                                         actor_page)
+; Null counts/indices omit legacy priority buckets for the shared actor pool.
 ; SlicksTrailParticle is deliberately 24 bytes on m68k:
 ; x.l, y.l, vx.w, vy.w, old_x.w, old_y.w, saved/flags bytes, padding.
 slicks_advance_particles:
@@ -16,8 +17,11 @@ slicks_advance_particles:
 	movea.l	60(sp),a2		; four word counts
 	movea.l	64(sp),a3		; dirty pixel entries
 	movea.l	68(sp),a4		; dirty pixel count
+	move.l	a2,d0
+	beq.s	.counts_ready
 	clr.l	(a2)
 	clr.l	4(a2)
+.counts_ready:
 	movea.l	a0,a6			; compacted destination
 	moveq	#0,d6			; source index
 	moveq	#0,d5			; destination index
@@ -79,6 +83,8 @@ slicks_advance_particles:
 	movem.l	(a0),d0-d4/a5
 	movem.l	d0-d4/a5,(a6)
 .no_copy:
+	cmpa.w	#0,a2
+	beq.s	.keep_entry
 	moveq	#0,d4
 	move.b	19(a6),d0
 	beq.s	.bucket_ready

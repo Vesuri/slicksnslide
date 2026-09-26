@@ -581,3 +581,17 @@ canaries and the callee-saved ABI. The original retirement oracle separately
 checks all 256 state bytes. Reused Unicorn execution requires explicit
 instruction hooks at fragment boundaries; varying `until` alone initially
 let cached translated blocks run through a boundary in the test harness.
+
+## Omit redundant legacy particle buckets
+
+The shared actor pool already owns draw ordering. Particle creation and
+advancement no longer also construct four unused legacy priority buckets.
+Isolated-particle callers retain those buckets; the rare shared dirty-capacity
+fallback scans the dense particle pool for priority-zero permanent marks.
+
+1028 native legacy/shared update batches pass the DOS-backed oracle, alongside
+original weapon/track rendering, surface effects, dirty coverage and poisoned
+slot reuse (`tmp/verify-shared-buckets.log`). BASIC measures 667 maximum work
+lines (42.8 ms), versus 674, with cadence sum 371876/602 (39.6 ms);
+advancement at the worst frame falls from 77 to 68 lines
+(`tmp/perf-shared-buckets.log`). This is a small reduction, not a 50 FPS result.
