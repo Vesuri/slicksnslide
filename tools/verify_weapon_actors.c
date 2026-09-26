@@ -4,6 +4,9 @@
 #include "../src/game/race_runtime.c"
 static struct SlicksRaceRuntime race;
 static unsigned char native[64000],before[64000];
+#if defined(SLICKS_NATIVE_SPRITE_TEST)
+#include "native_sprite_oracle.h"
+#endif
 /* DOS can write the 400-pixel virtual margin; compare the 320-pixel display. */
 static void actor_pixel(uc_engine *u,uc_mem_type type,uint64_t address,int size,int64_t value,void *context)
 {

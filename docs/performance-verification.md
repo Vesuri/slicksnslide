@@ -348,3 +348,16 @@ inside conversion and snapshots that value. `tmp/perf-draw-area.log` confirms
 F1's worst update converts5440 rectangle pixels plus164 sparse pixels.
 Car/dirty/shared-actor regression tests pass. General gameplay is clearly
 slower than BASIC alone; stock-A1200 50FPS is still unfinished.
+
+## Native track/effect sprite rectangles
+
+`tmp/perf-native-sprites-{0,1}.log`: BASIC715lines maximum, F11183lines
+(75.8ms), down from1285. F1 mean cadence676380/602lines (72.0ms), previously
+79.9ms. The full-rectangle path reuses the native car blitter with colour
+ramp zero and native restoration. Masked rectangles crossing row190 split
+there to preserve the original cleared-mask tail. Clipped cases retain
+the scalar path. Separate scalar and real68020-in-Unicorn runs match2432
+original weapon images and128 shared-pool cases;1792 original track images,
+64 ordering cases and permanent-mark restoration checks also pass. The
+native test facade checks destination/saved-buffer write bounds and runs
+the actual production fast path, not a duplicate blitter implementation.

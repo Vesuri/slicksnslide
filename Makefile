@@ -477,8 +477,14 @@ verify-track-actors: verify-track-actor-assets build/verify_track_actor_motion b
 	build/verify_track_actor_setup
 build/verify_weapon_actors: tools/verify_weapon_actors.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-verify-weapon-actors: build/verify_weapon_actors
+build/verify_weapon_actors_native: tools/verify_weapon_actors.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -DSLICKS_NATIVE_SPRITE_TEST -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+build/verify_track_actor_render_native: tools/verify_track_actor_render.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -DSLICKS_NATIVE_SPRITE_TEST -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-weapon-actors: build/verify_weapon_actors build/verify_weapon_actors_native build/verify_track_actor_render_native build/car_draw.bin
 	build/verify_weapon_actors
+	build/verify_weapon_actors_native
+	build/verify_track_actor_render_native
 build/verify_track_menu_draw: tools/verify_track_menu_draw.c tools/verify_profile_setup.c src/ui/track_menu_draw.h src/ui/track_menu.h src/game/track_playlist.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-track-menu-draw: build/verify_track_menu_draw

@@ -27,6 +27,12 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     int y0=top<0?-top:0,y1=200-top;
     if(x1>width) x1=width;
     if(y1>a->old_height) y1=a->old_height;
+#if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
+    if(left>=0 && top>=0 && left+width<=320 && top+a->old_height<=200) {
+        extern void slicks_restore_car_chunky(unsigned char *,const unsigned char *,unsigned,unsigned);
+        slicks_restore_car_chunky(race->chunky+mult320[top]+left,a->saved_under,width,a->old_height);
+    } else
+#endif
     if(x0<x1) for(int y=y0;y<y1;++y) {
         unsigned char *dst=race->chunky+mult320[top+y]+left+x0;
         const unsigned char *src=a->saved_under+y*width+x0;
@@ -67,6 +73,20 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     int y0=top<0?-top:0,y1=(pixels?200:SLICKS_POINT_HEIGHT)-top;
     if(x1>(int)width) x1=width;
     if(y1>(int)height) y1=height;
+#if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
+    if(pixels && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
+        extern void slicks_draw_car_chunky(unsigned char *,const unsigned char *,unsigned char *,
+            const unsigned char *,const unsigned char *,unsigned,unsigned,int,int,unsigned,unsigned);
+        unsigned masked=a->occlusion && top<190 ? (unsigned)(190-top) : 0;
+        if(masked>height)masked=height;
+        unsigned row=mult320[top]+left;
+        if(masked) slicks_draw_car_chunky(race->chunky+row,pixels,a->saved_under,
+            race->material_map+row,race->surface_map+row,width,masked,1,width,0,a->occlusion);
+        if(masked<height) slicks_draw_car_chunky(race->chunky+row+mult320[masked],
+            pixels+masked*width,a->saved_under+masked*width,
+            race->material_map,race->surface_map,width,height-masked,1,width,0,0);
+    } else
+#endif
     for(int y=y0;y<y1;++y) {
         unsigned long at=mult320[top+y]+left+x0;
         unsigned i=y*width+x0;
