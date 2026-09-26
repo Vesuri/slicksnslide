@@ -1217,12 +1217,19 @@ build/verify_car_draw: tools/verify_car_draw.c tools/verify_surface_effects.c sr
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-draw
-build/verify_car_render_cache: tools/verify_car_render_cache.c tools/native_sprite_oracle.h src/game/race_runtime.c src/game/race_runtime.h | build
+build/verify_car_render_cache: tools/verify_car_render_cache.c tools/verify_surface_effects.c tools/native_sprite_oracle.h src/game/race_runtime.c src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-render-cache
 verify-car-render-cache: build/car_draw.bin build/sprite_opaque.bin build/verify_car_render_cache
 	build/verify_car_render_cache
+
+build/verify_sprite_restore_chain: tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/race_runtime.h src/game/weapon_actors.inc | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-sprite-restore-chain
+verify-sprite-restore-chain: build/sprite_opaque.bin build/verify_sprite_restore_chain
+	build/verify_sprite_restore_chain
 
 build/verify_copper_palette: tools/verify_copper_palette.c src/platform/amiga/copper_palette.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@

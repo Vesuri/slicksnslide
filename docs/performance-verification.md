@@ -1004,3 +1004,28 @@ when inlined, or 224744 with a separate helper, versus 223370. Cadence is
 315473/315785 rather than 312665/602. Both the cache and its experimental
 test are removed (`tmp/perf-cached-steering-basic.log`,
 `tmp/perf-cached-steering-leaf-basic.log`).
+
+## Batched native sprite restoration
+
+A read-only debugger count on F1 updates 200–229 finds 960 sprite draws,
+930 fast-path attempts and 911 successes (`tmp/sprite-counts.log`). The fast
+path is already used; repeated native/C call setup is worth removing.
+
+Restore consecutive sprites in one 68020 traversal, retaining the exact
+priority-chain order and returning the first particle, clipped, empty or
+unsaved sprite to the existing path. A register-entry restoration primitive
+avoids repeated register saves and C argument frames. The new 384-case native
+oracle checks 6696 restorations, all pixels/actor metadata/descriptors/dirty
+handles, exact permitted writes, returned fallback handles and the ABI.
+Existing original/native actor and 4096 sprite-opacity tests also pass
+(`tmp/verify-sprite-restore-regs.log`).
+
+F1 work decreases from 358163 to 340527 lines over 603 updates (36.20 ms
+average), restoration/motion from 84991 to 67444, cadence from 404685 to
+389697/602. Maximum work falls from 732 to 703 lines. BASIC total work is
+effectively unchanged, 223370 to 223400, cadence 312665 to 313894/602.
+See `tmp/perf-sprite-restore-chain-{basic,f1}.log`. The 20 ms target remains
+unmet on both tracks.
+The full display audit passes 600 updates, 32 actors and 2076 permanent
+marks (`tmp/audit-sprite-restore-chain.log`); the batch oracle output is in
+`tmp/verify-sprite-restore-chain.log`.

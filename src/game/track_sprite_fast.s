@@ -153,6 +153,15 @@ slicks_draw_unchanged_track_sprite:
 slicks_restore_actor_sprite:
 	movem.l d2-d4/a2-a3,-(sp)
 	movea.l 24(sp),a2
+	movea.l 28(sp),a3
+	movea.l 32(sp),a0
+	bsr.w slicks_restore_actor_sprite_regs
+	movem.l (sp)+,d2-d4/a2-a3
+	rts
+
+; Private ABI: a2 actor, a3 previous descriptor, a0 chunky base.
+; Clobbers d0-d4/a0-a2; preserves d5-d7/a3-a6 for batched traversal.
+slicks_restore_actor_sprite_regs:
 	tst.b 32(a2)
 	beq.w .fallback
 	move.w 26(a2),d0
@@ -173,7 +182,6 @@ slicks_restore_actor_sprite:
 	add.w d2,d3
 	cmpi.w #200,d3
 	bhi.w .fallback
-	movea.l 32(sp),a0
 	lea mult320,a1
 	adda.l 0(a1,d1.w*4),a0
 	adda.w d0,a0
@@ -203,7 +211,6 @@ slicks_restore_actor_sprite:
 .next:
 	adda.w d3,a0
 	dbf d1,.row
-	movea.l 28(sp),a3
 	move.l 26(a2),(a3)
 	move.w 30(a2),4(a3)
 	move.b 21(a2),6(a3)
@@ -217,5 +224,51 @@ slicks_restore_actor_sprite:
 .fallback:
 	moveq #0,d0
 .return:
-	movem.l (sp)+,d2-d4/a2-a3
+	rts
+
+	xdef slicks_restore_sprite_chain
+; C ABI: actors, previous descriptors, chunky, next handles, trail indices,
+; first handle, dirty handles, dirty count. Deferred restoration only.
+; Restore consecutive in-bounds sprites; return the first point/clipped/
+; unsaved handle without changing it, or zero when the chain is exhausted.
+slicks_restore_sprite_chain:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 48(sp),a5
+	move.l 52(sp),d6
+	movea.l 56(sp),a6
+	movea.l 60(sp),a4
+	move.l 64(sp),d7
+	move.l 68(sp),d5
+.actor:
+	tst.w d5
+	beq.s .done
+	movea.l d7,a0
+	tst.w 0(a0,d5.w*2)
+	bpl.s .done
+	move.w d5,d0
+	mulu.w #164,d0
+	movea.l a5,a2
+	adda.w d0,a2
+	move.w d5,d0
+	add.w d0,d0
+	add.w d5,d0
+	lsl.w #2,d0
+	movea.l d6,a3
+	adda.w d0,a3
+	movea.l a6,a0
+	bsr.w slicks_restore_actor_sprite_regs
+	tst.l d0
+	beq.s .done
+	movea.l 76(sp),a0
+	moveq #0,d0
+	move.w (a0),d0
+	addq.w #1,(a0)
+	movea.l 72(sp),a1
+	move.b d5,0(a1,d0.w)
+	move.b 0(a4,d5.w),d5
+	andi.w #255,d5
+	bra.s .actor
+.done:
+	move.l d5,d0
+	movem.l (sp)+,d2-d7/a2-a6
 	rts

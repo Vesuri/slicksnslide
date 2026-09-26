@@ -1665,6 +1665,21 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
         unsigned char *chunky=race->chunky;
         for(unsigned h=race->actor_order_head[p];h;h=next[h]) {
             int t=trail_index[h];
+#if defined(__m68k__)
+            if(t<0 && race->sprite_dirty_deferred) {
+                _Static_assert(sizeof(struct SlicksWeaponActor)==164 &&
+                    SLICKS_ACTOR_CAPACITY==200 && sizeof race->sprite_dirty_previous[0]==12 &&
+                    sizeof race->weapons.trail_index[0]==2 && sizeof race->sprite_dirty_count==2,
+                    "native sprite restoration chain ABI");
+                extern unsigned slicks_restore_sprite_chain(struct SlicksWeaponActor *,void *,
+                    unsigned char *,const unsigned char *,const short *,unsigned,
+                    unsigned char *,unsigned short *);
+                h=slicks_restore_sprite_chain(race->weapons.actors,race->sprite_dirty_previous,
+                    chunky,next,trail_index,h,race->sprite_dirty_handles,&race->sprite_dirty_count);
+                if(!h)break;
+                t=trail_index[h];
+            }
+#endif
             if(t<0) { restore_weapon_actor(race,h);continue; }
             struct SlicksTrailParticle *particle=particles+t;
             if(particle->saved_valid&1) {
