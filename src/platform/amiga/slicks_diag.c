@@ -3029,9 +3029,17 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
+    /* NATIVE is the normal interactive route with explicit debug snapshots.
+     * Plain launches should not pay for per-update inspection/checksums. */
+    unsigned char native_debug=(unsigned char)(argc==6 && argv[0]=='N' &&
+        argv[1]=='A' && argv[2]=='T' && argv[3]=='I' && argv[4]=='V' && argv[5]=='E');
+    if(native_debug) { argc=0;argv=""; }
+    unsigned char continuous_diagnostics=(unsigned char)(argc!=0 || native_debug);
+    if(!continuous_diagnostics)g_slicks_diag_target_frame=0;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B') && argv[8]>='0' && argv[8]<='3');
+    if(gameplay_benchmark && argv[7]=='B')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
     unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
@@ -5179,7 +5187,9 @@ int main(void)
                 if (damage_visible)
                     ++g_slicks_diag_damage_status_checks;
             }
-            update_race_diagnostics(race);
+            if(continuous_diagnostics || completed_now ||
+               race->frame_count==g_slicks_diag_target_frame)
+                update_race_diagnostics(race);
             if (profile) {
                 unsigned long now = slicks_diag_profile_raster_time();
                 g_slicks_diag_profile_diag_vblanks =

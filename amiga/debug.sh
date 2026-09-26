@@ -284,7 +284,11 @@ elif [ "${SLICKS_LAP_RACE:-0}" = 1 ]; then
 elif [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"
 else
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence"
+  case "${SLICKS_DEBUG_SNAPSHOTS:-1}" in
+    1) printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATIVE\n' > "$DH0/s/startup-sequence";;
+    0) printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag\n' > "$DH0/s/startup-sequence";;
+    *) exit 2;;
+  esac
 fi
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$DEBUG_BUILD.exe" "$DH1/SlicksDiag"

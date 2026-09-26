@@ -1360,3 +1360,29 @@ cadence 255259 to 254945/602. F1 falls 271503 to 271325, maximum 596 to
 not the 20 ms goal. Logs: `tmp/verify-particle-base-register.log`,
 `tmp/perf-particle-base-register-{basic,f1}.log`,
 `tmp/audit-particle-base-register.log`.
+
+## Make continuous debug snapshots opt-in during normal play
+
+Plain launches no longer copy diagnostic car/sound/service state and resample
+materials every update, or perform the old automatic frame-200 checksum
+checkpoint. Gameplay, menus, audio and results are unchanged; startup and
+completion still publish diagnostic snapshots. Explicit diagnostic arguments
+retain their per-update inspection behavior. `debug.sh` now passes NATIVE for
+its default interactive launch; that token takes exactly the normal menu
+route while retaining snapshots and checkpoint 200. To inspect a plain
+launch, set `SLICKS_DEBUG_SNAPSHOTS=0`. `run.sh` remains audible and unchanged.
+
+Outer-only benchmarks now model the plain loop, refreshing snapshots at the
+requested final checkpoint instead of on every update. Detailed mode remains
+available. BASIC work improves 197950 to 192624 lines over 603 updates
+(20.48 ms), maximum 465 to 454, over-budget count 376 to 335, cadence
+254945 to 246521/602. F1 improves 271325 to 265846 (28.26 ms), maximum
+595 to 585, cadence 375345 to 374070/602; all 603 updates exceed budget.
+This is a real removal of debug-only work from normal play, but neither case
+yet meets the 20 ms target.
+
+Both interactive launches pass native-menu/audio checks, with checkpoints
+200 and 0 as intended. Explicit mode-4 verification still completes two
+race starts, pause/resume and hardware restoration. Evidence:
+`tmp/perf-optin-diagnostics-{basic,f1}.log`,
+`tmp/native-{debug,plain}-launch.log`, `tmp/modes-optin-diagnostics.log`.
