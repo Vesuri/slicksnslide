@@ -1337,3 +1337,10 @@ bytes but changed surrounding inlining and enlarged `slicks_race_step` from
 15876 to 27654 bytes. Outer-only BASIC work regressed from 198250 to 200293
 lines, maximum 466 to 476, cadence 255259 to 259606/602. The attribute is
 removed (`tmp/perf-particle-create-o2-basic.log`).
+
+Full-width particle-creation arguments with explicit original byte/word
+truncation passed surface-effect checks and eliminated initial argument
+copies, but changed surrounding inlining and regressed BASIC to 199258 work
+lines, maximum 467, cadence 257755/602. Reverted rather than retaining a
+local code-generation improvement with worse complete-frame timing
+(`tmp/verify-particle-wide-args.log`, `tmp/perf-particle-wide-args-basic.log`).
