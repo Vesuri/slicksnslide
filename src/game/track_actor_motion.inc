@@ -3,10 +3,19 @@
 static void update_track_actor_motion(struct SlicksRaceRuntime *race)
 {
     const struct SlicksMovingProbeOps probe={weapon_track_probe,weapon_car_probe,weapon_wall_probe,race};
+    long car_pixel_x[4],car_pixel_y[4];
+    unsigned car_pixels_ready=0;
     for(unsigned i=0;i<race->navigation.actor_count;++i) {
         struct SlicksTrackActor *a=&race->navigation.actors[i];
         race->track_actor_scratch=a->kind;
         if(a->kind!=1 && a->kind!=3) continue;
+        if(!car_pixels_ready) {
+            for(unsigned d=0;d<4;++d) {
+                car_pixel_x[d]=race->cars[d].x/100;
+                car_pixel_y[d]=race->cars[d].y/100;
+            }
+            car_pixels_ready=1;
+        }
         short nx=(short)(a->x+a->velocity_x),ny=(short)(a->y+a->velocity_y);
         int material=slicks_track_material_sample(race->material_map,race->surface_map,nx/16,ny/16,0);
         if(material<0) { race->collision_error=1;return; }
@@ -16,17 +25,20 @@ static void update_track_actor_motion(struct SlicksRaceRuntime *race)
             &a->x,&a->y,16,0,-1,a->layer,&probe);
         if(hit==-2) { race->collision_error=1;return; }
         if(!hit) { a->x=nx;a->y=ny; }
+        const int actor_pixel_x=a->x/16,actor_pixel_y=a->y/16;
         if(race->track_actors_ready) {
             short h=race->track_actor_handles[i];
-            configure_weapon_actor(race,h,(short)(a->x/16-2),(short)(a->y/16-2),
+            configure_weapon_actor(race,h,(short)(actor_pixel_x-2),(short)(actor_pixel_y-2),
                 0,0,0,a->kind==1?1:4,a->layer*15);
         }
         a->velocity_x=(short)(a->velocity_x*10)/11;
         a->velocity_y=(short)(a->velocity_y*10)/11;
+        /* Contacts change velocities, never positions. Cache the signed
+         * pixel divisions once per update with movable track objects. */
         for(unsigned d=0;d<4;++d) {
             struct SlicksRaceCar *car=&race->cars[d];
             if(car->actor_layer!=a->layer) continue;
-            long dx=car->x/100-a->x/16,dy=car->y/100-a->y/16;
+            long dx=car_pixel_x[d]-actor_pixel_x,dy=car_pixel_y[d]-actor_pixel_y;
             short ax=(short)(dx<0?-dx:dx),ay=(short)(dy<0?-dy:dy);
             if(ax>=4 || ay>=4 || car->measured_speed<=300) continue;
             a->velocity_x=(short)(car->velocity_x/100);

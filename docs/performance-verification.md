@@ -371,3 +371,13 @@ and destination alignment.512 additional width/height/alignment cases and
 all original scalar/native actor comparisons pass. F1's parent restore
 interval also includes moving-track-object simulation; it must not all be
 attributed to copying saved pixels.
+
+## Reuse track-contact pixel coordinates
+
+`tmp/perf-motion-cache.log`: F1 maximum1160lines (74.4ms), mean cadence
+647365/602lines (68.9ms), versus1174lines and71.0ms before. Car positions
+are unchanged during track-object motion, so their signed divide-by100
+results are computed once when movable objects exist. Actor coordinates
+are similarly shared by rendering setup and contacts after the wall probe.
+Velocities remain live between contacts.20000 original motion comparisons
+and the full track-actor suite pass, including negative coordinates.
