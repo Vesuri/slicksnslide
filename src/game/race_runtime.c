@@ -2838,6 +2838,53 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
             counts[car]=1;
         }
     }
+    /* Normal bars occupy three independent rows in one 20-pixel cell.
+     * Compose their final colours before painting: clearing the background
+     * first made unchanged fuel/damage bars dirty on every update. Preserve
+     * the original ordered-rectangle path for wrapped/out-of-range widths. */
+    unsigned bounded=1;
+    for(unsigned car=0;car<4 && bounded;++car) if(counts[car]) {
+        const struct SlicksStatusRect *base=&rectangles[car][0];
+        unsigned used=0;
+        if(base->left<0 || base->right>320 || base->right-base->left!=20 ||
+           base->top!=187 || base->bottom!=190) { bounded=0;break; }
+        for(int i=1;i<counts[car];++i) {
+            const struct SlicksStatusRect *r=&rectangles[car][i];
+            if(r->left!=base->left || r->right>base->right || r->top<187 ||
+               r->bottom>190 || r->bottom-r->top!=1 || (used&(1U<<(r->top-187)))) {
+                bounded=0;break;
+            }
+            used|=1U<<(r->top-187);
+        }
+        if(weapon_draw[car] && (weapons[car].bar_left!=base->left ||
+           weapons[car].bar_right>base->right || (used&1)))bounded=0;
+    }
+    if(bounded) {
+        for(unsigned car=0;car<4;++car) if(counts[car]) {
+            const struct SlicksStatusRect *base=&rectangles[car][0];
+            for(int y=187;y<190;++y) {
+                int end=base->left;
+                unsigned char foreground=race->status_colours[0];
+                for(int i=1;i<counts[car];++i) if(rectangles[car][i].top==y) {
+                    end=rectangles[car][i].right;
+                    foreground=race->status_colours[rectangles[car][i].colour];
+                }
+                if(y==187 && weapon_draw[car]) {
+                    end=weapons[car].bar_right;foreground=race->weapon_hud_colour;
+                }
+                unsigned char *row=race->chunky+mult320[y];
+                for(int x=base->left;x<base->right;++x) {
+                    unsigned char colour=x<end?foreground:race->status_colours[0];
+                    if(row[x]!=colour) {
+                        write_pixel(logical,race->chunky,x,y,colour);
+                        mark_dirty_pixel(race,x,y);
+                    }
+                }
+            }
+        }
+        for(unsigned car=0;car<4;++car)if(weapon_draw[car])draw_weapon_icon(race,logical,&weapons[car]);
+        return 0;
+    }
     for (unsigned car=0;car<4;++car)
     for (int i=0;i<counts[car];++i) {
         const struct SlicksStatusRect *rect=&rectangles[car][i];

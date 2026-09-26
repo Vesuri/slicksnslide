@@ -385,6 +385,11 @@ int main(void)
                     fprintf(stderr,"HUD pixels/dirty mismatch scenario=%u xy=%u,%u\n",scenario,x,y); return 1;
                 }
             }
+            slicks_race_clear_dirty_rows(&race);
+            if(slicks_race_draw_status(&race,logical,(scenario&8)?1:0) ||
+               memcmp(pixels,expected,sizeof pixels) || race.dirty_pixel_count || race.dirty_row_count) {
+                fprintf(stderr,"Unchanged status bars generated dirty work scenario=%u\n",scenario);return 1;
+            }
         }
         memset(&race,0,sizeof race);
         memset(pixels,77,sizeof pixels); memset(expected,77,sizeof expected);

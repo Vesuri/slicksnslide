@@ -609,3 +609,19 @@ about 34 KiB to 18 KiB, BASIC worsened to 769 maximum lines and 393092/602
 cadence lines (`tmp/perf-runtime-o2.log`). Keep `O3` with the two measured
 compact draw wrappers. The runtime object now depends on its Makefile so
 changing these compiler options actually rebuilds it.
+
+## Paint status bars in their final colour
+
+The old status renderer cleared fuel/damage bars and repainted them even when
+their final pixels were unchanged, producing unnecessary sparse conversion.
+Normal bounded bars now resolve each row's final foreground/background before
+writing. Wrapped/out-of-range widths retain the original ordered-rectangle
+fallback; no framebuffer shadow is used.
+
+Original 768 full-screen HUD transitions, 8640 weapon-HUD command/fault cases,
+dirty saturation, exact VGA/chunky output and repeated unchanged status draws
+pass (`tmp/verify-final-status-bars.log`). BASIC's worst update drops from
+667 to 608 lines (39.0 ms), with cadence 344176/602 lines (36.6 ms), and
+588/603 rather than 603/603 updates exceeding 20 ms. At the worst update,
+sparse conversion drops from 139 to 9 pixels and C2P from 92 to 43 lines
+(`tmp/perf-final-status-bars.log`). The overall performance goal remains open.
