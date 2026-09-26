@@ -1165,6 +1165,19 @@ build/sgfx_planar_subrect_blit.bin: src/graphics/sgfx_planar_subrect_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/sgfx_planar_subrect_blit_far.bin: src/graphics/sgfx_planar_subrect_blit_far.s
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphics.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+
+.PHONY: verify-subrect-far
+verify-subrect-far: unpack build/sgfx_planar_subrect_blit_far.bin build/verify_subrect_far
+	build/verify_subrect_far disasm/runtime.bin build/sgfx_planar_subrect_blit_far.bin
+
 build/verify_native_graphics: tools/verify_native_graphics.c
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
