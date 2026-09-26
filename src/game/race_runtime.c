@@ -1486,6 +1486,12 @@ static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
     for(unsigned i=1;i<count;++i) {
         unsigned h=reverse?i:count-i;
         int t=race->weapons.trail_index[h];
+        if(t>=0) {
+            if(reverse && !(race->trail_particles[t].saved_valid&1)) continue;
+        } else {
+            const struct SlicksWeaponActor *a=&race->weapons.actors[h];
+            if(reverse?!a->saved:(!a->kind || race->weapons.slots.state[h]<=0)) continue;
+        }
         unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
         if(p>=128) continue;
         if(p>race->actor_order_max) race->actor_order_max=(unsigned char)p;

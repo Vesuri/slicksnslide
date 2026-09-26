@@ -112,3 +112,17 @@ C2P69, diagnostics7; restore87, advance43, update136, HUD34, draw264.
 The optimization removes the priority bitmap construction and bounds visits
 by the highest indexed nonnegative signed-byte priority. Original saturated
 pool priority/restoration tests pass, including high and negative priorities.
+
+## Omit no-op index entries
+
+`tmp/perf-active.log`: maximum work854 lines (54.7ms), maximum wall1061,
+cadence367856/602 (39.2ms); 586/603 updates over budget. Final step500,
+audio10, C2P69, diagnostics6; restore71, advance45, update141, HUD33, draw206.
+Restore substages18/16/28/5; draw17/23/53/111. Checkpoint load:109 particles,
+76 dirty pixels,2 dirty rectangles,3 equivalent C2P rows. Dirty-list overflow
+is therefore not the checkpoint bottleneck.
+
+Restoration indexes only saved actors; drawing indexes only live sprite
+actors, while preserving point eligibility and stable ordering. Original
+track/weapon/dirty regressions pass. No target errors/audio spills; owned
+benchmark emulator exited. This is still not a general 50FPS result.
