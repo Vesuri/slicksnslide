@@ -988,3 +988,10 @@ foreground-masked variant is also worse: 361478 work, 125631 draw and
 406842/602 cadence (`tmp/perf-sprite-homogeneous-f1.log`,
 `tmp/perf-sprite-visible-blocks-f1.log`). Both variants are removed; production
 retains the straight-line longword blend.
+
+## Rejected straight-driving steering gate
+
+Skipping the pure steering-delta calculation when neither turn bit is set
+regresses BASIC work from 223370 to 224560 lines and cadence from 312665 to
+316390/602; preparation rises from 34183 to 35743 lines
+(`tmp/perf-straight-steering-basic.log`). The branch candidate is removed.
