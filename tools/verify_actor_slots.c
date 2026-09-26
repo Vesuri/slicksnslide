@@ -61,7 +61,7 @@ int main(void)
         }
         ck(uc_emu_start(native,reset_entry,0x18000,0,1000));
         ck(uc_mem_read(native,0x20000,after,sizeof after));
-        memset(before+offset,0,33);
+        memset(before+offset,0,34);
         if(memcmp(before,after,sizeof before))return 1;
         for(unsigned r=0;r<11;++r) {
             uint32_t value;ck(uc_reg_read(native,regs[r],&value));

@@ -14,7 +14,9 @@ struct SlicksWeaponActor {
     struct SlicksActorMotion motion;
     unsigned char asset,kind,priority,occlusion,colour;
     short old_x,old_y;
-    unsigned char old_width,old_height,saved;
+    /* Move the former tail padding in front of the longword-copy buffer.
+     * This keeps the 162-byte actor stride but makes saved pixels even. */
+    unsigned char old_width,old_height,saved,saved_padding;
     unsigned char saved_under[SLICKS_TRACK_ACTOR_PIXELS];
 };
 struct SlicksWeaponRuntime {

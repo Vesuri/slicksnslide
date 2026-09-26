@@ -14,6 +14,8 @@
 #include "animated_boundary.h"
 
 #if defined(__m68k__)
+_Static_assert((__builtin_offsetof(struct SlicksRaceCar,saved_under)&1)==0,
+    "car background word alignment");
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
 _Static_assert(sizeof(struct SlicksTrailParticle) == 24, "particle stride");
 _Static_assert(__builtin_offsetof(struct SlicksTrailParticle, old_x) == 12 &&

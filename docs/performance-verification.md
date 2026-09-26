@@ -766,3 +766,20 @@ wheel/contact phases falling from 69/41 to 66/38 lines
 (`tmp/perf-point-reset-basic.log`). Retained for this measured small gain.
 Point motion comes exclusively from the particle record; subsequent sprite
 allocation still resets the complete sprite metadata.
+
+## Word-aligned saved backgrounds
+
+Move existing padding/validity bytes ahead of the car and actor background
+arrays, without increasing either structure's size. Actor reset now clears
+34 bytes including padding; native setup offsets and their write guards are
+updated together. Native allocation/reset, car and original actor rendering,
+dirty tracking and poisoned-slot tests pass (`tmp/verify-aligned-backgrounds.log`).
+
+BASIC is unchanged at 541 maximum lines and 330428/602 cadence. A matched
+F1 alignment-only control gives 774/443361 versus aligned 771/440294 lines,
+about 0.3 ms lower mean cadence (`tmp/perf-background-align-control-f1.log`,
+`tmp/perf-aligned-backgrounds-f1.log`). The complete display audit passes 600
+updates, 32 actors and 2076 marks (`tmp/audit-aligned-backgrounds.log`), also
+covering the retained minimal point-slot initialization. The emulator log
+confirms 68020, real speed, cycle-exact mode and disabled JIT; these remain
+emulator measurements, not physical-machine measurements.

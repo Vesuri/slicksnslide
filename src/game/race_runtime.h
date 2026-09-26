@@ -188,8 +188,9 @@ struct SlicksRaceCar {
     unsigned char old_y;
     unsigned char old_width;
     unsigned char old_height;
-    unsigned char saved_under[SLICKS_CAR_PIXEL_MAX];
     unsigned char saved_valid;
+    /* Same structure size, with the saved pixels on a word boundary. */
+    unsigned char saved_under[SLICKS_CAR_PIXEL_MAX];
 };
 
 /* Half-open original d9b6 status rectangles; colour is a semantic slot:

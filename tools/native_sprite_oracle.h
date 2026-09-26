@@ -13,7 +13,7 @@ static void sprite_store(uc_engine *u,uc_mem_type type,uint64_t addr,int size,
     for(int i=0;i<size;++i) {
         unsigned a=(unsigned)addr+i;
         if(sprite_fast_active && !(a>=0x30000 && a<0x40000) &&
-           a!=0x70020 && !(a>=0x70021 && a<0x70021+sprite_width*sprite_height) &&
+           a!=0x70020 && !(a>=0x70022 && a<0x70022+sprite_width*sprite_height) &&
            !(sprite_fast_active==2 ? (a>=0x71000 && a<0x7100c) : a==0x71006) &&
            !(a>=0x8ff00 && a<0x90004)) { uc_emu_stop(u);abort(); }
         if(a>=0x30000 && a<0x40000) {
@@ -151,7 +151,7 @@ int slicks_draw_unchanged_track_sprite(struct SlicksWeaponActor *a,void *previou
     check(uc_mem_read(sprite_cpu,0x30000,chunky,64000));
     check(uc_mem_read(sprite_cpu,0x70000,actor,sizeof actor));
     check(uc_mem_read(sprite_cpu,0x71000,description,sizeof description));
-    a->saved=actor[32];memcpy(a->saved_under,actor+33,sizeof a->saved_under);p->kind=description[6];
+    a->saved=actor[32];memcpy(a->saved_under,actor+34,sizeof a->saved_under);p->kind=description[6];
     if(result)++sprite_fast_hits;
     return (int)result;
 }
@@ -177,7 +177,7 @@ int slicks_restore_actor_sprite(struct SlicksWeaponActor *a,void *previous,unsig
     check(uc_mem_read(sprite_cpu,0x30000,chunky,64000));
     check(uc_mem_read(sprite_cpu,0x70000,actor,sizeof actor));
     check(uc_mem_read(sprite_cpu,0x71000,description,sizeof description));
-    if(memcmp(actor+33,a->saved_under,sizeof a->saved_under))abort();
+    if(memcmp(actor+34,a->saved_under,sizeof a->saved_under))abort();
     a->saved=actor[32];memcpy(p,description,sizeof description);
     p->x=(short)((unsigned)description[0]*256+description[1]);
     p->y=(short)((unsigned)description[2]*256+description[3]);

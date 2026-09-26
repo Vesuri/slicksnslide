@@ -38,7 +38,7 @@ slicks_actor_allocate_native:
 	rts
 
 	xdef slicks_actor_reset_native
-; Clear exactly the 33 metadata bytes, leaving saved-under pixels untouched.
+; Clear 33 metadata bytes plus alignment padding, leaving pixels untouched.
 ; C ABI: actor. Only a0/d0 change; actors are at least word-aligned.
 slicks_actor_reset_native:
 	movea.l 4(sp),a0
@@ -51,5 +51,5 @@ slicks_actor_reset_native:
 	move.l d0,(a0)+
 	move.l d0,(a0)+
 	move.l d0,(a0)+
-	move.b d0,(a0)
+	move.w d0,(a0)
 	rts
