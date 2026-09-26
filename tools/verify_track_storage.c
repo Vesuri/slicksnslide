@@ -12,15 +12,22 @@ struct FileInfoBlock { long fib_DirEntryType; };
 enum { MEMF_ANY,ACCESS_READ,MODE_NEWFILE,MODE_OLDFILE,
     ERROR_OBJECT_NOT_FOUND=205,ERROR_OBJECT_WRONG_TYPE=212,
     ERROR_OBJECT_EXISTS=203,ERROR_DISK_FULL=221,ERROR_NO_FREE_STORE=103 };
+#ifdef SLICKS_CAPTURE_STORAGE_TEST
+struct File { unsigned char bytes[65536]; unsigned size,offset,present; };
+static struct File files[6];
+static const char *paths[]={"TUNING00.BMP","TUNING00.BMP.new","TUNING00.BMP.bak",
+    "TUNING01.BMP","TUNING01.BMP.new","TUNING01.BMP.bak"};
+#else
 struct File { unsigned char bytes[9000]; unsigned size,offset,present; };
 static struct File files[3];
 static const char *paths[]={"TRACKS/TEST.SS","TRACKS/TEST.SS.new","TRACKS/TEST.SS.bak"};
+#endif
 static unsigned operation,fail_first,fail_second,allocations;
 static LONG error;
 static int fault(void)
 { ++operation; if(operation==fail_first || operation==fail_second) { error=999; return 1; } return 0; }
 static unsigned index_of(const char *path)
-{ for(unsigned i=0;i<3;++i) if(!strcmp(path,paths[i])) return i; abort(); }
+{ for(unsigned i=0;i<sizeof paths/sizeof *paths;++i) if(!strcmp(path,paths[i])) return i; abort(); }
 static LONG IoErr(void) { return error; }
 static void *AllocMem(unsigned long n,int flags)
 { (void)flags; if(fault()) return 0; ++allocations; return malloc(n); }
@@ -128,7 +135,7 @@ int main(void)
     assert(report.result==SLICKS_SETUP_SAVE_FAILED && !changed && equals(0,invalid,sizeof invalid));
     for(unsigned artifact=1;artifact<3;++artifact) {
         initialize(before,sizeof before); files[artifact].present=1; files[artifact].size=7; memset(files[artifact].bytes,0x77,7);
-        struct File snapshot[3]; memcpy(snapshot,files,sizeof files);
+        struct File snapshot[sizeof files/sizeof *files]; memcpy(snapshot,files,sizeof files);
         report=slicks_amiga_clear_track_records(paths[0],&changed);
         assert(report.result==SLICKS_SETUP_RECOVERY_REQUIRED && !changed && !memcmp(files,snapshot,sizeof files));
     }

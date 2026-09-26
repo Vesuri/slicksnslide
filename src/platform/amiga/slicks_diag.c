@@ -1493,7 +1493,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         platform->key_tail=0; platform->keys[0]=0x45; platform->key_head=1;
     }
     if(shop_test) {
-        static const unsigned char keys[]={0x44,0x44,0x41,0x50,0x45,0x45};
+        static const unsigned char keys[]={0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
         if(g_slicks_diag_weapon_case) {
             unsigned n=0;
@@ -1517,7 +1517,9 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         if(g_slicks_diag_force_exit) goto done;
         while(slicks_amiga_platform_poll_key(platform,&raw)) {
             if(raw&128) continue;
-            unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
+            /* Classic keyboards have no Scroll Lock. Help is the shop-only
+             * capture shortcut; F1 retains the original help viewer. */
+            unsigned char scan=raw==0x5f?70:(unsigned char)amiga_raw_to_dos_scan(raw);
             if(m->help_warning) {
                 if(slicks_amiga_help_warning_close(m)) goto done;
                 present_menu_surface(platform,m);
@@ -1543,10 +1545,13 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                 present_menu_surface(platform,m);
                 if(slicks_amiga_platform_begin(platform,0)) goto done;
             } else if(action==SLICKS_SHOP_CAPTURE) {
-                /* DOS Scroll Lock saves a TUNING screenshot. Keep this
-                 * unsupported platform boundary explicit, never silent. */
-                if(slicks_amiga_warning_open(m,(const unsigned char *)"SCREEN CAPTURE UNAVAILABLE")) goto done;
+                /* File I/O is performed only while AmigaOS owns the machine. */
+                slicks_amiga_platform_end(platform);
+                struct SlicksSetupStorageReport saved=slicks_amiga_store_capture(chunky,m->palette);
+                if(saved.result!=SLICKS_SETUP_SAVED && slicks_amiga_warning_open(m,
+                    (const unsigned char *)"SCREEN CAPTURE FAILED - PRESS A KEY")) goto done;
                 present_menu_surface(platform,m);
+                if(slicks_amiga_platform_begin(platform,0)) goto done;
             } else if(action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
                 int it=slicks_shop_item(rules,&session->options,session->inventory[0],session->players.participation[0],
                     session->players.vehicle[0],c.extra,state.row);

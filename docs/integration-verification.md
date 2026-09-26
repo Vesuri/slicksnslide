@@ -151,3 +151,26 @@ cover restoration separately. Logs: `tmp/integration-load-failure-1.log`,
 The applicable original-code options, race-menu, intermission, setup-session,
 shop and dirty-tracking gates passed again (`tmp/integration-final-oracles.log`).
 All owned Slicks emulators exited; an unrelated Pokeri run was left untouched.
+
+### Native platform-boundary closure
+
+The far-source crop compatibility entry passes 128 original/68020 comparisons,
+including both historical `185ff` page arguments; its explicit retained-segment
+contract is documented in `native-graphics-abi.md`. The bounded production
+renderer does not acquire a per-pixel compatibility penalty.
+
+The remaining explicit unsupported native menu action was shop screen capture.
+Its BMP writer now matches three complete original `204a0..205c6` output streams
+(65,078 bytes each), with only file and display hardware services modeled.
+The first available `TUNING00..98.BMP` is published through the existing safe
+transaction. Capture storage passes 985 single-fault points, no-overwrite and
+leftover-recovery guards. Existing track, saved-game and track-list storage
+regressions also pass. The Amiga Help key invokes this shop-only action;
+F1 continues to open help. OS ownership is restored around all file access.
+
+A muted native A1200 shop test saved two captures, then completed purchases,
+sale, help and race entry (`tmp/integration-capture.log`). Both BMP files match
+the entire live chunky surface and DAC palette byte-for-byte, and the earlier
+file is unchanged. Neither capture is used as an asset or committed. Native
+help/dialog resource failures remain explicit recoverable warnings, not missing
+implementations. General unexercised guest/runtime translation remains deferred.

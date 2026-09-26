@@ -7,6 +7,7 @@
 #endif
 #include "amiga_setup_storage.h"
 #include "../../game/track_records.h"
+#include "../../ui/screen_capture.h"
 
 static void failure(struct SlicksSetupStorageReport *r,const char *path,LONG error)
 {
@@ -78,6 +79,40 @@ static enum SlicksSetupSaveResult store_files(const struct SlicksSetupFile *file
 #endif
     return result;
 }
+struct SlicksSetupStorageReport slicks_amiga_store_capture(
+    const unsigned char *pixels,const unsigned char *palette)
+{
+    static char path[]="TUNING00.BMP";
+    char temporary[]="TUNING00.BMP.new",backup[]="TUNING00.BMP.bak";
+    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
+#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+    struct Process *process=(struct Process *)FindTask(0);
+    APTR window=process->pr_WindowPtr; process->pr_WindowPtr=(APTR)-1;
+#endif
+    unsigned char *buffer=AllocMem(SLICKS_CAPTURE_SIZE,MEMF_ANY);
+    if(!buffer) { report.io_error=ERROR_NO_FREE_STORE; goto done; }
+    if(slicks_encode_capture(buffer,SLICKS_CAPTURE_SIZE,pixels,palette)) goto done;
+    for(unsigned n=0;n<99;++n) {
+        path[6]=temporary[6]=backup[6]=(char)('0'+n/10);
+        path[7]=temporary[7]=backup[7]=(char)('0'+n%10);
+        int present=exists(&report,path);
+        if(present<0) goto done;
+        if(present) continue;
+        const struct SlicksSetupFile file={path,temporary,backup,buffer,SLICKS_CAPTURE_SIZE};
+        const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
+        report.result=store_files(&file,1,&ops);
+        goto done;
+    }
+    report.io_error=ERROR_OBJECT_EXISTS;
+done:
+    if(buffer) FreeMem(buffer,SLICKS_CAPTURE_SIZE);
+    report.path=path;
+#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+    process->pr_WindowPtr=window;
+#endif
+    return report;
+}
+
 struct SlicksSetupStorageReport slicks_amiga_store_setup(
     const struct SlicksConfiguration *configuration,const struct SlicksPlayerProfiles *profiles,unsigned char signature)
 {

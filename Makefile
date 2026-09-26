@@ -1178,6 +1178,23 @@ build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphic
 verify-subrect-far: unpack build/sgfx_planar_subrect_blit_far.bin build/verify_subrect_far
 	build/verify_subrect_far disasm/runtime.bin build/sgfx_planar_subrect_blit_far.bin
 
+build/verify_screen_capture: tools/verify_screen_capture.c tools/verify_native_graphics.c src/ui/screen_capture.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
+		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+
+.PHONY: verify-screen-capture
+verify-screen-capture: unpack build/verify_screen_capture
+	build/verify_screen_capture disasm/runtime.bin
+
+build/verify_capture_storage: tools/verify_capture_storage.c tools/verify_track_storage.c src/platform/amiga/amiga_setup_storage.c src/ui/screen_capture.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
+.PHONY: verify-capture-storage
+verify-capture-storage: build/verify_capture_storage
+	build/verify_capture_storage
+
 build/verify_native_graphics: tools/verify_native_graphics.c
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \

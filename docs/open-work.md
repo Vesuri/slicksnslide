@@ -4,9 +4,6 @@ Updated 2026-09-26. Actionable open and deferred work only.
 
 ## Integration and release
 
-2. Refresh graphics trace validation for the expanded primitive table;
-    resolve the screen-transition source-wrap call from 185ff to 2b8de
-    and remaining unsupported platform-boundary cases.
 3. Audit dependencies, memory/startup behavior, launcher defaults and release
     documentation. Package without original game data, captured frames,
     generated reference bytes or emulator artifacts.
