@@ -403,3 +403,18 @@ runtime helper. Original surface-emission and collision tests pass.
 383415/602lines (40.8ms). This includes the preceding track-coordinate and
 sprite changes since BASIC's715-line baseline, so the small combined gain
 must not be attributed solely to this addressing change.
+
+## Rejected size-optimized gameplay build
+
+`tmp/perf-runtime-size.log`: changing only the gameplay compilation from
+O3 to Os worsens BASIC to843lines maximum and410851/602lines mean cadence
+(43.7ms). Phase timings also worsen; smaller code is not automatically
+faster here. The production O3 setting is restored.
+
+## Rejected native particle restoration chain
+
+`tmp/perf-restore-chain.log`: BASIC maximum709lines unchanged; mean cadence
+384353/602lines slightly worse than383415/602. A native ordered point
+restoration helper passed512 overlap/state/sprite-boundary/ABI cases, but
+did not improve the complete update. The helper and its dedicated tests
+were removed; production retains the existing restoration path.
