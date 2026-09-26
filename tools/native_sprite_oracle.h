@@ -2,7 +2,9 @@
  * DOS actor comparisons. The scalar executable remains a separate test. */
 #include <unicorn/m68k.h>
 static uc_engine *sprite_cpu;
-static uint32_t sprite_restore,sprite_visible;
+static uint32_t sprite_restore,sprite_visible,sprite_fast;
+static unsigned sprite_fast_hits;
+static unsigned sprite_fast_active;
 static unsigned sprite_at,sprite_width,sprite_height,sprite_saved;
 static void sprite_store(uc_engine *u,uc_mem_type type,uint64_t addr,int size,
     int64_t value,void *context)
@@ -10,6 +12,9 @@ static void sprite_store(uc_engine *u,uc_mem_type type,uint64_t addr,int size,
     (void)type;(void)value;(void)context;
     for(int i=0;i<size;++i) {
         unsigned a=(unsigned)addr+i;
+        if(sprite_fast_active && !(a>=0x30000 && a<0x40000) &&
+           a!=0x70020 && !(a>=0x70021 && a<0x70021+sprite_width*sprite_height) &&
+           a!=0x71006 && !(a>=0x8ff00 && a<0x90004)) { uc_emu_stop(u);abort(); }
         if(a>=0x30000 && a<0x40000) {
             if(a<0x30000+sprite_at || (a-0x30000-sprite_at)/320>=sprite_height ||
                 (a-0x30000-sprite_at)%320>=sprite_width) { uc_emu_stop(u);abort(); }
@@ -36,7 +41,11 @@ static void sprite_init(void)
     check(uc_mem_write(sprite_cpu,0x12000,code,n));
     sprite_visible=0x12000+((uint32_t)code[n-4]<<24)+((uint32_t)code[n-3]<<16)+
         ((uint32_t)code[n-2]<<8)+code[n-1];
-    uc_hook h;check(uc_hook_add(sprite_cpu,&h,UC_HOOK_MEM_WRITE,sprite_store,0,0x30000,0x61000));
+    sprite_fast=0x12000+((uint32_t)code[n-8]<<24)+((uint32_t)code[n-7]<<16)+
+        ((uint32_t)code[n-6]<<8)+code[n-5];
+    unsigned char rows[1024];for(unsigned y=0;y<256;++y)sprite_long(rows+4*y,y*320);
+    check(uc_mem_write(sprite_cpu,0x80000,rows,sizeof rows));
+    uc_hook h;check(uc_hook_add(sprite_cpu,&h,UC_HOOK_MEM_WRITE,sprite_store,0,1,0));
 }
 static void sprite_run(unsigned entry,const unsigned *args,unsigned count)
 {
@@ -45,10 +54,14 @@ static void sprite_run(unsigned entry,const unsigned *args,unsigned count)
     check(uc_mem_write(sprite_cpu,0x90000,stack,4+count*4));
     uint32_t sp=0x90000,pc;
     check(uc_reg_write(sprite_cpu,UC_M68K_REG_A7,&sp));
+    const int preserved[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
+        UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
+    for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i){uint32_t v=0x34560000+i;check(uc_reg_write(sprite_cpu,preserved[i],&v));}
     check(uc_emu_start(sprite_cpu,entry,0x18000,0,100000));
     check(uc_reg_read(sprite_cpu,UC_M68K_REG_A7,&sp));
     check(uc_reg_read(sprite_cpu,UC_M68K_REG_PC,&pc));
     if(sp!=0x90004 || pc!=0x18000)abort();
+    for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i){uint32_t v;check(uc_reg_read(sprite_cpu,preserved[i],&v));if(v!=0x34560000+i)abort();}
 }
 void slicks_draw_car_chunky(unsigned char *dst,const unsigned char *src,unsigned char *saved,
     const unsigned char *material,const unsigned char *surface,unsigned width,unsigned height,
@@ -105,3 +118,37 @@ void slicks_draw_sprite_opaque(unsigned char *dst,const unsigned char *src,unsig
 void slicks_draw_sprite_visible(unsigned char *dst,const unsigned char *src,unsigned char *saved,
     const unsigned char *mask,unsigned width,unsigned height)
 { sprite_masked_copy(dst,src,saved,mask,width,height,1); }
+
+int slicks_draw_unchanged_track_sprite(struct SlicksWeaponActor *a,void *previous,void *visibility,
+    const struct SlicksTrackActorAsset *assets,unsigned char *chunky,unsigned deferred)
+{
+    sprite_init();
+    __typeof__(race.sprite_dirty_previous[0]) *p=previous;
+    __typeof__(race.track_sprite_visibility[0]) *c=visibility;
+    unsigned char actor[sizeof *a],description[12],cache[136];
+    memcpy(actor,a,sizeof actor);memcpy(description,p,sizeof description);memcpy(cache,c,sizeof cache);
+    actor[0]=(unsigned short)a->motion.x>>8;actor[1]=a->motion.x;
+    actor[2]=(unsigned short)a->motion.y>>8;actor[3]=a->motion.y;
+    actor[26]=(unsigned short)a->old_x>>8;actor[27]=a->old_x;
+    actor[28]=(unsigned short)a->old_y>>8;actor[29]=a->old_y;
+    description[0]=(unsigned short)p->x>>8;description[1]=p->x;
+    description[2]=(unsigned short)p->y>>8;description[3]=p->y;
+    cache[0]=(unsigned short)c->x>>8;cache[1]=c->x;
+    cache[2]=(unsigned short)c->y>>8;cache[3]=c->y;
+    sprite_at=(unsigned)(p->y*320+p->x);sprite_width=p->width;sprite_height=p->height;
+    sprite_saved=0;
+    check(uc_mem_write(sprite_cpu,0x30000,chunky,64000));
+    check(uc_mem_write(sprite_cpu,0x70000,actor,sizeof actor));
+    check(uc_mem_write(sprite_cpu,0x71000,description,sizeof description));
+    check(uc_mem_write(sprite_cpu,0x72000,cache,sizeof cache));
+    check(uc_mem_write(sprite_cpu,0x74000,assets,14*sizeof *assets));
+    unsigned args[]={0x70000,0x71000,0x72000,0x74000,0x30000,deferred};
+    sprite_fast_active=1;sprite_run(sprite_fast,args,6);sprite_fast_active=0;
+    uint32_t result;check(uc_reg_read(sprite_cpu,UC_M68K_REG_D0,&result));
+    check(uc_mem_read(sprite_cpu,0x30000,chunky,64000));
+    check(uc_mem_read(sprite_cpu,0x70000,actor,sizeof actor));
+    check(uc_mem_read(sprite_cpu,0x71000,description,sizeof description));
+    a->saved=actor[32];memcpy(a->saved_under,actor+33,sizeof a->saved_under);p->kind=description[6];
+    if(result)++sprite_fast_hits;
+    return (int)result;
+}

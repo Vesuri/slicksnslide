@@ -94,6 +94,10 @@ int main(void)
         finish_sprite_dirty_batch(&race);++cases;
     }
     printf("Track actor rendering: %u original full-screen/foreground/edge comparisons and restoration checks pass\n",cases);
+#if defined(SLICKS_NATIVE_SPRITE_TEST)
+    if(sprite_fast_hits<100){fprintf(stderr,"Native unchanged-track path was not exercised sufficiently\n");return 1;}
+    printf("Native unchanged-track path: %u original pixel comparisons used the assembly dispatcher\n",sprite_fast_hits);
+#endif
     for(unsigned trial=0;trial<64;++trial) {
         for(unsigned i=0;i<64;++i)race.track_sprite_visibility[i].valid=0;
         race.participation_ready=1;memset(race.participation,0,sizeof race.participation);

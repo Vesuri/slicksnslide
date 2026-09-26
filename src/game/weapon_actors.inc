@@ -59,9 +59,9 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 }
 
 #if defined(__m68k__)
-__attribute__((optimize("O2")))
+__attribute__((optimize("O2"),noinline))
 #endif
-static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
+static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
 #if defined(__m68k__)
@@ -194,6 +194,44 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     }
     previous->kind=0;
     if(profile)race->profile_marker(63);
+}
+
+#if defined(__m68k__)
+__attribute__((noinline))
+#endif
+static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
+{
+#if (defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)) && !defined(SLICKS_PROFILE_SPRITES) && !defined(SLICKS_TRACK_FAST_CONTROL)
+    /* Detailed per-sprite probes select the general path. The production
+     * path keeps unchanged track geometry/style checks and painting native. */
+    struct SlicksWeaponActor *a=&race->weapons.actors[handle];
+    if(a->kind==3 && race->weapons.slots.state[handle]>0 && race->track_actors_ready &&
+       race->sprite_dirty_deferred && race->sprite_dirty_previous[handle].kind==3) {
+        _Static_assert(__builtin_offsetof(struct SlicksWeaponActor,asset)==20 &&
+            __builtin_offsetof(struct SlicksWeaponActor,kind)==21 &&
+            __builtin_offsetof(struct SlicksWeaponActor,priority)==22 &&
+            __builtin_offsetof(struct SlicksWeaponActor,occlusion)==23 &&
+            __builtin_offsetof(struct SlicksWeaponActor,colour)==24 &&
+            __builtin_offsetof(struct SlicksWeaponActor,old_x)==26 &&
+            __builtin_offsetof(struct SlicksWeaponActor,old_width)==30 &&
+            __builtin_offsetof(struct SlicksWeaponActor,saved_under)==33 &&
+            __builtin_offsetof(struct SlicksActorMotion,frame)==16,"native track actor ABI");
+        _Static_assert(sizeof(struct SlicksTrackActorAsset)==259 &&
+            __builtin_offsetof(struct SlicksTrackActorAsset,width)==128 &&
+            __builtin_offsetof(struct SlicksTrackActorAsset,opacity)==130 &&
+            __builtin_offsetof(struct SlicksTrackActorAsset,opacity_ready)==258,"native track asset ABI");
+        _Static_assert(sizeof race->sprite_dirty_previous[0]==12 &&
+            __builtin_offsetof(__typeof__(race->sprite_dirty_previous[0]),kind)==6 &&
+            __builtin_offsetof(__typeof__(race->sprite_dirty_previous[0]),priority)==10 &&
+            sizeof race->track_sprite_visibility[0]==136 &&
+            __builtin_offsetof(__typeof__(race->track_sprite_visibility[0]),write_mask)==8,"native track cache ABI");
+        extern int slicks_draw_unchanged_track_sprite(struct SlicksWeaponActor *,void *,void *,
+            const struct SlicksTrackActorAsset *,unsigned char *,unsigned);
+        if(slicks_draw_unchanged_track_sprite(a,&race->sprite_dirty_previous[handle],
+            &race->track_sprite_visibility[handle&63],race->track_actor_assets,race->chunky,1))return;
+    }
+#endif
+    draw_weapon_actor_general(race,handle);
 }
 
 static void finish_sprite_dirty_batch(struct SlicksRaceRuntime *race)

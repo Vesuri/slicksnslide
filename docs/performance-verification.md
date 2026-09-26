@@ -644,3 +644,27 @@ BASIC 596 maximum lines and cadence 334796/602 versus 595 and 335128/602;
 the collision/smoke phase at that worst update falls from 42 to 40 lines
 (`tmp/perf-contact-divisions.log`). RNG ordering and full-pool behavior remain
 unchanged; no large speedup is claimed for this small arithmetic cleanup.
+
+## Native unchanged-track dispatch
+
+The common unchanged, in-bounds track-sprite path validates geometry/style
+and cached visibility in 68020 assembly before calling the existing native
+pixel merge. It still saves and redraws the authoritative chunky pixels;
+it does not retain sprites only in the display bitplanes. Clipping, changed
+metadata and cache misses fall back to the general renderer.
+
+The 4096 native opacity/visibility cases and original weapon/track full-screen
+comparisons pass, including 464 direct uses of the new dispatcher. Native
+tests check preserved registers and exact permitted write bounds
+(`tmp/verify-native-track-fast-final.log`). Absolute calls use normal ELF
+relocations in production and an explicit load base in the flat test image.
+
+Matched F1 runs with the new dispatcher disabled/enabled give 857/836 maximum
+work lines and 496420/478928 cadence lines over 602 intervals: 52.9/51.0 ms
+average cadence (`tmp/perf-native-track-control.log`,
+`tmp/perf-native-track-fast.log`). Every measured update remains over 20 ms.
+The control build was replaced with the default optimized build afterward.
+The full native display audit passes 600 updates, 32 actors and 2076 permanent
+marks (`tmp/audit-native-track-fast.log`). Track motion, particle advancement
+and dirty-region regression suites also pass
+(`tmp/verify-track-fast-regression.log`).

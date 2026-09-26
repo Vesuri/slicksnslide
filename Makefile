@@ -1183,7 +1183,7 @@ build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphic
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
 
 .PHONY: verify-subrect-far
-build/sprite_opaque.bin: tools/sprite_opaque_test.s src/game/sprite_opaque.s | build
+build/sprite_opaque.bin: tools/sprite_opaque_test.s src/game/sprite_opaque.s src/game/track_sprite_fast.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/verify_sprite_opacity: tools/verify_sprite_opacity.c src/game/sprite_opacity.h | build
