@@ -1969,6 +1969,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_error = 7;
         goto cleanup;
     }
+    slicks_race_prepare_car_render_cache(race);
     if(session) {
         /* Original 1fd72..1fdc6 runs even with Weapons disabled. Do not
          * reseed or skip the computer's draw when its inventory is empty. */

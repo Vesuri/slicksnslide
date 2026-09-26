@@ -370,12 +370,30 @@ struct SlicksRaceRuntime {
         unsigned char asset,frame,occlusion,valid;
         unsigned char write_mask[SLICKS_TRACK_ACTOR_PIXELS];
     } track_sprite_visibility[64] __attribute__((aligned(4)));
+    /* Derived only from immutable loaded sprites/maps, never screen pixels.
+     * Coarse maxima conservatively prove that a whole car is unobscured. */
+    struct {
+        unsigned char ready;
+        unsigned short tile_max[24][40];
+        struct {
+            unsigned char ready,vehicle,style;
+            struct {
+                unsigned char pixels[SLICKS_CAR_PIXEL_MAX];
+                unsigned char opacity[SLICKS_CAR_PIXEL_MAX];
+                unsigned char width,height;
+            } __attribute__((aligned(4))) frames[16];
+        } cars[4];
+    } car_render_cache;
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,
                             const struct SlicksTrackNavigation *navigation);
+/* Call after setup/start; maps and loaded sprite pixels must then remain
+ * immutable. Rebuild on a new track/configuration. Sprite loading invalidates
+ * affected cars; mismatches always retain the general renderer. */
+void slicks_race_prepare_car_render_cache(struct SlicksRaceRuntime *race);
 /* Once on race-loop return, whether deadline completion or user exit. */
 void slicks_race_award_track(struct SlicksRaceRuntime *race);
 /* Configure before slicks_race_start; mode 5 uses the original Arcade clock. */

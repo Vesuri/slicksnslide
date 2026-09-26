@@ -28,6 +28,10 @@ _Static_assert((sizeof(struct SlicksRaceCar)&3)==0 &&
     (__builtin_offsetof(struct SlicksRaceCar,elapsed_time_units)&3)==0 &&
     (__builtin_offsetof(struct SlicksRaceCar,fuel)&3)==0,
     "car working values and backgrounds have longword alignment");
+_Static_assert((sizeof(((struct SlicksRaceRuntime *)0)->car_render_cache.cars[0].frames[0])&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceRuntime,car_render_cache.cars[0].frames[0].pixels)&3)==0 &&
+    (__builtin_offsetof(struct SlicksRaceRuntime,car_render_cache.cars[0].frames[0].opacity)&3)==0,
+    "prepared car pixels and masks have longword alignment");
 /* Keep the hard-coded particle_runtime.s ABI checked by the target compiler. */
 _Static_assert(sizeof(struct SlicksTrailParticle) == 24, "particle stride");
 _Static_assert(__builtin_offsetof(struct SlicksTrailParticle, old_x) == 12 &&
@@ -522,6 +526,48 @@ static void draw_shadows(struct SlicksRaceRuntime *race, unsigned char *logical)
     }
 }
 
+void slicks_race_prepare_car_render_cache(struct SlicksRaceRuntime *race)
+{
+    if(!race)return;
+    race->car_render_cache.ready=0;
+    for(unsigned ty=0;ty<24;++ty)for(unsigned tx=0;tx<40;++tx) {
+        unsigned maximum=0;
+        for(unsigned y=ty*8;y<ty*8+8 && y<190;++y)
+            for(unsigned x=tx*8;x<tx*8+8;++x) {
+                unsigned at=mult320[y]+x;
+                unsigned value=(race->material_map[at]<<3)|(race->surface_map[at]&7);
+                if(value>maximum)maximum=value;
+            }
+        race->car_render_cache.tile_max[ty][tx]=(unsigned short)maximum;
+    }
+    for(unsigned d=0;d<4;++d) {
+        __typeof__(race->car_render_cache.cars[0]) *cache=&race->car_render_cache.cars[d];
+        const struct SlicksRaceCar *car=&race->cars[d];
+        cache->ready=0;
+        if(car->vehicle>=SLICKS_VEHICLE_COUNT)continue;
+        unsigned valid=1;
+        for(unsigned direction=0;direction<16;++direction) {
+            const struct SlicksCarSprite *sprite=&race->sprites[car->vehicle][direction&3];
+            __typeof__(cache->frames[0]) *frame=&cache->frames[direction];
+            if(!sprite->ready || !sprite->width || !sprite->height ||
+               (unsigned)sprite->width*sprite->height>SLICKS_CAR_PIXEL_MAX) { valid=0;break; }
+            rotated_size(sprite,direction>>2,&frame->width,&frame->height);
+            for(unsigned y=0;y<frame->height;++y)for(unsigned x=0;x<frame->width;++x) {
+                unsigned char pixel=sprite_pixel(sprite,direction>>2,x,y);
+                unsigned at=y*frame->width+x;
+                /* Opacity follows the original index, even when a synthetic
+                 * colour-ramp overflow turns an opaque pixel into index zero. */
+                frame->opacity[at]=pixel?0:255;
+                if(pixel>=1 && pixel<=5)pixel+=car->style*5;
+                frame->pixels[at]=pixel;
+            }
+        }
+        cache->vehicle=car->vehicle;cache->style=car->style;
+        cache->ready=(unsigned char)valid;
+    }
+    race->car_render_cache.ready=1;
+}
+
 static int actor_pixel_visible(const struct SlicksRaceRuntime *race,
                                unsigned long at, unsigned char limit)
 {
@@ -562,6 +608,44 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
     car->old_y = (unsigned char)origin_y;
     car->old_width = width;
     car->old_height = height;
+#if defined(__m68k__) || defined(SLICKS_NATIVE_CAR_CACHE_TEST)
+    if(!logical && width && height && direction<16 && race->car_render_cache.ready) {
+        const __typeof__(race->car_render_cache.cars[0]) *cache=&race->car_render_cache.cars[car_index];
+        const __typeof__(cache->frames[0]) *frame=&cache->frames[direction];
+        if(cache->ready && cache->vehicle==car->vehicle && cache->style==car->style &&
+           frame->width==width && frame->height==height) {
+            unsigned visible=1;
+            if(occlusion_limit) {
+                unsigned right=(origin_x+width-1)>>3,bottom=(origin_y+height-1)>>3;
+                for(unsigned ty=(unsigned)origin_y>>3;ty<=bottom && visible;++ty)
+                    for(unsigned tx=(unsigned)origin_x>>3;tx<=right;++tx)
+                        if(race->car_render_cache.tile_max[ty][tx]>occlusion_limit) {
+                            visible=0;break;
+                        }
+            }
+            if(visible) {
+                extern void slicks_draw_sprite_opaque(unsigned char *,const unsigned char *,
+                    unsigned char *,const unsigned char *,unsigned,unsigned);
+                slicks_draw_sprite_opaque(race->chunky+mult320[(unsigned short)origin_y]+origin_x,
+                    frame->pixels,car->saved_under,frame->opacity,width,height);
+                car->saved_valid=1;
+                return;
+            }
+            /* A precoloured contiguous sprite also removes rotation/ramp
+             * work from the masked primitive. Preserve the rare synthetic
+             * ramp-wrap case where an opaque source becomes index zero. */
+            if(car->style<51) {
+                extern void slicks_draw_car_chunky(unsigned char *,const unsigned char *,unsigned char *,
+                    const unsigned char *,const unsigned char *,unsigned,unsigned,int,int,unsigned,unsigned);
+                unsigned long row=mult320[(unsigned short)origin_y]+origin_x;
+                slicks_draw_car_chunky(race->chunky+row,frame->pixels,car->saved_under,
+                    race->material_map+row,race->surface_map+row,width,height,1,width,0,occlusion_limit);
+                car->saved_valid=1;
+                return;
+            }
+        }
+    }
+#endif
     if (!logical) {
         const unsigned char *source_row;
         short source_dx;
@@ -3203,6 +3287,9 @@ int slicks_race_add_car_sprite(struct SlicksRaceRuntime *race,
     if (!race || vehicle >= SLICKS_VEHICLE_COUNT ||
         base_direction >= SLICKS_CAR_BASE_DIRECTIONS)
         return -1;
+    for(unsigned d=0;d<4;++d)
+        if(race->car_render_cache.cars[d].vehicle==vehicle)
+            race->car_render_cache.cars[d].ready=0;
     struct SlicksCarSprite *sprite=&race->sprites[vehicle][base_direction];
     if(decode_sprite(sprite,resource,resource_size)) return -1;
     sprite->ready=0;
@@ -3382,6 +3469,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
+    race->car_render_cache.ready=0;
     race->status_bar_cache.valid=0;
     for(unsigned i=0;i<64;++i)race->track_sprite_visibility[i].valid=0;
     if(race->track_actors_ready) {

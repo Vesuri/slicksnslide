@@ -927,3 +927,32 @@ passes 600 updates, 32 actors and 2076 permanent marks
 (`tmp/audit-aligned-car-actor.log`). Timing logs are
 `tmp/perf-aligned-car-state-{basic,f1}.log` and
 `tmp/perf-aligned-actor-buffers-{basic,f1}.log`.
+
+## Prepared native car sprites
+
+Prepare all sixteen rotations and player colour ramps from the loaded car
+assets at race startup. Transparent pixels retain their original opacity,
+including synthetic ramp wrap-to-zero. An 8x8-tile foreground maximum permits
+unmasked longword drawing only when the whole rectangle is provably visible;
+otherwise the prepared pixels use the exact native foreground-mask primitive.
+Unsupported ramp-wrap cases retain the original general path. Reloading a car
+asset invalidates its cache even if decoding fails; start invalidates the atlas
+and the platform rebuilds it after the new maps/configuration are ready.
+
+The cache uses 14996 bytes (15000 additional runtime bytes including alignment).
+Native 68020 tests compare 4096 rotations/colours/sizes/edge/mask cases with
+the established scalar renderer, including 2096 unmasked assembly calls,
+exact saved backgrounds, write guards and ABI checks. These are compositional
+rendering checks, not a new whole-car DOS oracle. Existing native car and
+surface/dirty/planar checks also pass (`tmp/verify-car-cache-final.log`,
+`tmp/verify-car-cache.log`, `tmp/verify-car-cache-integration.log`).
+
+The initial unmasked-only candidate did not improve BASIC overall. Adding
+the masked contiguous path reduces BASIC work from 224135 to 222732 lines
+over 603 updates (23.68 ms average), cadence 312334 to 312041/602. F1 work
+falls from 368189 to 364440 (38.74 ms), cadence 409352 to 405920/602.
+Worst work is still 513/729 lines, respectively; the 20 ms target is unmet.
+See `tmp/perf-car-cache-v2-{basic,f1}.log`. The complete display audit passes
+600 updates, 32 actors and 2076 permanent marks (`tmp/audit-car-cache.log`).
+Native mode-4 transitions pass two starts, two pauses, full restoration (31)
+and zero audio spills (`tmp/modes-car-cache.log`).
