@@ -10,9 +10,10 @@ static inline int slicks_track_material_sample_inline(const unsigned char *lower
     /* In the visible positive-coordinate domain, the original packed
      * address equals raw exactly: 4*(y*80+x/4)+(x&3) == y*320+x.
      * Keep signed/truncated/wrapped addressing in the general path. */
-    if(layer && (unsigned short)x<320 && (unsigned short)y<190) {
-        if(!lower || !upper)return -1;
-        return upper[mult320[(unsigned short)y]+(unsigned short)x]&31U;
+    if((unsigned short)x<320 && (unsigned short)y<190) {
+        if(!lower || (layer && !upper))return -1;
+        unsigned at=mult320[(unsigned short)y]+(unsigned short)x;
+        return layer?(upper[at]&31U):lower[at];
     }
     unsigned row=(unsigned short)y<256?mult320[(unsigned short)y]:(unsigned short)y*320U;
     unsigned short raw=(unsigned short)(row+(unsigned short)x);

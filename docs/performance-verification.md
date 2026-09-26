@@ -1416,3 +1416,15 @@ maximum 454 to 451, over-budget 335 to 320, cadence 246521 to 243382/602.
 F1 improves 265846 to 264678 (28.14 ms), maximum unchanged at 585,
 cadence 374070 to 373782/602. Both remain above the target
 (`tmp/perf-bounded-material-{basic,f1}.log`).
+
+The same bounded address path now also serves lower-layer reads. The
+121600 visible original-code cases, signed/boundary cases, surface effects
+and all eleven 7200-update driving scenarios still pass. BASIC work falls
+191189 to 190775 lines (20.28 ms), maximum 451 to 450, over-budget 320
+to 317, cadence 243382 to 242445/602. F1 falls 264678 to 264042
+(28.07 ms), maximum 585 to 584, cadence essentially unchanged at
+373783/602. This remains a small saving, not attainment of 50 FPS.
+Logs: `tmp/verify-bounded-both-layers{,-driving}.log`,
+`tmp/perf-bounded-both-layers-{basic,f1}.log`.
+Full target display auditing also passes 600 updates, 32 actors and 2076
+marks (`tmp/audit-bounded-both-layers.log`); the muted emulator is closed.
