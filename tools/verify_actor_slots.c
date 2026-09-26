@@ -3,17 +3,24 @@
 #include <stdlib.h>
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
+#include <unicorn/m68k.h>
 #include "../src/game/actor_slots.h"
 static void ck(uc_err e) { if(e) { fprintf(stderr,"%s\n",uc_strerror(e));exit(1); } }
 static void word(uc_engine *u,unsigned a,unsigned v) { unsigned char b[2]={v,v>>8};ck(uc_mem_write(u,a,b,2)); }
 static unsigned rd(uc_engine *u,unsigned a) { unsigned char b[2];ck(uc_mem_read(u,a,b,2));return b[0]|b[1]<<8; }
 static void stop(uc_engine *u,uint64_t at,uint32_t size,void *p) { (void)at;(void)size;(void)p;ck(uc_emu_stop(u)); }
+static void bigword(unsigned char *p,unsigned v) { p[0]=v>>8;p[1]=v; }
+static void biglong(unsigned char *p,unsigned v) { bigword(p,v>>16);bigword(p+2,v); }
 int main(void)
 {
     unsigned char bytes[300000];FILE *f=fopen("disasm/runtime.bin","rb");if(!f)return 2;
     size_t n=fread(bytes,1,sizeof bytes,f);fclose(f);
     uc_engine *u;ck(uc_open(UC_ARCH_X86,UC_MODE_16,&u));ck(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
     ck(uc_mem_write(u,0x10100,bytes,n));
+    uc_engine *native;ck(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&native));
+    ck(uc_ctl_set_cpu_model(native,UC_CPU_M68K_M68020));ck(uc_mem_map(native,0,0x100000,UC_PROT_ALL));
+    f=fopen("build/actor_allocate.bin","rb");if(!f)return 2;
+    n=fread(bytes,1,sizeof bytes,f);fclose(f);ck(uc_mem_write(native,0x10000,bytes,n));
     unsigned seed=127;
     for(unsigned t=0;t<8192;++t) {
         struct SlicksActorSlots pool; slicks_actor_slots_init(&pool);
@@ -36,14 +43,30 @@ int main(void)
         ck(uc_reg_write(u,UC_X86_REG_CS,&cs));ck(uc_reg_write(u,UC_X86_REG_DS,&ds));
         ck(uc_reg_write(u,UC_X86_REG_SS,&ss));ck(uc_reg_write(u,UC_X86_REG_SP,&sp));
         ck(uc_emu_start(u,0x330ab,0x70000,0,100000));ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        unsigned char image[204],stack[12];
+        for(unsigned i=0;i<200;++i)image[i]=(unsigned char)pool.state[i];
+        bigword(image+200,pool.high_water);bigword(image+202,pool.capacity);
+        ck(uc_mem_write(native,0x20000,image,sizeof image));
+        biglong(stack,0x18000);biglong(stack+4,0x20000);biglong(stack+8,resource);
+        ck(uc_mem_write(native,0x90000,stack,sizeof stack));uint32_t native_sp=0x90000,result;
+        ck(uc_reg_write(native,UC_M68K_REG_A7,&native_sp));
+        ck(uc_emu_start(native,0x10000,0x18000,0,10000));
+        ck(uc_reg_read(native,UC_M68K_REG_D0,&result));
+        ck(uc_mem_read(native,0x20000,image,sizeof image));
+        ck(uc_reg_read(native,UC_M68K_REG_A7,&native_sp));
         short handle=slicks_actor_allocate(&pool,resource);
+        if((short)result!=(short)ax || native_sp!=0x90004 ||
+           ((image[200]<<8)|image[201])!=pool.high_water ||
+           ((image[202]<<8)|image[203])!=pool.capacity) return 1;
         if(handle!=(short)ax || pool.high_water!=rd(u,0x3cbf0+0x16c0)) {
             fprintf(stderr,"Actor allocation mismatch trial=%u original=%d native=%d\n",t,(short)ax,handle);return 1;
         }
         ck(uc_mem_read(u,0x90000,actors,sizeof actors));
-        for(unsigned i=1;i<200;++i) if(pool.state[i]!=(signed char)actors[i*64+0x1a]) return 1;
+        for(unsigned i=1;i<200;++i)
+            if(pool.state[i]!=(signed char)actors[i*64+0x1a] || pool.state[i]!=(signed char)image[i]) return 1;
     }
-    puts("Original actor allocation: 8192 returns, high-water marks and slot states match");
+    ck(uc_close(native));
+    puts("Original/68020/scalar actor allocation: 8192 returns, high-water marks and slot states match");
     uc_hook hook;ck(uc_hook_add(u,&hook,UC_HOOK_CODE,stop,0,0x33a9a,0x33a9a));
     for(unsigned t=0;t<8192;++t) {
         struct SlicksActorMotion a={(short)(t*47),(short)(t*97),(short)(t*107),(short)(t*193),

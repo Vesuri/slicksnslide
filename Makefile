@@ -242,7 +242,9 @@ verify-weapon-fire: build/verify_weapon_fire
 	./build/verify_weapon_fire
 build/verify_actor_slots: tools/verify_actor_slots.c src/game/actor_slots.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-verify-actor-slots: build/verify_actor_slots
+build/actor_allocate.bin: src/game/actor_allocate.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+verify-actor-slots: build/verify_actor_slots build/actor_allocate.bin
 	build/verify_actor_slots
 build/verify_moving_probe: tools/verify_moving_probe.c src/game/moving_probe.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@

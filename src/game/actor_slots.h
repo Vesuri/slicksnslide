@@ -37,6 +37,13 @@ static inline void slicks_actor_advance(struct SlicksActorMotion *a,signed char 
  * The owner supplies resources/storage before entering this allocator. */
 static inline short slicks_actor_allocate(struct SlicksActorSlots *pool,unsigned resource_present)
 {
+#if defined(__m68k__)
+    _Static_assert(SLICKS_ACTOR_CAPACITY==200 &&
+        __builtin_offsetof(struct SlicksActorSlots,high_water)==200 &&
+        __builtin_offsetof(struct SlicksActorSlots,capacity)==202,"actor allocator ABI");
+    extern short slicks_actor_allocate_native(struct SlicksActorSlots *,unsigned);
+    return slicks_actor_allocate_native(pool,resource_present);
+#else
     if(!pool->capacity) return 0;
     unsigned slot=0;
     for(unsigned i=1;i<pool->high_water;++i) if(!pool->state[i]) { slot=i; break; }
@@ -45,6 +52,7 @@ static inline short slicks_actor_allocate(struct SlicksActorSlots *pool,unsigned
     if(!slot) slot=pool->high_water++;
     pool->state[slot]=1;
     return (short)slot;
+#endif
 }
 static inline void slicks_actor_slots_init(struct SlicksActorSlots *pool)
 {

@@ -138,3 +138,13 @@ returns the untouched suffix to the existing fallback. Tests now cover 2048
 single points and256 overlapping/reversed-order batches, partial overflow,
 saved metadata and all preserved registers. Original rendering/dirty suites
 pass; no target errors/audio spills, owned emulator exited.
+
+## Native actor allocator
+
+`tmp/perf-allocator.log`: maximum work790 lines, maximum wall918,
+cadence353816/602 (37.7ms),586/603 over budget. Final step448, audio10,
+C2P69,diagnostics6; restore71,advance45,update141,HUD33,draw154.
+The compact byte scan matches the original x86 allocator directly over8192
+pool states (returns, high-water and every slot), alongside the scalar
+implementation. Improvement is limited in this benchmark, but the worst
+frame is lower. Original actor/dirty suites and target build pass.
