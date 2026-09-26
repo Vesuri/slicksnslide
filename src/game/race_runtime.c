@@ -1729,6 +1729,12 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
     }
     particle_index = race->trail_particle_count++;
     particle = &race->trail_particles[particle_index];
+#ifdef __m68k__
+    /* Materialize this base once. Otherwise GCC folds the large enclosing
+     * runtime offset into every field store, fetching long displacements
+     * from Chip RAM for each emitted particle. No executable instruction. */
+    __asm__ ("" : "+a" (particle));
+#endif
     particle->x = (long)x * 64L;
     particle->y = (long)y * 64L;
     particle->velocity_x = velocity_x;

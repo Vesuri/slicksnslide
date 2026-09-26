@@ -392,3 +392,14 @@ original weapon images and1792 original track images pass, including
 shared-pool ordering and permanent marks. Read-only Exec CacheControl(0,0)
 reports0x1: the instruction cache was already enabled; no cache setting
 is changed. All603 measured updates still exceed20ms.
+
+## Materialize the particle emission base
+
+An empty68020 address-register constraint makes GCC calculate the particle
+base once instead of encoding the enclosing runtime's68256-byte displacement
+in every field store. Disassembly confirms short-offset stores with no extra
+runtime helper. Original surface-emission and collision tests pass.
+`tmp/perf-particle-base.log`: BASIC709lines maximum (45.4ms), mean cadence
+383415/602lines (40.8ms). This includes the preceding track-coordinate and
+sprite changes since BASIC's715-line baseline, so the small combined gain
+must not be attributed solely to this addressing change.
