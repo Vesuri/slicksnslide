@@ -15,10 +15,12 @@
 #include "track_material_sample.h"
 
 #if defined(__m68k__)
-_Static_assert(sizeof(struct SlicksTrackDrawPacket)==44 &&
+_Static_assert(sizeof(struct SlicksTrackDrawPacket)==300 &&
     __builtin_offsetof(struct SlicksTrackDrawPacket,pixels)==20 &&
     __builtin_offsetof(struct SlicksTrackDrawPacket,valid)==33 &&
-    __builtin_offsetof(struct SlicksTrackDrawPacket,visibility_key)==36,
+    __builtin_offsetof(struct SlicksTrackDrawPacket,visibility_key)==36 &&
+    __builtin_offsetof(struct SlicksTrackDrawPacket,clipped_pixels)==44 &&
+    __builtin_offsetof(struct SlicksTrackDrawPacket,clipped_opacity)==172,
     "native validated track drawing packet ABI");
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,cars)<32768 &&
     __builtin_offsetof(struct SlicksRaceRuntime,random_state)<32768 &&

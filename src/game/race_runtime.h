@@ -236,7 +236,7 @@ struct SlicksTrailParticle {
     signed char state; /* DOS point states 1/5, retained retirement -2/-6. */
 };
 
-/* Native drawing metadata only, never a copy of displayed pixels. Loaded
+/* Native drawing metadata and masked asset pixels, never displayed pixels. Loaded
  * track assets/maps and the chunky base remain immutable during a race. */
 struct SlicksTrackDrawPacket {
     unsigned char description[12];
@@ -246,6 +246,7 @@ struct SlicksTrackDrawPacket {
     unsigned char masked,valid;
     unsigned short reserved;
     unsigned char visibility_key[8];
+    unsigned char clipped_pixels[128],clipped_opacity[128];
 };
 
 struct SlicksRaceRuntime {

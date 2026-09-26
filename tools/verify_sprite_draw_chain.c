@@ -4,7 +4,7 @@ int main(void)
 {
     static struct SlicksRaceRuntime race;
     static struct SlicksRaceRuntime initial_race;
-    static unsigned char before[64000],packets[64*44];
+    static unsigned char before[64000],packets[64*300];
     static unsigned char pixels[64000],expected[64000],araw[32800],praw[2400],actual[64000],cache[64*136];
     unsigned char code[8192],rows[1024];
     FILE *f=fopen("build/sprite_opaque.bin","rb");if(!f)return 2;
@@ -104,7 +104,7 @@ int main(void)
             for(unsigned y=0;y<a->old_height;++y)memset(allowed+0x30000+(a->old_y+y)*320+a->old_x,1,a->old_width);
             allowed[0xa0000+h*164+32]=1;memset(allowed+0xa0000+h*164+36,1,a->old_width*a->old_height);
             allowed[0xb0000+h*12+6]=1;
-            memset(allowed+0xd0000+(h&63)*44,1,44);
+            memset(allowed+0xd0000+(h&63)*300,1,300);
             draw_weapon_actor_general(&race,h);++drawn;++pass_draws;
         }
         memcpy(expected,pixels,sizeof expected);actors(araw,&race);previous(praw,&race);

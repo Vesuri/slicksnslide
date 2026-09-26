@@ -317,7 +317,7 @@ slicks_draw_sprite_chain:
 	adda.w d0,a4
 	move.l (sp),d0
 	andi.w #63,d0
-	mulu.w #44,d0
+	mulu.w #300,d0
 	movea.l 84(sp),a0
 	adda.w d0,a0
 	tst.b 33(a0)
@@ -370,17 +370,7 @@ slicks_draw_sprite_chain:
 	move.b 4(a0),d4
 	moveq #0,d3
 	move.b 5(a0),d3
-	tst.b 32(a0)
 	movea.l 28(a0),a0
-	beq.s .opaque
-	cmpi.w #5,d4
-	beq.w .visible5
-	cmpi.w #8,d4
-	beq.w .visible8
-	cmpi.w #4,d4
-	beq.w .visible4
-	jsr slicks_draw_sprite_visible_regs+SLICKS_SPRITE_TEST_BASE
-	bra.s .painted
 .opaque:
 	cmpi.w #5,d4
 	beq.w .opaque5
@@ -404,7 +394,7 @@ slicks_draw_sprite_chain:
 	; a0/a3 point one rectangle past the destination/mask respectively.
 	move.l (sp),d0
 	andi.w #63,d0
-	mulu.w #44,d0
+	mulu.w #300,d0
 	movea.l 84(sp),a2
 	adda.w d0,a2
 	clr.w 32(a2)
@@ -445,6 +435,28 @@ slicks_draw_sprite_chain:
 	adda.w d0,a1
 	move.l (a1),36(a2)
 	move.l 4(a1),40(a2)
+	; Pre-mask immutable source pixels once, so the repeated merge uses
+	; the same AND/OR loop as an opaque sprite. Never cache backgrounds.
+	moveq #0,d2
+	moveq #0,d1
+	move.b 4(a2),d2
+	move.b 5(a2),d1
+	mulu.w d1,d2
+	addq.w #3,d2
+	lsr.w #2,d2
+	subq.w #1,d2
+	lea 44(a2),a0
+	lea 172(a2),a1
+	move.l a0,20(a2)
+	move.l a1,24(a2)
+.clip_source:
+	move.l (a3)+,d0
+	move.l (a5)+,d1
+	and.l d0,d1
+	move.l d1,(a0)+
+	not.l d0
+	move.l d0,(a1)+
+	dbf d2,.clip_source
 .publish:
 	move.b #1,33(a2)
 .next:
@@ -461,26 +473,6 @@ slicks_draw_sprite_chain:
 
 ; Validated cached rectangles only. Exact row widths avoid the generic
 ; longword-count and tail tests on every row; register contracts are unchanged.
-.visible5:
-	subq.w #1,d3
-.visible5_row:
-	move.l (a0),d1
-	move.l d1,(a2)+
-	move.l (a1)+,d6
-	eor.l d1,d6
-	and.l (a3)+,d6
-	eor.l d6,d1
-	move.l d1,(a0)+
-	move.b (a0),d1
-	move.b d1,(a2)+
-	move.b (a1)+,d6
-	eor.b d1,d6
-	and.b (a3)+,d6
-	eor.b d6,d1
-	move.b d1,(a0)+
-	adda.w #315,a0
-	dbf d3,.visible5_row
-	bra.w .painted
 .opaque5:
 	subq.w #1,d3
 .opaque5_row:
@@ -496,39 +488,6 @@ slicks_draw_sprite_chain:
 	move.b d1,(a0)+
 	adda.w #315,a0
 	dbf d3,.opaque5_row
-	bra.w .painted
-.visible4:
-	subq.w #1,d3
-.visible4_row:
-	move.l (a0),d1
-	move.l d1,(a2)+
-	move.l (a1)+,d6
-	eor.l d1,d6
-	and.l (a3)+,d6
-	eor.l d6,d1
-	move.l d1,(a0)+
-	adda.w #316,a0
-	dbf d3,.visible4_row
-	bra.w .painted
-.visible8:
-	subq.w #1,d3
-.visible8_row:
-	move.l (a0),d1
-	move.l d1,(a2)+
-	move.l (a1)+,d6
-	eor.l d1,d6
-	and.l (a3)+,d6
-	eor.l d6,d1
-	move.l d1,(a0)+
-	move.l (a0),d1
-	move.l d1,(a2)+
-	move.l (a1)+,d6
-	eor.l d1,d6
-	and.l (a3)+,d6
-	eor.l d6,d1
-	move.l d1,(a0)+
-	adda.w #312,a0
-	dbf d3,.visible8_row
 	bra.w .painted
 .opaque4:
 	subq.w #1,d3

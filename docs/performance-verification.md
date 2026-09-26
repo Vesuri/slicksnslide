@@ -1274,3 +1274,28 @@ from 220022 to 219615 lines, maximum 508 to 505, cadence 306425 to
 unchanged at 375630/602 (maximum 638 to 637). The extra helper and tests
 are removed; this mixed result does not justify another production path
 (`tmp/perf-native-actor-order-{basic,f1}.log`).
+
+## Pre-mask immutable track sprite assets
+
+Validated track drawing packets now retain source pixels ANDed with their
+foreground visibility mask, plus its inverse. Warm draws use the shorter
+opaque AND/OR merge without changing saved backgrounds, actor order or
+mask-key validation. The cache contains derived asset pixels, never screen
+captures. It costs 16384 additional bytes (64 packets of 300 rather than 44
+bytes); obsolete specialized visible-merge loops are removed.
+
+1920 native cold/warm/stale-mask/changed-frame/fractional-position cases and
+22074 draws pass exact pixels, metadata, write bounds and ABI checks.
+Original track/weapon and dirty-coverage regressions pass. The stock 2 MiB
+target completes the full display audit: 600 updates, 32 actors, 2076 marks.
+Evidence: `tmp/verify-clipped-packets{,-final,-original,-dirty}.log` and
+`tmp/audit-clipped-packets.log`.
+
+Final BASIC work is effectively unchanged: 220048 versus 220022 lines over
+603 updates (23.39 ms), maximum 507 versus 508, cadence 304865 versus
+306425/602. F1 improves to 295447 from 296373 lines (31.41 ms), drawing
+84429 from 85332, maximum 637 from 638; cadence remains 375630/602.
+See `tmp/perf-clipped-packets-final-{basic,f1}.log`. The 20 ms target remains
+open. These timings include detailed intra-update profiling; a subsequent
+whole-update-only measurement should quantify that overhead separately,
+without substituting changed instrumentation for an optimization result.
