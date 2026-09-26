@@ -15,6 +15,11 @@
 #include "track_material_sample.h"
 
 #if defined(__m68k__)
+_Static_assert(sizeof(struct SlicksTrackDrawPacket)==44 &&
+    __builtin_offsetof(struct SlicksTrackDrawPacket,pixels)==20 &&
+    __builtin_offsetof(struct SlicksTrackDrawPacket,valid)==33 &&
+    __builtin_offsetof(struct SlicksTrackDrawPacket,visibility_key)==36,
+    "native validated track drawing packet ABI");
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,cars)<32768 &&
     __builtin_offsetof(struct SlicksRaceRuntime,random_state)<32768 &&
     __builtin_offsetof(struct SlicksRaceRuntime,actor_order_head)<32768 &&
@@ -2116,10 +2121,10 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
                 if(race->track_actors_ready && race->sprite_dirty_deferred) {
                     extern unsigned slicks_draw_sprite_chain(struct SlicksWeaponActor *,void *,void *,
                         const struct SlicksTrackActorAsset *,unsigned char *,
-                        const unsigned char *,const short *,unsigned);
+                        const unsigned char *,const short *,unsigned,struct SlicksTrackDrawPacket *);
                     h=slicks_draw_sprite_chain(race->weapons.actors,race->sprite_dirty_previous,
                         race->track_sprite_visibility,race->track_actor_assets,race->chunky,
-                        next,trail_index,h);
+                        next,trail_index,h,race->track_draw_packets);
                     if(!h)break;
                     if(trail_index[h]>=0)continue;
                     draw_weapon_actor_general(race,h);
@@ -3505,6 +3510,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
             return -1;
     race->chunky = chunky;
     race->car_render_cache.ready=0;
+    for(unsigned i=0;i<64;++i)race->track_draw_packets[i].valid=0;
     race->status_bar_cache.valid=0;
     for(unsigned i=0;i<64;++i)race->track_sprite_visibility[i].valid=0;
     if(race->track_actors_ready) {

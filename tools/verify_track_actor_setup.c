@@ -72,7 +72,10 @@ int main(void)
             race.track_actor_assets[i].pixels[0]=i+1;
         }
         memset(logical,40,sizeof logical);memset(chunky,77,sizeof chunky);
+        /* A new race must not reuse pointers or masks from a previous track. */
+        memset(race.track_draw_packets,0xa5,sizeof race.track_draw_packets);
         if(slicks_race_start(&race,logical,chunky))abort();
+        for(unsigned i=0;i<64;++i)if(race.track_draw_packets[i].valid)abort();
         if(race.random_state!=(uint32_t)readdword(u,ds+0x2aaa) || next_handle!=count+5)abort();
         for(unsigned i=0;i<count;++i) {
             unsigned h=i+5;struct SlicksWeaponActor *a=&race.weapons.actors[h];

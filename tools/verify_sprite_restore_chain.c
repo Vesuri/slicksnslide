@@ -4,6 +4,7 @@
 #include "verify_surface_effects.c"
 #undef main
 static unsigned char allowed[0x100000];
+static unsigned packet_writes;
 static void check(uc_err e) { if(e){fprintf(stderr,"%s\n",uc_strerror(e));exit(1);} }
 static void be16(unsigned char *p,unsigned v) {p[0]=v>>8;p[1]=v;}
 static void be32(unsigned char *p,unsigned v) {p[0]=v>>24;p[1]=v>>16;p[2]=v>>8;p[3]=v;}
@@ -11,6 +12,7 @@ static unsigned read32(const unsigned char *p) {return (unsigned)p[0]<<24|p[1]<<
 static void writes(uc_engine *u,uc_mem_type t,uint64_t a,int n,int64_t v,void *c)
 {
     (void)u;(void)t;(void)v;(void)c;
+    if(a>=0xd0000 && a<0xd0000+64*44)++packet_writes;
     for(int i=0;i<n;++i)if(a+i>=sizeof allowed || !allowed[a+i])fail("chain wrote outside its exact destinations");
 }
 static void actors(unsigned char *out,const struct SlicksRaceRuntime *r)

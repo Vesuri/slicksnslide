@@ -3,6 +3,8 @@
 int main(void)
 {
     static struct SlicksRaceRuntime race;
+    static struct SlicksRaceRuntime initial_race;
+    static unsigned char before[64000],packets[64*44];
     static unsigned char pixels[64000],expected[64000],araw[32800],praw[2400],actual[64000],cache[64*136];
     unsigned char code[8192],rows[1024];
     FILE *f=fopen("build/sprite_opaque.bin","rb");if(!f)return 2;
@@ -70,6 +72,21 @@ int main(void)
             }
         }
         if(trial%31==0)head=stop=0;
+        initial_race=race;memcpy(before,pixels,sizeof before);
+        unsigned original_stop=stop;
+        memset(packets,0,sizeof packets);check(uc_mem_write(u,0xd0000,packets,sizeof packets));
+        for(unsigned pass=0;pass<5;++pass) {
+        race=initial_race;memcpy(pixels,before,sizeof pixels);stop=original_stop;
+        if(pass==2)for(unsigned h=head;h && h!=stop;h=next[h]) {
+            if(race.weapons.actors[h].occlusion && race.weapons.actors[h].old_y<190) {
+                race.track_sprite_visibility[h&63].valid=0;stop=h;break;
+            }
+        }
+        if(pass==3 && head && head!=stop) {
+            race.weapons.actors[head].motion.frame^=1;stop=head;
+        }
+        if(pass==4)for(unsigned h=head;h && h!=stop;h=next[h])
+            ++race.weapons.actors[h].motion.x;
         actors(araw,&race);previous(praw,&race);
         for(unsigned i=0;i<64;++i) {
             memcpy(cache+136*i,&race.track_sprite_visibility[i],136);
@@ -80,23 +97,25 @@ int main(void)
         check(uc_mem_write(u,0xb1000,next,sizeof next));check(uc_mem_write(u,0xb2000,trail,sizeof trail));
         check(uc_mem_write(u,0xc0000,race.track_actor_assets,sizeof race.track_actor_assets));
         check(uc_mem_write(u,0xc2000,cache,sizeof cache));
-        memset(allowed,0,sizeof allowed);memset(allowed+0x8ff00,1,0x124);
+        memset(allowed,0,sizeof allowed);memset(allowed+0x8ff00,1,0x128);
+        unsigned pass_draws=0;
         for(unsigned h=head;h && h!=stop;h=next[h]) {
             struct SlicksWeaponActor *a=&race.weapons.actors[h];
             for(unsigned y=0;y<a->old_height;++y)memset(allowed+0x30000+(a->old_y+y)*320+a->old_x,1,a->old_width);
             allowed[0xa0000+h*164+32]=1;memset(allowed+0xa0000+h*164+36,1,a->old_width*a->old_height);
             allowed[0xb0000+h*12+6]=1;
-            draw_weapon_actor_general(&race,h);++drawn;
+            memset(allowed+0xd0000+(h&63)*44,1,44);
+            draw_weapon_actor_general(&race,h);++drawn;++pass_draws;
         }
         memcpy(expected,pixels,sizeof expected);actors(araw,&race);previous(praw,&race);
-        unsigned args[]={0x18000,0xa0000,0xb0000,0xc2000,0xc0000,0x30000,0xb1000,0xb2000,head};
-        unsigned char stack[36];for(unsigned i=0;i<9;++i)be32(stack+4*i,args[i]);
+        unsigned args[]={0x18000,0xa0000,0xb0000,0xc2000,0xc0000,0x30000,0xb1000,0xb2000,head,0xd0000};
+        unsigned char stack[40];for(unsigned i=0;i<10;++i)be32(stack+4*i,args[i]);
         check(uc_mem_write(u,0x90000,stack,sizeof stack));
         uint32_t sp=0x90000,pc,result;check(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
             UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
         for(unsigned i=0;i<11;++i){uint32_t v=0x34560000+i;check(uc_reg_write(u,regs[i],&v));}
-        check(uc_emu_start(u,entry,0x18000,0,1000000));
+        packet_writes=0;check(uc_emu_start(u,entry,0x18000,0,1000000));
         check(uc_reg_read(u,UC_M68K_REG_PC,&pc));check(uc_reg_read(u,UC_M68K_REG_A7,&sp));
         check(uc_reg_read(u,UC_M68K_REG_D0,&result));
         if(pc!=0x18000 || sp!=0x90004 || result!=stop){fprintf(stderr,"draw chain trial %u returned %u expected %u\n",trial,result,stop);return 1;}
@@ -104,6 +123,9 @@ int main(void)
         check(uc_mem_read(u,0x30000,actual,64000));if(memcmp(actual,expected,64000))fail("draw chain pixels");
         check(uc_mem_read(u,0xa0000,actual,32800));if(memcmp(actual,araw,32800))fail("draw chain actor state");
         check(uc_mem_read(u,0xb0000,actual,2400));if(memcmp(actual,praw,2400))fail("draw chain descriptors");
+        if(pass && packet_writes)fail("warm packet was rebuilt instead of reused");
+        if(!pass && pass_draws && !packet_writes)fail("cold packets were not populated");
+        }
     }
-    printf("Native sprite drawing chain: 384 cases, %u draws, exact pixels/state/write bounds/fallback/ABI passed\n",drawn);
+    printf("Native sprite drawing chain: 1920 cold/warm/stale-mask/changed-frame/fractional-position cases, %u draws, exact pixels/state/write bounds/fallback/ABI passed\n",drawn);
 }

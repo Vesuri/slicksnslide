@@ -236,6 +236,18 @@ struct SlicksTrailParticle {
     signed char state; /* DOS point states 1/5, retained retirement -2/-6. */
 };
 
+/* Native drawing metadata only, never a copy of displayed pixels. Loaded
+ * track assets/maps and the chunky base remain immutable during a race. */
+struct SlicksTrackDrawPacket {
+    unsigned char description[12];
+    unsigned int signature,position;
+    const unsigned char *pixels,*mask;
+    unsigned char *destination;
+    unsigned char masked,valid;
+    unsigned short reserved;
+    unsigned char visibility_key[8];
+};
+
 struct SlicksRaceRuntime {
     /* Keep working state before large resources/maps. The 68020 can then
      * address hot fields with short displacements instead of full 32-bit
@@ -384,6 +396,7 @@ struct SlicksRaceRuntime {
             } __attribute__((aligned(4))) frames[16];
         } cars[4];
     } car_render_cache;
+    struct SlicksTrackDrawPacket track_draw_packets[64];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
 };

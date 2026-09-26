@@ -1110,3 +1110,31 @@ to 308297/602. Worst work rises from 508 to 511. Original collision/AI/map
 checks and eleven full driving scenarios pass, but the target code-generation
 trade-off is unfavorable (`tmp/verify-inline-car-sample.log`,
 `tmp/perf-inline-car-sample-basic.log`). Its out-of-line API/body is restored.
+
+## Validated track-sprite drawing packets
+
+Cache only validated drawing metadata (source, mask and destination pointers,
+dimensions, position and style), not framebuffer pixels. The native batched
+drawer compares current/previous sprite state before reuse and checks the
+complete shared visibility-cache key, preventing reuse after an aliased mask
+entry changes. Misses retain the exact dispatcher/general renderer. Race start
+invalidates all 64 packets; track resources and the chunky base are immutable
+within a race. Target storage is 2816 bytes.
+
+The native compositional oracle passes 1920 cold/warm/stale-mask/changed-frame/
+fractional-position cases and 22074 draws, including exact pixels, actor state,
+write bounds, fallbacks and register ABI. Warm cases assert that packets are
+actually reused. Existing original weapon-actor and native opacity/restoration
+checks pass (`tmp/verify-draw-packets-regression.log`). Poisoned-cache startup
+checks pass all 808 original actor-setup cases
+(`tmp/verify-draw-packets-start.log`). The complete display audit passes 600
+updates, 32 actors and 2076 permanent marks (`tmp/audit-draw-packets.log`).
+Native mode-4 transitions complete two races/two pauses, restore mask 31 and
+zero audio spills (`tmp/modes-draw-packets.log`).
+
+F1 work falls from 316948 to 304615 lines over 603 updates (33.69 to 32.38 ms
+average), with drawing 105342 to 92816 lines. Worst work falls from 668 to
+649 lines; cadence falls from 377172 to 375626/602. BASIC is essentially neutral:
+220813 to 221019 lines (23.47 to 23.49 ms), identical 306737/602 cadence;
+worst work 508 to 511. See `tmp/perf-draw-packets-{basic,f1}.log`.
+Neither fixture meets the requested 20 ms limit.

@@ -285,7 +285,8 @@ slicks_restore_sprite_chain:
 
 	xdef slicks_draw_sprite_chain
 ; C ABI: actors, previous descriptors, visibility cache, assets, chunky,
-; next handles, trail indices, first handle. Caller supplies an active,
+; next handles, trail indices, first handle, validated drawing packets.
+; Caller supplies an active,
 ; ordered chain and deferred sprite dirtiness. Return first general/point
 ; handle unchanged, or zero when the chain is exhausted.
 slicks_draw_sprite_chain:
@@ -293,10 +294,10 @@ slicks_draw_sprite_chain:
 	move.l 76(sp),-(sp)
 .actor:
 	move.l (sp),d0
-	beq.s .done
+	beq.w .done
 	movea.l 76(sp),a0
 	tst.w 0(a0,d0.w*2)
-	bpl.s .done
+	bpl.w .done
 	move.w d0,d1
 	mulu.w #164,d1
 	movea.l 52(sp),a2
@@ -314,17 +315,133 @@ slicks_draw_sprite_chain:
 	lsl.w #3,d0
 	movea.l 60(sp),a4
 	adda.w d0,a4
+	move.l (sp),d0
+	andi.w #63,d0
+	mulu.w #44,d0
+	movea.l 84(sp),a0
+	adda.w d0,a0
+	tst.b 33(a0)
+	beq.w .slow
+	move.l (a3),d0
+	cmp.l (a0),d0
+	bne.w .slow
+	move.l 4(a3),d0
+	cmp.l 4(a0),d0
+	bne.w .slow
+	move.l 8(a3),d0
+	cmp.l 8(a0),d0
+	bne.w .slow
+	move.l 26(a2),d0
+	cmp.l (a0),d0
+	bne.w .slow
+	move.w 30(a2),d0
+	cmp.w 4(a0),d0
+	bne.w .slow
+	move.l 20(a2),d0
+	cmp.l 12(a0),d0
+	bne.w .slow
+	move.l (a2),d0
+	andi.l #$ffc0ffc0,d0
+	cmp.l 16(a0),d0
+	bne.w .slow
+	move.b 16(a2),d0
+	cmp.b 8(a0),d0
+	bne.w .slow
+	move.b 24(a2),d0
+	cmp.b 9(a0),d0
+	bne.w .slow
+	tst.b 32(a0)
+	beq.s .cached
+	; The shared foreground mask may have been replaced by an aliased
+	; handle. Its complete key must still match before reusing its pointer.
+	move.l (a4),d0
+	cmp.l 36(a0),d0
+	bne.s .slow
+	move.l 4(a4),d0
+	cmp.l 40(a0),d0
+	bne.s .slow
+.cached:
+	movea.l a2,a4
+	movea.l a3,a6
+	movea.l 20(a0),a1
+	movea.l 24(a0),a3
+	lea 36(a4),a2
+	moveq #0,d4
+	move.b 4(a0),d4
+	moveq #0,d3
+	move.b 5(a0),d3
+	tst.b 32(a0)
+	movea.l 28(a0),a0
+	beq.s .opaque
+	jsr slicks_draw_sprite_visible_regs+SLICKS_SPRITE_TEST_BASE
+	bra.s .painted
+.opaque:
+	jsr slicks_draw_sprite_opaque_regs+SLICKS_SPRITE_TEST_BASE
+.painted:
+	move.b #1,32(a4)
+	clr.b 6(a6)
+	bra.w .next
+.slow:
 	movea.l 64(sp),a5
 	movea.l 68(sp),a6
 	bsr.w slicks_draw_unchanged_track_sprite_regs
 	tst.l d0
-	beq.s .done
+	beq.w .done
+	; Publish a packet only after the existing exact dispatcher validates
+	; and draws this sprite. a4=actor, a6=previous, a5=source base;
+	; a0/a3 point one rectangle past the destination/mask respectively.
+	move.l (sp),d0
+	andi.w #63,d0
+	mulu.w #44,d0
+	movea.l 84(sp),a2
+	adda.w d0,a2
+	clr.w 32(a2)
+	move.l (a6),(a2)
+	move.l 4(a6),4(a2)
+	move.l 8(a6),8(a2)
+	move.b #3,6(a2)
+	move.l 20(a4),12(a2)
+	move.l (a4),d0
+	andi.l #$ffc0ffc0,d0
+	move.l d0,16(a2)
+	move.l a5,20(a2)
+	moveq #0,d0
+	moveq #0,d1
+	move.b 30(a4),d0
+	move.b 31(a4),d1
+	mulu.w d1,d0
+	suba.l d0,a3
+	move.l a3,24(a2)
+	lea mult320,a1
+	suba.l 0(a1,d1.w*4),a0
+	move.l a0,28(a2)
+	clr.w 34(a2)
+	clr.l 36(a2)
+	clr.l 40(a2)
+	tst.b 23(a4)
+	beq.s .publish
+	cmpi.w #190,28(a4)
+	bge.s .publish
+	move.b #1,32(a2)
+	move.l (sp),d0
+	andi.w #63,d0
+	move.w d0,d1
+	lsl.w #4,d0
+	add.w d1,d0
+	lsl.w #3,d0
+	movea.l 60(sp),a1
+	adda.w d0,a1
+	move.l (a1),36(a2)
+	move.l 4(a1),40(a2)
+.publish:
+	move.b #1,33(a2)
+.next:
 	movea.l 72(sp),a0
 	move.l (sp),d0
 	moveq #0,d1
 	move.b 0(a0,d0.w),d1
 	move.l d1,(sp)
-	bra.s .actor
+	bra.w .actor
 .done:
 	move.l (sp)+,d0
 	movem.l (sp)+,d2-d7/a2-a6
