@@ -273,3 +273,12 @@ Reset clears the same33bytes with longword stores rather than a byte loop;
 saved-under storage remains untouched.256 native canary/ABI cases pass,
 along with8192 allocation cases,2432 original actor drawings,128 saturated
 shared-pool reuse cases, and4096 original projectile-loop cases.
+
+## Rejected standalone native shared-slot adapter
+
+`tmp/perf-shared-adapter.log`: moving only the two surrounding slot-map
+passes into assembly produced720lines maximum versus719, with mean cadence
+385904/602lines. The advance substage saved only about one line.512 adapter
+storage/ABI regressions and1920 original point-lifecycle comparisons passed,
+but the extra production path and adapter-only test were removed because
+there was no useful end-to-end improvement.
