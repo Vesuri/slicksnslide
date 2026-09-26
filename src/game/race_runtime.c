@@ -1945,6 +1945,9 @@ static void draw_trail_point(struct SlicksRaceRuntime *race,
         particle->saved_valid = 1;
 }
 
+#if defined(__m68k__)
+__attribute__((optimize("O2")))
+#endif
 static void draw_trail_priority(struct SlicksRaceRuntime *race,
                                  unsigned short bucket,int priority)
 {

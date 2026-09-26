@@ -58,6 +58,9 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     a->saved=0;
 }
 
+#if defined(__m68k__)
+__attribute__((optimize("O2")))
+#endif
 static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];

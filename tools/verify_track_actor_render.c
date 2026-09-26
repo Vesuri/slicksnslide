@@ -76,9 +76,12 @@ int main(void)
         if(memcmp(native,dos,64000)) {
             for(unsigned i=0;i<64000;++i)if(native[i]!=dos[i]){fprintf(stderr,"Track actor %u trial=%u xy=%d,%d mask=%u pixel=%u,%u native=%u DOS=%u\n",asset,trial,x,y,limit,i%320,i/320,native[i],dos[i]);break;}return 1;
         }
+        race.sprite_dirty_deferred=1;race.sprite_dirty_count=0;
         restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();
         /* Same key must hit the visibility cache without changing pixels. */
         draw_weapon_actor(&race,1);if(memcmp(native,dos,64000))abort();
+        finish_sprite_dirty_batch(&race);
+        race.sprite_dirty_deferred=1;
         restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();
         /* Handles 1 and 65 share a cache slot. A different position must
          * evict, and drawing 1 again must revalidate rather than reuse it. */
@@ -87,7 +90,8 @@ int main(void)
         draw_weapon_actor(&race,65);restore_weapon_actor(&race,65);
         if(memcmp(native,before,64000))abort();
         draw_weapon_actor(&race,1);if(memcmp(native,dos,64000))abort();
-        restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();++cases;
+        restore_weapon_actor(&race,1);if(memcmp(native,before,64000))abort();
+        finish_sprite_dirty_batch(&race);++cases;
     }
     printf("Track actor rendering: %u original full-screen/foreground/edge comparisons and restoration checks pass\n",cases);
     for(unsigned trial=0;trial<64;++trial) {

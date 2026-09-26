@@ -516,3 +516,12 @@ addresses in 68020 address registers reduces repeated indexed addressing.
 render tests plus dirty-coverage tests pass (`tmp/verify-sprite-bases.log`).
 The full native display audit also passes 600 updates, 32 actors and 2076
 marks (`tmp/audit-sprite-bases.log`).
+
+Limiting optimization of the two sprite draw wrappers to `O2` keeps the
+rare scalar fallback from expanding the shared draw loop. Physics remains
+at `O3`. F1 (`tmp/perf-compact-draw.log`) measures 970 lines maximum work
+(62.2 ms), with 557470/602 lines mean cadence (59.4 ms). The shared draw
+function shrinks from 4516 to 1840 bytes. Original track-render comparisons
+now also repeat draws with deferred dirty metadata and deliberate cache
+collisions (`tmp/verify-deferred-cache.log`).
+The full display audit passes 600 updates (`tmp/audit-compact-draw.log`).
