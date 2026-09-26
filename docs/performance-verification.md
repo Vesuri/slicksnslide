@@ -680,3 +680,8 @@ off-road and original damage tests but showed no improvement: BASIC maximum
 598 lines, cadence 338560/602, and the worst-frame wheel phase still 68 lines
 (`tmp/perf-wheel-centres.log`, `tmp/verify-wheel-centres.log`). Removed rather
 than retaining an unmeasured arithmetic improvement.
+
+Compiling only track-object motion at `O2` was slower too: F1 859 maximum
+lines and 489224/602 cadence, with the restore-plus-motion interval rising
+from 183 to 202 lines at the worst update (`tmp/perf-track-motion-o2.log`).
+Restored its original `O3` compilation.
