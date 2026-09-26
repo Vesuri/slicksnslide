@@ -288,6 +288,10 @@ volatile unsigned long g_slicks_diag_profile_total_lines;
 volatile unsigned char g_slicks_diag_profile_all;
 volatile unsigned long g_slicks_diag_bench_frames;
 volatile unsigned long g_slicks_diag_bench_work_max;
+volatile unsigned long g_slicks_diag_bench_work_sum;
+volatile unsigned long g_slicks_diag_bench_stage_sum[8];
+volatile unsigned long g_slicks_diag_bench_tail_sum[4];
+volatile unsigned long g_slicks_diag_bench_simulation_sum[3];
 volatile unsigned long g_slicks_diag_bench_work_max_frame;
 volatile unsigned long g_slicks_diag_bench_max_stages[8];
 volatile unsigned short g_slicks_diag_bench_max_particles;
@@ -5190,6 +5194,22 @@ int main(void)
                     unsigned long wall = now - frame_start;
                     unsigned long work = g_slicks_diag_profile_total_lines;
                     ++g_slicks_diag_bench_frames;
+                    /* Aggregate the same measured intervals as the worst-frame
+                     * snapshot. Bookkeeping is outside the work timer and runs
+                     * only in the diagnostic benchmark, never normal play. */
+                    g_slicks_diag_bench_work_sum += work;
+                    g_slicks_diag_bench_stage_sum[0]+=g_slicks_diag_profile_restore_lines;
+                    g_slicks_diag_bench_stage_sum[1]+=g_slicks_diag_profile_advance_lines;
+                    g_slicks_diag_bench_stage_sum[2]+=g_slicks_diag_profile_update_lines;
+                    g_slicks_diag_bench_stage_sum[3]+=g_slicks_diag_profile_hud_lines;
+                    g_slicks_diag_bench_stage_sum[4]+=g_slicks_diag_profile_draw_lines;
+                    g_slicks_diag_bench_stage_sum[5]+=g_slicks_diag_profile_audio_lines;
+                    g_slicks_diag_bench_stage_sum[6]+=g_slicks_diag_profile_c2p_lines;
+                    g_slicks_diag_bench_stage_sum[7]+=g_slicks_diag_profile_diag_lines;
+                    for(unsigned i=0;i<4;++i)
+                        g_slicks_diag_bench_tail_sum[i]+=g_slicks_diag_profile_tail[i];
+                    for(unsigned i=0;i<3;++i)
+                        g_slicks_diag_bench_simulation_sum[i]+=g_slicks_diag_profile_actor_lines[21+i];
                     if (work > g_slicks_diag_bench_work_max) {
                         g_slicks_diag_bench_work_max = work;
                         g_slicks_diag_bench_work_max_frame = race->frame_count;

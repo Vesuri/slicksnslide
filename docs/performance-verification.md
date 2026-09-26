@@ -802,3 +802,15 @@ weapon and track-actor checks, but F1 cadence increased from 440294/602 to
 443050/602, with maximum work 772 rather than 771 lines. Removed rather than
 retained on an alignment assumption (`tmp/verify-track-asset-alignment.log`,
 `tmp/perf-track-asset-alignment-f1.log`).
+
+## Race-wide stage totals
+
+The benchmark now sums measured work/stages over all 603 racing updates,
+not just the maximum-work snapshot. Collection runs after the work timer,
+only in benchmark mode; its bookkeeping is still included in cadence, so
+future cadence comparisons need this same instrumentation on both sides.
+BASIC has 233647 total work lines (24.8 ms average work), including 84802
+car-update, 58008 draw and 23918 C2P lines. F1 has 389278 (41.4 ms average
+work), including 138756 draw, 98218 restore/track-motion, 78465 car-update
+and 28180 C2P lines. Mean cadence remains 35.3/47.3 ms, respectively.
+Evidence: `tmp/perf-average-stage-basic.log`, `tmp/perf-average-stage-f1.log`.
