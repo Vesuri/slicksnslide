@@ -3031,7 +3031,7 @@ int main(void)
         --argc;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
-    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && argv[7]=='M' && argv[8]>='0' && argv[8]<='3');
+    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B') && argv[8]>='0' && argv[8]<='3');
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
     unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
@@ -3346,7 +3346,10 @@ int main(void)
         g_slicks_diag_target_frame = 5;
     }
     if (gameplay_benchmark || (argc > 0 && ((const char *)argv)[0] == 'M')) {
-        g_slicks_diag_profile_all = 1;
+        /* Mode 2 retains outer work/cadence timing but does not invoke
+         * intra-update profiling callbacks. Keep mode 1 for comparisons
+         * against the historical detailed benchmark. */
+        g_slicks_diag_profile_all = gameplay_benchmark && argv[7]=='B'?2:1;
         g_slicks_diag_target_frame = 700;
     }
     if (argc > 0 && ((const char *)argv)[0] == 'V') {
@@ -4964,7 +4967,8 @@ int main(void)
                 race->cars[0].special_drive_target = 0;
             }
             if(weapon_hud_fixture) set_weapon_hud_fixture(race);
-            if(g_slicks_diag_profile_all) race->profile_frame=race->frame_count+1;
+            if(g_slicks_diag_profile_all)
+                race->profile_frame=g_slicks_diag_profile_all==1?race->frame_count+1:0;
             slicks_race_step(race, logical);
             /* Completion is a simulation edge, independent of whether
              * engine playback is enabled or currently owns a channel. */

@@ -1299,3 +1299,35 @@ See `tmp/perf-clipped-packets-final-{basic,f1}.log`. The 20 ms target remains
 open. These timings include detailed intra-update profiling; a subsequent
 whole-update-only measurement should quantify that overhead separately,
 without substituting changed instrumentation for an optimization result.
+
+## Historical sub-20 ms figures and profiling overhead
+
+The 2026-09-23 figures in `native-race-status.md` were selected checkpoints:
+173 lines (11.1 ms) at frame 200, 293 (18.8 ms) at frame 700, later 311
+(19.9 ms) after permanent-mark retirement. They were not maxima over an
+entire race. Subsequent work corrected missing repeated physics integration
+and added the fuller foreground/layered/shared-actor behavior. The current
+native-menu scenarios and their loads also differ. No per-feature slowdown
+in milliseconds has been established by a controlled historical replay.
+
+`SLICKS_BENCHMARK_DETAIL=0` now selects native-menu NATURALB0..3: identical
+gameplay and outer work/cadence measurement, without intra-update callbacks.
+Default detail=1 retains NATURALM0..3 and the historical detailed profile.
+The script labels the measurement mode; internal stage breakdowns are invalid
+in outer-only mode and their sums must remain zero. Audio, C2P and diagnostic
+outer intervals remain measured; this is not a zero-overhead release benchmark.
+
+Same-binary controls, 603 updates each:
+
+| Case | Detailed work sum | Outer-only work sum | Mean ms, detailed / outer | Outer maximum / over-budget |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC | 220779 | 198250 | 23.47 / 21.07 | 466 lines / 376 updates |
+| F1 | 296070 | 271503 | 31.47 / 28.86 | 596 lines / 603 updates |
+
+Detailed callbacks therefore add about 2.40 / 2.61 ms of mean work in these
+fixtures. Their effect on phase alignment also changes cadence: BASIC
+306737 to 255259 lines over 602 intervals, F1 375630 to 375345. Neither
+outer-only case meets the requested 20 ms bound. Logs:
+`tmp/perf-detail-control-{basic,f1}.log`, `tmp/perf-outer-{basic,f1}.log`.
+Shell syntax and both benchmark modes pass; all runs are muted and close
+their owned emulator. Keep optimization comparisons within one mode.

@@ -15,6 +15,11 @@ commands
   end
   printf "BENCHMARK frames=%lu max_work_lines=%lu max_frame=%lu over_budget=%lu max_wall_lines=%lu cadence_lines=%lu cadence_count=%lu\n",g_slicks_diag_bench_frames,g_slicks_diag_bench_work_max,g_slicks_diag_bench_work_max_frame,g_slicks_diag_bench_work_over,g_slicks_diag_bench_wall_max,g_slicks_diag_bench_cadence_sum,g_slicks_diag_bench_cadence_count
   printf "INITIAL_CACHE_CONTROL=0x%lx\n",g_slicks_diag_initial_cache_control
+  printf "PROFILE_DETAIL=%u (stage breakdowns valid only when 1)\n",g_slicks_diag_profile_all==1
+  if g_slicks_diag_profile_all==2 && (g_slicks_diag_bench_stage_sum[0] || g_slicks_diag_bench_stage_sum[1] || g_slicks_diag_bench_stage_sum[2] || g_slicks_diag_bench_stage_sum[3] || g_slicks_diag_bench_stage_sum[4])
+    printf "BENCHMARK_INVALID unexpected intra-update callbacks\n"
+    quit 1
+  end
   printf "WORK_SUM=%lu frames=%lu\n",g_slicks_diag_bench_work_sum,g_slicks_diag_bench_frames
   printf "STAGE_SUM restore=%lu advance=%lu update=%lu hud=%lu draw=%lu audio=%lu c2p=%lu diag=%lu\n",g_slicks_diag_bench_stage_sum[0],g_slicks_diag_bench_stage_sum[1],g_slicks_diag_bench_stage_sum[2],g_slicks_diag_bench_stage_sum[3],g_slicks_diag_bench_stage_sum[4],g_slicks_diag_bench_stage_sum[5],g_slicks_diag_bench_stage_sum[6],g_slicks_diag_bench_stage_sum[7]
   printf "TAIL_SUM wheels=%lu collision_surface=%lu smoke_contact=%lu finish=%lu\n",g_slicks_diag_bench_tail_sum[0],g_slicks_diag_bench_tail_sum[1],g_slicks_diag_bench_tail_sum[2],g_slicks_diag_bench_tail_sum[3]
