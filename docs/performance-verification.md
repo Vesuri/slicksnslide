@@ -550,3 +550,10 @@ The full native display audit passes 600 updates, 32 actors and 2076 marks
 (`tmp/audit-reverse-order.log`). A new baseline regression also verifies
 point allocation/drawing/restoration and subsequent sprite reuse for all
 199 handles with deliberately poisoned stale sprite metadata.
+
+Reducing point-allocation sprite reset to just its kind/saved flags passed
+the poisoned-slot and original effect/render tests, but did not improve the
+end-to-end result: 947 maximum lines and 553388/602 mean cadence lines
+(`tmp/perf-point-reset.log`). Keep the full metadata reset. Its additional
+display audit was cancelled and its owned emulator closed after the timing
+rejection; no audit completion is claimed for this discarded experiment.
