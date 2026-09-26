@@ -21,6 +21,9 @@ static void reset_weapon_actor(struct SlicksWeaponActor *actor)
 static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
+#if defined(__m68k__)
+    __asm__("" : "+a"(a));
+#endif
     if(!a->saved) return;
     int left=a->old_x,top=a->old_y,width=a->old_width;
     int x0=left<0?-left:0,x1=320-left;
@@ -42,6 +45,9 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         /* Keep this separate from the reusable actor slot: it may be freed
          * and replaced by a point or another sprite before drawing. */
         __typeof__(race->sprite_dirty_previous[0]) *previous=&race->sprite_dirty_previous[handle];
+#if defined(__m68k__)
+        __asm__("" : "+a"(previous));
+#endif
         previous->x=a->old_x;previous->y=a->old_y;
         previous->width=a->old_width;previous->height=a->old_height;
         previous->kind=a->kind;previous->asset=a->asset;
@@ -55,6 +61,11 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
+#if defined(__m68k__)
+    /* Materialize these reusable bases once instead of repeating full
+     * indexed addressing through the large race structure for each field. */
+    __asm__("" : "+a"(a));
+#endif
     if(!a->kind || race->weapons.slots.state[handle]<=0) return;
     /* Per-sprite probes are intentionally opt-in: four callbacks for every
      * tiny sprite measurably perturb a chip-RAM-only 68020. */
@@ -106,6 +117,9 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         slicks_draw_sprite_opaque(race->chunky+mult320[top]+left,pixels,a->saved_under,opacity,width,height);
     } else if(opacity && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
         __typeof__(race->track_sprite_visibility[0]) *cache=&race->track_sprite_visibility[handle&63];
+#if defined(__m68k__)
+        __asm__("" : "+a"(cache));
+#endif
         if(!cache->valid || cache->x!=left || cache->y!=top || cache->asset!=a->asset ||
            cache->frame!=(unsigned char)a->motion.frame || cache->occlusion!=a->occlusion) {
             unsigned i=0;
@@ -163,6 +177,9 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     if(profile)race->profile_marker(62);
     a->old_x=left;a->old_y=top;a->old_width=width;a->old_height=height;a->saved=1;
     __typeof__(race->sprite_dirty_previous[0]) *previous=&race->sprite_dirty_previous[handle];
+#if defined(__m68k__)
+    __asm__("" : "+a"(previous));
+#endif
     unsigned unchanged=race->sprite_dirty_deferred && previous->kind &&
         previous->x==left && previous->y==top && previous->width==width && previous->height==height &&
         previous->kind==a->kind && previous->asset==a->asset && previous->frame==(unsigned char)a->motion.frame &&

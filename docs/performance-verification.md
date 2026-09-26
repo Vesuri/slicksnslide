@@ -508,3 +508,11 @@ Correctness-only debug runs may use `SLICKS_DEBUG_WARP=1`; the runner rejects
 this option for gameplay benchmarks. The missing-pixel positive control also
 passes in warp mode (`tmp/audit-warp-control.log`). Normal run.sh audio and
 benchmark pacing are unchanged.
+
+Materializing the reusable actor, visibility-cache and previous-description
+addresses in 68020 address registers reduces repeated indexed addressing.
+`tmp/perf-sprite-bases.log`: F1 maximum 982 lines (63.0 ms), mean cadence
+561188/602 lines (59.8 ms). Native sprite merges and original weapon/track
+render tests plus dirty-coverage tests pass (`tmp/verify-sprite-bases.log`).
+The full native display audit also passes 600 updates, 32 actors and 2076
+marks (`tmp/audit-sprite-bases.log`).
