@@ -83,7 +83,7 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
     /* Per-sprite probes are intentionally opt-in: four callbacks for every
      * tiny sprite measurably perturb a chip-RAM-only 68020. */
 #ifdef SLICKS_PROFILE_SPRITES
-    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    int profile=profile_scope(race,7);
 #else
     const int profile=0;
 #endif

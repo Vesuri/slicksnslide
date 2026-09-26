@@ -321,6 +321,9 @@ struct SlicksRaceRuntime {
     unsigned char chunky_authoritative;
     unsigned long profile_frame;
     void (*profile_marker)(unsigned char phase);
+    /* 0: all; 1: stages; 2: actor layers; 3: simulation; 4: tail; 5: cars;
+     * 6: track/particle/sprite advancement; 7: optional sprite probes. */
+    unsigned char profile_scope;
     struct SlicksHudRun hud_runs[SLICKS_RACE_CAR_COUNT][3];
     unsigned char hud_run_count[SLICKS_RACE_CAR_COUNT];
     unsigned char hud_valid[SLICKS_RACE_CAR_COUNT];

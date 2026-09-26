@@ -14,8 +14,10 @@ Paula audio now has VBI-based lifetimes and staged DMA restarts; its corrected
 pitch and matching-vehicle listening comparisons are accepted. Championship
 save/load/resume now works through native menus, including fresh-process
 resume, repeated saves, overwrite/delete confirmation and rejected-load
-state preservation. The full game is not yet
-complete; further performance work is deferred.
+state preservation. The native-port feature/integration/release checklist is
+complete within its tested scope; this is not exhaustive compatibility proof
+for every track, option combination or original runtime path. Performance work
+is active: sustained 20 ms updates on a stock A1200 have not been achieved.
 
 See [setup evidence](docs/player-setup-completion.md) and
 [audio evidence](docs/audio-channel-plan.md), and
@@ -350,4 +352,5 @@ amiga/                 build, run, debug, and diagnostic scripts
 ## Immediate next step
 
 Follow [the current queue](docs/open-work.md) for remaining gameplay priorities and deferred
-checks; do not restart performance or manual joystick work implicitly.
+checks. Performance is active; do not restart the deferred manual joystick
+check without agreement.

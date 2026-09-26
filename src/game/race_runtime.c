@@ -14,6 +14,12 @@
 #include "animated_boundary.h"
 #include "track_material_sample.h"
 
+static inline int profile_scope(const struct SlicksRaceRuntime *race,unsigned scope)
+{
+    return race->profile_marker && race->frame_count+1==race->profile_frame &&
+        (!race->profile_scope || race->profile_scope==scope);
+}
+
 #if defined(__m68k__)
 _Static_assert(sizeof(struct SlicksTrackDrawPacket)==300 &&
     __builtin_offsetof(struct SlicksTrackDrawPacket,pixels)==20 &&
@@ -747,7 +753,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
 static void draw_layered_cars(struct SlicksRaceRuntime *race,
                               unsigned char *logical)
 {
-    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    int profile=profile_scope(race,5);
     if(profile)race->profile_marker(49);
     unsigned short pass, car;
     /* 2000:3e7d..3eba: nonzero layer has priority 3, zero has 4.
@@ -2183,7 +2189,7 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
         restore_layered_cars(race,logical);restore_trail_particles(race,0);
         restore_shadows(race,logical);return;
     }
-    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    int profile=profile_scope(race,2);
     if(race->sprite_dirty_deferred)finish_sprite_dirty_batch(race);
     race->sprite_dirty_count=0;race->sprite_dirty_deferred=1;
     if(profile) race->profile_marker(10);
@@ -2211,7 +2217,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
         draw_layered_cars(race,logical);draw_trail_particles(race,2);
         draw_trail_particles(race,3);return;
     }
-    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    int profile=profile_scope(race,2);
     if(profile) { race->profile_marker(59);race->profile_marker(20); }
     build_actor_order(race,0);
     if(profile) race->profile_marker(21);
@@ -2629,7 +2635,7 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
                               unsigned short car_index, unsigned short timestep,
                               unsigned char controls)
 {
-    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    int profile=profile_scope(race,4);
     if(profile) race->profile_marker(40);
     struct SlicksRaceCar *car = &race->cars[car_index];
     unsigned char jump_sound;
@@ -2676,7 +2682,7 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
 
 static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
 {
-    int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    int profile=profile_scope(race,3);
     if(profile) race->profile_marker(30);
     unsigned char controls[SLICKS_RACE_CAR_COUNT];
     unsigned short car;
@@ -2687,7 +2693,7 @@ static void update_cars(struct SlicksRaceRuntime *race, unsigned short ticks)
     if(profile) race->profile_marker(31);
     update_weapon_projectiles(race,ticks);
     if(profile) race->profile_marker(32);
-    if(profile) race->profile_marker(39);
+    if(profile_scope(race,4)) race->profile_marker(39);
     /* These tails allocate but never retire slots. Retirement happens in
      * the subsequent actor-advance phase, after this cursor is disabled. */
     race->emission_slot_cursor=1;
@@ -3684,8 +3690,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     if(race->race_complete) return;
     if (race->chunky_authoritative)
         logical = 0;
-    profile = (unsigned char)(race->profile_marker &&
-        race->frame_count + 1 == race->profile_frame);
+    profile = (unsigned char)profile_scope(race,1);
     if (profile)
         race->profile_marker(0);
     race->collision_impact = 0;
@@ -3730,7 +3735,9 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
     /* Priority 0, layer-1 cars, priority 3, layer-0 cars, priorities 5/6.
      * Restore in reverse layer order, then redraw forward. */
     restore_race_actors(race,logical);
+    if(profile_scope(race,6))race->profile_marker(70);
     update_track_actor_motion(race);
+    if(profile_scope(race,6))race->profile_marker(71);
     if (profile)
         race->profile_marker(1);
     if(race->poll_driver_devices) race->poll_driver_devices(race,ticks);
@@ -3740,8 +3747,11 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
         race->profile_marker(3);
     /* DOS 2000:3f51 calls the actor update after all four car tails have
      * emitted their effects. New points move/decrement on this same pass. */
+    if(profile_scope(race,6))race->profile_marker(72);
     advance_trail_particles(race);
+    if(profile_scope(race,6))race->profile_marker(73);
     advance_weapon_actors(race);
+    if(profile_scope(race,6))race->profile_marker(74);
     if (profile)
         race->profile_marker(2);
     draw_timers(race, logical);

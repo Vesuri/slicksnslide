@@ -289,9 +289,16 @@ volatile unsigned char g_slicks_diag_profile_all;
 volatile unsigned long g_slicks_diag_bench_frames;
 volatile unsigned long g_slicks_diag_bench_work_max;
 volatile unsigned long g_slicks_diag_bench_work_sum;
+/* Bounded benchmark evidence, collected after the work timer stops. */
+volatile unsigned long g_slicks_diag_bench_work_samples[704];
+volatile unsigned short g_slicks_diag_bench_particle_samples[704];
 volatile unsigned long g_slicks_diag_bench_stage_sum[8];
 volatile unsigned long g_slicks_diag_bench_tail_sum[4];
 volatile unsigned long g_slicks_diag_bench_simulation_sum[3];
+volatile unsigned long g_slicks_diag_bench_actor_sum[8];
+volatile unsigned long g_slicks_diag_bench_car_sum[2];
+volatile unsigned long g_slicks_diag_bench_motion_sum[3];
+static unsigned long g_slicks_diag_profile_motion[3],g_slicks_diag_profile_motion_at;
 volatile unsigned long g_slicks_diag_bench_work_max_frame;
 volatile unsigned long g_slicks_diag_bench_max_stages[8];
 volatile unsigned short g_slicks_diag_bench_max_particles;
@@ -418,6 +425,12 @@ unsigned long slicks_diag_profile_raster_time(void)
 static void slicks_diag_profile_race(unsigned char phase)
 {
     unsigned long now = slicks_diag_profile_raster_time();
+    if(phase>=70 && phase<=74) {
+        if(phase==71)g_slicks_diag_profile_motion[0]=now-g_slicks_diag_profile_motion_at;
+        else if(phase>=73)g_slicks_diag_profile_motion[phase-72]=now-g_slicks_diag_profile_motion_at;
+        g_slicks_diag_profile_motion_at=now;
+        return;
+    }
     if(phase>=59 && phase<=63) {
         if(phase==59) {
             for(unsigned i=0;i<3;++i)g_slicks_diag_profile_sprite[i]=0;
@@ -3038,8 +3051,8 @@ int main(void)
     if(!continuous_diagnostics)g_slicks_diag_target_frame=0;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
-    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B') && argv[8]>='0' && argv[8]<='3');
-    if(gameplay_benchmark && argv[7]=='B')continuous_diagnostics=0;
+    unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
+    if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
     unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
@@ -3358,6 +3371,8 @@ int main(void)
          * intra-update profiling callbacks. Keep mode 1 for comparisons
          * against the historical detailed benchmark. */
         g_slicks_diag_profile_all = gameplay_benchmark && argv[7]=='B'?2:1;
+        if(gameplay_benchmark && argv[7]>='1' && argv[7]<='6')
+            g_slicks_diag_profile_all=(unsigned char)(argv[7]-'0'+2);
         g_slicks_diag_target_frame = 700;
     }
     if (argc > 0 && ((const char *)argv)[0] == 'V') {
@@ -4975,8 +4990,10 @@ int main(void)
                 race->cars[0].special_drive_target = 0;
             }
             if(weapon_hud_fixture) set_weapon_hud_fixture(race);
-            if(g_slicks_diag_profile_all)
-                race->profile_frame=g_slicks_diag_profile_all==1?race->frame_count+1:0;
+            if(g_slicks_diag_profile_all) {
+                race->profile_frame=g_slicks_diag_profile_all!=2?race->frame_count+1:0;
+                race->profile_scope=g_slicks_diag_profile_all>=3?g_slicks_diag_profile_all-2:0;
+            }
             slicks_race_step(race, logical);
             /* Completion is a simulation edge, independent of whether
              * engine playback is enabled or currently owns a channel. */
@@ -5208,11 +5225,23 @@ int main(void)
                 if (g_slicks_diag_profile_all && bench_racing) {
                     unsigned long wall = now - frame_start;
                     unsigned long work = g_slicks_diag_profile_total_lines;
+                    if(g_slicks_diag_bench_frames < 704) {
+                        g_slicks_diag_bench_work_samples[g_slicks_diag_bench_frames]=work;
+                        g_slicks_diag_bench_particle_samples[g_slicks_diag_bench_frames]=race->trail_particle_count;
+                    }
                     ++g_slicks_diag_bench_frames;
                     /* Aggregate the same measured intervals as the worst-frame
                      * snapshot. Bookkeeping is outside the work timer and runs
                      * only in the diagnostic benchmark, never normal play. */
                     g_slicks_diag_bench_work_sum += work;
+                    for(unsigned i=0;i<4;++i) {
+                        g_slicks_diag_bench_actor_sum[i]+=g_slicks_diag_profile_actor_lines[1+i];
+                        g_slicks_diag_bench_actor_sum[4+i]+=g_slicks_diag_profile_actor_lines[11+i];
+                    }
+                    for(unsigned i=0;i<2;++i)
+                        g_slicks_diag_bench_car_sum[i]+=g_slicks_diag_profile_car_draw[i];
+                    for(unsigned i=0;i<3;++i)
+                        g_slicks_diag_bench_motion_sum[i]+=g_slicks_diag_profile_motion[i];
                     g_slicks_diag_bench_stage_sum[0]+=g_slicks_diag_profile_restore_lines;
                     g_slicks_diag_bench_stage_sum[1]+=g_slicks_diag_profile_advance_lines;
                     g_slicks_diag_bench_stage_sum[2]+=g_slicks_diag_profile_update_lines;

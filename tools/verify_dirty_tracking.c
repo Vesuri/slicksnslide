@@ -5,6 +5,24 @@
 #include "host_archive.h"
 
 static int covered(const struct SlicksRaceRuntime *race, unsigned x, unsigned y);
+static void profile_noop(unsigned char phase) { (void)phase; }
+static int verify_profile_scopes(void)
+{
+    static struct SlicksRaceRuntime race;
+    race.profile_marker=profile_noop;
+    race.frame_count=99;race.profile_frame=100;
+    for(unsigned selected=0;selected<=7;++selected) {
+        race.profile_scope=selected;
+        for(unsigned queried=1;queried<=7;++queried)
+            if(profile_scope(&race,queried)!=(!selected || selected==queried))return 1;
+    }
+    race.profile_scope=0;race.profile_frame=101;
+    if(profile_scope(&race,1))return 1;
+    race.profile_frame=100;race.profile_marker=0;
+    if(profile_scope(&race,1))return 1;
+    puts("Selective profiling: scope, checkpoint and disabled-callback gates pass.");
+    return 0;
+}
 static unsigned expected_hud_width(const struct SlicksRaceFont *font,const char *text)
 {
     unsigned width=0;
@@ -279,6 +297,7 @@ static int verify_point_slot_reuse(void)
 
 int main(void)
 {
+    if(verify_profile_scopes())return 1;
     if(verify_point_slot_reuse())return 1;
     if(verify_restore_order())return 1;
     if(verify_sprite_dirty_batch())return 1;

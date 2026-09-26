@@ -50,7 +50,8 @@ RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
 if [ -n "${SLICKS_GAMEPLAY_BENCHMARK:-}" ]; then
   case "$SLICKS_GAMEPLAY_BENCHMARK" in 0|1|2|3) ;; *) exit 2;; esac
-  case "${SLICKS_BENCHMARK_DETAIL:-1}" in 0) BENCHMARK_MODE=B;; 1) BENCHMARK_MODE=M;; *) exit 2;; esac
+  # 2..6 isolate stages, actor layers, simulation, tail and car/point drawing.
+  case "${SLICKS_BENCHMARK_DETAIL:-1}" in 0) BENCHMARK_MODE=B;; 1) BENCHMARK_MODE=M;; 2) BENCHMARK_MODE=1;; 3) BENCHMARK_MODE=2;; 4) BENCHMARK_MODE=3;; 5) BENCHMARK_MODE=4;; 6) BENCHMARK_MODE=5;; 7) BENCHMARK_MODE=6;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s%s\n' "$BENCHMARK_MODE" "$SLICKS_GAMEPLAY_BENCHMARK" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_MODE_TRANSITION:-}" ]; then
   case "$SLICKS_MODE_TRANSITION" in 0|1|2|3|4|5) ;; *) exit 2;; esac
