@@ -674,3 +674,9 @@ removed: original actor tests passed, but F1 maximum work rose from 836 to
 841 lines and cadence from 478928 to 479240/602
 (`tmp/perf-config-address.log`). Fewer indexed stores did not improve the
 whole update.
+
+Explicitly sharing the two wheel-centre divisions also passed the surface,
+off-road and original damage tests but showed no improvement: BASIC maximum
+598 lines, cadence 338560/602, and the worst-frame wheel phase still 68 lines
+(`tmp/perf-wheel-centres.log`, `tmp/verify-wheel-centres.log`). Removed rather
+than retaining an unmeasured arithmetic improvement.
