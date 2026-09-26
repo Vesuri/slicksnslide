@@ -47,3 +47,14 @@ state and does not replace producer-side dirty tracking.
 including original full-screen comparisons, saturated mixed-priority pools,
 edge clipping, exact restoration and permanent-mark survival. Target build
 passes. The owned muted emulator exited after measurement.
+
+## Actor row clipping and pointer walks
+
+`tmp/perf-rows.log`: maximum work 1024 lines (65.6 ms), maximum wall 1114,
+cadence 495464 / 602 = 823.0 lines (52.8 ms); 603/603 over budget.
+Final step 682, audio 10, C2P 70, diagnostics 6; restore 162, advance 44,
+update 130, HUD 37, draw 304. The improvement is small in this race: track
+and weapon sprites are not the main remaining actor cost. Clipping and
+source row multiplication now happen once per row instead of per pixel;
+the same original renderer/restoration suites pass. No target errors or
+audio spills, and the owned emulator exited.

@@ -7,10 +7,15 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 {
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
     if(!a->saved) return;
-    for(unsigned y=0;y<a->old_height;++y) for(unsigned x=0;x<a->old_width;++x) {
-        int px=a->old_x+x,py=a->old_y+y;
-        if(px>=0 && px<320 && py>=0 && py<200)
-            race->chunky[mult320[py]+px]=a->saved_under[y*a->old_width+x];
+    int left=a->old_x,top=a->old_y,width=a->old_width;
+    int x0=left<0?-left:0,x1=320-left;
+    int y0=top<0?-top:0,y1=200-top;
+    if(x1>width) x1=width;
+    if(y1>a->old_height) y1=a->old_height;
+    if(x0<x1) for(int y=y0;y<y1;++y) {
+        unsigned char *dst=race->chunky+mult320[top+y]+left+x0;
+        const unsigned char *src=a->saved_under+y*width+x0;
+        for(int n=x1-x0;n;--n) *dst++=*src++;
     }
     mark_dirty_rect(race,a->old_x,a->old_y,a->old_x+a->old_width,a->old_y+a->old_height);
     a->saved=0;
@@ -43,16 +48,34 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     if(pixels && !a->occlusion && left<0) { a->saved=0;return; }
     if(left>=320 || top>=(pixels?200:SLICKS_POINT_HEIGHT) ||
        left+(int)width<=0 || top+(int)height<=0) { a->saved=0;return; }
-    for(unsigned y=0;y<height;++y) for(unsigned x=0;x<width;++x) {
-        int px=left+(int)x,py=top+(int)y;
-        if(px<0 || px>=320 || py<0 || py>=(pixels?200:SLICKS_POINT_HEIGHT)) continue;
-        unsigned long at=mult320[py]+px;
-        unsigned i=y*width+x;
-        a->saved_under[i]=race->chunky[at];
-        unsigned char pixel=pixels?pixels[i]:a->colour;
+    int x0=left<0?-left:0,x1=320-left;
+    int y0=top<0?-top:0,y1=(pixels?200:SLICKS_POINT_HEIGHT)-top;
+    if(x1>(int)width) x1=width;
+    if(y1>(int)height) y1=height;
+    for(int y=y0;y<y1;++y) {
+        unsigned long at=mult320[top+y]+left+x0;
+        unsigned i=y*width+x0;
+        unsigned char *dst=race->chunky+at,*saved=a->saved_under+i;
+        const unsigned char *src=pixels?pixels+i:0;
         /* The original raw mask's 190..199 tail is explicitly cleared. */
-        if((!pixels || pixel) && (py>=190 || actor_pixel_visible(race,at,a->occlusion)))
-            race->chunky[at]=pixel;
+        if(!a->occlusion || top+y>=190) {
+            for(int n=x1-x0;n;--n) {
+                unsigned char pixel=src?*src++:a->colour;
+                *saved++=*dst;
+                if(!pixels || pixel) *dst=pixel;
+                ++dst;
+            }
+        } else {
+            const unsigned char *material=race->material_map+at;
+            const unsigned char *surface=race->surface_map+at;
+            for(int n=x1-x0;n;--n) {
+                unsigned char pixel=src?*src++:a->colour;
+                *saved++=*dst;
+                if((!pixels || pixel) && ((*material<<3)|(*surface&7))<=a->occlusion)
+                    *dst=pixel;
+                ++dst;++material;++surface;
+            }
+        }
     }
     a->old_x=left;a->old_y=top;a->old_width=width;a->old_height=height;a->saved=1;
     mark_dirty_rect(race,left,top,left+width,top+height);
