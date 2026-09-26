@@ -404,11 +404,16 @@ static void restore_car(struct SlicksRaceRuntime *race,
     if (!logical) {
         unsigned char *destination = race->chunky +
             mult320[car->old_y] + car->old_x;
+#if defined(__m68k__)
+        extern void slicks_restore_car_chunky(unsigned char *,const unsigned char *,unsigned,unsigned);
+        slicks_restore_car_chunky(destination,car->saved_under,car->old_width,car->old_height);
+#else
         for (y = 0; y < car->old_height; ++y) {
             for (x = 0; x < car->old_width; ++x)
                 destination[x] = car->saved_under[at++];
             destination += SLICKS_SCREEN_WIDTH;
         }
+#endif
         car->saved_valid = 0;
         return;
     }
@@ -550,6 +555,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
         unsigned char *destination = race->chunky +
             mult320[(unsigned short)origin_y] +
             (unsigned short)origin_x;
+#if !defined(__m68k__)
         for (y = 0; y < height; ++y) {
             for (x = 0; x < width; ++x)
                 car->saved_under[at++] = destination[x];
@@ -558,6 +564,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
         destination = race->chunky +
             mult320[(unsigned short)origin_y] +
             (unsigned short)origin_x;
+#endif
         if (rotation == 1) {
             source_row = sprite->pixels +
                 (unsigned short)(sprite->height - 1) * sprite->width;
@@ -577,6 +584,14 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
             source_dx = 1;
             source_dy = sprite->width;
         }
+#if defined(__m68k__)
+        extern void slicks_draw_car_chunky(unsigned char *,const unsigned char *,unsigned char *,
+            const unsigned char *,const unsigned char *,unsigned,unsigned,int,int,unsigned,unsigned);
+        unsigned long row=mult320[(unsigned short)origin_y]+(unsigned short)origin_x;
+        slicks_draw_car_chunky(destination,source_row,car->saved_under,
+            race->material_map+row,race->surface_map+row,width,height,
+            source_dx,source_dy,car->style*5,occlusion_limit);
+#else
         for (y = 0; y < height; ++y) {
             const unsigned char *source = source_row;
             for (x = 0; x < width; ++x) {
@@ -593,6 +608,7 @@ static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
             source_row += source_dy;
             destination += SLICKS_SCREEN_WIDTH;
         }
+#endif
         car->saved_valid = 1;
         return;
     }

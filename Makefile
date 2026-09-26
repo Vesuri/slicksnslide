@@ -1184,6 +1184,16 @@ build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_ef
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-particle-draw
+build/car_draw.bin: tools/car_draw_test.s src/game/car_draw.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_car_draw: tools/verify_car_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-car-draw
+verify-car-draw: build/car_draw.bin build/verify_car_draw
+	build/verify_car_draw build/car_draw.bin
+
 verify-particle-draw: build/particle_draw.bin build/verify_particle_draw
 	build/verify_particle_draw build/particle_draw.bin
 

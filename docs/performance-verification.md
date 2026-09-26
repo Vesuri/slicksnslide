@@ -168,3 +168,14 @@ reduced76 to11. Step438,audio9,diagnostics7. The pruning cost is included in
 the C2P interval. Capacity/edge/merged-rectangle coverage tests and planar
 write checks pass. Both conversion paths still read the authoritative chunky
 surface; no shadow framebuffer or per-row boolean array is introduced.
+
+## Native car draw and restoration
+
+`tmp/perf-native-cars.log`: maximum work759 lines (48.7ms), maximum wall888,
+cadence341958/602 (36.4ms),573/603 over budget. Final step428,audio9,C2P59,
+diagnostics7; restore64,advance48,update133,HUD32,draw147. Native routines
+retain source/destination/saved pointers, apply rotation strides and colour
+ramps, and preserve masking. 1024 scalar/native full-frame comparisons cover
+all rotations, masking, ramps, full palette values, screen edges, saved
+backgrounds, restoration and preserved registers. Original actor/dirty
+regressions pass; no target errors/audio spills; owned emulator exited.
