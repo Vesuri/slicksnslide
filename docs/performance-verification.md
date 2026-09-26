@@ -603,3 +603,9 @@ all shared state/index/handle arrays and guards, but was slower: BASIC maximum
 685 lines and cadence 375602/602, versus 667 and 371876/602. Final-frame
 advancement rose from 40 to 50 lines (`tmp/perf-fused-particle-maps.log`).
 It was removed; the simpler two C mapping passes remain.
+
+Whole-runtime `O2` was also rejected: although the step function shrank from
+about 34 KiB to 18 KiB, BASIC worsened to 769 maximum lines and 393092/602
+cadence lines (`tmp/perf-runtime-o2.log`). Keep `O3` with the two measured
+compact draw wrappers. The runtime object now depends on its Makefile so
+changing these compiler options actually rebuilds it.

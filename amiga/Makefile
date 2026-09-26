@@ -113,7 +113,7 @@ obj/track_scene.o: $(REPO)/src/game/track_scene.c \
 		$(REPO)/src/game/track_scene.h | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
-obj/race_runtime.o: $(REPO)/src/game/race_runtime.c \
+obj/race_runtime.o: $(REPO)/src/game/race_runtime.c Makefile \
 		$(REPO)/src/game/race_runtime.h \
 		$(REPO)/src/ui/font_resource.h \
 		$(REPO)/src/game/track_scene.h | obj
