@@ -668,3 +668,9 @@ The full native display audit passes 600 updates, 32 actors and 2076 permanent
 marks (`tmp/audit-native-track-fast.log`). Track motion, particle advancement
 and dirty-region regression suites also pass
 (`tmp/verify-track-fast-regression.log`).
+
+Materializing the actor-configuration address in a register was tested and
+removed: original actor tests passed, but F1 maximum work rose from 836 to
+841 lines and cadence from 478928 to 479240/602
+(`tmp/perf-config-address.log`). Fewer indexed stores did not improve the
+whole update.
