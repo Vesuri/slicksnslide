@@ -1753,7 +1753,11 @@ static void add_trail_component(struct SlicksRaceRuntime *race,
         if(!h) return;
         race->weapons.trail_handle[race->trail_particle_count]=(unsigned char)h;
         race->weapons.trail_index[h]=(short)race->trail_particle_count;
-        reset_weapon_actor(&race->weapons.actors[h]);
+        /* Point actors use the particle record, not sprite motion/storage.
+         * Invalidate only sprite visibility; a later sprite allocation
+         * performs its full metadata reset before using this slot. */
+        struct SlicksWeaponActor *actor=&race->weapons.actors[h];
+        actor->kind=0;actor->saved=0;
     }
     particle_index = race->trail_particle_count++;
     particle = &race->trail_particles[particle_index];

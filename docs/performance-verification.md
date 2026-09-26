@@ -754,3 +754,15 @@ maximum work lines, and cadence from 466760 to 449288/602 lines (47.8 ms)
 The combined particle-motion/stationary-object build passes the 600-update
 full display audit with 32 actors and 2076 permanent marks
 (`tmp/audit-stationary-track-motion.log`).
+
+## Point-slot initialization: BASIC recheck
+
+The earlier F1-only rejection of clearing just sprite kind/saved validity was
+revisited after particle drawing improvements, using BASIC's heavier creation
+load. All 199 poisoned-slot transitions and original effect/damage tests pass
+(`tmp/verify-point-reset-basic.log`). BASIC improves from 546 to 541 maximum
+lines and from 332320 to 330429/602 cadence lines (35.2 ms), with the busy
+wheel/contact phases falling from 69/41 to 66/38 lines
+(`tmp/perf-point-reset-basic.log`). Retained for this measured small gain.
+Point motion comes exclusively from the particle record; subsequent sprite
+allocation still resets the complete sprite metadata.
