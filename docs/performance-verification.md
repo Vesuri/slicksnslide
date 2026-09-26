@@ -293,3 +293,13 @@ boundaries and dirty-overflow suffixes still return to the existing caller.
 2048 single,256 batch and256 scattered actor-chain pixel/metadata/dirty/ABI
 cases pass, including early sprite boundaries; original actor/shared-pool
 full-frame tests also pass. This is not an end-to-end50FPS result.
+
+## Rejected packed foreground-mask experiment
+
+`tmp/perf-packed-mask.log`: maximum719lines, mean cadence384681/602lines,
+effectively unchanged from the direct-link baseline. Packing surface low
+bits into material-map unused bits avoided another bitmap allocation, and
+all eleven driving scenarios plus native packed-mask pixel checks passed.
+Exhaustive material/visibility invariants and4864 original weapon images
+also passed. Nevertheless the representation change and specialized loops
+were removed: this representative test did not demonstrate a useful gain.
