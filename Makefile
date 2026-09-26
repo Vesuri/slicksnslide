@@ -1231,6 +1231,13 @@ build/verify_sprite_restore_chain: tools/verify_sprite_restore_chain.c tools/ver
 verify-sprite-restore-chain: build/sprite_opaque.bin build/verify_sprite_restore_chain
 	build/verify_sprite_restore_chain
 
+build/verify_sprite_draw_chain: tools/verify_sprite_draw_chain.c tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/race_runtime.h src/game/weapon_actors.inc | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-sprite-draw-chain
+verify-sprite-draw-chain: build/sprite_opaque.bin build/verify_sprite_draw_chain
+	build/verify_sprite_draw_chain
+
 build/verify_copper_palette: tools/verify_copper_palette.c src/platform/amiga/copper_palette.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 .PHONY: verify-copper-palette

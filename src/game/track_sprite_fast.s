@@ -16,9 +16,23 @@ SLICKS_SPRITE_TEST_BASE equ 0
 slicks_draw_unchanged_track_sprite:
 	movem.l d2-d7/a2-a6,-(sp)
 	tst.l 68(sp)
-	beq.w .fallback
+	beq.s .disabled
 	movea.l 48(sp),a2
 	movea.l 52(sp),a3
+	movea.l 56(sp),a4
+	movea.l 60(sp),a5
+	movea.l 64(sp),a6
+	bsr.w slicks_draw_unchanged_track_sprite_regs
+	bra.s .return
+.disabled:
+	moveq #0,d0
+.return:
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
+; Private ABI: a2 actor, a3 previous, a4 visibility, a5 assets, a6 chunky.
+; Deferred drawing only. Clobbers d0-d7/a0-a6; the batch owns register saves.
+slicks_draw_unchanged_track_sprite_regs:
 	cmpi.b #3,21(a2)
 	bne.w .fallback
 	cmpi.b #3,6(a3)
@@ -71,7 +85,6 @@ slicks_draw_unchanged_track_sprite:
 	add.w d1,d0
 	add.w d1,d0
 	add.w d1,d0
-	movea.l 60(sp),a5
 	adda.w d0,a5
 	tst.b 258(a5)
 	beq.w .fallback
@@ -98,7 +111,6 @@ slicks_draw_unchanged_track_sprite:
 	beq.s .paint
 	cmpi.w #190,d7
 	bge.s .paint
-	movea.l 56(sp),a4
 	tst.b 7(a4)
 	beq.w .fallback
 	move.l (a4),d0
@@ -113,7 +125,6 @@ slicks_draw_unchanged_track_sprite:
 	lea 8(a4),a1
 	moveq #1,d3
 .paint:
-	movea.l 64(sp),a6
 	lea mult320,a4
 	adda.l 0(a4,d7.w*4),a6
 	adda.w d4,a6
@@ -140,7 +151,6 @@ slicks_draw_unchanged_track_sprite:
 .fallback:
 	moveq #0,d0
 .return:
-	movem.l (sp)+,d2-d7/a2-a6
 	rts
 .frames:
 	dc.b 0,5,6,7,1,1,1,1,2,8,9,10,3,3,3,3,4,11,12,13
@@ -270,5 +280,52 @@ slicks_restore_sprite_chain:
 	bra.s .actor
 .done:
 	move.l d5,d0
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
+	xdef slicks_draw_sprite_chain
+; C ABI: actors, previous descriptors, visibility cache, assets, chunky,
+; next handles, trail indices, first handle. Caller supplies an active,
+; ordered chain and deferred sprite dirtiness. Return first general/point
+; handle unchanged, or zero when the chain is exhausted.
+slicks_draw_sprite_chain:
+	movem.l d2-d7/a2-a6,-(sp)
+	move.l 76(sp),-(sp)
+.actor:
+	move.l (sp),d0
+	beq.s .done
+	movea.l 76(sp),a0
+	tst.w 0(a0,d0.w*2)
+	bpl.s .done
+	move.w d0,d1
+	mulu.w #164,d1
+	movea.l 52(sp),a2
+	adda.w d1,a2
+	move.w d0,d1
+	add.w d1,d1
+	add.w d0,d1
+	lsl.w #2,d1
+	movea.l 56(sp),a3
+	adda.w d1,a3
+	andi.w #63,d0
+	move.w d0,d1
+	lsl.w #4,d0
+	add.w d1,d0
+	lsl.w #3,d0
+	movea.l 60(sp),a4
+	adda.w d0,a4
+	movea.l 64(sp),a5
+	movea.l 68(sp),a6
+	bsr.w slicks_draw_unchanged_track_sprite_regs
+	tst.l d0
+	beq.s .done
+	movea.l 72(sp),a0
+	move.l (sp),d0
+	moveq #0,d1
+	move.b 0(a0,d0.w),d1
+	move.l d1,(sp)
+	bra.s .actor
+.done:
+	move.l (sp)+,d0
 	movem.l (sp)+,d2-d7/a2-a6
 	rts

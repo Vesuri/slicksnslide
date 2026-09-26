@@ -1029,3 +1029,24 @@ unmet on both tracks.
 The full display audit passes 600 updates, 32 actors and 2076 permanent
 marks (`tmp/audit-sprite-restore-chain.log`); the batch oracle output is in
 `tmp/verify-sprite-restore-chain.log`.
+
+## Batched native sprite drawing
+
+The unchanged-track dispatcher now has a private register entry. A native
+loop draws consecutive eligible sprites without per-sprite C argument frames
+or duplicate register saves. It returns the first point or changed/clipped
+sprite to the existing exact path, preserving traversal order. The public
+primitive and its ABI remain independently tested against the original DOS
+actor comparisons (`tmp/verify-sprite-draw-regs.log`). New native chain tests
+cover 384 cases / 6474 draws, including overlaps, foreground-map boundaries,
+fallback positions, full saved backgrounds, exact write permissions and
+register preservation (`tmp/verify-sprite-chains.log`).
+
+F1 work falls from 340527 to 325926 lines over 603 updates (34.65 ms average),
+draw from 121280 to 106511, cadence from 389697 to 380575/602 and maximum
+work from 703 to 679 lines. BASIC work rises slightly from 223400 to 223829
+(about 0.05 ms), cadence from 313894 to 314537/602; its final frame has only
+one track sprite. See `tmp/perf-sprite-draw-chain-{basic,f1}.log`. The target
+remains unmet; neither work averages nor maxima are at 20 ms.
+The full display audit passes 600 updates, 32 actors and 2076 permanent
+marks (`tmp/audit-sprite-draw-chain.log`).

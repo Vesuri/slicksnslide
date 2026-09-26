@@ -2111,7 +2111,23 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
             const unsigned char *,const short *,unsigned);
         for(unsigned h=race->actor_order_head[p];h;) {
             int t=trail_index[h];
-            if(t<0) { draw_weapon_actor(race,h);h=next[h];continue; }
+            if(t<0) {
+#if !defined(SLICKS_PROFILE_SPRITES) && !defined(SLICKS_TRACK_FAST_CONTROL)
+                if(race->track_actors_ready && race->sprite_dirty_deferred) {
+                    extern unsigned slicks_draw_sprite_chain(struct SlicksWeaponActor *,void *,void *,
+                        const struct SlicksTrackActorAsset *,unsigned char *,
+                        const unsigned char *,const short *,unsigned);
+                    h=slicks_draw_sprite_chain(race->weapons.actors,race->sprite_dirty_previous,
+                        race->track_sprite_visibility,race->track_actor_assets,race->chunky,
+                        next,trail_index,h);
+                    if(!h)break;
+                    if(trail_index[h]>=0)continue;
+                    draw_weapon_actor_general(race,h);
+                } else
+#endif
+                    draw_weapon_actor(race,h);
+                h=next[h];continue;
+            }
             unsigned remaining=slicks_draw_particle_chain(particles,race->chunky,
                 race->material_map,race->surface_map,race->dirty_pixels,
                 &race->dirty_pixel_count,mult320,next,trail_index,h);

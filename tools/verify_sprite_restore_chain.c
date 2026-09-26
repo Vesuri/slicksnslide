@@ -17,7 +17,8 @@ static void actors(unsigned char *out,const struct SlicksRaceRuntime *r)
 {
     for(unsigned i=0;i<200;++i) {
         const struct SlicksWeaponActor *a=&r->weapons.actors[i];
-        memcpy(out+i*164,a,164);be16(out+i*164+26,a->old_x);be16(out+i*164+28,a->old_y);
+        memcpy(out+i*164,a,164);be16(out+i*164,a->motion.x);be16(out+i*164+2,a->motion.y);
+        be16(out+i*164+26,a->old_x);be16(out+i*164+28,a->old_y);
     }
 }
 static void previous(unsigned char *out,const struct SlicksRaceRuntime *r)
@@ -27,6 +28,7 @@ static void previous(unsigned char *out,const struct SlicksRaceRuntime *r)
         be16(out+i*12,r->sprite_dirty_previous[i].x);be16(out+i*12+2,r->sprite_dirty_previous[i].y);
     }
 }
+#ifndef SLICKS_CHAIN_HELPERS_ONLY
 int main(void)
 {
     _Static_assert(sizeof(struct SlicksWeaponActor)==164,"host actor serialization");
@@ -110,3 +112,4 @@ int main(void)
     }
     printf("Native sprite restoration chain: 384 cases, %u restorations, exact state/write bounds/fallback/ABI passed\n",restored);
 }
+#endif
