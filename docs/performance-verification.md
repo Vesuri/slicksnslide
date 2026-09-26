@@ -1061,3 +1061,15 @@ to 31964, cadence from 314537 to 311398/602. F1 work falls from 325926 to
 323895, cadence 380575 to 379639/602. Both complete native benchmarks pass
 their race-error/audio-spill checks (`tmp/perf-car-address-base-{basic,f1}.log`).
 Work averages remain about 23.62/34.43 ms, above the requested 20 ms.
+
+## No-request firing experiment was not exercised
+
+An early return from `weapon_fire_driver` for request zero passes 8192
+original firing transactions and eleven original 7200-update driving
+scenarios (`tmp/verify-no-weapon-request.log`). BASIC work is effectively
+unchanged (222304 versus 222200 lines; cadence identical). Inspection shows
+why: weapons-disabled benchmarks do not load weapon assets or set
+`weapons.ready`, so that path is already bypassed. These measurements cannot
+establish its benefit for armed races. The speculative shortcut is removed
+(`tmp/perf-no-weapon-request-basic.log`); it needs an armed-race comparison
+before reconsideration.
