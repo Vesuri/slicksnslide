@@ -38,7 +38,17 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         const unsigned char *src=a->saved_under+y*width+x0;
         for(int n=x1-x0;n;--n) *dst++=*src++;
     }
-    mark_dirty_rect(race,a->old_x,a->old_y,a->old_x+a->old_width,a->old_y+a->old_height);
+    if(race->sprite_dirty_deferred) {
+        /* Keep this separate from the reusable actor slot: it may be freed
+         * and replaced by a point or another sprite before drawing. */
+        __typeof__(race->sprite_dirty_previous[0]) *previous=&race->sprite_dirty_previous[handle];
+        previous->x=a->old_x;previous->y=a->old_y;
+        previous->width=a->old_width;previous->height=a->old_height;
+        previous->kind=a->kind;previous->asset=a->asset;
+        previous->frame=a->motion.frame;previous->colour=a->colour;
+        previous->priority=a->priority;previous->occlusion=a->occlusion;
+        race->sprite_dirty_handles[race->sprite_dirty_count++]=(unsigned char)handle;
+    } else mark_dirty_rect(race,a->old_x,a->old_y,a->old_x+a->old_width,a->old_y+a->old_height);
     a->saved=0;
 }
 
@@ -113,7 +123,30 @@ static void draw_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
         }
     }
     a->old_x=left;a->old_y=top;a->old_width=width;a->old_height=height;a->saved=1;
-    mark_dirty_rect(race,left,top,left+width,top+height);
+    __typeof__(race->sprite_dirty_previous[0]) *previous=&race->sprite_dirty_previous[handle];
+    unsigned unchanged=race->sprite_dirty_deferred && previous->kind &&
+        previous->x==left && previous->y==top && previous->width==width && previous->height==height &&
+        previous->kind==a->kind && previous->asset==a->asset && previous->frame==(unsigned char)a->motion.frame &&
+        previous->colour==a->colour && previous->priority==a->priority && previous->occlusion==a->occlusion;
+    if(!unchanged) {
+        if(race->sprite_dirty_deferred && previous->kind)
+            mark_dirty_rect(race,previous->x,previous->y,previous->x+previous->width,previous->y+previous->height);
+        mark_dirty_rect(race,left,top,left+width,top+height);
+    }
+    previous->kind=0;
+}
+
+static void finish_sprite_dirty_batch(struct SlicksRaceRuntime *race)
+{
+    for(unsigned i=0;i<race->sprite_dirty_count;++i) {
+        unsigned h=race->sprite_dirty_handles[i];
+        __typeof__(race->sprite_dirty_previous[0]) *previous=&race->sprite_dirty_previous[h];
+        /* No successful redraw: expired, hidden, or reused as a point. */
+        if(previous->kind)
+            mark_dirty_rect(race,previous->x,previous->y,previous->x+previous->width,previous->y+previous->height);
+        previous->kind=0;
+    }
+    race->sprite_dirty_count=0;race->sprite_dirty_deferred=0;
 }
 
 static short allocate_weapon_actor(struct SlicksRaceRuntime *race,int asset,

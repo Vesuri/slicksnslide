@@ -436,3 +436,29 @@ and with the preceding dirty-marking behavior (`tmp/audit-sprite-control.log`).
 Thus that failure predates the suppression optimization. The tracing fixture
 reports nearby actors and dirty rectangles to distinguish conversion failures
 from missing producer notifications.
+
+## Retiring particles and unchanged sprite conversions
+
+The shared draw traversal incorrectly included retiring trail slots. A
+transient point was redrawn after expiry, rearming its saved-under flag;
+the next release pass restored it without an associated dirty notification.
+The original3000:3c1e drawing gate is now executed for all256 state bytes,
+independently confirming that only signed-positive slots enter active drawing.
+Both ordered and fallback shared draw paths now apply that gate. Permanent
+marks still bake during expiry; retiring slots remain reserved until release.
+Original retirement/allocation/creation tests, mixed sprite/point screens,
+and explicit retired transient/permanent dirty regressions pass.
+
+Sprite restoration/drawing stays unchanged in the authoritative chunky
+buffer. A small per-handle metadata list now defers display dirty rectangles
+until redraw: unchanged position/frame/style/priority/mask needs no extra
+conversion; moved, changed, clipped, removed and recycled sprites retain
+old/new coverage. No pixel shadow or per-row booleans are used.320 new dirty
+coverage cases include overlap, frame/mask/priority changes and slot reuse.
+
+`tmp/audit-retired-point.log`: full display equality and write-bounds audit
+passes600 native F1 updates,32 track actors and2076 marks. Before the particle
+fix, the suppression benchmark (`tmp/perf-sprite-dirty-batch.log`) measured
+1021lines maximum and569040/602lines mean cadence (60.6ms), versus68.2ms.
+Those timing numbers precede the lifecycle correction; fresh production
+benchmarks are required, and50FPS remains unfinished.

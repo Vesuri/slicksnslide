@@ -94,6 +94,13 @@ int main(void)
             configure_weapon_actor(&race,actual,100,100,0,0,20,3,0);
         }
         for(unsigned i=0;i<64000;++i)before[i]=native[i]=dos[i]=(unsigned char)(i*37+trial);
+        /* Retiring slots reserve their handle but are no longer part of
+         * the active drawing traversal. Permanent pixels were baked by
+         * expiry before this draw phase. */
+        for(unsigned h=1;h<200;++h)if(race.weapons.trail_index[h]>=0 && (h+trial)%5==0) {
+            int t=race.weapons.trail_index[h];
+            race.weapons.slots.state[h]=race.trail_particles[t].state=(h&1)?-2:-6;
+        }
         for(unsigned priority=0;priority<=6;++priority) for(unsigned h=1;h<200;++h) {
             if(race.weapons.slots.state[h]<=0)continue;
             int trail=race.weapons.trail_index[h];

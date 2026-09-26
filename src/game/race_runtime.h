@@ -343,6 +343,15 @@ struct SlicksRaceRuntime {
         unsigned char place,options;
     } hud_input[4];
     unsigned short emission_slot_cursor;
+    /* Dirty metadata only, not pixel snapshots. Restoration is transient
+     * within an update; unchanged sprites need no extra display conversion. */
+    struct {
+        short x,y;
+        unsigned char width,height,kind,asset,frame,colour,priority,occlusion;
+    } sprite_dirty_previous[SLICKS_ACTOR_CAPACITY];
+    unsigned char sprite_dirty_handles[SLICKS_ACTOR_CAPACITY];
+    unsigned short sprite_dirty_count;
+    unsigned char sprite_dirty_deferred;
 };
 
 void slicks_race_initialize(struct SlicksRaceRuntime *race,

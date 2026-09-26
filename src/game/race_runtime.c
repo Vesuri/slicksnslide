@@ -1512,6 +1512,10 @@ static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
         int t=race->weapons.trail_index[h];
         if(t>=0) {
             if(reverse && !(race->trail_particles[t].saved_valid&1)) continue;
+            /* Expiry already restored transient points and baked permanent
+             * ones. Retiring slots remain reserved, but must not be drawn
+             * again or acquire a saved-under byte for the release pass. */
+            if(!reverse && race->weapons.slots.state[h]<=0) continue;
         } else {
             const struct SlicksWeaponActor *a=&race->weapons.actors[h];
             if(reverse?!a->saved:(!a->kind || race->weapons.slots.state[h]<=0)) continue;
@@ -1979,6 +1983,7 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
     for(unsigned at=0;at<count;++at) {
         unsigned index;
         if(shared_actor_pool(race)) {
+            if(race->weapons.slots.state[at]<=0) continue;
             int trail=race->weapons.trail_index[at];
             if(trail<0) {
                 if(priority>=0 && race->weapons.actors[at].priority!=priority) continue;
@@ -2006,6 +2011,8 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
         restore_shadows(race,logical);return;
     }
     int profile=race->profile_marker && race->frame_count+1==race->profile_frame;
+    if(race->sprite_dirty_deferred)finish_sprite_dirty_batch(race);
+    race->sprite_dirty_count=0;race->sprite_dirty_deferred=1;
     if(profile) race->profile_marker(10);
     build_actor_order(race,1);
     if(profile) race->profile_marker(11);
@@ -2046,6 +2053,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
     draw_trail_particles(race,2);
     for(unsigned p=6;p<=race->actor_order_max;++p)
         if(race->actor_order_head[p]) draw_trail_priority(race,3,p);
+    finish_sprite_dirty_batch(race);
     if(profile) race->profile_marker(24);
     race->actor_order_ready=0;
 }

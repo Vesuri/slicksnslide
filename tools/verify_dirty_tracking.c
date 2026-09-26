@@ -124,8 +124,83 @@ static int covered(const struct SlicksRaceRuntime *race, unsigned x, unsigned y)
     return 0;
 }
 
+static int verify_sprite_dirty_batch(void)
+{
+    static struct SlicksRaceRuntime race;
+    static unsigned char pixels[64000],before[64000];
+    for(unsigned trial=0;trial<320;++trial) {
+        memset(&race,0,sizeof race);race.chunky=pixels;
+        memset(pixels,77,sizeof pixels);memset(race.material_map,1,sizeof race.material_map);
+        for(unsigned f=0;f<2;++f) {
+            struct SlicksWeaponAsset *asset=&race.weapons.assets[f];
+            asset->ready=1;asset->width=4+f;asset->height=4;
+            for(unsigned i=0;i<asset->width*asset->height;++i)
+                asset->pixels[i]=i%3?(unsigned char)(40+f):0;
+        }
+        for(unsigned h=1;h<=8;++h) {
+            struct SlicksWeaponActor *a=&race.weapons.actors[h];
+            a->kind=1;a->priority=5;a->occlusion=15;
+            a->motion.x=(short)((trial&16?317:80)+(h%3))*64;
+            a->motion.y=(short)((trial&32?188:60)+(h%3))*64;
+            race.weapons.slots.state[h]=1;
+            draw_weapon_actor(&race,h);
+        }
+        memcpy(before,pixels,sizeof before);slicks_race_clear_dirty_rows(&race);
+        race.sprite_dirty_deferred=1;
+        for(unsigned h=8;h;--h)restore_weapon_actor(&race,h);
+        struct SlicksWeaponActor *a=&race.weapons.actors[3];
+        switch(trial%10) {
+        case 0:break;
+        case 1:a->motion.x+=640;break;
+        case 2:a->motion.y=-320;break;
+        case 3:race.weapons.slots.state[3]=0;break;
+        case 4:a->motion.frame=1;break;
+        case 5:a->kind=2;a->colour=22;break;
+        case 6:a->priority=3;break;
+        case 7:a->occlusion=1;break;
+        case 8:reset_weapon_actor(a);a->kind=1;a->asset=1;a->priority=6;
+            a->motion.x=120*64;a->motion.y=100*64;break;
+        case 9:reset_weapon_actor(a);race.weapons.slots.state[3]=0;
+            pixels[61*320+81]=12;mark_dirty_pixel(&race,81,61);break;
+        }
+        for(unsigned p=0;p<8;++p)for(unsigned h=1;h<=8;++h)
+            if(race.weapons.actors[h].priority==p)draw_weapon_actor(&race,h);
+        finish_sprite_dirty_batch(&race);
+        for(unsigned i=0;i<64000;++i)if(before[i]!=pixels[i] && !covered(&race,i%320,i/320)) {
+            fprintf(stderr,"Deferred sprite dirty coverage trial=%u pixel=%u\n",trial,i);return 1;
+        }
+        if(!(trial%10) && (race.dirty_row_count || race.dirty_pixel_count)) {
+            fprintf(stderr,"Unchanged sprites dirtied display trial=%u\n",trial);return 1;
+        }
+        if(race.sprite_dirty_count || race.sprite_dirty_deferred)return 1;
+        for(unsigned h=0;h<SLICKS_ACTOR_CAPACITY;++h)if(race.sprite_dirty_previous[h].kind)return 1;
+    }
+    puts("Deferred sprite conversion: 320 overlap/motion/frame/mask/priority/expiry/reuse/clipping coverage cases pass");
+    for(unsigned ordered=0;ordered<2;++ordered)for(unsigned permanent=0;permanent<2;++permanent) {
+        memset(&race,0,sizeof race);race.chunky=pixels;race.track_actors_ready=1;
+        memset(pixels,77,sizeof pixels);initialize_weapon_actors(&race);
+        add_trail_component(&race,312,169,20,permanent?0:6,0,0,3);
+        unsigned h=race.weapons.trail_handle[0];
+        race.weapons.slots.state[h]=race.trail_particles[0].state=permanent?-6:-2;
+        /* The expiry pass has restored a transient point or baked a mark.
+         * Redrawing a reserved-but-retired slot would re-arm saved_valid;
+         * its following release would then erase a pixel without a dirty. */
+        if(permanent)pixels[169*320+312]=20;
+        memcpy(before,pixels,sizeof before);
+        if(ordered)build_actor_order(&race,0);
+        draw_trail_priority(&race,permanent?0:3,permanent?0:6);
+        if(memcmp(before,pixels,sizeof pixels)||race.trail_particles[0].saved_valid ||
+            race.dirty_row_count || race.dirty_pixel_count) {
+            fprintf(stderr,"Retired point redrawn ordered=%u permanent=%u\n",ordered,permanent);return 1;
+        }
+    }
+    puts("Retired transient/permanent points remain undrawn in ordered and fallback shared-pool paths");
+    return 0;
+}
+
 int main(void)
 {
+    if(verify_sprite_dirty_batch())return 1;
     if (verify_hud_renderer()) return 1;
     static struct SlicksRaceRuntime race;
     /* Two changed positions per moving particle can fill the sparse list.

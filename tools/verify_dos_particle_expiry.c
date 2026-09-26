@@ -187,6 +187,37 @@ static void verify_point_creation(const unsigned char *segment)
     printf("DOS point creation: %u real constructor/allocator/update cases passed; all colours, both burst variants/layers, full pool, balanced far returns; 1024 first-movement/page-coordinate cases (pixels not tested)\n",cases);
 }
 
+static void active_draw_stop(uc_engine *uc,uint64_t address,uint32_t size,void *opaque)
+{
+    (void)size;(void)opaque;
+    if(address==0x13c2a || address==0x13dad)check(uc_emu_stop(uc));
+}
+
+static void verify_active_draw(const unsigned char *segment)
+{
+    static const unsigned char gate[]={0x26,0x8a,0x47,0x1a,0x98,0x0b,0xc0,0x7f,0x03,0xe9,0x83,0x01};
+    if(memcmp(segment+0x3c1e,gate,sizeof gate)) {
+        fprintf(stderr,"Original active draw gate signature mismatch\n");exit(1);
+    }
+    uc_engine *uc;uc_hook hook;
+    check(uc_open(UC_ARCH_X86,UC_MODE_16,&uc));
+    check(uc_mem_map(uc,0,0x100000,UC_PROT_ALL));
+    check(uc_mem_write(uc,0x10000,segment,0x10000));
+    check(uc_hook_add(uc,&hook,UC_HOOK_CODE,active_draw_stop,0,1,0));
+    for(unsigned raw=0;raw<256;++raw) {
+        uint16_t cs=0x1000,es=0x3000,bx=64,ip;
+        unsigned char state=(unsigned char)raw;
+        check(uc_reg_write(uc,UC_X86_REG_CS,&cs));check(uc_reg_write(uc,UC_X86_REG_ES,&es));
+        check(uc_reg_write(uc,UC_X86_REG_BX,&bx));check(uc_mem_write(uc,0x3005a,&state,1));
+        check(uc_emu_start(uc,0x13c1e,0x15000,0,20));
+        check(uc_reg_read(uc,UC_X86_REG_IP,&ip));
+        if(ip!=((int8_t)state>0?0x3c2a:0x3dad)) {
+            fprintf(stderr,"Original active draw state=%d ip=%x\n",(int8_t)state,ip);exit(1);
+        }
+    }
+    check(uc_close(uc));puts("DOS active drawing: all 256 state bytes; only signed-positive slots enter the drawing path");
+}
+
 static void verify_retirement(const unsigned char *segment)
 {
     for (unsigned raw = 0; raw < 256; ++raw) {
@@ -348,6 +379,7 @@ int main(int argc, char **argv)
     if (site < 0x3918 || site - 0x3918 + 0x10000 > size)
         return fprintf(stderr, "missing actor code segment\n"), 1;
     verify_retirement(runtime + site - 0x3918);
+    verify_active_draw(runtime + site - 0x3918);
     verify_allocation(runtime + site - 0x3918);
     verify_point_creation(runtime + site - 0x3918);
     verify_shadow_sequence(runtime + site - 0x3918);
