@@ -381,3 +381,14 @@ results are computed once when movable objects exist. Actor coordinates
 are similarly shared by rendering setup and contacts after the wall probe.
 Velocities remain live between contacts.20000 original motion comparisons
 and the full track-actor suite pass, including negative coordinates.
+
+## Contiguous native sprite loop and cache sanity check
+
+`tmp/perf-contiguous-sprites.log`: F1 maximum1153lines (73.9ms), mean
+cadence640217/602lines (68.2ms). Contiguous sprites with no colour ramp
+avoid rotation/tint operations; original masked and unmasked semantics
+remain unchanged.1024 native car comparisons,512 restore cases,2432
+original weapon images and1792 original track images pass, including
+shared-pool ordering and permanent marks. Read-only Exec CacheControl(0,0)
+reports0x1: the instruction cache was already enabled; no cache setting
+is changed. All603 measured updates still exceed20ms.

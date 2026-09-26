@@ -296,6 +296,7 @@ volatile unsigned long g_slicks_diag_bench_max_tail[4];
 volatile unsigned long g_slicks_diag_bench_max_actors[8];
 volatile unsigned long g_slicks_diag_bench_max_car_draw[2];
 volatile unsigned long g_slicks_diag_bench_max_rect_pixels;
+volatile unsigned long g_slicks_diag_initial_cache_control;
 static unsigned long g_slicks_diag_profile_rect_pixels;
 volatile unsigned short g_slicks_diag_bench_max_sparse;
 static unsigned long g_slicks_diag_profile_car_draw[2],g_slicks_diag_profile_car_at;
@@ -2934,6 +2935,8 @@ int main(void)
     int result = 20;
 
     g_slicks_diag_profile_platform = &platform;
+    /* Query only: preserve the OS/user cache configuration. */
+    g_slicks_diag_initial_cache_control = CacheControl(0,0);
 
     DOSBase = (struct DosLibrary *)OpenLibrary(
         (CONST_STRPTR)"dos.library", 37);
