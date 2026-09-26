@@ -701,3 +701,16 @@ improve F1: 837 maximum lines and 480485/602 cadence versus 836/478928
 (`tmp/perf-small-sprite-rows.log`). Removed. Asset inspection confirms these
 widths are used, alongside five/six-pixel objects and nine-to-eleven-pixel flags;
 the failed measurement is not evidence that the small rows were unreachable.
+
+## Native sprite restoration setup
+
+In-bounds deferred restoration now validates and copies the saved background
+and twelve-byte dirty description in assembly. Clipped/empty rectangles retain
+the scalar fallback. Original comparisons exercise 1312 native restorations;
+additional rejection tests include positive signed-word coordinate overflow,
+negative coordinates and empty dimensions (`tmp/verify-native-restore-final.log`).
+The full display audit passes 600 updates, 32 actors and 2076 permanent marks
+(`tmp/audit-native-restore-setup.log`). F1 maximum work is unchanged at 836
+lines; mean cadence falls slightly from 478928 to 475184/602 lines, 51.0 to
+50.6 ms (`tmp/perf-native-restore-setup.log`). This is a small gain, not a
+completed 20 ms target.

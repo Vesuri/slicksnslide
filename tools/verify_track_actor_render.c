@@ -97,6 +97,20 @@ int main(void)
 #if defined(SLICKS_NATIVE_SPRITE_TEST)
     if(sprite_fast_hits<100){fprintf(stderr,"Native unchanged-track path was not exercised sufficiently\n");return 1;}
     printf("Native unchanged-track path: %u original pixel comparisons used the assembly dispatcher\n",sprite_fast_hits);
+    if(sprite_restore_hits<100)abort();
+    printf("Native sprite restoration: %u original background comparisons used the assembly dispatcher\n",sprite_restore_hits);
+    const short invalid[][4]={{-1,4,8,8},{4,-1,8,8},{32760,4,16,8},
+        {4,32760,8,16},{315,4,8,8},{4,195,8,8},{4,4,0,8},{4,4,8,0}};
+    for(unsigned i=0;i<sizeof invalid/sizeof *invalid;++i) {
+        struct SlicksWeaponActor a={.saved=1,.old_x=invalid[i][0],.old_y=invalid[i][1],
+            .old_width=invalid[i][2],.old_height=invalid[i][3]};
+        memset(&race.sprite_dirty_previous[1],0xa5,sizeof race.sprite_dirty_previous[1]);
+        __typeof__(race.sprite_dirty_previous[0]) old=race.sprite_dirty_previous[1];
+        memcpy(before,native,sizeof before);
+        if(slicks_restore_actor_sprite(&a,&race.sprite_dirty_previous[1],native) ||
+           a.saved!=1 || memcmp(before,native,sizeof before) ||
+           memcmp(&old,&race.sprite_dirty_previous[1],sizeof old))abort();
+    }
 #endif
     for(unsigned trial=0;trial<64;++trial) {
         for(unsigned i=0;i<64;++i)race.track_sprite_visibility[i].valid=0;

@@ -25,6 +25,15 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
     __asm__("" : "+a"(a));
 #endif
     if(!a->saved) return;
+#if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
+    if(race->sprite_dirty_deferred) {
+        extern int slicks_restore_actor_sprite(struct SlicksWeaponActor *,void *,unsigned char *);
+        if(slicks_restore_actor_sprite(a,&race->sprite_dirty_previous[handle],race->chunky)) {
+            race->sprite_dirty_handles[race->sprite_dirty_count++]=(unsigned char)handle;
+            return;
+        }
+    }
+#endif
     int left=a->old_x,top=a->old_y,width=a->old_width;
     int x0=left<0?-left:0,x1=320-left;
     int y0=top<0?-top:0,y1=200-top;

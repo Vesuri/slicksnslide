@@ -2,8 +2,8 @@
  * DOS actor comparisons. The scalar executable remains a separate test. */
 #include <unicorn/m68k.h>
 static uc_engine *sprite_cpu;
-static uint32_t sprite_restore,sprite_visible,sprite_fast;
-static unsigned sprite_fast_hits;
+static uint32_t sprite_restore,sprite_visible,sprite_fast,sprite_restore_fast;
+static unsigned sprite_fast_hits,sprite_restore_hits;
 static unsigned sprite_fast_active;
 static unsigned sprite_at,sprite_width,sprite_height,sprite_saved;
 static void sprite_store(uc_engine *u,uc_mem_type type,uint64_t addr,int size,
@@ -14,7 +14,8 @@ static void sprite_store(uc_engine *u,uc_mem_type type,uint64_t addr,int size,
         unsigned a=(unsigned)addr+i;
         if(sprite_fast_active && !(a>=0x30000 && a<0x40000) &&
            a!=0x70020 && !(a>=0x70021 && a<0x70021+sprite_width*sprite_height) &&
-           a!=0x71006 && !(a>=0x8ff00 && a<0x90004)) { uc_emu_stop(u);abort(); }
+           !(sprite_fast_active==2 ? (a>=0x71000 && a<0x7100c) : a==0x71006) &&
+           !(a>=0x8ff00 && a<0x90004)) { uc_emu_stop(u);abort(); }
         if(a>=0x30000 && a<0x40000) {
             if(a<0x30000+sprite_at || (a-0x30000-sprite_at)/320>=sprite_height ||
                 (a-0x30000-sprite_at)%320>=sprite_width) { uc_emu_stop(u);abort(); }
@@ -43,6 +44,8 @@ static void sprite_init(void)
         ((uint32_t)code[n-2]<<8)+code[n-1];
     sprite_fast=0x12000+((uint32_t)code[n-8]<<24)+((uint32_t)code[n-7]<<16)+
         ((uint32_t)code[n-6]<<8)+code[n-5];
+    sprite_restore_fast=0x12000+((uint32_t)code[n-12]<<24)+((uint32_t)code[n-11]<<16)+
+        ((uint32_t)code[n-10]<<8)+code[n-9];
     unsigned char rows[1024];for(unsigned y=0;y<256;++y)sprite_long(rows+4*y,y*320);
     check(uc_mem_write(sprite_cpu,0x80000,rows,sizeof rows));
     uc_hook h;check(uc_hook_add(sprite_cpu,&h,UC_HOOK_MEM_WRITE,sprite_store,0,1,0));
@@ -150,5 +153,34 @@ int slicks_draw_unchanged_track_sprite(struct SlicksWeaponActor *a,void *previou
     check(uc_mem_read(sprite_cpu,0x71000,description,sizeof description));
     a->saved=actor[32];memcpy(a->saved_under,actor+33,sizeof a->saved_under);p->kind=description[6];
     if(result)++sprite_fast_hits;
+    return (int)result;
+}
+
+int slicks_restore_actor_sprite(struct SlicksWeaponActor *a,void *previous,unsigned char *chunky)
+{
+    sprite_init();
+    __typeof__(race.sprite_dirty_previous[0]) *p=previous;
+    unsigned char actor[sizeof *a],description[12];
+    memcpy(actor,a,sizeof actor);memcpy(description,p,sizeof description);
+    actor[26]=(unsigned short)a->old_x>>8;actor[27]=a->old_x;
+    actor[28]=(unsigned short)a->old_y>>8;actor[29]=a->old_y;
+    description[0]=(unsigned short)p->x>>8;description[1]=p->x;
+    description[2]=(unsigned short)p->y>>8;description[3]=p->y;
+    sprite_at=(unsigned)(a->old_y*320+a->old_x);
+    sprite_width=a->old_width;sprite_height=a->old_height;sprite_saved=0;
+    check(uc_mem_write(sprite_cpu,0x30000,chunky,64000));
+    check(uc_mem_write(sprite_cpu,0x70000,actor,sizeof actor));
+    check(uc_mem_write(sprite_cpu,0x71000,description,sizeof description));
+    unsigned args[]={0x70000,0x71000,0x30000};
+    sprite_fast_active=2;sprite_run(sprite_restore_fast,args,3);sprite_fast_active=0;
+    uint32_t result;check(uc_reg_read(sprite_cpu,UC_M68K_REG_D0,&result));
+    check(uc_mem_read(sprite_cpu,0x30000,chunky,64000));
+    check(uc_mem_read(sprite_cpu,0x70000,actor,sizeof actor));
+    check(uc_mem_read(sprite_cpu,0x71000,description,sizeof description));
+    if(memcmp(actor+33,a->saved_under,sizeof a->saved_under))abort();
+    a->saved=actor[32];memcpy(p,description,sizeof description);
+    p->x=(short)((unsigned)description[0]*256+description[1]);
+    p->y=(short)((unsigned)description[2]*256+description[3]);
+    if(result)++sprite_restore_hits;
     return (int)result;
 }
