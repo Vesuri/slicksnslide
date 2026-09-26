@@ -34,3 +34,10 @@
 Build a local archive with `make release-package`. Choose a fresh output path
 with `RELEASE_ARCHIVE=build/release/<name>.zip` when packaging the same revision
 again. Packaging is not publication, and no upload/push is implicit.
+
+The verified local package is `build/release/slicks-749bb11.zip`, built from a
+clean working tree. Its executable is 408,344 bytes; declared HUNK allocations
+total 389,316 bytes (excluding runtime allocations and OS memory). All four
+archive entries were reread and compared to their source content. No release
+was uploaded. Integration/release open items 1–3 are now complete within the
+native-port scope; general translator expansion remains explicitly deferred.
