@@ -4,6 +4,57 @@ This experiment was rejected on 2026-09-27: the narrow stationary-point
 rule saved too few redraws to repay its scans. Production code is unchanged.
 The broader moving-point retention proposal remains open.
 
+## Rejected sparse moving-point prototype (2026-09-28)
+
+Implemented a generation-tagged, 512-entry sparse hash of 2x2 conflict
+cells. It predicts original signed-word point motion/lifetime, rejects old
+lower-writer conflicts before restoration, then late-releases retained
+points touched by new emissions or new car/sprite bounds. Late release
+uses the previous draw chain in reverse, with current handle-to-index
+mapping after compaction. A private saved-valid flag skips native restore
+and draw; original simulation, baking and compaction remain unchanged.
+Weapons, Arcade, shadows, fewer than 96 points, and tracks with at least
+eight track objects bypass the policy. Table saturation releases everything.
+These are optimization fallbacks, not omitted effects.
+
+Host verification passed 7200 repeated update comparisons: complete
+surfaces, live particle records, cars/shadows, handle indices and slot
+states match the unmodified renderer. Coverage included 400522 initial
+candidates, 60856 emission cancellations and 337192 finally retained
+points, duplicates, compaction, expiry/baking, edge clipping, new shadows,
+actual hash exhaustion and generation wrap. An AddressSanitizer repeat
+passed. Native saved-flag tests passed 4096 restore chains, 2048 single
+draws, 256 batch and 256 chain draws; 800 native shared-pool advance cases
+also checked flag preservation through motion/compaction against the
+DOS-backed oracle.
+
+Two new stress-harness setup errors were corrected before counting the
+expanded pass: injecting table exhaustion before initialization hung the
+reference-only case; enabling shadows without setting chunky-authoritative
+made the harness read a missing logical buffer (confirmed by ASan at
+draw_shadows). Neither was hidden by changing production rendering.
+Logs: `tmp/point-grid-{oracles,lifecycle,lifecycle-expanded,lifecycle-asan-fixed}-20260928.log`.
+
+Normal-build timing against 0de5044 (same game code as 93399ea):
+
+| Track | Parent work / worst | Sparse retention work / worst |
+| --- | ---: | ---: |
+| BASIC | 157113 / 365 | 160161 / 376 |
+| F1 | 182983 / 456 | 185243 / 457 |
+| CITY | 152227 / 353 | 154069 / 355 |
+| WHACKO | 160716 / 423 | 163230 / 429 |
+
+All 603-update final states match; logs `tmp/point-grid-20260928-{0,1,2,3}.log`.
+Total work regresses 1.0-1.9%, and every maximum worsens. Even bypassed
+F1/CITY pay the call/flag-branch/code-layout cost. Rejected and reverted;
+no target pixel-audit or RETCHECK completion is claimed for this slower
+candidate. The normal build is restored and all test emulators are closed.
+Prototype, expanded host oracle and integration patch are archived locally
+as `tmp/sparse-point-retention-20260928.inc`,
+`tmp/verify-sparse-point-retention-20260928.c` and
+`tmp/sparse-point-retention-20260928.patch`. This resolves this concrete
+design as unprofitable, not every possible particle-retention algorithm.
+
 ## Current conflict-grid screening (2026-09-28)
 
 Read-only pre/post captures on code 2ec6cae inspect BASIC 209, F1 481,

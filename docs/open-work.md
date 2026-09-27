@@ -90,7 +90,10 @@ Candidate fixes, roughly in order of expected value per effort:
   include shadow bounds and baking conflicts. Require measured overhead
   below the saved-point budget and adaptive bypass on low-yield updates.
   Designs, counts and limitations are in `docs/point-retention-design.md`;
-  the offline screen is not a runtime proof.
+  the offline screen is not a runtime proof. Any further attempt must reduce
+  bookkeeping and bypass-path overhead substantially; do not simply repeat
+  the archived sparse-hash prototype. Lower priority than measuring C2P
+  rectangle union costs now.
 
 - **Remaining C inside `slicks_race_step`.** Refresh and split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:
@@ -107,7 +110,13 @@ Candidate fixes, roughly in order of expected value per effort:
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Investigate how often old and new car rectangles
   merge into excessive areas, especially at the worst-update transitions;
-  measure alternative merge policies without losing dirty coverage.
+  measure alternative merge policies without losing dirty coverage. Next
+  candidate: merge touching/overlapping rectangles only when the bounding
+  rectangle's area is no larger than the two input areas plus a small
+  conversion-call allowance. Keep containment fast paths and the bounded
+  list's conservative capacity fallback. Check the native routine against
+  its C policy and independently verify pixel coverage; benchmark the cost
+  of the area arithmetic too, rather than assuming less area is faster.
 
 ## Deferred
 
