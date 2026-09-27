@@ -25,6 +25,7 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 #if defined(__m68k__)
     __asm__("" : "+a"(a));
 #endif
+    a->retain=0; /* only the native restoration chain keeps sprites */
     if(!a->saved) return;
 #if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
     if(race->sprite_dirty_deferred) {
@@ -79,6 +80,7 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
      * indexed addressing through the large race structure for each field. */
     __asm__("" : "+a"(a));
 #endif
+    a->retain=0; /* only native unchanged chain draws may retain */
     if(!a->kind || race->weapons.slots.state[handle]<=0) return;
     /* Per-sprite probes are intentionally opt-in: four callbacks for every
      * tiny sprite measurably perturb a chip-RAM-only 68020. */

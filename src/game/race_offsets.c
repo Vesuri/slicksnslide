@@ -109,6 +109,61 @@ void slicks_race_offsets(void)
         __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0]));
     OFFSET(SPRITE_WIDTH, struct SlicksCarSprite, width);
     OFFSET(SPRITE_HEIGHT, struct SlicksCarSprite, height);
+    OFFSET(RACE_RACING, struct SlicksRaceRuntime, racing);
+    OFFSET(RACE_SPRITE_DIRTY_DEFERRED, struct SlicksRaceRuntime, sprite_dirty_deferred);
+    OFFSET(RACE_RACE_MODE, struct SlicksRaceRuntime, race_mode);
+    OFFSET(RACE_SHADOWS, struct SlicksRaceRuntime, shadows);
+    VALUE(SHADOW_SIZE, sizeof(struct SlicksCarShadow));
+    OFFSET(SHADOW_SAVED_VALID, struct SlicksCarShadow, saved_valid);
+    OFFSET(SHADOW_STATE, struct SlicksCarShadow, state);
+    OFFSET(RACE_WEAPONS_READY, struct SlicksRaceRuntime, weapons.ready);
+    OFFSET(RACE_SPRITE_DIRTY_PREVIOUS, struct SlicksRaceRuntime, sprite_dirty_previous);
+    VALUE(PREV_SIZE, sizeof(((struct SlicksRaceRuntime *)0)->sprite_dirty_previous[0]));
+    VALUE(PREV_X, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].x)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_Y, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].y)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_KIND, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].kind)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_ASSET, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].asset)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_FRAME, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].frame)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_COLOUR, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].colour)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_PRIORITY, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].priority)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    VALUE(PREV_OCCLUSION, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].occlusion)-
+        __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));
+    OFFSET(ACTOR_ASSET, struct SlicksWeaponActor, asset);
+    OFFSET(ACTOR_COLOUR, struct SlicksWeaponActor, colour);
+    OFFSET(ACTOR_RETAIN, struct SlicksWeaponActor, retain);
+    OFFSET(RACE_TRACK_ACTOR_ASSETS, struct SlicksRaceRuntime, track_actor_assets);
+    VALUE(TRACK_ASSET_SIZE, sizeof(struct SlicksTrackActorAsset));
+    OFFSET(TRACK_ASSET_WIDTH, struct SlicksTrackActorAsset, width);
+    OFFSET(TRACK_ASSET_HEIGHT, struct SlicksTrackActorAsset, height);
+    OFFSET(ENTRY_RIGHT, struct SlicksRetentionEntry, right);
+    OFFSET(ENTRY_BOTTOM, struct SlicksRetentionEntry, bottom);
+    OFFSET(RET_COUNT, struct SlicksRetentionState, count);
+    OFFSET(RET_VALID, struct SlicksRetentionState, valid);
+    OFFSET(RET_CANDIDATES, struct SlicksRetentionState, candidates);
+    OFFSET(RET_ENTRIES, struct SlicksRetentionState, entries);
+    OFFSET(RET_ROWS, struct SlicksRetentionState, rows);
+    OFFSET(RET_CELLS, struct SlicksRetentionState, cells);
+    VALUE(ENTRY_SIZE, sizeof(struct SlicksRetentionEntry));
+    OFFSET(ENTRY_LEFT, struct SlicksRetentionEntry, left);
+    OFFSET(ENTRY_TOP, struct SlicksRetentionEntry, top);
+    OFFSET(ENTRY_KEY, struct SlicksRetentionEntry, key);
+    OFFSET(ENTRY_HANDLE, struct SlicksRetentionEntry, handle);
+    OFFSET(ENTRY_FLAGS, struct SlicksRetentionEntry, flags);
+    OFFSET(ENTRY_ASSET, struct SlicksRetentionEntry, asset);
+    OFFSET(ENTRY_FRAME, struct SlicksRetentionEntry, frame);
+    OFFSET(ENTRY_PRIORITY, struct SlicksRetentionEntry, priority);
+    OFFSET(RET_MAX_PRIORITY, struct SlicksRetentionState, max_priority);
+    OFFSET(RET_KIND_WIDTH, struct SlicksRetentionState, kind_width);
+    OFFSET(RET_KIND_HEIGHT, struct SlicksRetentionState, kind_height);
+    OFFSET(RET_REBUILD_PENDING, struct SlicksRetentionState, rebuild_pending);
+    OFFSET(PARTICLE_PRIORITY_B, struct SlicksTrailParticle, priority);
     VALUE(CONTROL_ACCELERATE, SLICKS_CONTROL_ACCELERATE);
     VALUE(CONTROL_BRAKE, SLICKS_CONTROL_BRAKE);
 

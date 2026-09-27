@@ -16,7 +16,7 @@ struct SlicksWeaponActor {
     short old_x,old_y;
     /* Three padding bytes before saved pixels give every actor a longword
      * aligned background and a 164-byte stride (400 additional pool bytes). */
-    unsigned char old_width,old_height,saved,saved_padding;
+    unsigned char old_width,old_height,saved,retain; /* retain: sprite_retention.inc */
     unsigned char saved_under[SLICKS_TRACK_ACTOR_PIXELS] __attribute__((aligned(4)));
 };
 struct SlicksWeaponRuntime {

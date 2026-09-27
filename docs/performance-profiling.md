@@ -241,3 +241,52 @@ draw chains (visually wrong) reduced F1 work from 246131 to 187782 lines
 462 -> 416) (`tmp/noskip-ub-{1,2}.log`). This exceeds the sampled chain
 shares because it also removes chain switching and conversions. Exact
 retention of unchanged, untouched sprites is therefore the main F1 lever.
+
+## Unchanged track-sprite retention
+
+`src/game/sprite_retention.inc` (policy, C helpers, host reference) and
+`src/game/sprite_retention.s` (per-update pass) keep unchanged, isolated
+track sprites in the authoritative chunky surface instead of restoring and
+redrawing them. Restoring then redrawing such a sprite leaves identical
+pixels and an identical saved background when no actor drawn before it
+touches its rectangle; actors drawn after it already saved its pixels.
+The actor's former padding byte holds `retain` bits. The native restore
+chain keeps `RETAIN_NEXT` sprites and records their pre-simulation
+description; after simulation the pass detects geometry changes from raw
+motion keys (union rectangles over animation frames), scans drawable
+points against candidate rows/cells (only lower-priority points: track
+actors hold permanent handles below every point), marks car rectangles,
+then keeps or late-restores each sprite. The draw chain skips kept sprites
+and grants `RETAIN_NEXT` only after an unchanged native draw. Moving
+objects become conflict sources until motionless for 16 updates, then the
+maps are rebuilt. Shadows, weapon sprites, Arcade mode, the countdown,
+pause handoffs and tracks with fewer than eight track objects disable it.
+
+A late restore must keep the pre-simulation description recorded at the
+keep. Using `restore_weapon_actor` there replaced it with post-simulation
+state, so an animation-frame change drew without a dirty rectangle; the
+display audit caught this (F1 and WHACKO, update 103) and the fix restores
+pixels without touching the description.
+
+Verification: `make RETCHECK=1` runs every racing update first without
+retention from a snapshot of the race state and chunky surface, then for
+real, comparing the surfaces (`diag_retention_check.gdb`). All updates
+match on BASIC, F1, CITY and WHACKO (603 each), the jump fixture (603) and
+the ice, zone and road fixtures (103 each) (`tmp/retcheck*.log`). Display
+audits pass on F1 (600 updates, 32 actors, 2076 marks), CITY and WHACKO
+(`tmp/audit-retain*.log`); host track/weapon/dirty suites run the C
+reference pass and pass (`tmp/verify-retention-host.log`). On F1 about 20
+of 31 sprites are kept per update.
+
+| Track | Control (`cardraw`) | Candidate (`retain9`) | Change | p95 ms | Max lines |
+| --- | ---: | ---: | ---: | --- | --- |
+| BASIC | 176112 | 176565 | +0.3% | 23.72 -> | 419 -> 421 |
+| F1 | 242290 | 232294 | -4.1% | 31.60 -> 30.64 | 564 -> 569 |
+| CITY | 192284 | 183690 | -4.5% | 24.42 -> | 454 -> 441 |
+| WHACKO | 181708 | 182435 | +0.4% | 26.54 -> 26.73 | 496 -> 497 |
+
+Earlier C-only and naive native passes cost more than they saved (C pass
+about 14% of F1 samples; frame-keyed rebuilds and alternate-frame rebuilds
+for slowly sliding objects each regressed F1 worst frames by up to 120
+lines). The retained design is limited by the per-update pass in
+point-heavy frames, where conflicts also reduce the number kept.

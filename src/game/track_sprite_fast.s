@@ -251,10 +251,10 @@ slicks_restore_sprite_chain:
 	move.l 68(sp),d5
 .actor:
 	tst.w d5
-	beq.s .done
+	beq.w .done
 	movea.l d7,a0
 	tst.w 0(a0,d5.w*2)
-	bpl.s .done
+	bpl.w .done
 	move.w d5,d0
 	mulu.w #164,d0
 	movea.l a5,a2
@@ -265,6 +265,23 @@ slicks_restore_sprite_chain:
 	lsl.w #2,d0
 	movea.l d6,a3
 	adda.w d0,a3
+	; sprite_retention.inc: RETAIN_NEXT keeps the saved sprite on screen.
+	; Record only the pre-simulation description; no pixels, no dirty entry.
+	btst #0,33(a2)
+	beq.s .restore_now
+	tst.b 32(a2)
+	beq.s .restore_now
+	move.l 26(a2),(a3)
+	move.w 30(a2),4(a3)
+	move.b 21(a2),6(a3)
+	move.b 20(a2),7(a3)
+	move.b 16(a2),8(a3)
+	move.b 24(a2),9(a3)
+	move.w 22(a2),10(a3)
+	move.b #2,33(a2)		; RETAIN_KEPT
+	bra.s .restored
+.restore_now:
+	clr.b 33(a2)
 	movea.l a6,a0
 	bsr.w slicks_restore_actor_sprite_regs
 	tst.l d0
@@ -275,9 +292,10 @@ slicks_restore_sprite_chain:
 	addq.w #1,(a0)
 	movea.l 72(sp),a1
 	move.b d5,0(a1,d0.w)
+.restored:
 	move.b 0(a4,d5.w),d5
 	andi.w #255,d5
-	bra.s .actor
+	bra.w .actor
 .done:
 	move.l d5,d0
 	movem.l (sp)+,d2-d7/a2-a6
@@ -302,6 +320,11 @@ slicks_draw_sprite_chain:
 	mulu.w #164,d1
 	movea.l 52(sp),a2
 	adda.w d1,a2
+	btst #1,33(a2)		; RETAIN_KEPT: pixels and background remain
+	beq.s .not_kept
+	move.b #1,33(a2)	; RETAIN_NEXT
+	bra.w .next
+.not_kept:
 	move.w d0,d1
 	add.w d1,d1
 	add.w d0,d1
@@ -382,6 +405,13 @@ slicks_draw_sprite_chain:
 .painted:
 	move.b #1,32(a4)
 	clr.b 6(a6)
+.retain:
+	moveq #0,d0		; RETAIN_NEXT only if prepared as eligible
+	btst #3,33(a4)
+	beq.s .retained
+	moveq #1,d0
+.retained:
+	move.b d0,33(a4)
 	bra.w .next
 .slow:
 	movea.l 64(sp),a5
@@ -459,6 +489,7 @@ slicks_draw_sprite_chain:
 	dbf d2,.clip_source
 .publish:
 	move.b #1,33(a2)
+	bra.w .retain
 .next:
 	movea.l 72(sp),a0
 	move.l (sp),d0

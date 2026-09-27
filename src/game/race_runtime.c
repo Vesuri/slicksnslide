@@ -1755,6 +1755,7 @@ static inline __attribute__((unused)) void advance_lap_checkpoints(struct Slicks
 }
 
 #include "weapon_actors.inc"
+#include "sprite_retention.inc"
 
 static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
 {
@@ -2387,6 +2388,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
     int profile=profile_scope(race,2);
     if(profile) { race->profile_marker(59);race->profile_marker(20); }
     build_actor_order(race,0);
+    prepare_sprite_retention(race);
     if(profile) race->profile_marker(21);
     draw_trail_particles(race,0);
     draw_trail_priority(race,3,1);

@@ -406,6 +406,18 @@ static void pc_sampler_release(void)
 #endif
 }
 
+#ifdef SLICKS_RETENTION_CHECK
+volatile unsigned long g_slicks_retention_checks, g_slicks_retention_mismatches,
+    g_slicks_retention_first_mismatch;
+static unsigned long retention_check_hash(const unsigned char *chunky)
+{
+    const unsigned long *p = (const unsigned long *)chunky;
+    unsigned long h = 0x811c9dc5UL;
+    for (unsigned i = 0; i < 16000; ++i) h = ((h << 5) | (h >> 27)) ^ p[i];
+    return h;
+}
+#endif
+
 __attribute__((noinline)) void slicks_diag_frame_ready(void)
 {
     __asm volatile("" ::: "memory");
@@ -3933,6 +3945,8 @@ int main(void)
                         &setup_dirty,(unsigned char)(scan==0x43?4:scan==0x44?5:0),
                         (unsigned char)(shop_transition_test?7:pause_nested_test?8:pause_transition_test?(pause_save_test && sequence_returns==1?1:7):pause_failure_test && pause_live_sent<=5?pause_live_sent+1:pause_live_test));
                     if(pause_result==-3) goto cleanup;
+                    /* The pause surface may reuse the chunky buffer. */
+                    slicks_race_invalidate_retention(race);
                     if(pause_result==1) continue;
                 }
                 if (!(code & 0x80) &&
@@ -5083,7 +5097,37 @@ int main(void)
                 race->profile_frame=g_slicks_diag_profile_all!=2?race->frame_count+1:0;
                 race->profile_scope=g_slicks_diag_profile_all>=3?g_slicks_diag_profile_all-2:0;
             }
+#ifdef SLICKS_RETENTION_CHECK
+            /* RETCHECK=1: run each racing update first without retention
+             * from a snapshot, then for real; the chunky surfaces must match. */
+            {
+                static unsigned char *saved_race, *saved_chunky;
+                static struct SlicksRetentionState saved_retention;
+                if (!saved_race) saved_race = AllocMem(sizeof *race, MEMF_ANY);
+                if (!saved_chunky) saved_chunky = AllocMem(64000, MEMF_ANY);
+                if (race->racing && saved_race && saved_chunky) {
+                    unsigned long reference;
+                    __builtin_memcpy(saved_race, race, sizeof *race);
+                    __builtin_memcpy(saved_chunky, chunky, 64000);
+                    saved_retention = slicks_retention;
+                    slicks_race_invalidate_retention(race);
+                    slicks_race_disable_retention = 1;
+                    slicks_race_step(race, logical);
+                    reference = retention_check_hash(chunky);
+                    __builtin_memcpy(race, saved_race, sizeof *race);
+                    __builtin_memcpy(chunky, saved_chunky, 64000);
+                    slicks_retention = saved_retention;
+                    slicks_race_disable_retention = 0;
+                    slicks_race_step(race, logical);
+                    ++g_slicks_retention_checks;
+                    if (retention_check_hash(chunky) != reference &&
+                        !g_slicks_retention_mismatches++)
+                        g_slicks_retention_first_mismatch = race->frame_count;
+                } else slicks_race_step(race, logical);
+            }
+#else
             slicks_race_step(race, logical);
+#endif
             /* Completion is a simulation edge, independent of whether
              * engine playback is enabled or currently owns a channel. */
             completed_now = (unsigned char)(!was_complete && race->race_complete);

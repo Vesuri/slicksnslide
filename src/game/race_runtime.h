@@ -408,6 +408,24 @@ struct SlicksRaceRuntime {
     unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
 };
 
+/* Unchanged track-sprite retention state (sprite_retention.inc/.s): cached
+ * geometry and candidate maps derived from actors, never pixels. */
+struct SlicksRetentionEntry {
+    short left,top,right,bottom;
+    unsigned int key; /* motion x/y with the six fraction bits masked */
+    unsigned char handle,flags,asset,frame,priority,reserved[3];
+};
+struct SlicksRetentionState {
+    unsigned char count,valid,candidates,max_priority;
+    struct SlicksRetentionEntry entries[SLICKS_TRACK_ACTOR_MAX];
+    unsigned char rows[184];      /* point rows crossing any candidate */
+    unsigned char cells[23*40];   /* 8x8 cells: 0, entry+1, or 255 */
+    unsigned char kind_width[5],kind_height[5]; /* union over animation */
+    unsigned char rebuild_pending;  /* a sprite moved; rebuild once settled */
+};
+extern struct SlicksRetentionState slicks_retention;
+extern unsigned char slicks_race_disable_retention;
+
 void slicks_race_initialize(struct SlicksRaceRuntime *race,
                             const struct SlicksTrackNavigation *navigation);
 /* Call after setup/start; maps and loaded sprite pixels must then remain
@@ -416,6 +434,9 @@ void slicks_race_initialize(struct SlicksRaceRuntime *race,
 void slicks_race_prepare_car_render_cache(struct SlicksRaceRuntime *race);
 /* Once on race-loop return, whether deadline completion or user exit. */
 void slicks_race_award_track(struct SlicksRaceRuntime *race);
+/* After any handoff that may touch the chunky surface outside the race step
+ * (pause/menus): retained sprites are restored and redrawn normally. */
+void slicks_race_invalidate_retention(struct SlicksRaceRuntime *race);
 /* Configure before slicks_race_start; mode 5 uses the original Arcade clock. */
 void slicks_race_set_mode(struct SlicksRaceRuntime *race, short mode,
                           short arcade_seconds);
