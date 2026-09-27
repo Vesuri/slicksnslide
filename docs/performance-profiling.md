@@ -3,6 +3,24 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected single-rectangle prune specialization (2026-09-27)
+
+An exact single-rectangle path avoided testing the same bounds as both the
+union and its sole member. It passed all 12000 native prune cases and the
+host dirty-tracking suite, but did not provide useful end-to-end savings.
+
+| Track | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 159466 / 370 | 159187 / 369 |
+| F1 | 208162 / 484 | 208026 / 487 |
+| CITY | 162940 / 372 | 162941 / 373 |
+| WHACKO | 163130 / 420 | 163099 / 422 |
+
+All final states match. The largest total reduction is 0.18% on BASIC;
+F1 and WHACKO maxima worsen. The candidate was removed without further
+rendering audits. Logs: `tmp/prune-single-20260927-*.log`, control ad38849.
+The isolated draft remains local-only at `tmp/dirty_prune_single.s`.
+
 ## Corrected CPU-sample frame attribution (2026-09-27)
 
 The old IRQ handler tagged samples with `completed_updates - 1`, although

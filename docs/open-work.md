@@ -46,12 +46,6 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Single-rectangle pruning.** The general prune path tests the same
-  bounds twice when only one rectangle exists. A local-only specialized
-  draft in `tmp/dirty_prune_single.s` passes the 12000-case native oracle.
-  Benchmark against the committed control before accepting it; retain
-  stable sparse-list order, exact half-open coverage and untouched tails.
-
 - **F1 sprite overhead and overlapping groups.** Its sprite draw/restore
   and retention work remains much larger than BASIC's. Investigate keeping
   overlapping stationary track sprites as a group, with group-wide
