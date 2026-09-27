@@ -100,6 +100,12 @@ int main(int argc,char **argv)
                 .old_x=99,.old_y=100,.saved_valid=trial&3,.colour=i,
                 .occlusion_limit=(unsigned char)((i+trial)%20)};
             if(i%7==0) points[i].x=-1;
+            else if(i%11==3) { points[i].x=319*64+(trial&63);points[i].y=183*64+(i&63); }
+            else if(i%13==5) points[i].y=184*64+(trial&63);
+            /* Unmoved, moved and off-surface old pixels; every flag pair. */
+            if(i%3==0) { points[i].old_x=(short)(points[i].x>>6);points[i].old_y=(short)(points[i].y>>6); }
+            else if(i%3==2) { points[i].old_x=(short)(300+i);points[i].old_y=(short)(180+(i&31)); }
+            points[i].saved_valid=(unsigned char)((trial+i)&3);
             packed(packed_points+i*24,&points[i]);
         }
         /* Exercise every pool offset, including slot 255, in both walkers. */
