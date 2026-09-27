@@ -1769,6 +1769,19 @@ static inline __attribute__((unused)) void advance_lap_checkpoints(struct Slicks
 
 static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
 {
+#if defined(__m68k__)
+#if defined(SLICKS_RETENTION_CHECK)
+    /* The diagnostic reference update must also use the independent C
+     * ordering path, not compare the native builder against itself. */
+    if(!slicks_race_disable_retention)
+#endif
+    if(!reverse) {
+        _Static_assert(_Alignof(struct SlicksRaceRuntime)>=4,"native actor-order clear alignment");
+        extern void slicks_build_draw_order(struct SlicksRaceRuntime *);
+        slicks_build_draw_order(race);
+        return;
+    }
+#endif
     race->actor_order_drawn=0;
     for(unsigned p=0;p<128;++p) race->actor_order_head[p]=0;
     unsigned maximum=0;

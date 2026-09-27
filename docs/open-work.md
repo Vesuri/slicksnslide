@@ -13,9 +13,9 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh c2p16-table-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 162362/381, F1 210343/491,
-CITY 164623/377, WHACKO 165823/435. Means are 17-22 ms; the
+(`amiga/bench_tracks.sh actor-order-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 160841/375, F1 209500/489,
+CITY 163789/374, WHACKO 164378/431. Means are 17-22 ms; the
 worst updates need 17-37% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
@@ -34,15 +34,15 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 219 (381 lines), CITY 506 (377 lines),
-  F1 613 (491 lines) and WHACKO 685 (435 lines). Retain the prior
+  Reprofile BASIC update 219 (375 lines), CITY 506 (374 lines),
+  F1 613 (489 lines) and WHACKO 685 (431 lines). Retain the prior
   BASIC 409/F1 482/WHACKO 688 transitions as regression probes.
-  Record pre/post particle counts and
-  the dirty regions (BASIC geometry is recorded in the profiling evidence):
-  retirement can cause work despite a low final live
-  count. Use uninterrupted timings and the CIA-B sampler; debugger stops
-  are only for correctness/region inspection. Include these transitions
-  when evaluating C2P bounds and particle retention.
+  Pre/post particle counts and dirty regions for all four are recorded in
+  the profiling evidence. Refresh the CPU sample breakdown: retirement
+  and compaction can cause work despite a low final live count.
+  Use uninterrupted timings and the CIA-B sampler; debugger stops are
+  only for correctness/region inspection. Keep these transitions in the
+  regression set when evaluating further changes.
 
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
@@ -78,13 +78,6 @@ Candidate fixes, roughly in order of expected value per effort:
   per-car/per-tick loops, drop repeated large-offset loads, fuse the per-car
   tail into one pass over the car record); do not transliterate. Verify via
   a shadow site per replaced function.
-
-- **Actor ordering.** `build_actor_order` (C, ~11 lines per 100 points,
-  about 69 cycles per point) and the `restore_actor_order` reversal. Check
-  the compiled loop first: GCC's restore loop turned out as lean as asm. A
-  native build only helps if it removes accesses, e.g. reading slot state,
-  trail index and priority with fewer loads or building the draw chains as
-  a by-product of the advance pass for points.
 
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Investigate how often old and new car rectangles

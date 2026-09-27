@@ -3,6 +3,43 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Native draw-chain construction (2026-09-27)
+
+Inspection of GCC's inlined loop found per-handle sprite-pointer maintenance,
+long-displacement indexed accesses and handle reconstruction from a moving
+pointer. The native builder holds the handle directly, keeps short base
+pointers for the arrays and calculates a sprite address only for sprites.
+It clears the head array with an aligned unrolled body and retains the C
+reverse-construction path. Descending handle scans and head insertion preserve
+the original ascending-handle order within each priority.
+
+| Track | Parent work / 603 | Native work / 603 | Worst: parent -> native |
+| --- | ---: | ---: | --- |
+| BASIC | 162362 | 160841 | 381 -> 375 |
+| F1 | 210343 | 209500 | 491 -> 489 |
+| CITY | 164623 | 163789 | 377 -> 374 |
+| WHACKO | 165823 | 164378 | 435 -> 431 |
+
+The 0.4-0.9% total-work gain is small but consistent across all four tracks;
+all final states match. Control: 066b949, `tmp/c2p16-table-20260927-*.log`.
+Candidate: `tmp/actor-order-20260927-*.log`.
+
+`verify-actor-order` compares the complete 64 KiB working image against the
+independent C builder for 12000 empty/mixed/full pools and 413394 linked
+handles, including all priorities, signed state bytes, duplicate particle
+indices, stable chains, untouched bytes and ABI preservation. Native offset,
+particle-stride and alignment assumptions are checked at build time.
+Host dirty/order regression tests also pass.
+
+Full-frame display audits pass 600 updates each on F1/CITY/WHACKO with
+statistics off (32/18/5 actors, 2076/1480/1854 marks):
+`tmp/audit-order-20260927-{1,2,3}.log`. RETCHECK now explicitly selects
+the independent C ordering path for its no-retention reference, rather
+than using the native builder in both updates. All four tracks pass 603
+checks with zero surface-hash and particle-record mismatches and canonical
+final states: `tmp/order-retcheck-20260927-{0,1,2,3}.log`. All runs were
+muted and closed. The normal build was restored afterward.
+
 ## Worst-update state/region inspections after C2P16
 
 Read-only pre/post snapshots at 066b949, not timing runs:
@@ -36,7 +73,7 @@ Actual half-open rectangles:
 A conservative offline retention screen finds 121/74/10/131 points whose
 saved pixel survives lifetime and signed-word motion unchanged. Accounting
 for changing lower-priority points, permanent baking, and old/new
-car/sprite rectangles leaves at most 56/6/6/63 candidates in this screen.
+car/sprite rectangles leaves 56/6/6/63 candidates in this screen.
 Rounding those conflicts into the handoff's suggested 8x8 cells leaves
 only 19/4/4/34. This is design screening, **not an implemented or verified
 retention algorithm**: cars are conservatively considered below every point,
