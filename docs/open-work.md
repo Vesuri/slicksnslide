@@ -13,10 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh actor-order-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 160841/375, F1 209500/489,
-CITY 163789/374, WHACKO 164378/431. Means are 17-22 ms; the
-worst updates need 17-37% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh motion-vectors-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 160230/375, F1 208376/486,
+CITY 162914/372, WHACKO 163792/428. Means are 17-22 ms; the
+worst updates need 17-36% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
 retention overhead, with track-object motion down to 1.8% of non-wait samples.
@@ -34,8 +34,8 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 219 (375 lines), CITY 506 (374 lines),
-  F1 613 (489 lines) and WHACKO 685 (431 lines). Retain the prior
+  Reprofile BASIC update 219 (375 lines), CITY 506 (372 lines),
+  F1 613 (486 lines) and WHACKO 685 (428 lines). Retain the prior
   BASIC 409/F1 482/WHACKO 688 transitions as regression probes.
   Pre/post particle counts and dirty regions for all four are recorded in
   the profiling evidence. Refresh the CPU sample breakdown: retirement
@@ -44,6 +44,10 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
+- **Consecutive particle restoration.** Test batching contiguous point
+  handles between sprite handles, retaining the exact reverse restoration
+  order. An isolated native draft passes; integrate only after the motion
+  change is committed, then benchmark, full-frame audit and RETCHECK it.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

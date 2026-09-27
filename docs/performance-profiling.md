@@ -3,6 +3,44 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Car force-vector experiments (2026-09-27)
+
+Caching per-call force coefficients and direction vectors on the stack saved
+only 0.12-0.19% across the four tracks. Its work/worst results were
+160559/375, 209252/487, 163484/375 and 164153/430 against parent 0dbe6e0's
+160841/375, 209500/489, 163789/374 and 164378/431. Stack traffic consumed
+most of the saved calculation at roughly 1.82 physics quanta per update.
+The candidate was removed; its local archive is
+`tmp/motion-invariants-20260927.patch` and logs are
+`tmp/motion-invariants-20260927-*.log`.
+
+A smaller candidate pre-scales the sixteen signed direction vectors by 200.
+Two long multiplies disappear from each normal physics quantum. The vectors
+fit signed words and multiplication remains identical modulo 2^32:
+`(direction * speed) * 200 == (direction * 200) * speed`. Division, special
+states, rounding and simulation order are unchanged.
+
+| Track | Parent work / 603 | Vector work / 603 | Worst: parent -> vector |
+| --- | ---: | ---: | --- |
+| BASIC | 160841 | 160230 | 375 -> 375 |
+| F1 | 209500 | 208376 | 489 -> 486 |
+| CITY | 163789 | 162914 | 374 -> 372 |
+| WHACKO | 164378 | 163792 | 431 -> 428 |
+
+All final states match. Logs: `tmp/motion-vectors-20260927-*.log`.
+The independent native integration test covers 12000 no-wall cases,
+all sixteen directions, normal/coasting/special states, signed timestep
+boundaries, both layers, coordinate clamps, complete car bytes and ABI.
+Its randomized force range deliberately avoids host-long-width overflow;
+the modular identity above covers the arithmetic transformation separately.
+The existing 24000-case car-ray oracle covers blocked probes. Both tests
+pass for the baseline, rejected stack cache and pre-scaled vectors. The
+long original-DOS trajectory comparisons also pass. Target motion shadows
+pass 2412 comparisons each on BASIC, F1, CITY, WHACKO and jumps, plus
+412 each on ice and zones, with zero state mismatches or race errors.
+Logs: `tmp/shadow-vectors-20260927-*.log`. All muted sessions closed and
+the normal build was restored. The smaller vector change is accepted.
+
 ## Native draw-chain construction (2026-09-27)
 
 Inspection of GCC's inlined loop found per-handle sprite-pointer maintenance,

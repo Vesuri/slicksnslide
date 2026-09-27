@@ -132,18 +132,18 @@ slicks_integrate_car_motion:
 	moveq	#0,d0
 	move.w	CAR_HEADING(a5),d0
 	divu.w	#1200,d0
-	lea	slicks_car_direction_x,a0
-	move.b	(a0,d0.w),d4
-	extb.l	d4
-	lea	slicks_car_direction_y,a0
-	move.b	(a0,d0.w),d5
-	extb.l	d5
+	lea	.force_x(pc),a0
+	move.w	(a0,d0.w*2),d4
+	ext.l	d4
+	lea	.force_y(pc),a0
+	move.w	(a0,d0.w*2),d5
+	ext.l	d5
 	move.l	CAR_SPEED_FIXED(a5),d0
+	; Associative low-dword multiplication preserves original overflow:
+	; (direction*speed)*200 == (direction*200)*speed modulo 2^32.
 	muls.l	d0,d4
-	muls.l	#200,d4
 	divs.l	d3,d4			; force x
 	muls.l	d0,d5
-	muls.l	#200,d5
 	divs.l	d3,d5			; force y
 	moveq	#0,d1
 	move.w	#$7bd7,d1
@@ -359,3 +359,13 @@ slicks_integrate_car_motion:
 	lea	FRAME(sp),sp
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts
+
+; Pre-scaled copies of the shared signed direction vectors. Kept local so
+; the hot loop uses short PC-relative loads, not two extra long multiplies.
+	cnop 0,4
+.force_x:
+	dc.w 100*200,92*200,71*200,38*200,0,-38*200,-71*200,-92*200
+	dc.w -100*200,-92*200,-71*200,-38*200,0,38*200,71*200,92*200
+.force_y:
+	dc.w 0,38*200,71*200,92*200,100*200,92*200,71*200,38*200
+	dc.w 0,-38*200,-71*200,-92*200,-100*200,-92*200,-71*200,-38*200
