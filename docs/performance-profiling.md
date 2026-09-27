@@ -204,3 +204,40 @@ suites pass (`tmp/verify-native-track-motion.log`).
 | WHACKO | 186772 | 186763 | 0.0% | 482 -> 482 |
 
 BASIC and WHACKO have one and five track objects respectively.
+
+## Native dirty rectangles and prepared car drawing
+
+`src/game/dirty_rect.s` replaces `mark_dirty_rect` (clip, widen to
+32-pixel columns, fold overlapping or touching rectangles, full-list
+fallback). `make verify-dirty-rect` runs the real 68020 code in Unicorn
+against the C body over 240000 randomized calls (19904 merges, 587
+full-list fallbacks), comparing every list entry, the count, the stack and
+callee-saved registers. Offsets come from the target compiler
+(`build/offsets/race_offsets.i`).
+
+`src/game/car_render.s` replaces the prepared-cache part of `draw_car`.
+All eligibility tests (bounds, cache identity, frame size, tile occlusion
+maxima, masked-style limit) precede side effects; an ineligible car
+returns to the unchanged C renderer. Rendering shadow checks also snapshot
+and compare the chunky surface: 2804 car draws on each of BASIC and F1,
+zero mismatches (`tmp/shadow-render-{0,1}.log`). The F1 display audit
+passes 600 updates, 32 actors and 2076 marks (`tmp/audit-cardraw-1.log`);
+host dirty, HUD and car-draw suites pass (`tmp/verify-native-car-render.log`).
+
+| Track | Control (`tmotion`) | Candidate | Change | p99 ms | Max lines |
+| --- | ---: | ---: | ---: | --- | --- |
+| BASIC | 181030 | 176112 | -2.7% | | 426 -> 419 |
+| F1 | 246131 | 242290 | -1.6% | 34.23 -> 33.85 | 556 -> 564 |
+| CITY | 196391 | 192284 | -2.1% | | 462 -> 454 |
+| WHACKO | 186763 | 181708 | -2.7% | 29.62 -> 29.17 | 482 -> 496 |
+
+All F1/WHACKO percentiles through p99 improve; single maxima rose slightly.
+
+## Upper bound for unchanged-sprite retention
+
+A throwaway build that skipped every track sprite in the native restore and
+draw chains (visually wrong) reduced F1 work from 246131 to 187782 lines
+(-23.7%, maximum 556 -> 458) and CITY from 196391 to 170985 (-12.9%,
+462 -> 416) (`tmp/noskip-ub-{1,2}.log`). This exceeds the sampled chain
+shares because it also removes chain switching and conversions. Exact
+retention of unchanged, untouched sprites is therefore the main F1 lever.

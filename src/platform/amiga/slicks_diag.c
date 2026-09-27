@@ -397,9 +397,11 @@ static void pc_sampler_release(void)
     g_slicks_pc_samples = 0;
 #ifdef SLICKS_SHADOW_CHECK
     {
-        extern unsigned char *slicks_shadow_state;
+        extern unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
         if (slicks_shadow_state) FreeMem(slicks_shadow_state, 57344);
+        if (slicks_shadow_chunky) FreeMem(slicks_shadow_chunky, 64000);
         slicks_shadow_state = 0;
+        slicks_shadow_chunky = 0;
     }
 #endif
 }
@@ -2055,9 +2057,11 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     if(session) race->random_state=session->random_state;
 #ifdef SLICKS_SHADOW_CHECK
     {
-        extern unsigned char *slicks_shadow_state;
+        extern unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
         if (!slicks_shadow_state)
             slicks_shadow_state = AllocMem(57344, MEMF_ANY);
+        if (!slicks_shadow_chunky)
+            slicks_shadow_chunky = AllocMem(64000, MEMF_ANY);
     }
 #endif
     if (slicks_race_start(race, logical, chunky) != 0) {

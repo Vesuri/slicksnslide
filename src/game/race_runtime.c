@@ -119,12 +119,20 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLIC
     __builtin_offsetof(struct SlicksRaceRuntime,track_actor_scratch)<SLICKS_SHADOW_WINDOW &&
     sizeof(struct SlicksTrackNavigation)<=__builtin_offsetof(struct SlicksRaceRuntime,cars),
     "shadow window covers the native motion, emission and track-object write sets");
-unsigned char *slicks_shadow_state;
+unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
 volatile unsigned long slicks_shadow_calls[8],slicks_shadow_mismatches[8];
 volatile unsigned long slicks_shadow_first_site,slicks_shadow_first_block,
     slicks_shadow_first_frame;
 unsigned char slicks_shadow_native[1024],slicks_shadow_reference[1024];
-static unsigned long shadow_hashes[SLICKS_SHADOW_BLOCKS];
+static unsigned long shadow_hashes[SLICKS_SHADOW_BLOCKS],shadow_chunky_hashes[64];
+static unsigned char shadow_render;
+/* Rendering sites also compare the authoritative chunky surface. */
+static unsigned long shadow_chunky_hash(const unsigned char *p)
+{
+    unsigned long h=0x811c9dc5UL;
+    for(unsigned i=0;i<1000;i+=4) h=((h<<5)|(h>>27))^*(const unsigned long *)(p+i);
+    return h;
+}
 static unsigned long shadow_block_hash(const unsigned long *p)
 {
     unsigned long h=0x811c9dc5UL;
@@ -135,12 +143,28 @@ static void shadow_reference_done(struct SlicksRaceRuntime *race)
 {
     const unsigned long *p=(const unsigned long *)race;
     for(unsigned b=0;b<SLICKS_SHADOW_BLOCKS;++b) shadow_hashes[b]=shadow_block_hash(p+b*256U);
+    if(shadow_render) {
+        for(unsigned b=0;b<64;++b) shadow_chunky_hashes[b]=shadow_chunky_hash(race->chunky+b*1000U);
+        __builtin_memcpy(race->chunky,slicks_shadow_chunky,64000);
+    }
     __builtin_memcpy(race,slicks_shadow_state,SLICKS_SHADOW_WINDOW);
 }
 static int shadow_native_done(struct SlicksRaceRuntime *race,unsigned site)
 {
     const unsigned long *p=(const unsigned long *)race;
     ++slicks_shadow_calls[site];
+    if(shadow_render)
+        for(unsigned b=0;b<64;++b)
+            if(shadow_chunky_hash(race->chunky+b*1000U)!=shadow_chunky_hashes[b]) {
+                if(!slicks_shadow_mismatches[0]++) {
+                    slicks_shadow_first_site=site;slicks_shadow_first_block=1000U+b;
+                    slicks_shadow_first_frame=race->frame_count;
+                }
+                ++slicks_shadow_mismatches[site];
+                __builtin_memcpy(race->chunky,slicks_shadow_chunky,64000);
+                __builtin_memcpy(race,slicks_shadow_state,SLICKS_SHADOW_WINDOW);
+                return 0;
+            }
     for(unsigned b=0;b<SLICKS_SHADOW_BLOCKS;++b)
         if(shadow_block_hash(p+b*256U)!=shadow_hashes[b]) {
             if(!slicks_shadow_mismatches[0]++) {
@@ -154,6 +178,13 @@ static int shadow_native_done(struct SlicksRaceRuntime *race,unsigned site)
         }
     return -1;
 }
+#define SLICKS_SHADOW_RENDER_CALL(site,reference,native) do { \
+    if(!slicks_shadow_chunky || !race->chunky) { native; break; } \
+    shadow_render=1; \
+    __builtin_memcpy(slicks_shadow_chunky,race->chunky,64000); \
+    SLICKS_SHADOW_CALL(site,reference,native); \
+    shadow_render=0; \
+} while(0)
 #define SLICKS_SHADOW_CALL(site,reference,native) do { \
     if(!slicks_shadow_state) { native; break; } \
     __builtin_memcpy(slicks_shadow_state,race,SLICKS_SHADOW_WINDOW); \
@@ -168,6 +199,7 @@ static int shadow_native_done(struct SlicksRaceRuntime *race,unsigned site)
 } while(0)
 #else
 #define SLICKS_SHADOW_CALL(site,reference,native) do { native; } while(0)
+#define SLICKS_SHADOW_RENDER_CALL(site,reference,native) do { native; } while(0)
 #endif
 static void weapon_ai_request(struct SlicksRaceRuntime *race,unsigned driver);
 
@@ -252,6 +284,12 @@ static void write_pixel(unsigned char *logical, unsigned char *chunky,
 static void mark_dirty_rect(struct SlicksRaceRuntime *race,
                             short left, short top, short right, short bottom)
 {
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_DIRTY_RECT)
+    /* dirty_rect.s; tools/verify_dirty_rect.c compares it with this body. */
+    extern void slicks_mark_dirty_rect(struct SlicksRaceRuntime *,int,int,int,int);
+    slicks_mark_dirty_rect(race,left,top,right,bottom);
+    return;
+#endif
     struct SlicksDirtyRows rows;
     unsigned short at;
     if (left < 0)
@@ -664,7 +702,27 @@ static int actor_pixel_visible(const struct SlicksRaceRuntime *race,
         ((race->material_map[at] << 3) | (race->surface_map[at] & 7)) <= limit;
 }
 
+static void draw_car_reference(struct SlicksRaceRuntime *race, unsigned char *logical,
+                     unsigned short car_index);
 static void draw_car(struct SlicksRaceRuntime *race, unsigned char *logical,
+                     unsigned short car_index)
+{
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_CAR_DRAW)
+    /* car_render.s handles prepared frames; 0 means untouched state. */
+    extern int slicks_draw_car_native(struct SlicksRaceRuntime *,unsigned);
+    if(!logical) {
+        int handled=0;
+        SLICKS_SHADOW_RENDER_CALL(5,draw_car_reference(race,logical,car_index),
+            handled=slicks_draw_car_native(race,car_index);
+            if(!handled) draw_car_reference(race,logical,car_index));
+        (void)handled;
+        return;
+    }
+#endif
+    draw_car_reference(race,logical,car_index);
+}
+
+static void draw_car_reference(struct SlicksRaceRuntime *race, unsigned char *logical,
                      unsigned short car_index)
 {
     struct SlicksRaceCar *car = &race->cars[car_index];

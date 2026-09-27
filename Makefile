@@ -16,6 +16,7 @@ LIVE_VGA_SITES ?= disasm/live-vga-sites.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
 VASM ?= $(HOME)/.local/vasmm68k_mot
+M68K_CC ?= $(HOME)/.local/opt/bin/m68k-amiga-elf-gcc
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export JAVA_HOME
 export PATH := $(JAVA_HOME)/bin:$(PATH)
@@ -1211,6 +1212,23 @@ build/verify_particle_advance: tools/verify_particle_advance.c tools/verify_dos_
 .PHONY: verify-particle-advance
 verify-particle-advance: unpack build/particle_advance.bin build/verify_particle_advance
 	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin
+
+# Target structure offsets from the 68020 compiler for native-routine tests.
+build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h | build
+	mkdir -p build/offsets
+	$(M68K_CC) -m68020 -O2 -S -o build/offsets/race_offsets.s $<
+	sed -n 's/^@@//p' build/offsets/race_offsets.s > $@
+
+build/dirty_rect.bin: src/game/dirty_rect.s build/offsets/race_offsets.i | build
+	printf '\tinclude "src/game/dirty_rect.s"\n' > build/offsets/dirty_rect_test.s
+	$(VASM) -quiet -m68020 -Fbin -Ibuild/offsets -I. -o $@ build/offsets/dirty_rect_test.s
+
+build/verify_dirty_rect: tools/verify_dirty_rect.c src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-dirty-rect
+verify-dirty-rect: build/dirty_rect.bin build/verify_dirty_rect build/offsets/race_offsets.i
+	build/verify_dirty_rect build/dirty_rect.bin build/offsets/race_offsets.i
 
 build/car_draw.bin: tools/car_draw_test.s src/game/car_draw.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
