@@ -3182,7 +3182,7 @@ int main(void)
     unsigned char continuous_diagnostics=(unsigned char)(argc!=0 || native_debug);
     if(!continuous_diagnostics)g_slicks_diag_target_frame=0;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
-    unsigned char actor_case_test=(unsigned char)(argc==9 && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
+    unsigned char actor_case_test=(unsigned char)((argc==9 || (argc==10 && argv[9]=='Q')) && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
@@ -3782,8 +3782,10 @@ int main(void)
 
     /* NATIVE and diagnostic fixtures opt into live inspection. Outer-only
      * benchmarks measure the normal presentation path, not rectangle stats. */
-    g_slicks_diag_live_stats=(unsigned char)(continuous_diagnostics ||
-        (g_slicks_diag_profile_all && g_slicks_diag_profile_all!=2));
+    /* NATURALO<track>Q audits the normal presentation path without relying
+     * on debugger writes to target variables. Other audit checks stay on. */
+    g_slicks_diag_live_stats=(unsigned char)(!(actor_case_test && argc==10) &&
+        (continuous_diagnostics || (g_slicks_diag_profile_all && g_slicks_diag_profile_all!=2)));
     for (;;) {
         unsigned short code;
         unsigned char left_down;

@@ -62,6 +62,7 @@ void slicks_race_offsets(void)
     OFFSET(RACE_NAVIGATION_ACTORS, struct SlicksRaceRuntime, navigation.actors);
     OFFSET(RACE_NAVIGATION_ACTOR_COUNT, struct SlicksRaceRuntime, navigation.actor_count);
     OFFSET(RACE_TRACK_ACTOR_HANDLES, struct SlicksRaceRuntime, track_actor_handles);
+    OFFSET(RACE_TRACK_STATIONARY_READY, struct SlicksRaceRuntime, track_stationary_ready);
     OFFSET(RACE_TRACK_ACTORS_READY, struct SlicksRaceRuntime, track_actors_ready);
     OFFSET(RACE_TRACK_ACTOR_SCRATCH, struct SlicksRaceRuntime, track_actor_scratch);
     VALUE(TRACK_ACTOR_SIZE, sizeof(struct SlicksTrackActor));

@@ -1,12 +1,23 @@
-# SLICKS_TRACK_ACTOR_TEST=1, with the full-frame stale-pixel audit enabled.
-# Only disables optional statistics; no game-state writes.
+# SLICKS_TRACK_ACTOR_TEST=1 SLICKS_LIVE_STATS=0: full-frame stale-pixel audit
+# with optional statistics off through an explicit launch mode. No writes.
 # debug.sh closes this owned emulator on exit.
 set $race=(struct SlicksRaceRuntime *)0
 break *slicks_race_start
 commands
   silent
   set $race=*(struct SlicksRaceRuntime **)($sp+4)
-  set g_slicks_diag_live_stats=0
+  continue
+end
+# main selects diagnostic defaults after race_start. Check the first actual
+# update and the final audit; never assume a debugger assignment took effect.
+tbreak *slicks_race_step
+commands
+  silent
+  printf "DIRTY_SPRITE_LIVE_STATS=%u\n",g_slicks_diag_live_stats
+  if g_slicks_diag_live_stats
+    printf "DIRTY_SPRITE_INVALID launch with SLICKS_LIVE_STATS=0\n"
+    quit 1
+  end
   continue
 end
 break slicks_diag_bitmap_audit_failed
@@ -49,7 +60,7 @@ break slicks_diag_race_progress
 commands
   silent
   if $race && $race->frame_count>=600
-    if !g_slicks_diag_audit_bitmap || g_slicks_diag_race_error || $race->collision_error
+    if !g_slicks_diag_audit_bitmap || g_slicks_diag_live_stats || g_slicks_diag_race_error || $race->collision_error
       printf "DIRTY_SPRITE_INVALID\n"
       quit 1
     end

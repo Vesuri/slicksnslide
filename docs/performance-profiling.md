@@ -455,8 +455,12 @@ WHACKO 687 has 159. BASIC's C2P portion alone is 116 lines (also 116 in the
 control, with 4352 rectangle pixels). Investigate retirement/redraw
 transitions; a live-count regression model is not a worst-case bound.
 
-Verification: F1/CITY/WHACKO each pass 600 full-frame display audits with
-statistics disabled (`tmp/audit-optin-20260927-{1,2,3}.log`). With statistics
+Verification: F1/CITY/WHACKO each passed 600 full-frame display audits
+(`tmp/audit-optin-20260927-{1,2,3}.log`), but later inspection found that the
+debugger override did not establish statistics-off mode. Those runs verify
+pixels, not the claimed statistics-off coverage. The stationary-cache work
+adds an explicit `NATURALO<track>Q` launch mode (`SLICKS_LIVE_STATS=0`) and
+checks the flag before the first update and at the final audit. With statistics
 enabled, `diag_live_stats.gdb` checks all 600 updates against the actual
 converted rectangle/sparse lists (`tmp/live-stats-check2-20260927.log`). It
 inspects just before the list is cleared, not at the later race-progress

@@ -315,6 +315,7 @@ static void advance_weapon_actors(struct SlicksRaceRuntime *race)
 static void initialize_weapon_actors(struct SlicksRaceRuntime *race)
 {
     race->actor_order_drawn=0;
+    __builtin_memset(race->track_stationary_ready,0,sizeof race->track_stationary_ready);
     struct SlicksWeaponRuntime *w=&race->weapons;
     slicks_actor_slots_init(&w->slots);
     for(unsigned h=0;h<SLICKS_ACTOR_CAPACITY;++h) {

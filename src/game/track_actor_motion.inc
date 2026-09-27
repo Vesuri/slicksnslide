@@ -31,12 +31,13 @@ static __attribute__((unused)) void update_track_actor_motion_reference(struct S
             }
             car_pixels_ready=1;
         }
+        const unsigned moving=a->velocity_x || a->velocity_y;
+        if(moving)race->track_stationary_ready[i]=0;
         short nx=(short)(a->x+a->velocity_x),ny=(short)(a->y+a->velocity_y);
         int material=slicks_track_material_sample_inline(race->material_map,race->surface_map,nx/16,ny/16,0);
         if(material<0) { race->collision_error=1;return; }
         if(material==0) a->layer=1;
         else if(material==19) a->layer=0;
-        const unsigned moving=a->velocity_x || a->velocity_y;
         /* With zero velocity and exclude=0, the original zero-length
          * probe has no callbacks or writes. Keep material/layer sampling
          * and all car contacts, but bypass motion and zero damping. */
@@ -51,6 +52,10 @@ static __attribute__((unused)) void update_track_actor_motion_reference(struct S
             short h=race->track_actor_handles[i];
             configure_weapon_actor(race,h,(short)(actor_pixel_x-2),(short)(actor_pixel_y-2),
                 0,0,0,a->kind==1?1:4,a->layer*15);
+            /* Reference never takes the cache shortcut: it repeats the
+             * original sampling/configuration and derives only metadata. */
+            if(h>0 && h<SLICKS_ACTOR_CAPACITY)
+                race->track_stationary_ready[i]=(unsigned char)(moving?0:255);
         }
         if(moving) {
             a->velocity_x=(short)(a->velocity_x*10)/11;

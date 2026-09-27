@@ -66,6 +66,23 @@ slicks_update_track_actor_motion:
 	tst.w	TF_READY(sp)
 	beq.w	.cars
 .cars_ready:
+	; Only this routine moves/layers kind-1/3 navigation objects. Their
+	; handles are permanent, maps immutable, and the stationary configuration
+	; has zero lifetime/motion/animation. A moving pass invalidates the cache
+	; before probing: a blocked ray can sample a different layer and damp to
+	; zero, so current zero velocity alone is not enough to skip sampling.
+	tst.l	TRACK_ACTOR_VELOCITY_X(a3)
+	bne.s	.uncached
+	tst.b	RACE_TRACK_STATIONARY_READY-RACE_TRACK_ACTOR_HANDLES(a2)
+	beq.s	.sample_position
+	move.w	TRACK_ACTOR_X(a3),d4
+	DIV16	d4
+	move.w	TRACK_ACTOR_Y(a3),d5
+	DIV16	d5
+	bra.w	.contact_check
+.uncached:
+	clr.b	RACE_TRACK_STATIONARY_READY-RACE_TRACK_ACTOR_HANDLES(a2)
+.sample_position:
 	move.w	TRACK_ACTOR_X(a3),d2
 	add.w	TRACK_ACTOR_VELOCITY_X(a3),d2
 	move.w	d2,TF_NX(sp)
@@ -132,6 +149,8 @@ slicks_update_track_actor_motion:
 	move.b	TRACK_ACTOR_LAYER(a3),d1
 	mulu.w	#15,d1
 	move.b	d1,ACTOR_OCCLUSION(a0)
+	tst.b	d6
+	seq	RACE_TRACK_STATIONARY_READY-RACE_TRACK_ACTOR_HANDLES(a2)
 .configured:
 	tst.b	d6
 	bne.w	.damp

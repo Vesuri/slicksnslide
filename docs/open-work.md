@@ -13,19 +13,20 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh inert-advance-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 172131/414, F1 227283/563,
-CITY 180000/436, WHACKO 178179/442. Means are 18-24 ms; the
+(`amiga/bench_tracks.sh stationary-final-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 172409/413, F1 220834/550,
+CITY 174249/420, WHACKO 178390/445. Means are 18-24 ms; the
 worst updates need 25-45% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima: BASIC's worst has zero
-live points, CITY's 16, F1's 63 and WHACKO's 159. F1 is also slow without
-points (~150 lines per update of track-sprite work). Method, tools and the cost model (Chip data access ~7
+live points, CITY's 16, F1's 63 and WHACKO's 176. F1 is also slow without
+points; refresh the track-sprite cost split after stationary-object caching.
+Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
 `docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
 against a control of the parent commit (FINAL_STATE must be identical),
 Unicorn/host oracle for any native routine, `amiga/shadow_check.sh` for
 simulation sites, display audits for rendering changes
-(`SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 ./debug.sh ""
+(`SLICKS_LIVE_STATS=0 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 ./debug.sh ""
 diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 (`make RETCHECK=1`, `diag_retention_check.gdb`) when drawing order or
 retention is touched.
@@ -33,9 +34,9 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 409 (414 lines, zero live points),
-  CITY 506 (436 lines, 16 points), F1 482 (563 lines, 63 points) and
-  WHACKO 687 (442 lines, 159 points). Record pre/post particle counts and
+  Reprofile BASIC update 409 (413 lines, zero live points),
+  CITY 506 (420 lines, 16 points), F1 482 (550 lines, 63 points) and
+  WHACKO 688 (445 lines, 176 points). Record pre/post particle counts and
   the dirty regions (BASIC geometry is recorded in the profiling evidence):
   retirement can cause work despite a low final live
   count. Use uninterrupted timings and the CIA-B sampler; debugger stops
@@ -66,26 +67,6 @@ Candidate fixes, roughly in order of expected value per effort:
   chunky and state every update) plus display audits. Only worthwhile if
   the grid maintenance costs well under the ~250-350 cycles saved per kept
   point.
-
-- **F1/CITY: stop rewriting stationary track objects every update.**
-  `slicks_update_track_actor_motion` (`src/game/track_motion.s`, reference
-  in `track_actor_motion.inc`) samples the material map, sets the layer and
-  calls the configure step (slot state, motion x/y, vx/ax/lifetime/frame,
-  priority, occlusion: ~12 writes) for every kind-1/3 object each update,
-  even when its velocity is zero, then tests car contacts. About 20
-  lines/update on F1 (~600 cycles per object). The material maps are
-  immutable during a race, so a stationary object's sample and layer
-  cannot change; the configure writes are idempotent unless something else
-  wrote those actor fields since the last update. Plan: list every writer of
-  a track-object handle's slot state and motion fields (advance, weapon
-  hits/explosions, retention, pause handoff); if none can change them for a
-  stationary object, keep a per-object key (x, y, layer, kind) and skip the
-  sample and the configure writes when the key and velocity are unchanged,
-  keeping the car-contact test every update. Check whether the existing
-  `RETAIN_KEPT` metadata can prove eligibility without a second cache;
-  preserve first-frame initialization and moving/contact cases. Shadow
-  site 3 verifies; also run the jump, ice and zone fixtures, and retention
-  checks if eligibility uses the retention metadata.
 
 - **Emission slot scan.** `.add_scan` in `src/game/car_emission.s` walks
   slot-state bytes one at a time from `emission_slot_cursor` to the first

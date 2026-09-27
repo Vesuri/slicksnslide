@@ -293,6 +293,10 @@ struct SlicksRaceRuntime {
     short boundary_timer,boundary_direction;
     unsigned char boundary_colours[15],boundary_palette_pending;
     unsigned char track_actors_ready,track_actor_handles[SLICKS_TRACK_ACTOR_MAX];
+    /* A preceding stationary update sampled/configured this permanent
+     * handle. Moving passes invalidate it even when damping reaches zero.
+     * Kept in the shadow-verified working state; reset with the actor pool. */
+    unsigned char track_stationary_ready[SLICKS_TRACK_ACTOR_MAX];
     short track_actor_scratch;
     signed char track_flag_activations;
     unsigned char track_flag_styles[205]; /* Original aliased offset/priority lookups. */

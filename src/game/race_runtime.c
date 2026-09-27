@@ -117,6 +117,8 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLIC
     sizeof(struct SlicksWeaponActor)*SLICKS_ACTOR_CAPACITY<=SLICKS_SHADOW_WINDOW &&
     __builtin_offsetof(struct SlicksRaceRuntime,emission_slot_cursor)<SLICKS_SHADOW_WINDOW &&
     __builtin_offsetof(struct SlicksRaceRuntime,track_actor_scratch)<SLICKS_SHADOW_WINDOW &&
+    __builtin_offsetof(struct SlicksRaceRuntime,track_stationary_ready)+
+    SLICKS_TRACK_ACTOR_MAX<=SLICKS_SHADOW_WINDOW &&
     sizeof(struct SlicksTrackNavigation)<=__builtin_offsetof(struct SlicksRaceRuntime,cars),
     "shadow window covers the native motion, emission and track-object write sets");
 unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
