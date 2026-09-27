@@ -33,16 +33,11 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Avoid redundant particle coordinate stores.** The draw routine already
-  compares old and new integer positions. On equality, branch past the two
-  old-position stores while retaining saved-under, colour, flags and dirty
-  semantics. Local draft `tmp/particle-same-position-20260928.s` passes
-  the native draw oracle (2048 single, 256 batch, 256 chain cases) assembled
-  with production `-no-opt`. Apply, benchmark all tracks, and audit display
-  output before accepting; the draft has not been applied to production or
-  measured on the target.
-
 - **Resolve worst-update transitions, not just particle-count averages.**
+  Refresh F1/WHACKO CPU captures on the current accepted build before
+  choosing another CPU rewrite; recent small changes alter which updates
+  incur the largest work. Treat raster-phase/HUD-clock effects as hypotheses
+  to measure, not established explanations. Keep F1 551 and 613 in scope.
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
   as the pre-group baseline; refreshed post-group F1/WHACKO captures are
   `tmp/pcprof-postgroups-{f1,whacko}-20260927`. Target BASIC updates 209/219,

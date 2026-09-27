@@ -3,6 +3,35 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected unchanged-particle coordinate-store shortcut (2026-09-28)
+
+Changed the existing equal-position branch to skip the two redundant
+old-coordinate stores. Saved-under, drawing, flags and dirty publication
+were unchanged. Native draw tests passed 2048 single, 256 ordered-batch and
+256 chain cases under production `-no-opt`; host dirty-tracking and surface
+effects passed. Kept `-no-opt` in the normal native draw oracle's recipe.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 155903 / 364 | 155431 / 364 |
+| F1 | 182215 / 433 | 181871 / 457 |
+| CITY | 151791 / 352 | 151570 / 353 |
+| WHACKO | 159453 / 416 | 158899 / 411 |
+
+All 603-update final states match. F1 candidate repeat: 181917/456; restored
+parent repeat: 182191/433. The candidate's peak is update 613 (89 points,
+58 C2P lines), whereas the parent's is 551. Work is redistributed between
+adjacent updates as well as reduced overall; do not interpret these numbers
+as a standalone instruction-latency measurement or claim a cause without
+further evidence. Rejected for the repeatable F1 deadline regression despite
+small average savings. No target display audits were run for the rejected
+candidate. Production source reverted and the parent normal build restored.
+
+Evidence: `tmp/particle-same-position-20260928-{0,1,2,3}.log`,
+`tmp/particle-same-position-{repeat,parent-repeat}-20260928-1.log`,
+`tmp/particle-same-position-oracles-20260928.log`. Local draft remains
+`tmp/particle-same-position-20260928.s` (rejected, not pending application).
+
 ## Empty restoration-layer wrappers (2026-09-28)
 
 After reversing the authoritative actor chains, skip empty priority heads

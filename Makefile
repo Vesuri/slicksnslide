@@ -1197,7 +1197,7 @@ verify-sprite-opacity: build/sprite_opaque.bin build/verify_sprite_opacity
 	build/verify_sprite_opacity build/sprite_opaque.bin
 
 build/particle_draw.bin: tools/particle_draw_test.s src/game/particle_draw.s | build
-	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+	$(VASM) -quiet -m68020 -no-opt -Fbin -o $@ $<
 
 build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
