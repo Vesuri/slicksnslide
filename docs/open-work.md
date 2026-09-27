@@ -84,7 +84,13 @@ Candidate fixes, roughly in order of expected value per effort:
   pattern (reference update without retention on a snapshot, compare
   chunky and state every update) plus display audits. Only worthwhile if
   the grid maintenance costs well under the ~250-350 cycles saved per kept
-  point.
+  point. Use `tools/point_retention_screen.py` and its read-only capture
+  script to screen current expensive updates before choosing cell size.
+  Prefer sparse clearing/generation tags or an exact sparse pixel index;
+  include shadow bounds and baking conflicts. Require measured overhead
+  below the saved-point budget and adaptive bypass on low-yield updates.
+  Designs, counts and limitations are in `docs/point-retention-design.md`;
+  the offline screen is not a runtime proof.
 
 - **Remaining C inside `slicks_race_step`.** Refresh and split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:

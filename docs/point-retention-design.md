@@ -4,6 +4,46 @@ This experiment was rejected on 2026-09-27: the narrow stationary-point
 rule saved too few redraws to repay its scans. Production code is unchanged.
 The broader moving-point retention proposal remains open.
 
+## Current conflict-grid screening (2026-09-28)
+
+Read-only pre/post captures on code 2ec6cae inspect BASIC 209, F1 481,
+CITY 700 and WHACKO 685. `amiga/diag_point_retention_screen.gdb` requires
+`$target`; it includes colours, occlusion keys, car priorities and shadows.
+All four inspections completed and their emulators exited. Debugger-stopped
+runs are not timing evidence. Reproduce the analysis with:
+
+```
+python3 tools/point_retention_screen.py --self-test tmp/point-screen-20260928-{0,1,2,3}.log
+```
+
+| Track/update | Unchanged candidates | Exact pixel | 2x2 | 4x4 | 8x8 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BASIC 209 | 109 | 58 | 44 | 28 | 15 |
+| F1 481 | 40 | 13 | 9 | 9 | 5 |
+| CITY 700 | 45 | 11 | 8 | 8 | 8 |
+| WHACKO 685 | 131 | 71 | 55 | 33 | 16 |
+
+The screen matches handles and includes old/new point footprints, car and
+shadow rectangles, all sprite rectangles and permanent bakes. Equal-priority
+conflicts are conservatively rejected. Stable overlapping candidates can
+remain a group here; a runtime must preserve their saved-under ordering.
+All sprites are treated as writers, even when retained. Conversely, future
+geometry is supplied for free. These are design estimates, **not runtime
+correctness proofs, universal upper bounds or measured speed gains**.
+
+One-byte priority grids need 58880/14720/3680/920 bytes for 1/2/4/8-pixel
+cells (encode priority+1, zero for baking, 255 for empty). In track order,
+2x2 conflict insertion visits 244/861/489/340 cells; 4x4 visits
+136/334/222/157. That excludes clearing, candidate scans, future-geometry
+prediction and late invalidation. At the handoff's estimated 250-350 cycles
+saved per retained point, retaining 28-33 points yields only roughly 8-13
+raster lines gross. Dense clearing can consume much of that. A prototype
+needs sparse clearing, generation tags or an exact sparse pixel index, plus
+adaptive bypass on low-yield updates. Coarse 8x8 retention is unattractive
+for these spikes; broader sampling and target measurement remain necessary.
+Do not repeat the priority-zero-only experiment or assume particle retention
+alone closes the 50 FPS gap. Captures and summary remain local-only.
+
 ## Scope and order proof
 
 The first candidate handles only stationary priority-zero points, not moving
