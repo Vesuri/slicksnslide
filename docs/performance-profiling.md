@@ -3,6 +3,48 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Worst-update state/region inspections after C2P16
+
+Read-only pre/post snapshots at 066b949, not timing runs:
+`tmp/inspect-worst-20260927-{0,1,2,3}.log`. The pre-snapshot is at entry to
+the update; the post-snapshot is immediately before clearing the converted
+dirty list. All four inspections reached their requested frame and closed
+their muted emulators. No debugger writes to game state were used.
+
+| Track / update | Pre records | Pre retired records | Post records | Post active | C2P rectangle area |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BASIC 219 | 172 | 31 | 155 | 155 | 544 |
+| F1 613 | 106 | 19 | 89 | 89 | 1136 |
+| CITY 506 | 14 | 0 | 16 | 13 | 1856 |
+| WHACKO 685 | 160 | 19 | 158 | 158 | 736 |
+
+The count change includes new emissions before advancement, not just
+retirement. First released record indices are 34, 7, none and 14:
+the remaining records must compact after these holes. CITY retires three
+points this update and restores a HUD cell.
+
+Actual half-open rectangles:
+
+- BASIC: (176,124)-(208,141).
+- F1: (160,69)-(176,76), (80,95)-(96,103), (128,145)-(144,152),
+  (96,136)-(160,143), (80,144)-(96,151), (224,28)-(256,35).
+- CITY: (48,13)-(96,25), (64,27)-(80,33), (256,186)-(320,200),
+  (48,34)-(80,43).
+- WHACKO: (144,109)-(176,122), (160,131)-(176,139),
+  (144,58)-(176,64).
+
+A conservative offline retention screen finds 121/74/10/131 points whose
+saved pixel survives lifetime and signed-word motion unchanged. Accounting
+for changing lower-priority points, permanent baking, and old/new
+car/sprite rectangles leaves at most 56/6/6/63 candidates in this screen.
+Rounding those conflicts into the handoff's suggested 8x8 cells leaves
+only 19/4/4/34. This is design screening, **not an implemented or verified
+retention algorithm**: cars are conservatively considered below every point,
+and every saved sprite rectangle is considered a possible write, even if
+that sprite is retained. New/compacted points are matched by actor handle.
+The result warns against assuming that most motionless points can be kept;
+grid maintenance still needs a measured cost below the saved redraw work.
+
 ## Single-pass 16-pixel C2P (2026-09-27)
 
 The racing rectangle path now uses a 16-pixel adaptation of Kalms' public-
