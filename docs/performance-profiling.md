@@ -3,6 +3,21 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## F1 update-481 dirty publication replay (2026-09-28)
+
+`amiga/diag_dirty_publications.gdb` captured the initial list, all native
+rectangle requests through the platform presentation, and the final list.
+`tools/dirty_publications.py` reproduced that final list exactly: 16 calls,
+471 requested pixels in union, 1216 after 16-pixel horizontal alignment,
+3360 converted. Edge-touching merges cascade into a 112x27 rectangle even
+though the actual requests are small. Offline replay with strict overlap
+(not edge contact) produces six rectangles totalling 1248 pixels. This is
+an area estimate only, not a timing or correctness proof for a new policy.
+The bound remains 16 entries with conservative overflow fallback. Capture:
+`tmp/dirty-publications-f1-20260928.log`; replay self-tests pass. Emulator
+exited and was cleaned up. Next test: strict overlap via existing branch
+conditions, avoiding the rejected policy's extra area arithmetic.
+
 ## Rejected composed HUD cell publication (2026-09-28)
 
 Composed each changed 52x14 HUD cell from its original background and
