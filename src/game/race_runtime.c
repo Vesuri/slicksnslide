@@ -109,11 +109,14 @@ static long absolute_long(long value);
  * both versions and continues from the reference result. The window is the
  * leading hot working state (cars, counters, RNG); a site may only write
  * inside it. Never enabled in normal builds. */
-#define SLICKS_SHADOW_WINDOW 32768U
+#define SLICKS_SHADOW_WINDOW 57344U
 #define SLICKS_SHADOW_BLOCKS (SLICKS_SHADOW_WINDOW/1024U)
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLICKS_SHADOW_WINDOW &&
-    __builtin_offsetof(struct SlicksRaceRuntime,cars)+sizeof(struct SlicksRaceCar)*4<=SLICKS_SHADOW_WINDOW,
-    "shadow window covers the native motion write set");
+    __builtin_offsetof(struct SlicksRaceRuntime,cars)+sizeof(struct SlicksRaceCar)*4<=SLICKS_SHADOW_WINDOW &&
+    __builtin_offsetof(struct SlicksRaceRuntime,weapons.actors)+
+    sizeof(struct SlicksWeaponActor)*SLICKS_ACTOR_CAPACITY<=SLICKS_SHADOW_WINDOW &&
+    __builtin_offsetof(struct SlicksRaceRuntime,emission_slot_cursor)<SLICKS_SHADOW_WINDOW,
+    "shadow window covers the native motion and emission write sets");
 unsigned char *slicks_shadow_state;
 volatile unsigned long slicks_shadow_calls[8],slicks_shadow_mismatches[8];
 volatile unsigned long slicks_shadow_first_site,slicks_shadow_first_block,
@@ -2032,7 +2035,8 @@ static void emit_offroad_wheel(struct SlicksRaceRuntime *race,short x,short y,
     }
 }
 
-static void emit_wheel_surface(struct SlicksRaceRuntime *race,
+/* Verified reference; shared-pool m68k races use car_emission.s. */
+static __attribute__((unused)) void emit_wheel_surface_reference(struct SlicksRaceRuntime *race,
                                const struct SlicksRaceCar *car,
                                unsigned short car_index,
                                unsigned char controls)
@@ -2129,6 +2133,29 @@ static void emit_wheel_surface(struct SlicksRaceRuntime *race,
     for (; first_particle < race->trail_particle_count; ++first_particle)
         race->trail_particles[first_particle].occlusion_limit =
             (unsigned char)(car->actor_layer * 15);
+}
+
+static void emit_wheel_surface(struct SlicksRaceRuntime *race,
+                               const struct SlicksRaceCar *car,
+                               unsigned short car_index,
+                               unsigned char controls)
+{
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_EMISSION)
+    _Static_assert(SLICKS_CAR_BASE_DIRECTIONS==4 && SLICKS_TRAIL_PARTICLE_MAX==256 &&
+        __builtin_offsetof(struct SlicksTrailParticle,saved_valid)%4==0 &&
+        __builtin_offsetof(struct SlicksTrailParticle,state)==
+        __builtin_offsetof(struct SlicksTrailParticle,saved_valid)+3,
+        "native wheel emission layout");
+    extern void slicks_emit_wheel_surface(struct SlicksRaceRuntime *,
+        const struct SlicksRaceCar *,unsigned);
+    if(shared_actor_pool(race)) {
+        SLICKS_SHADOW_CALL(2,
+            emit_wheel_surface_reference(race,car,car_index,controls),
+            slicks_emit_wheel_surface(race,car,controls));
+        return;
+    }
+#endif
+    emit_wheel_surface_reference(race,car,car_index,controls);
 }
 
 static void draw_trail_point(struct SlicksRaceRuntime *race,

@@ -147,3 +147,28 @@ The fuel (`diag_fuel.gdb`) and damage (`diag_damage_race.gdb`) race fixtures
 fail on both this build and a rebuilt 5fa9458 with byte-identical output:
 a finished car's lap counter reaches 6, and the fuel fixture counts no
 finished cars. The status-pixel parts of both pass.
+
+## Native wheel emission
+
+`src/game/car_emission.s` replaces `emit_wheel_surface` for shared-pool
+races, including `emit_offroad_wheel`, `add_trail_component`, the wheel sound
+request and the Borland RNG. Particle records are written with one long store
+for saved/permanent/occlusion/state, so each new particle receives its final
+occlusion limit at creation instead of in a trailing pass. Allocation keeps
+the emission cursor semantics (and calls the native lowest-slot allocator if
+the cursor is zero); out-of-range wheel samples call the shared C sampler.
+In heavy BASIC frames the C prologue alone (seven arguments copied to stack
+slots) was 21% of `add_trail_component`.
+
+The shadow window grew to 56 KB to cover particles, slot tables and actor
+kind/saved bytes. Emission shadow checks: 2412 calls on each benchmark track
+and 412 on the ice, zone and road fixtures (2412 on the jump fixture), zero
+mismatches and unchanged final states (`tmp/shadow-emit-*.log`). Host surface,
+track-actor and driving oracles pass (`tmp/verify-native-emission.log`).
+
+| Track | Control (`hudfast`) | Candidate | Change | Max lines |
+| --- | ---: | ---: | ---: | --- |
+| BASIC | 183574 | 180871 | -1.5% | 441 -> 425 |
+| F1 | 257582 | 255157 | -0.9% | 586 -> 570 |
+| CITY | 205131 | 203757 | -0.7% | 471 -> 468 |
+| WHACKO | 189130 | 186772 | -1.2% | 487 -> 482 |

@@ -398,7 +398,7 @@ static void pc_sampler_release(void)
 #ifdef SLICKS_SHADOW_CHECK
     {
         extern unsigned char *slicks_shadow_state;
-        if (slicks_shadow_state) FreeMem(slicks_shadow_state, 32768);
+        if (slicks_shadow_state) FreeMem(slicks_shadow_state, 57344);
         slicks_shadow_state = 0;
     }
 #endif
@@ -2057,7 +2057,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     {
         extern unsigned char *slicks_shadow_state;
         if (!slicks_shadow_state)
-            slicks_shadow_state = AllocMem(32768, MEMF_ANY);
+            slicks_shadow_state = AllocMem(57344, MEMF_ANY);
     }
 #endif
     if (slicks_race_start(race, logical, chunky) != 0) {
