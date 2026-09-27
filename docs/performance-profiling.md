@@ -3,6 +3,53 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Single-pass 16-pixel C2P (2026-09-27)
+
+The racing rectangle path now uses a 16-pixel adaptation of Kalms' public-
+domain c5 butterfly transpose. A nibble exchange preserves both halves of
+each input byte, instead of reading the rectangle once for each four-plane
+pass. Four registers produce eight final plane words. The inner conversion
+loop fits inside the 68020's 256-byte instruction cache. Only final values
+reach display memory; there is no intermediate plane write or lookahead.
+The rectangle wrapper reuses its existing mult320 row lookup. Full-screen
+startup/menu conversion retains the original Kalms routine.
+
+Dirty bounds now round to 16 rather than 32 pixels, with unchanged clipping,
+half-open union/merge rules and full-list fallback. This is a combined
+converter/area improvement; the benchmark does not separately attribute
+the savings to narrower bounds versus the single-pass conversion.
+
+| Track | Parent work / 603 | New work / 603 | Worst: parent -> new |
+| --- | ---: | ---: | --- |
+| BASIC | 172347 | 162362 | 396 -> 381 |
+| F1 | 220839 | 210343 | 550 -> 491 |
+| CITY | 174168 | 164623 | 403 -> 377 |
+| WHACKO | 178284 | 165823 | 444 -> 435 |
+
+Total work falls 4.8-7.0%. All four canonical final states match. The final
+benchmark is `tmp/c2p16-table-20260927-{0,1,2,3}.log`; parent game behavior
+is unchanged from 7be80df through 49c7525. The earlier candidate using one
+row multiply per rectangle also improved all tracks
+(`tmp/c2p16-final-20260927-*.log`), but is not the committed variant.
+An initial run named `c2p16-20260927` accidentally selected only the new
+object as the default make target and ran the old executable; it was
+interrupted, the make rule placement corrected, and its measurements are
+excluded.
+
+Verification: `verify-c2p16` tests all 128 input basis bits, 1536 randomized
+rectangles and 32 empty rectangles under Unicorn/68020. It compares the
+entire destination against an independent per-pixel conversion, checks
+every plane store is a final word, checks source bounds/no writes, canaries,
+callee-saved registers and stack. `verify-dirty-rect` passes 240000 native/C
+calls; dirty tracking, pruning, native particle drawing, surface effects,
+track/weapon actors and original DOS particle expiry suites pass.
+
+The final build also passes full-frame display audits for 600 updates each
+on F1, CITY and WHACKO with live statistics explicitly off: 32/18/5 actors
+and 2076/1480/1854 marks. Logs: `tmp/audit-c2p16-20260927-{1,2,3}.log`.
+No simulation or draw order changed. Audit and timing emulators were muted
+and closed, and the executable was never rebuilt while they used it.
+
 ## Incremental car-ray experiment (rejected)
 
 The candidate replaced per-step signed division and multiplication by 320

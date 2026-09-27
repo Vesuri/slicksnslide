@@ -56,12 +56,16 @@ OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/fra
 	obj/pc_sampler.o
 
 OBJECTS += obj/hud_restore.o
+OBJECTS += obj/c2p16_interleaved.o
 
 .PHONY: all clean verify-runtime
 # Never leave a truncated executable that looks up to date after elf2hunk fails.
 .DELETE_ON_ERROR:
 
 all: $(OUT).exe
+
+obj/c2p16_interleaved.o: $(REPO)/src/platform/amiga/c2p16_interleaved.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/hud_restore.o: $(REPO)/src/game/hud_restore.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<

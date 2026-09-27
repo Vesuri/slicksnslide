@@ -312,8 +312,8 @@ static void mark_dirty_rect(struct SlicksRaceRuntime *race,
         bottom = SLICKS_SCREEN_HEIGHT;
     if (left >= right || top >= bottom)
         return;
-    left &= (short)~31;
-    right = (short)((right + 31) & (short)~31);
+    left &= (short)~15;
+    right = (short)((right + 15) & (short)~15);
     if (right > SLICKS_SCREEN_WIDTH)
         right = SLICKS_SCREEN_WIDTH;
     rows.left = (unsigned short)left;

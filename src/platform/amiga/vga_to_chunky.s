@@ -5,7 +5,7 @@
 	xdef	slicks_chunky_rect_to_amiga
 	xdef	slicks_chunky_pixels_to_amiga
 	xref	c2p1x1_8_c5_bm
-	xref c2p1x1_8_c5_bm_stride320
+	xref c2p16_interleaved
 	xref	mult320
 
 	include	graphics/gfx.i
@@ -100,7 +100,7 @@ slicks_chunky_rows_to_amiga:
 	rts
 
 ; Convert one half-open rectangle from the 320-byte-stride chunky surface.
-; Horizontal bounds must be aligned to 32 pixels by the caller. C ABI:
+; Horizontal bounds must be aligned to 16 pixels by the caller. C ABI:
 ; slicks_chunky_rect_to_amiga(chunky, bitmap, left, top, right, bottom,
 ;                             unused_scratch)
 slicks_chunky_rect_to_amiga:
@@ -117,16 +117,17 @@ slicks_chunky_rect_to_amiga:
 	move.w	d6,d3
 	lea	mult320,a4
 	move.l	(a4,d3.w*4),d3
+	move.l	d3,a3
 	add.w	d5,d3
 	movea.l	48(sp),a4
 	adda.l	d3,a4
 	move.w	d7,d0
 	move.w	d4,d1
 	move.w	d5,d2
-	move.w	d6,d3
+	move.l	a3,d3
 	movea.l	a4,a0
 	movea.l	52(sp),a1
-	jsr	c2p1x1_8_c5_bm_stride320
+	jsr	c2p16_interleaved
 .rect_done:
 	movem.l	(sp)+,d2-d7/a2-a6
 	rts

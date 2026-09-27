@@ -4,7 +4,7 @@
 	include	"race_offsets.i"
 
 ; C ABI: void slicks_mark_dirty_rect(race, left, top, right, bottom)
-; Native race_runtime.c mark_dirty_rect(): clip, widen to 32-pixel columns,
+; Native race_runtime.c mark_dirty_rect(): clip, widen to 16-pixel columns,
 ; then repeatedly fold overlapping or touching half-open rectangles; append,
 ; or union everything when all SLICKS_DIRTY_ROW_MAX entries are in use.
 ; Arguments are signed shorts promoted to int. Clobbers d0/d1/a0/a1.
@@ -33,9 +33,9 @@ slicks_mark_dirty_rect:
 	bge.w	.done
 	cmp.w	d4,d2
 	bge.w	.done
-	andi.w	#$ffe0,d1
-	addi.w	#31,d3
-	andi.w	#$ffe0,d3
+	andi.w	#$fff0,d1
+	addi.w	#15,d3
+	andi.w	#$fff0,d3
 	cmpi.w	#320,d3
 	ble.s	.clipped
 	move.w	#320,d3

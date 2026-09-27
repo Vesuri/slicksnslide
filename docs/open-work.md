@@ -13,12 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh hud-copy-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 172347/396, F1 220839/550,
-CITY 174168/403, WHACKO 178284/444. Means are 18-24 ms; the
-worst updates need 21-43% cuts. Particle-heavy frames remain expensive,
-but live count alone does not explain the maxima: BASIC's worst has zero
-live points, CITY's 16, F1's 63 and WHACKO's 176. F1 is also slow without
+(`amiga/bench_tracks.sh c2p16-table-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 162362/381, F1 210343/491,
+CITY 164623/377, WHACKO 165823/435. Means are 17-22 ms; the
+worst updates need 17-37% cuts. Particle-heavy frames remain expensive,
+but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
 retention overhead, with track-object motion down to 1.8% of non-wait samples.
 Method, tools and the cost model (Chip data access ~7
@@ -35,9 +34,10 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 409 (396 lines, zero live points),
-  CITY 506 (403 lines, 16 points), F1 482 (550 lines, 63 points) and
-  WHACKO 688 (444 lines, 176 points). Record pre/post particle counts and
+  Reprofile BASIC update 219 (381 lines), CITY 506 (377 lines),
+  F1 613 (491 lines) and WHACKO 685 (435 lines). Retain the prior
+  BASIC 409/F1 482/WHACKO 688 transitions as regression probes.
+  Record pre/post particle counts and
   the dirty regions (BASIC geometry is recorded in the profiling evidence):
   retirement can cause work despite a low final live
   count. Use uninterrupted timings and the CIA-B sampler; debugger stops
@@ -86,12 +86,10 @@ Candidate fixes, roughly in order of expected value per effort:
   trail index and priority with fewer loads or building the draw chains as
   a by-product of the advance pass for points.
 
-- **C2P area (~40 lines base on every track).** Dirty rectangles are
-  widened to 32-pixel columns for the Kalms converter, so small car
-  rectangles convert ~1.5-2x their area. Investigate how often old and new
-  car rectangles are merged although far apart, and whether a 16-pixel
-  column variant would win (fewer converted pixels but twice the write
-  operations per converted pixel); measure before committing to either.
+- **Further C2P area reduction.** The rectangle converter now handles
+  16-pixel columns. Investigate how often old and new car rectangles
+  merge into excessive areas, especially at the worst-update transitions;
+  measure alternative merge policies without losing dirty coverage.
 
 ## Deferred
 
