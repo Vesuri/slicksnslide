@@ -3,6 +3,52 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Refreshed accepted-build CPU profiles (2026-09-28)
+
+Sequential F1/WHACKO captures at production code b5e8e7c (documentation/test
+HEAD 7baa989): `tmp/pcprof-current-{f1,whacko}-20260928.{bin,log,elf}`.
+Both complete 603 updates with canonical final states, no missed samples,
+and matching archived ELFs. Samples: 10116/8682; instrumented work totals
+202606/177845 versus uninstrumented 182215/159453 (about 11-12% overhead).
+Do not use instrumented maxima 507/462 as acceptance timing.
+
+Approximate sampled raster lines/update (25.4 lines/sample):
+
+| Stage | F1 | WHACKO |
+| --- | ---: | ---: |
+| Remaining race-step C | 40.0 | 38.6 |
+| Native car integration | 23.5 | 22.2 |
+| Wheel emission | 17.5 | 18.7 |
+| Rectangle C2P | 17.4 | 18.4 |
+| Sprite retention preparation | 14.4 | below top 24 |
+| Generic actor advancement | 13.2 | 7.5 |
+| Point drawing | 12.6 | 14.6 |
+| Point advancement | 11.3 | 12.8 |
+| Car-pair collision resolution | 10.3 | 11.2 |
+| Draw-chain construction | 9.7 | 7.0 |
+| Status HUD | 8.0 | 7.7 |
+| Draw-priority wrapper | 8.0 | 4.8 |
+
+Thirteen-update windows around F1 551/613 and WHACKO 685 contain only
+212/200/214 non-wait samples. The first and third emphasize emission,
+point advance/draw and integration; F1 613 remains spread across stages.
+Remaining race-step C is distributed: prepare_car_motion has 150/148
+samples, finish_car_update 58/53, apply_throttle 50/54, checkpoint 40/48.
+Do not mistake a wrapper's sample for the callee's work (e.g. native motion
+call setup is separately attributed inside the C step).
+
+Inspection candidates, not implemented claims: the final sprite-retention
+loop multiplies handles by 164 and 12 on every decision; inspect exact
+offset-table/address alternatives. Shared point advance republishes index
+and slot state even without compaction; skipping those requires proving
+the entry-map invariant across every producer. Its current independent
+oracle deliberately poisons maps and requires them repaired, so do not
+silently weaken that contract or discard those cases. The generic actor
+advance already rejects point slots before reading slot state: reordering
+that test is not a new optimization. Compiler-generated `/100` sequences
+in AI use long reciprocal multiplication; a presumed slow DIV instruction
+is not evidence for rewriting them.
+
 ## Rejected unchanged-particle coordinate-store shortcut (2026-09-28)
 
 Changed the existing equal-position branch to skip the two redundant

@@ -18,7 +18,7 @@ per 603 updates / worst update): BASIC 155903/364, F1 182215/433,
 CITY 151791/352, WHACKO 159453/416. Means are 16.1-19.4 ms; the
 worst updates need 11-28% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. Current CPU captures are
-`tmp/pcprof-geometry-{f1,whacko}-20260927`; their sampler overhead is not part
+`tmp/pcprof-current-{f1,whacko}-20260928`; their sampler overhead is not part
 of the acceptance numbers above. F1 is also slow without points.
 Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
@@ -34,9 +34,9 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Refresh F1/WHACKO CPU captures on the current accepted build before
-  choosing another CPU rewrite; recent small changes alter which updates
-  incur the largest work. Treat raster-phase/HUD-clock effects as hypotheses
+  Use the refreshed current F1/WHACKO CPU captures to choose further CPU
+  work; recent small changes alter which updates incur the largest work.
+  Treat raster-phase/HUD-clock effects as hypotheses
   to measure, not established explanations. Keep F1 551 and 613 in scope.
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
   as the pre-group baseline; refreshed post-group F1/WHACKO captures are
@@ -52,7 +52,10 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Remaining F1 sprite overhead.** Use the post-geometry CPU profiles.
+- **Remaining F1 sprite overhead.** Use the current CPU profiles.
+  Measure cheaper exact addressing in the final decision loop (handle*164
+  actor offset and handle*12 previous-descriptor offset) without weakening
+  its frame/colour/occlusion checks or geometry invalidation contract.
   Inspect conflict processing, final
   keep/restore decisions, draw-packet validation and group rebuild/late
   restoration at the worst updates. Preserve atomic group retention and
