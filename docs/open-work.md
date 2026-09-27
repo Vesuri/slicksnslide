@@ -1,6 +1,6 @@
 # Open work
 
-Updated 2026-09-27. Actionable open and deferred work only.
+Updated 2026-09-28. Actionable open and deferred work only.
 
 Publish/push only when explicitly requested. Scope: finish the performance
 handoff, resolving each proposed optimization with verified implementation
@@ -13,10 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh geometry-final-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 159205/369, F1 184429/459,
-CITY 153622/361, WHACKO 162979/423. Means are 16.3-19.6 ms; the
-worst updates need 14-32% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh hud-rows-final-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 158617/370, F1 183724/448,
+CITY 153068/358, WHACKO 162130/421. Means are 16.3-19.5 ms; the
+worst updates need 13-30% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. Current CPU captures are
 `tmp/pcprof-geometry-{f1,whacko}-20260927`; their sampler overhead is not part
 of the acceptance numbers above. F1 is also slow without points.
@@ -33,21 +33,19 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Paint only invalidated HUD bar rows.** The bounded status path currently
-  repaints every active car's three rows when any row changes or any dirty
-  region touches the strip. Use a 12-bit car/row mask for exact end/colour
-  changes and intersections with producer dirty rectangles/pixels. A cold
-  cache, background change or participation change must still repaint all
-  necessary rows; retain weapon icon handling and unbounded-width fallback.
-  Verify against forced-cold full repaint and original DOS HUD tests, then
-  target display/retention audits and all four timing tracks. Pay particular
-  attention to F1 613 and WHACKO 685. This is not implemented yet.
+- **Reduce redundant HUD dirty publication.** Measure skipping per-pixel
+  dirty entries for bar rows already wholly covered by a producer dirty
+  rectangle. Track coverage while inspecting existing rectangles, rather
+  than adding a separate full scan per pixel. Preserve exact painting and
+  conversion coverage, weapon icons and unbounded-width behavior. Verify
+  with the forced-cold status oracle, original DOS HUD tests and target
+  display/retention audits. Reject if bookkeeping outweighs saved writes.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
   as the pre-group baseline; refreshed post-group F1/WHACKO captures are
   `tmp/pcprof-postgroups-{f1,whacko}-20260927`. Target BASIC updates 209/219,
-  CITY 506, F1 613 and WHACKO 685. Retain F1 507
+  CITY 506, F1 481/613 and WHACKO 685. Retain F1 507
   (group-rebuild regression probe), CITY 700,
   F1 551 and BASIC 409/F1 482/WHACKO 688 as regression probes.
   Pre/post particle counts and dirty regions for all four are recorded in

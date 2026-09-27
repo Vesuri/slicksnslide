@@ -3,6 +3,54 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Exact HUD row repainting (2026-09-28)
+
+The bounded status renderer uses a twelve-bit car/row repaint mask. Changed
+ends or colours invalidate only their row; background, participation or
+cold-cache transitions invalidate all necessary rows. Producer rectangles
+and sparse pixels invalidate intersecting cells. Weapon icons and the
+unbounded-width fallback retain their existing behavior. No shadow surface
+is used in normal gameplay.
+
+Initial normal-build comparison against 3bd216f, 603 updates per track:
+
+| Track | Parent work / worst | Row-mask work / worst |
+| --- | ---: | ---: |
+| BASIC | 159205 / 369 | 158617 / 370 |
+| F1 | 184429 / 459 | 183720 / 448 |
+| CITY | 153622 / 361 | 153057 / 354 |
+| WHACKO | 162979 / 423 | 162122 / 422 |
+
+Logs: `tmp/hud-rows-20260927-{0,1,2,3}.log`. Final states match the
+controls. Total savings are 0.4-0.5%; F1's maximum moves to race frame 481,
+which must remain in the regression set. The 50 FPS requirement is not met.
+
+`make verify-status-cache` compares complete surfaces and exact dirty-list
+sequences/coverage against forced-cold repaint: 24 isolated row damage
+cases, 3380 successful randomized transitions and 716 matching faults.
+It covers participation, options, weapons, signed/wrapped widths,
+division faults and dirty-pixel overflow. An initial harness failure came
+from discarding pending damage after an intentionally failed draw; normal
+gameplay exits on that error. The recovery stress test now retains pending
+damage across failed draws rather than silently dropping it.
+
+`make verify-dos-hud` passes, including 768 original full-screen HUD
+transitions. All three display audits pass 600 updates. RETCHECK now also
+compares the actual platform-side status call with forced-cold repaint,
+reusing its existing snapshot allocations, outside normal builds. All four
+tracks pass 603 retention checks and 700 status comparisons with zero
+mismatches and canonical final states. Geometry-cache checks also pass
+(575 F1, 603 CITY; cache disabled for the smaller BASIC/WHACKO actor sets).
+Evidence: `tmp/hud-rows-{cache-oracle,dos,audit,retcheck}-20260927*.log`.
+
+Final normal-build repeat after the diagnostic-only integration:
+`tmp/hud-rows-final-20260928-{0,1,2,3}.log`, all 603 updates and canonical
+final states. Work/worst: BASIC 158617/370, F1 183724/448, CITY 153068/358,
+WHACKO 162130/421. CITY's maximum is now frame 700 (already a regression
+probe). These final numbers supersede the initial candidate for acceptance;
+the small timing variation does not change the conclusion. The normal
+build is restored and the muted benchmark sessions exited successfully.
+
 ## Post-geometry profiles and next spike target (2026-09-27)
 
 HEAD 3bd216f, fresh sequential captures:

@@ -3397,26 +3397,42 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
                 next.ends[car][y-187]=(short)end;next.colours[car][y-187]=foreground;
             }
         }
-        unsigned paint=1;
+        unsigned paint=0,active_rows=0;
         unsigned same=race->status_bar_cache.valid &&
             next.background==race->status_bar_cache.background && next.active==race->status_bar_cache.active;
-        for(unsigned car=0;car<4 && same;++car)for(unsigned y=0;y<3;++y)
-            if(next.ends[car][y]!=race->status_bar_cache.ends[car][y] ||
-               next.colours[car][y]!=race->status_bar_cache.colours[car][y])same=0;
-        if(same) {
-            paint=0;
-            for(unsigned i=0;i<race->dirty_row_count && !paint;++i) {
-                const struct SlicksDirtyRows *r=&race->dirty_rows[i];
-                if(r->top<190 && r->bottom>187 && r->left<306 && r->right>106)paint=1;
-            }
-            for(unsigned i=0;i<race->dirty_pixel_count && !paint;++i) {
-                const struct SlicksDirtyPixel *p=&race->dirty_pixels[i];
-                if(p->y>=187 && p->y<190 && p->x>=106 && p->x<306)paint=1;
+        /* Twelve car/row bits, not a shadow surface. Unchanged rows only
+         * need repainting if an earlier producer touched their bar cell. */
+        for(unsigned car=0;car<4;++car) if(counts[car]) {
+            active_rows|=7U<<(car*3);
+            for(unsigned y=0;y<3;++y)
+                if(!same || next.ends[car][y]!=race->status_bar_cache.ends[car][y] ||
+                   next.colours[car][y]!=race->status_bar_cache.colours[car][y])
+                    paint|=1U<<(car*3+y);
+        }
+        for(unsigned i=0;i<race->dirty_row_count && paint!=active_rows;++i) {
+            const struct SlicksDirtyRows *r=&race->dirty_rows[i];
+            if(r->top>=190 || r->bottom<=187 || r->left>=306 || r->right<=106)continue;
+            unsigned rows=0;
+            for(unsigned y=0;y<3;++y)
+                if(r->top<(int)(188+y) && r->bottom>(int)(187+y))rows|=1U<<y;
+            for(unsigned car=0;car<4;++car) if(counts[car]) {
+                int left=106+car*60;
+                if(r->left<left+20 && r->right>left)paint|=rows<<(car*3);
             }
         }
+        if(race->dirty_pixel_hud)
+            for(unsigned i=0;i<race->dirty_pixel_count && paint!=active_rows;++i) {
+                const struct SlicksDirtyPixel *p=&race->dirty_pixels[i];
+                if(p->y<187 || p->y>=190 || p->x<106 || p->x>=306)continue;
+                for(unsigned car=0;car<4;++car) if(counts[car]) {
+                    int left=106+car*60;
+                    if(p->x>=left && p->x<left+20)paint|=1U<<(car*3+p->y-187);
+                }
+            }
         if(paint)for(unsigned car=0;car<4;++car) if(counts[car]) {
             const struct SlicksStatusRect *base=&rectangles[car][0];
             for(int y=187;y<190;++y) {
+                if(!(paint&(1U<<(car*3+y-187))))continue;
                 int end=next.ends[car][y-187];
                 unsigned char foreground=next.colours[car][y-187];
                 unsigned char *row=race->chunky+mult320[y];
@@ -3429,7 +3445,7 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
                 }
             }
         }
-        if(paint) { race->status_bar_cache=next;race->status_bar_cache.valid=1; }
+        if(paint || !same) { race->status_bar_cache=next;race->status_bar_cache.valid=1; }
         for(unsigned car=0;car<4;++car)if(weapon_draw[car])draw_weapon_icon(race,logical,&weapons[car]);
         return 0;
     }

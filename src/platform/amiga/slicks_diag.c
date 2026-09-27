@@ -412,6 +412,8 @@ static void pc_sampler_release(void)
 #ifdef SLICKS_RETENTION_CHECK
 volatile unsigned long g_slicks_retention_checks, g_slicks_retention_mismatches,
     g_slicks_retention_first_mismatch, g_slicks_retention_particle_mismatches;
+volatile unsigned long g_slicks_status_cache_checks,g_slicks_status_cache_mismatches,
+    g_slicks_status_cache_first_mismatch;
 static unsigned long retention_check_hash(const unsigned char *chunky)
 {
     const unsigned long *p = (const unsigned long *)chunky;
@@ -5146,10 +5148,10 @@ int main(void)
                 race->profile_scope=g_slicks_diag_profile_all>=3?g_slicks_diag_profile_all-2:0;
             }
 #ifdef SLICKS_RETENTION_CHECK
+            static unsigned char *saved_race, *saved_chunky;
             /* RETCHECK=1: run each racing update first without retention
              * from a snapshot, then for real; the chunky surfaces must match. */
             {
-                static unsigned char *saved_race, *saved_chunky;
                 static struct SlicksRetentionState saved_retention;
                 static struct SlicksTrailParticle reference_particles[SLICKS_TRAIL_PARTICLE_MAX];
                 if (!saved_race) saved_race = AllocMem(sizeof *race, MEMF_ANY);
@@ -5199,7 +5201,28 @@ int main(void)
                 unsigned long now=platform.vblank_count;
                 slicks_status_clock_advance(&status_clock,now-status_clock_vblank);
                 status_clock_vblank=now;
-                if (slicks_race_draw_status(race,logical,status_clock.ticks)<0) {
+                int status_result;
+#ifdef SLICKS_RETENTION_CHECK
+                /* Reuse the snapshot buffers: no extra Chip allocation.
+                 * Compare cached bar updates with a forced full repaint,
+                 * including damage left by the just-completed race step. */
+                if(race->chunky_authoritative && saved_race && saved_chunky) {
+                    __builtin_memcpy(saved_race,race,sizeof *race);
+                    __builtin_memcpy(saved_chunky,chunky,64000);
+                    race->status_bar_cache.valid=0;
+                    int expected_status=slicks_race_draw_status(race,logical,status_clock.ticks);
+                    unsigned long expected_pixels=retention_check_hash(chunky);
+                    __builtin_memcpy(race,saved_race,sizeof *race);
+                    __builtin_memcpy(chunky,saved_chunky,64000);
+                    status_result=slicks_race_draw_status(race,logical,status_clock.ticks);
+                    ++g_slicks_status_cache_checks;
+                    if((status_result!=expected_status || retention_check_hash(chunky)!=expected_pixels) &&
+                        !g_slicks_status_cache_mismatches++)
+                        g_slicks_status_cache_first_mismatch=race->frame_count;
+                } else
+#endif
+                    status_result=slicks_race_draw_status(race,logical,status_clock.ticks);
+                if (status_result<0) {
                     g_slicks_diag_race_error=9;
                     goto cleanup;
                 }

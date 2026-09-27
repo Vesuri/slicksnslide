@@ -1534,5 +1534,12 @@ build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_run
 verify-retention-groups: build/verify_retention_groups
 	build/verify_retention_groups
 
+build/verify_status_cache: tools/verify_status_cache.c src/game/race_runtime.c src/game/race_runtime.h src/ui/race_hud.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
+
+.PHONY: verify-status-cache
+verify-status-cache: build/verify_status_cache
+	build/verify_status_cache
+
 clean:
 	rm -rf build
