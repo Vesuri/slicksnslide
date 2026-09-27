@@ -3,6 +3,36 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Shared particle retirement row-table experiment (2026-09-27)
+
+Replacing the one remaining shared-retirement `mulu.w #320` with the
+existing row table passed all 1028 legacy and 800 shared DOS-backed native
+particle batches, including exact permanent pixels, dirty saturation,
+compaction, slot/index metadata and ABI preservation. It did not deliver
+a useful performance improvement on the stock Chip-only target:
+
+| Track | Control work / worst | Row-table work / worst |
+| --- | ---: | ---: |
+| BASIC | 159509 / 370 | 159553 / 371 |
+| F1 | 193977 / 473 | 193787 / 478 |
+| CITY | 159977 / 368 | 159967 / 372 |
+| WHACKO | 163236 / 423 | 163466 / 423 |
+
+All final states match. Logs: `tmp/particle-table-20260927-*.log`,
+oracle `tmp/particle-table-oracle-20260927.log`; control 2b3bcbc. Total
+changes are below 0.15%, with no worst-frame improvement. The candidate
+was removed before further target audits. This cold-path exception does
+not undo the existing row tables throughout the hot rendering paths.
+
+Inspection also found that skipping shared-particle slot-state publication
+is not immediately valid: allocation starts a slot at state 1, while a new
+permanent point's particle record starts at state 5, and advancement brings
+the slot into agreement. Any future invariant-based omission must first
+account for construction in both the C and native emission paths and retain
+the original retirement timing. The current native oracle deliberately
+tests arbitrary incoming slot/index metadata, so silently dropping those
+writes would violate its existing contract.
+
 ## Overlapping stationary sprite groups (2026-09-27)
 
 The candidate extends isolated sprite retention to connected components of
