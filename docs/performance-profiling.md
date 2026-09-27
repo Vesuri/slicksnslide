@@ -3,6 +3,50 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Incremental car-ray experiment (rejected)
+
+The candidate replaced per-step signed division and multiplication by 320
+with a positive quotient/remainder walk and an incrementally maintained map
+offset. It used a proven no-wrap domain (both deltas at most 181 and a visible
+origin); larger rays and the lower map's unusual wrapped origins retained
+the original loop. Eight small loops specialized orientation, layer and
+minor direction. Coordinates, map reads, errors and last-clear outputs were
+identical, but the complete candidate was slower in these real races.
+Guard/setup cost and code layout are plausible explanations, not separately
+measured attributions. The candidate is **not** retained.
+
+| Track | Parent work/max | Incremental candidate work/max |
+| --- | ---: | ---: |
+| BASIC | 172347 / 396 | 172614 / 396 |
+| F1 | 220839 / 550 | 221132 / 551 |
+| CITY | 174168 / 403 | 174340 / 404 |
+| WHACKO | 178284 / 444 | 178694 / 443 |
+
+Parent: 7be80df, `tmp/hud-copy-20260927-T.log`; candidate:
+`tmp/incremental-rays-20260927-T.log`. All four canonical final states match,
+but all total-work sums regress (0.10–0.23%). No shadow/display runs were
+performed for the rejected candidate. The normal ray source and binary are
+restored rather than leaving an unhelpful fast path installed.
+
+`verify-car-probe` remains as a regression test: it enters the actual native
+ray loop and compares its exit, every map-read count and last-clear outputs
+against the original signed-word-product/truncating-division equation.
+24000 cases cover both layers, all directions, materials, boundary levels,
+off-screen/wrapped lower-map origins, and explicit 181/182 product-overflow
+edges. Both versions pass: 10525 collisions, 5440 bounds errors, 8035 clear
+rays, including 2279 large rays. The post-hit aliasing code is unchanged.
+
+## F1 retention eligibility inspection
+
+The read-only checkpoint inspection (`tmp/inspect-retention-20260927.log`,
+7be80df, not a timing run) finds 21 candidates among 32 track sprites. The
+hidden finish flag is off-screen. Ten other objects are rejected due to
+overlap: nine tyre handles (24–26 and 28–33), plus banner handle 36.
+These sit around x229–246, y4–35. The
+remaining objects can be retained. Overlap-group retention would need exact
+group invalidation and reverse-order late restoration; simply removing the
+isolation test would corrupt saved backgrounds.
+
 ## Fresh F1 profile after stationary-object caching
 
 `tmp/pcprof-cache-f1-20260927.{bin,log,elf}` profiles the restored normal

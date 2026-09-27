@@ -1263,6 +1263,16 @@ verify-emission-scan: build/emission_scan.bin build/verify_emission_scan
 build/car_draw.bin: tools/car_draw_test.s src/game/car_draw.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
+build/car_probe.bin: tools/car_probe_test.s src/game/car_motion.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/verify_car_probe: tools/verify_car_probe.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-car-probe
+verify-car-probe: build/car_probe.bin build/verify_car_probe
+	build/verify_car_probe build/car_probe.bin
+
 build/verify_car_draw: tools/verify_car_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 

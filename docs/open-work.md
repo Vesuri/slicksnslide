@@ -86,13 +86,6 @@ Candidate fixes, roughly in order of expected value per effort:
   trail index and priority with fewer loads or building the draw chains as
   a by-product of the advance pass for points.
 
-- **Car integration.** `slicks_integrate_car_motion` (~25 lines) runs a
-  ~700-byte quantum loop (larger than the 256-byte I-cache) and a `divs.w`
-  per ray step in the `PROBE` macro. Replace the per-step division with an
-  exact incremental quotient/remainder (truncating signed division
-  semantics, including negative deltas) and hoist quantum-invariant values;
-  verify with shadow site 1 and the jump/ice/zone fixtures.
-
 - **C2P area (~40 lines base on every track).** Dirty rectangles are
   widened to 32-pixel columns for the Kalms converter, so small car
   rectangles convert ~1.5-2x their area. Investigate how often old and new
