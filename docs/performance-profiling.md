@@ -3,6 +3,36 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Whole-gameplay compiler footprint experiment (2026-09-27)
+
+Against d4762ea's accepted `GAMEPLAY_CFLAGS=-O3` build, force-rebuild
+`race_runtime.o` with `-O2`, then with `-Os`. No source or default flags
+change. Each alternative runs all four tracks sequentially, muted, on the
+same stock A1200 configuration. All eight runs complete 603 updates and
+match the control's exact FINAL_STATE. Work/worst are raster lines:
+
+| Track | O3 control | O2 | Os |
+| --- | ---: | ---: | ---: |
+| BASIC | 158981 / 368 | 157446 / 377 | 170271 / 425 |
+| F1 | 189303 / 469 | 189044 / 503 | 203402 / 555 |
+| CITY | 156635 / 365 | 155735 / 384 | 168629 / 426 |
+| WHACKO | 162635 / 424 | 163002 / 460 | 177712 / 522 |
+
+O2 changes total work by less than 1% but worsens all four maxima; Os
+regresses total work by 7-9% and maxima by 15-23%. Reject both for the
+worst-update goal. The `slicks_race_step` symbol shrinks from 24186 bytes
+(O3) to 14828 (O2) and 11152 (Os), but this is only the function's own
+extent, not all out-of-line callees. Smaller code alone is not a speed win.
+These timings do not identify a unique cause among calls, spills, generated
+arithmetic and instruction-fetch/layout changes.
+
+Evidence: `tmp/compiler-{o2,os}-20260927-{0,1,2,3}.log`, corresponding
+`tmp/compiler-{o2,os}-build-20260927.log`, and
+`tmp/compiler-restore-o3-20260927.log`. Final-state equality is a screening
+gate, not full rendering equivalence; rejected builds need no adoption
+audits. All owned emulators closed before rebuilding the normal O3
+executable. No experimental compiler option remains in the defaults.
+
 ## Stable-geometry retention decision (2026-09-27)
 
 The geometry pass already compares each entry's handle, actor kind, asset,

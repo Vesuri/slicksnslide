@@ -63,12 +63,12 @@ Candidate fixes, roughly in order of expected value per effort:
   producer-side geometry invalidation to avoid the repeated geometry scan,
   but inventory every writer first, including generic actor advancement,
   initialization, kind/state retirement and moving track-object setup.
-
-- **Compiler instruction footprint.** Measure the remaining gameplay C
-  with alternative `GAMEPLAY_CFLAGS` (baseline `-O3`) before more manual
-  transliteration. Smaller inlining may reduce Chip instruction fetches, but
-  calls/register spills can offset it. Benchmark each alternative against
-  the current control and retain all fidelity checks if any is accepted.
+  Also cover `activate_track_flags` (configuration changes during car
+  updates), not just the track-motion pass. Preserve the 16-update settling
+  countdown and moved-entry conflict touches on cache hits. Derived dirty
+  metadata must be restored/compared by the shadow harness, or independently
+  audited against an unconditional geometry scan; do not let the reference
+  run clear or set metadata that hides a missing native invalidation.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at
