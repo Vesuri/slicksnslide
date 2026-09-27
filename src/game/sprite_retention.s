@@ -186,6 +186,7 @@ slicks_prepare_sprite_retention:
 	dbf	d7,.moved_entry
 	bra.s	.points
 .rebuild:
+	bset	#0,d5			; also count changes / settling rebuilds
 	move.l	d6,-(sp)
 	move.l	a4,-(sp)
 	jsr	slicks_retention_rebuild
@@ -296,6 +297,13 @@ slicks_prepare_sprite_retention:
 	mulu.w	#PREV_SIZE,d0
 	lea	RACE_SPRITE_DIRTY_PREVIOUS(a4),a0
 	adda.l	d0,a0
+	; With no rebuild, eligibility implies an unmoved cached entry: .geo
+	; already checked its handle, kind, asset and pixel-position key. KEPT
+	; came from an unchanged draw, so the previous descriptor has that same
+	; geometry. Rebuilt entries retain the full comparison below. Frame,
+	; colour and occlusion are not in the geometry key and always need tests.
+	btst	#0,d5
+	beq.s	.style
 	cmpi.b	#3,PREV_KIND(a0)
 	bne.s	.late
 	move.w	PREV_X(a0),d0
@@ -307,6 +315,7 @@ slicks_prepare_sprite_retention:
 	move.b	PREV_ASSET(a0),d0
 	cmp.b	ACTOR_ASSET(a2),d0
 	bne.s	.late
+.style:
 	move.b	PREV_FRAME(a0),d0
 	cmp.b	ACTOR_MOTION_FRAME(a2),d0
 	bne.s	.late
@@ -362,4 +371,3 @@ slicks_prepare_sprite_retention:
 	lea	20(sp),sp
 	movea.l	(sp)+,a1
 	rts
-

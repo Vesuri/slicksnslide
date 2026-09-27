@@ -3,6 +3,38 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Stable-geometry retention decision (2026-09-27)
+
+The geometry pass already compares each entry's handle, actor kind, asset,
+priority and masked pixel-position key. If no rebuild happens, an eligible
+kept entry cannot have moved: movement removes candidacy until a rebuild.
+NEXT's unchanged-draw producer invariant also establishes that its previous
+descriptor describes that same cached geometry. The final decision can
+therefore omit repeated kind, X/Y and asset comparisons on this path.
+Frame, colour and priority/occlusion comparisons remain unconditional.
+All rebuild paths (including count changes and settling) explicitly set
+the full-validation flag before invoking the rebuild helper. Invalidated
+groups still restore in their original reverse order.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 158967 / 369 | 158981 / 368 |
+| F1 | 190634 / 468 | 189303 / 469 |
+| CITY | 157609 / 370 | 156635 / 365 |
+| WHACKO | 162708 / 421 | 162635 / 424 |
+
+Parent e2c0258; logs `tmp/retention-stable-20260927-*.log`. Final states
+match. Total-work reductions are 0.7% F1 and 0.6% CITY; BASIC/WHACKO
+are essentially flat and worst-update changes are mixed. Existing group
+and native producer-invariant tests pass
+(`tmp/retention-stable-host-20260927.log`). Accepted after all four tracks
+pass 603 RETCHECK updates with zero surface-hash/particle mismatches and
+canonical final states (`tmp/stable-retcheck-20260927-*.log`). Full-frame
+dirty audits also pass 600 updates each on F1/CITY/WHACKO, with 32/18/5
+actors and 2076/1480/1854 marks (`tmp/stable-audit-20260927-*.log`). All
+owned muted sessions close and the normal build is restored. This is not
+a worst-frame breakthrough.
+
 ## Retained-sprite descriptor traffic reduction (2026-09-27)
 
 The restore chain used to recopy all twelve descriptor bytes for every
