@@ -1,4 +1,6 @@
-	section	code,code
+; C callers may tail-call these entries: elf2hunk resolves PC-relative
+; references only within one section, so share the compiler .text section.
+	section	.text,code
 	xdef	slicks_emit_wheel_surface
 	xref	slicks_track_material_sample
 	xref	slicks_actor_allocate_native

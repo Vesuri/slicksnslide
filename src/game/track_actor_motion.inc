@@ -1,6 +1,7 @@
 /* Original 1ff97..202eb, before any car's motion. The movable objects use
  * wrapping Q4 coordinates and one damping step per update, not per tick. */
-static void update_track_actor_motion(struct SlicksRaceRuntime *race)
+/* Verified reference; native m68k builds use track_motion.s. */
+static __attribute__((unused)) void update_track_actor_motion_reference(struct SlicksRaceRuntime *race)
 {
     const struct SlicksMovingProbeOps probe={weapon_track_probe,weapon_car_probe,weapon_wall_probe,race};
     long car_pixel_x[4],car_pixel_y[4];
@@ -71,6 +72,33 @@ static void update_track_actor_motion(struct SlicksRaceRuntime *race)
             car->velocity_y=multiply_q15_unsigned(car->velocity_y,0x7cc9);
         }
     }
+}
+
+#if defined(__m68k__)
+/* Moving-object ray for the native motion loop: identical probe and
+ * position update; -2 reports the unsupported-sample error to the caller. */
+int slicks_track_actor_probe(struct SlicksRaceRuntime *race,
+    struct SlicksTrackActor *a,int nx,int ny);
+int slicks_track_actor_probe(struct SlicksRaceRuntime *race,
+    struct SlicksTrackActor *a,int nx,int ny)
+{
+    const struct SlicksMovingProbeOps probe={weapon_track_probe,weapon_car_probe,weapon_wall_probe,race};
+    int hit=slicks_moving_probe(a->x>>4,a->y>>4,(short)nx>>4,(short)ny>>4,
+        &a->x,&a->y,16,0,-1,a->layer,&probe);
+    if(hit!=-2 && !hit) { a->x=(short)nx;a->y=(short)ny; }
+    return hit;
+}
+#endif
+
+static void update_track_actor_motion(struct SlicksRaceRuntime *race)
+{
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_TRACK_MOTION)
+    extern void slicks_update_track_actor_motion(struct SlicksRaceRuntime *);
+    SLICKS_SHADOW_CALL(3,update_track_actor_motion_reference(race),
+        slicks_update_track_actor_motion(race));
+#else
+    update_track_actor_motion_reference(race);
+#endif
 }
 
 static void activate_track_flags(struct SlicksRaceRuntime *race)

@@ -54,6 +54,61 @@ void slicks_race_offsets(void)
     OFFSET(PARTICLE_PERMANENT, struct SlicksTrailParticle, permanent);
     OFFSET(PARTICLE_OCCLUSION_LIMIT, struct SlicksTrailParticle, occlusion_limit);
     OFFSET(PARTICLE_STATE, struct SlicksTrailParticle, state);
+    OFFSET(RACE_NAVIGATION_ACTORS, struct SlicksRaceRuntime, navigation.actors);
+    OFFSET(RACE_NAVIGATION_ACTOR_COUNT, struct SlicksRaceRuntime, navigation.actor_count);
+    OFFSET(RACE_TRACK_ACTOR_HANDLES, struct SlicksRaceRuntime, track_actor_handles);
+    OFFSET(RACE_TRACK_ACTORS_READY, struct SlicksRaceRuntime, track_actors_ready);
+    OFFSET(RACE_TRACK_ACTOR_SCRATCH, struct SlicksRaceRuntime, track_actor_scratch);
+    VALUE(TRACK_ACTOR_SIZE, sizeof(struct SlicksTrackActor));
+    OFFSET(TRACK_ACTOR_X, struct SlicksTrackActor, x);
+    OFFSET(TRACK_ACTOR_Y, struct SlicksTrackActor, y);
+    OFFSET(TRACK_ACTOR_VELOCITY_X, struct SlicksTrackActor, velocity_x);
+    OFFSET(TRACK_ACTOR_VELOCITY_Y, struct SlicksTrackActor, velocity_y);
+    OFFSET(TRACK_ACTOR_KIND, struct SlicksTrackActor, kind);
+    OFFSET(TRACK_ACTOR_LAYER, struct SlicksTrackActor, layer);
+    OFFSET(ACTOR_MOTION_X, struct SlicksWeaponActor, motion.x);
+    OFFSET(ACTOR_MOTION_Y, struct SlicksWeaponActor, motion.y);
+    OFFSET(ACTOR_MOTION_VX, struct SlicksWeaponActor, motion.vx);
+    OFFSET(ACTOR_MOTION_AX, struct SlicksWeaponActor, motion.ax);
+    OFFSET(ACTOR_MOTION_LIFETIME, struct SlicksWeaponActor, motion.lifetime);
+    OFFSET(ACTOR_MOTION_AGE, struct SlicksWeaponActor, motion.age);
+    OFFSET(ACTOR_MOTION_FRAME, struct SlicksWeaponActor, motion.frame);
+    OFFSET(ACTOR_MOTION_PERIOD, struct SlicksWeaponActor, motion.period);
+    OFFSET(ACTOR_MOTION_VY, struct SlicksWeaponActor, motion.vy);
+    OFFSET(ACTOR_MOTION_AY, struct SlicksWeaponActor, motion.ay);
+    OFFSET(ACTOR_MOTION_FRAMES, struct SlicksWeaponActor, motion.frames);
+    OFFSET(RACE_ACTOR_PAGE, struct SlicksRaceRuntime, actor_page);
+    OFFSET(ACTOR_PRIORITY, struct SlicksWeaponActor, priority);
+    OFFSET(ACTOR_OCCLUSION, struct SlicksWeaponActor, occlusion);
+    VALUE(ACTOR_CAPACITY, SLICKS_ACTOR_CAPACITY);
+    OFFSET(CAR_MEASURED_SPEED, struct SlicksRaceCar, measured_speed);
+    OFFSET(RACE_DIRTY_ROWS, struct SlicksRaceRuntime, dirty_rows);
+    OFFSET(RACE_DIRTY_ROW_COUNT, struct SlicksRaceRuntime, dirty_row_count);
+    VALUE(SLICKS_DIRTY_ROW_MAX_VALUE, SLICKS_DIRTY_ROW_MAX);
+    OFFSET(RACE_CHUNKY, struct SlicksRaceRuntime, chunky);
+    OFFSET(RACE_CACHE_READY, struct SlicksRaceRuntime, car_render_cache.ready);
+    OFFSET(RACE_CACHE_TILE_MAX, struct SlicksRaceRuntime, car_render_cache.tile_max);
+    OFFSET(RACE_CACHE_CARS, struct SlicksRaceRuntime, car_render_cache.cars);
+    VALUE(CACHE_CAR_SIZE, sizeof(((struct SlicksRaceRuntime *)0)->car_render_cache.cars[0]));
+    VALUE(CACHE_CAR_READY, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].ready)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0]));
+    VALUE(CACHE_CAR_VEHICLE, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].vehicle)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0]));
+    VALUE(CACHE_CAR_STYLE, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].style)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0]));
+    VALUE(CACHE_CAR_FRAMES, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0]));
+    VALUE(CACHE_FRAME_SIZE, sizeof(((struct SlicksRaceRuntime *)0)->car_render_cache.cars[0].frames[0]));
+    VALUE(CACHE_FRAME_PIXELS, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0].pixels)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0]));
+    VALUE(CACHE_FRAME_OPACITY, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0].opacity)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0]));
+    VALUE(CACHE_FRAME_WIDTH, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0].width)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0]));
+    VALUE(CACHE_FRAME_HEIGHT, __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0].height)-
+        __builtin_offsetof(struct SlicksRaceRuntime, car_render_cache.cars[0].frames[0]));
+    OFFSET(SPRITE_WIDTH, struct SlicksCarSprite, width);
+    OFFSET(SPRITE_HEIGHT, struct SlicksCarSprite, height);
     VALUE(CONTROL_ACCELERATE, SLICKS_CONTROL_ACCELERATE);
     VALUE(CONTROL_BRAKE, SLICKS_CONTROL_BRAKE);
 
@@ -76,4 +131,11 @@ void slicks_race_offsets(void)
     OFFSET(CAR_SERVICE_FLAGS, struct SlicksRaceCar, service_flags);
     OFFSET(CAR_VEHICLE, struct SlicksRaceCar, vehicle);
     OFFSET(CAR_FORWARD_DRIVE_LATCH, struct SlicksRaceCar, forward_drive_latch);
+    OFFSET(CAR_STYLE, struct SlicksRaceCar, style);
+    OFFSET(CAR_OLD_X, struct SlicksRaceCar, old_x);
+    OFFSET(CAR_OLD_Y, struct SlicksRaceCar, old_y);
+    OFFSET(CAR_OLD_WIDTH, struct SlicksRaceCar, old_width);
+    OFFSET(CAR_OLD_HEIGHT, struct SlicksRaceCar, old_height);
+    OFFSET(CAR_SAVED_VALID, struct SlicksRaceCar, saved_valid);
+    OFFSET(CAR_SAVED_UNDER, struct SlicksRaceCar, saved_under);
 }

@@ -1,6 +1,13 @@
 # SHADOW=1 build: report native/reference dual-execution results at the
 # benchmark checkpoint. Timing is irrelevant here; warp is allowed.
 set $race=(struct SlicksRaceRuntime *)0
+set $probes=0
+break slicks_track_actor_probe
+commands
+  silent
+  set $probes=$probes+1
+  continue
+end
 break *slicks_race_start
 commands
   silent
@@ -11,7 +18,7 @@ break slicks_diag_gameplay_ready
 commands
   silent
   if $race
-    printf "TRACK_HITS collisions=%lu special=%d,%d,%d,%d\n",$race->track_collision_count,$race->cars[0].special_drive_state,$race->cars[1].special_drive_state,$race->cars[2].special_drive_state,$race->cars[3].special_drive_state
+    printf "TRACK_HITS probes=%u collisions=%lu special=%d,%d,%d,%d\n",$probes,$race->track_collision_count,$race->cars[0].special_drive_state,$race->cars[1].special_drive_state,$race->cars[2].special_drive_state,$race->cars[3].special_drive_state
   end
   printf "SHADOW calls=%lu,%lu,%lu,%lu,%lu,%lu,%lu mismatches=%lu first_site=%lu block=%lu frame=%lu state=0x%x\n",slicks_shadow_calls[1],slicks_shadow_calls[2],slicks_shadow_calls[3],slicks_shadow_calls[4],slicks_shadow_calls[5],slicks_shadow_calls[6],slicks_shadow_calls[7],slicks_shadow_mismatches[0],slicks_shadow_first_site,slicks_shadow_first_block,slicks_shadow_first_frame,slicks_shadow_state
   printf "RACE_ERROR=%u frames=%lu\n",g_slicks_diag_race_error,g_slicks_diag_bench_frames

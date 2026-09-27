@@ -282,9 +282,9 @@ static void configure_weapon_actor(struct SlicksRaceRuntime *race,short handle,
     race->weapons.slots.state[handle]=1;
 }
 
-static void advance_weapon_actors(struct SlicksRaceRuntime *race)
+/* Verified reference; shared-pool m68k builds use track_motion.s. */
+static __attribute__((unused)) void advance_weapon_actors_reference(struct SlicksRaceRuntime *race)
 {
-    if(!shared_actor_pool(race)) return;
     for(unsigned h=1;h<race->weapons.slots.high_water;++h) {
         if(race->weapons.trail_index[h]>=0) continue;
         if(!race->weapons.slots.state[h]) continue;
@@ -296,6 +296,18 @@ static void advance_weapon_actors(struct SlicksRaceRuntime *race)
         slicks_actor_advance(&a->motion,state,race->actor_page);
         if(*state==-1) *state=-2;
     }
+}
+
+static void advance_weapon_actors(struct SlicksRaceRuntime *race)
+{
+    if(!shared_actor_pool(race)) return;
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_ACTOR_ADVANCE)
+    extern void slicks_advance_weapon_actors(struct SlicksRaceRuntime *);
+    SLICKS_SHADOW_CALL(4,advance_weapon_actors_reference(race),
+        slicks_advance_weapon_actors(race));
+#else
+    advance_weapon_actors_reference(race);
+#endif
 }
 
 static void initialize_weapon_actors(struct SlicksRaceRuntime *race)

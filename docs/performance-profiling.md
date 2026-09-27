@@ -172,3 +172,35 @@ track-actor and driving oracles pass (`tmp/verify-native-emission.log`).
 | F1 | 257582 | 255157 | -0.9% | 586 -> 570 |
 | CITY | 205131 | 203757 | -0.7% | 471 -> 468 |
 | WHACKO | 189130 | 186772 | -1.2% | 487 -> 482 |
+
+## Native track-object motion and actor advancement
+
+`src/game/track_motion.s` replaces `update_track_actor_motion` and the
+shared-pool `advance_weapon_actors`. The motion loop keeps the common
+stationary path (kind test, next-position material sample, layer update,
+actor configuration and contact-rectangle test) within the instruction
+cache; car-pixel setup, off-map samples, moving-object rays and car contacts
+are out of line. Moving objects call `slicks_track_actor_probe`, a C wrapper
+around the unchanged `slicks_moving_probe`. The actor loop skips point slots
+with one word test and applies `slicks_actor_advance` exactly.
+
+C callers can tail-call these entries (`bra.l`), which produced an
+`R_68K_PC32` cross-section relocation that `elf2hunk` rejects. As with
+`memory.s`, the native motion, emission and track modules now use the
+compiler's `.text` section; the Amiga Makefile sets `.DELETE_ON_ERROR` so a
+failed conversion cannot leave an empty executable that looks current.
+
+Shadow checks: 700 motion and 700 advancement calls on each benchmark track
+(countdown included), zero mismatches, unchanged final states; F1 exercised
+27 moving-object rays after a car contact (`tmp/shadow-track-*.log`,
+`tmp/shadow-advance-*.log`). Host track-actor, weapon-actor and dirty
+suites pass (`tmp/verify-native-track-motion.log`).
+
+| Track | Control (`emit`) | Candidate | Change | Max lines |
+| --- | ---: | ---: | ---: | --- |
+| BASIC | 180871 | 181030 | +0.1% | 425 -> 426 |
+| F1 | 255157 | 246131 | -3.5% | 570 -> 556 |
+| CITY | 203757 | 196391 | -3.6% | 468 -> 462 |
+| WHACKO | 186772 | 186763 | 0.0% | 482 -> 482 |
+
+BASIC and WHACKO have one and five track objects respectively.

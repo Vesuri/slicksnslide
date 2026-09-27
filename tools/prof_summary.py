@@ -42,6 +42,8 @@ def main():
                     help='split FUNC samples by innermost inlined function')
     ap.add_argument('--frames', default='1:602')
     ap.add_argument('--top', type=int, default=45)
+    ap.add_argument('--work', default=None,
+                    help='LO:HI measured work lines filter')
     ap.add_argument('--particles', default=None,
                     help='LO:HI particle count filter (measured frame samples)')
     a = ap.parse_args()
@@ -75,11 +77,15 @@ def main():
             data = open(log, 'rb').read()
             parts = {int(m.group(1)): int(m.group(2)) for m in
                      re.finditer(r'WORK_SAMPLE index=(\d+) lines=\d+ particles=(\d+)', text)}
+            works = {int(m.group(1)): int(m.group(2)) for m in
+                     re.finditer(r'WORK_SAMPLE index=(\d+) lines=(\d+)', text)}
+            wlo, whi = (int(x) for x in a.work.split(':')) if a.work else (0, 1 << 30)
             plo, phi = (int(x) for x in a.particles.split(':')) if a.particles else (0, 1 << 30)
             for k in range(0, len(data) - 7, 8):
                 pc, f, off, srhi = struct.unpack('>IHBB', data[k:k+8])
                 # f is the index of the update being measured.
                 if a.particles and not (plo <= parts.get(f, -1) <= phi): continue
+                if a.work and not (wlo <= works.get(f, -1) <= whi): continue
                 f += 1
                 if lo <= f <= hi:
                     samples.append((to_elf(pc), [], srhi))
