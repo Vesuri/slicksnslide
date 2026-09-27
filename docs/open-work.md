@@ -17,9 +17,9 @@ audio and rendering order. Latest benchmark
 per 603 updates / worst update): BASIC 159205/369, F1 184429/459,
 CITY 153622/361, WHACKO 162979/423. Means are 16.3-19.6 ms; the
 worst updates need 14-32% cuts. Particle-heavy frames remain expensive,
-but live count alone does not explain the maxima. F1 is also slow without
-points; refresh its profile after the geometry-cache change before
-attributing the remaining stage costs.
+but live count alone does not explain the maxima. Current CPU captures are
+`tmp/pcprof-geometry-{f1,whacko}-20260927`; their sampler overhead is not part
+of the acceptance numbers above. F1 is also slow without points.
 Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
 `docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
@@ -32,6 +32,16 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
+
+- **Paint only invalidated HUD bar rows.** The bounded status path currently
+  repaints every active car's three rows when any row changes or any dirty
+  region touches the strip. Use a 12-bit car/row mask for exact end/colour
+  changes and intersections with producer dirty rectangles/pixels. A cold
+  cache, background change or participation change must still repaint all
+  necessary rows; retain weapon icon handling and unbounded-width fallback.
+  Verify against forced-cold full repaint and original DOS HUD tests, then
+  target display/retention audits and all four timing tracks. Pay particular
+  attention to F1 613 and WHACKO 685. This is not implemented yet.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
@@ -48,14 +58,16 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Remaining F1 sprite overhead.** Refresh CPU profiles after the geometry
-  cache before choosing another change. Inspect conflict processing, final
+- **Remaining F1 sprite overhead.** Use the post-geometry CPU profiles.
+  Inspect conflict processing, final
   keep/restore decisions, draw-packet validation and group rebuild/late
   restoration at the worst updates. Preserve atomic group retention and
   exact reverse restoration order; prove any removed check redundant.
   Archived post-group profiles predate the geometry cache and must not be
   presented as current stage costs. Keep the independent geometry-cache
   audit enabled in RETCHECK when changing any source-field writer.
+  Measure eliminating empty-priority wrapper calls or reducing native-chain
+  argument setup; preserve legacy traversal and sprite/overflow boundaries.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

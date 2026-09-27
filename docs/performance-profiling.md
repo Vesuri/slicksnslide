@@ -3,6 +3,63 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Post-geometry profiles and next spike target (2026-09-27)
+
+HEAD 3bd216f, fresh sequential captures:
+`tmp/pcprof-geometry-{f1,whacko}-20260927.{bin,log,elf}`. Both cover 603
+active-window updates starting at race frame 98, with canonical final states
+and zero missed samples (10356 F1, 8849 WHACKO). Matching ELFs are archived.
+The sampler raises measured total work to 205073 and 181904 lines versus
+uninstrumented 184429 and 162979 (about 11%); these are diagnostic profiles,
+not replacement acceptance timings.
+
+Approximate sampled lines per update (25.4 lines/sample, not precise stage
+timers; wait samples excluded from these named work stages):
+
+| Stage | F1 | WHACKO |
+| --- | ---: | ---: |
+| Remaining race-step C | 40.5 | 37.5 |
+| Native car integration | 20.1 | 21.7 |
+| Rectangle C2P | 19.4 | 20.1 |
+| Wheel emission | 18.2 | 19.8 |
+| Sprite retention preparation | 14.0 | below top 22 |
+| Point drawing | 12.8 | 14.3 |
+| Generic actor advancement | 12.7 | 7.8 |
+| Point advancement | 11.2 | 12.0 |
+| Status bars | 9.4 | 10.2 |
+| Draw-priority C wrapper | 9.0 | 6.7 |
+
+F1 retention preparation is down from the pre-cache profile's 24.4 sampled
+lines to 14.0. Point-count correlations remain roughly 88/100 added lines
+per 100 particles on F1/WHACKO; draw and advance contribute about 24-27
+each, and WHACKO point restoration about 11. These are correlations, not
+causal per-particle guarantees; retirement/compaction and emission matter.
+
+Race-frame 613 (F1) and 685 (WHACKO) correspond to one-based measured
+indices 516 and 588. Each exact update has only 24 samples including waits:
+do not infer precise single-update percentages. Thirteen-update windows
+510..522 and 582..594 have 200 and 222 non-wait samples. F1 remains spread
+across simulation, points, sprites and HUD; WHACKO emphasizes point draw,
+advance and emission. Status drawing has 11 and 13 samples in these windows,
+versus means of 9.4/10.2 sampled lines over the full capture.
+
+Source-level status samples identify the bounded 20-pixel row paint loop
+(`slicks_race_draw_status`, lines 3423/3425 at this commit): 34/222 F1 and
+48/243 WHACKO status samples. A change to any cached bar row, or a dirty
+rectangle touching any bar, currently repaints all active cars' three rows.
+An exact per-car/per-row repaint mask is the next measured candidate:
+preserve all changed colours/ends, background/participation invalidation,
+intersecting dirty rectangles and sparse HUD pixels, weapon icons and the
+unbounded-width fallback. Compare against a forced-cold cache/original HUD
+oracle and run target display/retention audits. No gain is claimed yet.
+
+Draw-priority wrappers also spend substantial samples in prologue/epilogue
+and native-call setup. A later candidate is avoiding empty-priority calls
+or a smaller native-chain argument interface, preserving the legacy path
+and sprite/overflow boundaries. Conversely, disassembly already gives
+`finish_car_update` a short-displacement car base; do not assume adding
+another address-register barrier there removes repeated long displacements.
+
 ## Producer-invalidated sprite geometry cache (2026-09-27)
 
 The native retention pass can reuse its geometry entries when no producer
