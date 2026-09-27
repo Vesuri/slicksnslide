@@ -3481,6 +3481,20 @@ static void draw_arcade_timer(struct SlicksRaceRuntime *race,unsigned char *logi
     race->arcade_bar_right=right; race->arcade_bar_top=top; race->arcade_hud_valid=1;
 }
 
+#if defined(__m68k__)
+extern void slicks_restore_hud_cell(unsigned char *destination,
+    const unsigned char *background, unsigned width);
+#else
+static void slicks_restore_hud_cell(unsigned char *destination,
+    const unsigned char *background, unsigned width)
+{
+    for(unsigned y=0;y<14;++y) {
+        for(unsigned x=0;x<width;++x) destination[x]=background[x];
+        destination+=320; background+=320;
+    }
+}
+#endif
+
 static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
 {
     if (!race->font.ready || !race->hud_background_ready || !race->chunky) return;
@@ -3549,9 +3563,8 @@ static void draw_timers(struct SlicksRaceRuntime *race, unsigned char *logical)
          * storage, so never write them into the native 320x200 surface. */
         unsigned left=90+car*60;
         unsigned right=left+52<320?left+52:320;
-        for(unsigned y=186;y<200;++y)
-            for(unsigned x=left;x<right;++x)
-                race->chunky[mult320[y]+x]=race->hud_background[mult320[y-184]+x];
+        slicks_restore_hud_cell(race->chunky+mult320[186]+left,
+            race->hud_background+mult320[2]+left,right-left);
         race->font.runtime[6]=race->hud_colours[state->finished?1:0];
         for(unsigned i=0;i<count;++i) draw_hud_run(race,&runs[i]);
         if(logical)

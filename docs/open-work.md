@@ -13,13 +13,14 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh stationary-final-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 172409/413, F1 220834/550,
-CITY 174249/420, WHACKO 178390/445. Means are 18-24 ms; the
-worst updates need 25-45% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh hud-copy-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 172347/396, F1 220839/550,
+CITY 174168/403, WHACKO 178284/444. Means are 18-24 ms; the
+worst updates need 21-43% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima: BASIC's worst has zero
 live points, CITY's 16, F1's 63 and WHACKO's 176. F1 is also slow without
-points; refresh the track-sprite cost split after stationary-object caching.
+points; the fresh F1 profile still shows significant sprite rendering and
+retention overhead, with track-object motion down to 1.8% of non-wait samples.
 Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
 `docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
@@ -34,9 +35,9 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 409 (413 lines, zero live points),
-  CITY 506 (420 lines, 16 points), F1 482 (550 lines, 63 points) and
-  WHACKO 688 (445 lines, 176 points). Record pre/post particle counts and
+  Reprofile BASIC update 409 (396 lines, zero live points),
+  CITY 506 (403 lines, 16 points), F1 482 (550 lines, 63 points) and
+  WHACKO 688 (444 lines, 176 points). Record pre/post particle counts and
   the dirty regions (BASIC geometry is recorded in the profiling evidence):
   retirement can cause work despite a low final live
   count. Use uninterrupted timings and the CIA-B sampler; debugger stops

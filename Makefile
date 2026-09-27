@@ -1457,5 +1457,15 @@ build/verify_memory: tools/verify_memory.c | build
 verify-memory: build/memory_test.bin build/verify_memory
 	build/verify_memory build/memory_test.bin
 
+build/hud_restore_test.bin: src/game/hud_restore.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_hud_restore: tools/verify_hud_restore.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-hud-restore
+verify-hud-restore: build/hud_restore_test.bin build/verify_hud_restore
+	build/verify_hud_restore build/hud_restore_test.bin
+
 clean:
 	rm -rf build

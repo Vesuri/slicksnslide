@@ -3,6 +3,58 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Fresh F1 profile after stationary-object caching
+
+`tmp/pcprof-cache-f1-20260927.{bin,log,elf}` profiles the restored normal
+build at 2390b77, before the HUD-copy experiment. All 603 updates complete,
+with the canonical final state, 13715 samples and zero missed samples.
+Waits account for 3816 samples; of the remaining 9899, C2P takes 910 (9.2%),
+the inlined race step 901 (9.1%), sprite draw chain 661 (6.7%), car integration
+573 (5.8%), retention preparation 504 (5.1%), sprite restore chain plus its
+pixel helper 525 (5.3%), and track-object motion 180 (1.8%). Sprite advancement
+is 268 (2.7%). Stationary-object setup is no longer the dominant track cost;
+drawing/restoration, validation and retention overhead remain significant.
+These are sampled shares, not uninterrupted frame timings.
+
+Within the 901 race-step samples, the largest inlined pieces are motion
+preparation (133), per-car tail (66), steering (65), update-loop glue (57),
+checkpoint advancement (47), throttle (43), profiling gates (39), and actor
+layer update (33). No single tail function explains most of the cost.
+
+## HUD transition restore experiments
+
+The old byte-at-a-time C loop restores 14 visible rows of each changed HUD
+cell: 52 pixels for drivers 0..2, 50 for driver 3. A candidate compared
+four-byte groups against the original saved HUD background, copied only
+differences, and bounded dirty conversion to those differences plus text.
+It passed 12000 native restore/bounds cases and host dirty/original-DOS HUD
+checks, including foreign pixels outside text runs, but was rejected:
+
+| Track | Control work/max | Bounded candidate work/max | Plain native copy work/max |
+| --- | ---: | ---: | ---: |
+| BASIC | 172409 / 413 | 173027 / 400 | 172347 / 396 |
+| F1 | 220834 / 550 | 221784 / 550 | 220839 / 550 |
+| CITY | 174249 / 420 | 174973 / 411 | 174168 / 403 |
+| WHACKO | 178390 / 445 | 179079 / 465 | 178284 / 444 |
+
+Logs are `tmp/{stationary-final,hud-restore,hud-copy}-20260927-T.log`.
+All final states match. The bounded candidate increases total work on every
+track and worsens WHACKO's maximum by 20 lines. The simpler native copy
+retains the original full dirty rectangle and pixel order, using unrolled
+longword copies and one word tail for the clipped cell. BASIC update 409
+and CITY 506 each save 17 lines (~1.1 ms); total work is essentially unchanged
+(-0.036%, +0.002%, -0.046%, -0.059%). This is a transition improvement, not a
+claim that typical or particle-heavy frames are fixed.
+
+The plain copy passes `verify-hud-restore` (12000 complete-buffer native
+comparisons, four alignments, both widths, canaries and ABI),
+`verify-dirty-tracking`, `verify-dos-hud` (including 768 composed original
+full-screen HUD transitions), and `verify-arcade-hud` (2100 original commands).
+Full-frame display audits pass 600 updates each on F1/CITY/WHACKO with
+statistics explicitly off, 32/18/5 actors and 2076/1480/1854 permanent marks
+(`tmp/audit-hudcopy-20260927-{1,2,3}.log`). Drawing order and retention are
+unchanged. All three owned audit emulators close on success.
+
 ## Debugger sampling is phase-locked
 
 FS-UAE's `barto_gdbserver` only services a GDB interrupt at vsync. Reading

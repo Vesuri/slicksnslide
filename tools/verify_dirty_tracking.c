@@ -77,6 +77,14 @@ static int verify_hud_renderer(void)
             }
             expected_hud_text(expected,&race.font,base+106,191,step<2?"01.00":"05.00",colour);
         }
+        /* A previous painter can leave pixels outside every text run. The
+         * full original HUD restore must erase and dirty those too, even
+         * when no dirty list entry survives from that earlier update. */
+        if(step==1 || step==2) for(unsigned car=0;car<4;++car) {
+            unsigned x=90+car*60,y=199;
+            pixels[y*320+x]^=255;
+            logical[(x&3)*65536+y*100+x/4]=pixels[y*320+x];
+        }
         memcpy(before,pixels,sizeof pixels);
         slicks_race_clear_dirty_rows(&race);
         draw_timers(&race,logical);
