@@ -290,6 +290,7 @@ volatile unsigned long g_slicks_diag_profile_c2p_lines;
 volatile unsigned long g_slicks_diag_profile_diag_lines;
 volatile unsigned long g_slicks_diag_profile_total_lines;
 volatile unsigned char g_slicks_diag_profile_all;
+volatile unsigned char g_slicks_diag_live_stats;
 volatile unsigned long g_slicks_diag_bench_frames;
 volatile unsigned long g_slicks_diag_bench_work_max;
 volatile unsigned long g_slicks_diag_bench_work_sum;
@@ -3034,6 +3035,37 @@ done:
     return result;
 }
 
+/* Keep opt-in bookkeeping out of the rendering loop and its register set. */
+static __attribute__((noinline)) void collect_presentation_snapshot(
+    const struct SlicksRaceRuntime *race,const struct SlicksAmigaAudio *audio)
+{
+    g_slicks_diag_effect_sample_block=audio->last_effect_sample_block;
+    g_slicks_diag_effect_priority=audio->last_effect_priority;
+    g_slicks_diag_engine_started=audio->engine_started;
+    g_slicks_diag_engine_frequency=audio->engine_frequency;
+    g_slicks_diag_engine_period=audio->engine_period;
+    g_slicks_diag_music_started=audio->music_started;
+    g_slicks_diag_dirty_ranges=race->dirty_row_count;
+    g_slicks_diag_dirty_pixels=race->dirty_pixel_count;
+}
+
+static __attribute__((noinline)) void collect_conversion_statistics(
+    const struct SlicksRaceRuntime *race)
+{
+    unsigned long area=0,rows=0;
+    for(unsigned i=0;i<race->dirty_row_count;++i) {
+        const struct SlicksDirtyRows *r=&race->dirty_rows[i];
+        unsigned long pixels=(unsigned long)(r->right-r->left)*(r->bottom-r->top);
+        area+=pixels;
+        rows+=pixels/320UL; /* Preserve per-rectangle rounding. */
+    }
+    g_slicks_diag_sparse_converted=race->dirty_pixel_count;
+    g_slicks_diag_profile_rect_pixels=area;
+    g_slicks_diag_dirty_rows=rows;
+    g_slicks_diag_dirty_c2p_rows+=rows;
+    g_slicks_diag_dirty_c2p_calls+=race->dirty_row_count;
+}
+
 int main(void)
 {
     int argc = 0;
@@ -3746,6 +3778,10 @@ int main(void)
         g_slicks_diag_engine_sample_block = audio.engine_sample_block;
     }
 
+    /* NATIVE and diagnostic fixtures opt into live inspection. Outer-only
+     * benchmarks measure the normal presentation path, not rectangle stats. */
+    g_slicks_diag_live_stats=(unsigned char)(continuous_diagnostics ||
+        (g_slicks_diag_profile_all && g_slicks_diag_profile_all!=2));
     for (;;) {
         unsigned short code;
         unsigned char left_down;
@@ -5185,7 +5221,8 @@ int main(void)
             }
             if (g_slicks_diag_audio_in_blank || race->boundary_palette_pending) {
                 slicks_amiga_platform_wait_display_blank(&platform);
-                audio_blank_at = slicks_diag_profile_raster_time();
+                if (continuous_diagnostics || profile)
+                    audio_blank_at = slicks_diag_profile_raster_time();
                 if (profile) {
                     profile_at = platform.vblank_count;
                     profile_line_at = audio_blank_at;
@@ -5214,7 +5251,7 @@ int main(void)
                 slicks_amiga_audio_stop(&audio);
                 slicks_amiga_audio_start_music(&audio);
             }
-            if (g_slicks_diag_audio_in_blank) {
+            if (g_slicks_diag_audio_in_blank && (continuous_diagnostics || profile)) {
                 unsigned long duration =
                     slicks_diag_profile_raster_time() - audio_blank_at;
                 unsigned long remaining = PAL_RASTER_LINES -
@@ -5232,16 +5269,8 @@ int main(void)
                 profile_at = platform.vblank_count;
                 profile_line_at = now;
             }
-            g_slicks_diag_effect_sample_block =
-                audio.last_effect_sample_block;
-            g_slicks_diag_effect_priority = audio.last_effect_priority;
-            g_slicks_diag_engine_started = audio.engine_started;
-            g_slicks_diag_engine_frequency = audio.engine_frequency;
-            g_slicks_diag_engine_period = audio.engine_period;
-            g_slicks_diag_music_started = audio.music_started;
-            g_slicks_diag_dirty_ranges = race->dirty_row_count;
-            g_slicks_diag_dirty_pixels = race->dirty_pixel_count;
-            g_slicks_diag_dirty_rows = 0;
+            if (g_slicks_diag_live_stats)
+                collect_presentation_snapshot(race,&audio);
             if (!g_slicks_diag_audio_in_blank)
                 slicks_amiga_platform_wait_display_blank(&platform);
             if (profile) {
@@ -5252,25 +5281,18 @@ int main(void)
              * Sparse updates include particle restoration/expiry and HUD
              * changes; a later rectangle conversion must preserve them. */
             slicks_race_prune_dirty_pixels(race);
-            g_slicks_diag_sparse_converted=race->dirty_pixel_count;
             slicks_chunky_pixels_to_amiga(
                 chunky, platform.views[1].bitmap,
                 race->dirty_pixels, race->dirty_pixel_count);
-            g_slicks_diag_profile_rect_pixels=0;
             for (dirty = 0; dirty < race->dirty_row_count; ++dirty) {
                 const struct SlicksDirtyRows *rows = &race->dirty_rows[dirty];
-                unsigned long equivalent_rows =
-                    (unsigned long)(rows->right - rows->left) *
-                    (rows->bottom - rows->top) / 320UL;
-                g_slicks_diag_profile_rect_pixels+=(rows->right-rows->left)*(rows->bottom-rows->top);
                 slicks_chunky_rect_to_amiga(
                     chunky, platform.views[1].bitmap,
                     rows->left, rows->top, rows->right, rows->bottom,
                     title_frame);
-                g_slicks_diag_dirty_rows += equivalent_rows;
-                g_slicks_diag_dirty_c2p_rows += equivalent_rows;
-                ++g_slicks_diag_dirty_c2p_calls;
             }
+            if (g_slicks_diag_live_stats)
+                collect_conversion_statistics(race);
             if (profile) {
                 unsigned long now = slicks_diag_profile_raster_time();
                 g_slicks_diag_profile_c2p_vblanks =

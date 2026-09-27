@@ -421,3 +421,44 @@ All final positions and mark counts match. Logs:
 or necessary reloads. This falls below the handoff's roughly 1% threshold;
 do not introduce frame-sensitive palette gating for this small upper bound.
 The existing full-palette path remains unchanged.
+
+## Opt-in presentation statistics (2026-09-27)
+
+User approved making expensive diagnostic bookkeeping opt-in. Plain play
+and outer-only benchmarks now skip presentation snapshots and rectangle
+area/equivalent-row accumulation; `NATIVE`, detailed profiling and ordinary
+diagnostic fixtures retain them. `LIVE_STATS` in benchmark/profile logs
+explicitly marks whether dirty-area/sparse/audio snapshot fields are valid.
+The optional collectors are out-of-line; the rectangle conversion loop has
+no per-rectangle statistics branch. All real rendering and audio updates
+remain unconditional. Timer boundaries stay in place. Audio blank-spill
+monitoring remains enabled in benchmarks, conservatively including its
+cost; plain play need not read raster time solely for that diagnostic.
+
+| Track | Control work / 603 | Opt-in outlined | Worst: control -> outlined |
+| --- | ---: | ---: | --- |
+| BASIC | 172561 | 172240 | 414 -> 416 |
+| F1 | 228718 | 229191 | 563 -> 565 |
+| CITY | 181515 | 181644 | 432 -> 431 |
+| WHACKO | 178931 | 178154 | 468 -> 442 |
+
+Logs: `tmp/optin-outlined-20260927-{0,1,2,3}.log`, against
+`tmp/resume-nativeprune-20260927-{0,1,2,3}.log`. All final states match.
+Total work across tracks changes by only -0.07%; this does NOT establish a
+general 13-line saving. BASIC/F1 worst frames slightly regress while
+WHACKO's improves. The earlier inline-gated experiment (`tmp/optin-stats-*`)
+was worse on three tracks and is not retained.
+
+Per-update samples also qualify the handoff's particle-heavy-maxima claim:
+BASIC update 409 has zero live particles, CITY 506 has 16, F1 482 has 63,
+WHACKO 687 has 159. BASIC's C2P portion alone is 116 lines (also 116 in the
+control, with 4352 rectangle pixels). Investigate retirement/redraw
+transitions; a live-count regression model is not a worst-case bound.
+
+Verification: F1/CITY/WHACKO each pass 600 full-frame display audits with
+statistics disabled (`tmp/audit-optin-20260927-{1,2,3}.log`). With statistics
+enabled, `diag_live_stats.gdb` checks all 600 updates against the actual
+converted rectangle/sparse lists (`tmp/live-stats-check2-20260927.log`). It
+inspects just before the list is cleared, not at the later race-progress
+checkpoint. Detailed statistics remain accurate, including per-rectangle
+integer rounding. All four benchmark final states match the control.

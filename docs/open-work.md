@@ -2,21 +2,24 @@
 
 Updated 2026-09-27. Actionable open and deferred work only.
 
-Publish/push only when explicitly requested.
+Publish/push only when explicitly requested. Scope: finish the performance
+handoff, resolving each proposed optimization with verified implementation
+or measured rejection, plus its verification debt. The 50 FPS goal remains
+open until target measurements meet it; closing experiments is not enough.
 
 ## Performance
 
 Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
-audio and rendering order. Status after native sparse pruning
-(`amiga/bench_tracks.sh resume-nativeprune-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 172561/414, F1 228718/563,
-CITY 181515/432, WHACKO 178931/468. Means are 18-24 ms; the
-worst updates need 25-45% cuts. BASIC, CITY and WHACKO worst updates are
-particle-heavy (130-170 live points, about 1.1 lines per point on top of a
-~270-line base); F1 is slow even without points (~150 lines per update of
-track-sprite work). Method, tools and the cost model (Chip data access ~7
+audio and rendering order. Status with opt-in diagnostic bookkeeping
+(`amiga/bench_tracks.sh optin-outlined-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 172240/416, F1 229191/565,
+CITY 181644/431, WHACKO 178154/442. Means are 18-24 ms; the
+worst updates need 25-45% cuts. Particle-heavy frames remain expensive,
+but live count alone does not explain the maxima: BASIC's worst has zero
+live points, CITY's 16, F1's 63 and WHACKO's 159. F1 is also slow without
+points (~150 lines per update of track-sprite work). Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
 `docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
 against a control of the parent commit (FINAL_STATE must be identical),
@@ -28,6 +31,15 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
+
+- **Resolve worst-update transitions, not just particle-count averages.**
+  Reprofile BASIC update 409 (416 lines, zero live points, 116 C2P lines),
+  CITY 506 (431 lines, 16 points), F1 482 (565 lines, 63 points) and
+  WHACKO 687 (442 lines, 159 points). Record pre/post particle counts and
+  the dirty regions: retirement can cause work despite a low final live
+  count. Use uninterrupted timings and the CIA-B sampler; debugger stops
+  are only for correctness/region inspection. Include these transitions
+  when evaluating C2P bounds and particle retention.
 
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
@@ -111,18 +123,6 @@ Candidate fixes, roughly in order of expected value per effort:
   car rectangles are merged although far apart, and whether a 16-pixel
   column variant would win (fewer converted pixels but twice the write
   operations per converted pixel); measure before committing to either.
-
-- **Decision for the user: diagnostic bookkeeping in the timed work.**
-  `main()` in `slicks_diag.c` spends ~13 lines per update on per-rectangle
-  and per-frame diagnostic statistics inside the measured intervals. If the
-  shipped build is meant to be SlicksDiag, trim it; if not, the benchmark
-  overstates shipped cost and could exclude it.
-
-## Verification debt
-
-- `diag_fuel.gdb` and `diag_damage_race.gdb` fail identically on 5fa9458 and
-  later builds (finished car reaches lap 6; fuel fixture sees no finishers).
-  Decide whether the fixtures or the finish/lap behaviour are stale.
 
 ## Deferred
 

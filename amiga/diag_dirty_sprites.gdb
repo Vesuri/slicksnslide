@@ -1,10 +1,12 @@
 # SLICKS_TRACK_ACTOR_TEST=1, with the full-frame stale-pixel audit enabled.
-# No target memory writes. debug.sh closes this owned emulator on exit.
+# Only disables optional statistics; no game-state writes.
+# debug.sh closes this owned emulator on exit.
 set $race=(struct SlicksRaceRuntime *)0
 break *slicks_race_start
 commands
   silent
   set $race=*(struct SlicksRaceRuntime **)($sp+4)
+  set g_slicks_diag_live_stats=0
   continue
 end
 break slicks_diag_bitmap_audit_failed
