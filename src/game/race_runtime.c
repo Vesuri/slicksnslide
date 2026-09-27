@@ -1881,7 +1881,8 @@ static void restore_trail_particles(struct SlicksRaceRuntime *race,unsigned shor
 
 static void commit_expiring_trails(struct SlicksRaceRuntime *race);
 
-static void advance_trail_particles(struct SlicksRaceRuntime *race)
+/* Verified reference; shared-pool m68k races use one native pass. */
+static void advance_trail_particles_reference(struct SlicksRaceRuntime *race)
 {
     extern unsigned short slicks_advance_particles(
         struct SlicksTrailParticle *particles, unsigned long count,
@@ -1891,12 +1892,6 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
         struct SlicksDirtyPixel *dirty_pixels,
         unsigned short *dirty_pixel_count, unsigned char *chunky,
         unsigned long actor_page);
-    if (slicks_race_disable_particles)
-        return;
-    /* Only the capacity fallback needs a separate bounds-list pass. */
-    if (race->dirty_pixel_count + race->trail_particle_count >=
-        SLICKS_DIRTY_PIXEL_MAX)
-        commit_expiring_trails(race);
     int shared=shared_actor_pool(race);
     unsigned char *handles=race->weapons.trail_handle;
     short *indices=race->weapons.trail_index;
@@ -1925,6 +1920,54 @@ static void advance_trail_particles(struct SlicksRaceRuntime *race)
             states[h]=particle->state;
         }
     }
+}
+
+#if defined(__m68k__) && defined(SLICKS_SHADOW_CHECK)
+/* The native pass leaves pre-advance fields in records compacted past the
+ * new count, where the in-place reference leaves advanced ones. Nothing reads
+ * a dead record (emission rewrites every field drawing consults), so both
+ * shadow runs clear that tail before their windows are compared. */
+static void shadow_clear_particle_tail(struct SlicksRaceRuntime *race,unsigned before)
+{
+    for(unsigned i=race->trail_particle_count;i<before;++i)
+        __builtin_memset(&race->trail_particles[i],0,sizeof race->trail_particles[i]);
+}
+#endif
+
+static void advance_trail_particles(struct SlicksRaceRuntime *race)
+{
+    if (slicks_race_disable_particles)
+        return;
+    /* Only the capacity fallback needs a separate bounds-list pass. */
+    if (race->dirty_pixel_count + race->trail_particle_count >=
+        SLICKS_DIRTY_PIXEL_MAX)
+        commit_expiring_trails(race);
+#if defined(__m68k__) && !defined(SLICKS_REFERENCE_ADVANCE)
+    if(shared_actor_pool(race)) {
+        _Static_assert(sizeof(struct SlicksTrailParticle)==24 &&
+            sizeof(struct SlicksDirtyPixel)==4 && SLICKS_DIRTY_PIXEL_MAX==512 &&
+            sizeof race->weapons.trail_index[0]==2,"native shared particle advance ABI");
+        extern unsigned short slicks_advance_shared_particles(
+            struct SlicksTrailParticle *,unsigned long,unsigned char *,short *,
+            signed char *,struct SlicksDirtyPixel *,unsigned short *,unsigned char *,
+            unsigned long);
+#if defined(SLICKS_SHADOW_CHECK)
+        unsigned before=race->trail_particle_count;
+#define SLICKS_ADVANCE_TAIL(call) (call,shadow_clear_particle_tail(race,before))
+#else
+#define SLICKS_ADVANCE_TAIL(call) call
+#endif
+        SLICKS_SHADOW_RENDER_CALL(6,
+            SLICKS_ADVANCE_TAIL(advance_trail_particles_reference(race)),
+            SLICKS_ADVANCE_TAIL(race->trail_particle_count=slicks_advance_shared_particles(
+                race->trail_particles,race->trail_particle_count,race->weapons.trail_handle,
+                race->weapons.trail_index,race->weapons.slots.state,race->dirty_pixels,
+                &race->dirty_pixel_count,race->chunky,race->actor_page)));
+#undef SLICKS_ADVANCE_TAIL
+        return;
+    }
+#endif
+    advance_trail_particles_reference(race);
 }
 
 /* DOS state +1a=5 expires to -5: 3000:3e36 skips saved-under restoration,

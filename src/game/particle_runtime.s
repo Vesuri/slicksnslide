@@ -124,3 +124,124 @@ slicks_advance_particles:
 	move.b	d5,0(a1,d1.l)
 	addq.w	#1,0(a2,d4.l*2)
 	bra.w	.keep_entry
+
+	xdef	slicks_advance_shared_particles
+
+; C ABI:
+; unsigned short slicks_advance_shared_particles(particles, count, handles,
+;     indices, states, dirty_pixels, dirty_count, chunky, actor_page)
+; Shared actor-pool advance_trail_particles() in one pass. Points retired on
+; the previous pass release their slot (state 0, index -1); the rest move or
+; retire exactly as slicks_advance_particles, and each survivor's compacted
+; record, handle, trail index and slot state are published together. Each
+; record is read once and written once. Records past the new count are left
+; untouched (the in-place reference also advances those dead records).
+slicks_advance_shared_particles:
+	movem.l	d2-d7/a2-a6,-(sp)
+	movea.l	48(sp),a0		; source record
+	move.l	52(sp),d7
+	movea.l	56(sp),a1		; handles by trail index
+	movea.l	60(sp),a2		; trail index words by handle
+	movea.l	64(sp),a3		; slot states by handle
+	movea.l	a0,a4			; destination record
+	suba.l	a5,a5			; source index
+	suba.l	a6,a6			; destination index
+	moveq	#0,d6			; handle, zero-extended for indexing
+	subq.w	#1,d7
+	bcs.s	.shared_done
+.shared_point:
+	movem.l	(a0),d0-d5		; x, y, vx:vy, old, saved..priority, flags..state
+	move.b	(a1,a5.w),d6
+	tst.b	d5
+	bmi.s	.shared_release
+	swap	d4			; low byte: lifetime (zero is unlimited)
+	tst.b	d4
+	beq.s	.shared_motion
+	subq.b	#1,d4
+	beq.s	.shared_expire
+.shared_motion:
+	swap	d2			; DOS ADD word, then signed storage
+	add.w	d2,d0
+	ext.l	d0
+	swap	d2
+	add.w	d2,d1
+	ext.l	d1
+	swap	d4
+.shared_keep:
+	cmpa.l	a5,a6
+	bne.s	.shared_copy
+	movem.l	d0-d1,(a0)
+	move.l	d4,16(a0)
+	bra.s	.shared_publish
+.shared_copy:
+	movem.l	d0-d5,(a4)
+	move.b	d6,(a1,a6.w)
+.shared_publish:
+	move.w	a6,(a2,d6.w*2)
+	move.b	d5,(a3,d6.w)
+	addq.w	#1,a6
+	lea	24(a4),a4
+.shared_next:
+	addq.w	#1,a5
+	lea	24(a0),a0
+	dbf	d7,.shared_point
+.shared_done:
+	move.w	a6,d0
+	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+.shared_release:
+	clr.b	(a3,d6.w)
+	move.w	#-1,(a2,d6.w*2)
+	bra.s	.shared_next
+.shared_expire:
+	tst.l	80(sp)			; DOS page zero defers expiry
+	bne.s	.shared_retire
+	move.b	#1,d4
+	bra.s	.shared_motion
+; Cold: x/y stay unmoved, the lifetime stays zero. Borrow a1 and d0/d1.
+.shared_retire:
+	swap	d4
+	move.l	a1,-(sp)		; arguments now at 52(sp)
+	move.l	d5,d0
+	swap	d0			; d0.b: permanent
+	move.b	#-2,d5			; state 1 -> -1 -> -2 on expiry pass
+	tst.b	d0
+	beq.s	.shared_retire_pixel
+	move.b	#-6,d5			; state 5 -> -5 -> -6
+.shared_retire_pixel:
+	btst	#25,d5			; saved_valid bit 1: old display pixel
+	beq.s	.shared_retired
+	tst.b	d0			; permanent DOS state-5 mark
+	beq.s	.shared_queue
+	moveq	#0,d0
+	move.w	d3,d0			; old_y
+	mulu.w	#320,d0
+	moveq	#0,d1
+	swap	d3
+	move.w	d3,d1			; old_x
+	swap	d3
+	add.l	d1,d0
+	movea.l	80(sp),a1		; authoritative chunky surface
+	move.w	d4,d1
+	lsr.w	#8,d1			; colour
+	move.b	d1,(a1,d0.l)
+.shared_queue:
+	movea.l	76(sp),a1		; dirty count
+	moveq	#0,d0
+	move.w	(a1),d0
+	cmpi.w	#512,d0
+	bcc.s	.shared_retired
+	addq.w	#1,(a1)
+	movea.l	72(sp),a1		; dirty pixels: old_x.w, old_y.b, 0
+	move.l	d3,d1
+	lsl.w	#8,d1
+	move.l	d1,(a1,d0.l*4)
+.shared_retired:
+	andi.l	#$00ffffff,d5		; no next-frame restore/draw for dead point
+	movea.l	(sp)+,a1
+	movem.l	(a0),d0-d1
+	movem.l	d0-d5,(a4)		; a4 is a0 unless compacting
+	cmpa.l	a5,a6
+	beq.w	.shared_publish
+	move.b	d6,(a1,a6.w)
+	bra.w	.shared_publish

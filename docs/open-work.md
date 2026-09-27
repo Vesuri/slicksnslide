@@ -21,9 +21,15 @@ Publish/push only when explicitly requested.
   - Profile with the target-side CIA-B sampler (`amiga/pc_profile.sh`), not
     GDB interrupts; verify native replacements with `amiga/shadow_check.sh`
     plus the host DOS oracles. See `docs/performance-profiling.md`.
-  - Replace hot compiled C with dense 68020 code that shrinks executed code
-    volume: particle restore/order/advance/emission, HUD change detection,
-    car draw setup, then car motion/tails with register-resident state.
+  - Particle-heavy frames cost about 1.1 lines per live point: tighten the
+    native draw chain (drafted, fewer Chip accesses per point), then decide
+    whether exact retention of unmoved, unoverlapped points is worth its
+    conflict tracking. The C restore loop is already lean.
+  - Measure dropping the sparse-pixel prune (its rectangle scan now costs
+    more than the conversions it avoids) and reloading the 528-move copper
+    palette only when colours change.
+  - Replace remaining hot compiled C where it shrinks executed code volume:
+    per-car tails in `slicks_race_step`, actor ordering, emission slot scan.
   - F1/CITY: remove repeated per-object work for stationary track objects.
 
 ## Verification debt

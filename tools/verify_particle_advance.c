@@ -136,6 +136,90 @@ int main(int argc,char **argv)
         check(uc_reg_read(native,UC_M68K_REG_A7,&sp));if(sp!=0x90004)return 1;
         check(uc_reg_read(native,UC_M68K_REG_PC,&result));if(result!=0x18000)return 1;
     }
+    /* Shared actor pool: the same DOS-derived point results, plus the handle,
+     * trail-index and slot-state bookkeeping previously done by C loops. */
+    uint32_t shared_entry=0x10000+((uint32_t)code[size-4]<<24)+((uint32_t)code[size-3]<<16)+
+        ((uint32_t)code[size-2]<<8)+code[size-1];
+    for(unsigned trial=0;trial<800;++trial) {
+        unsigned count=trial%200,page=(trial/200)&1,out=0;
+        unsigned dirty_count=trial%4==0?512:trial%4==1?511:trial%4==2?500:0;
+        unsigned original_dirty_count=dirty_count;
+        static unsigned char handles[256],got_handles[256],index_bytes[400],got_index_bytes[400];
+        static unsigned char states[200],got_states[200];
+        memset(initial,0xcc,sizeof initial);memset(dirty,0xcc,sizeof dirty);
+        for(unsigned i=0;i<64000;++i)pixels[i]=(unsigned char)(i*7+trial);
+        check(uc_mem_write(native,0x30000,pixels,sizeof pixels));
+        for(unsigned i=0;i<400;++i)index_bytes[i]=(unsigned char)(i*5+trial);
+        for(unsigned i=0;i<200;++i)states[i]=(unsigned char)(i*3+trial);
+        memset(handles,0xcc,sizeof handles);
+        for(unsigned i=0;i<count;++i) {
+            unsigned char *p=initial+i*24;
+            be32(p,(uint32_t)(int32_t)(int16_t)(i*1777+trial*3));
+            be32(p+4,(uint32_t)(int32_t)(int16_t)(i*971-trial*5));
+            be16(p+8,i*311+0x8000+trial);be16(p+10,0x7fff-i*173);
+            be16(p+12,(i*3+trial)%320);be16(p+14,(i*7)%200);
+            p[16]=i;p[17]=(i+trial)%6;p[18]=111+i;p[19]=(i*5)%7;
+            p[20]=(i+trial)%4;p[21]=(i+trial/3)%2;p[22]=(i*9)%31;
+            p[23]=(i+trial)%9==0?(p[21]?-6:-2):(p[21]?5:1);
+            handles[i]=(unsigned char)(1+(i*73+trial)%199);
+        }
+        memcpy(expected,initial,sizeof initial);
+        unsigned char want_handles[256],want_index[400],want_states[200];
+        memcpy(want_handles,handles,sizeof handles);memcpy(want_index,index_bytes,sizeof index_bytes);
+        memcpy(want_states,states,sizeof states);
+        for(unsigned i=0;i<count;++i) {
+            unsigned char p[24];memcpy(p,initial+24*i,24);
+            unsigned h=handles[i];
+            if((int8_t)p[23]<0) { want_states[h]=0;be16(want_index+2*h,0xffff);continue; }
+            original_step(dos,p,page);
+            if((int8_t)p[23]<0) {
+                if(p[20]&2) {
+                    unsigned x=get16(p+12),y=get16(p+14);
+                    if(p[21])pixels[y*320+x]=p[18];
+                    if(dirty_count<512) {be16(dirty+4*dirty_count,x);dirty[4*dirty_count+2]=y;dirty[4*dirty_count+3]=0;++dirty_count;}
+                }
+                p[20]=0;
+            }
+            memcpy(expected+out*24,p,24);
+            want_handles[out]=(unsigned char)h;be16(want_index+2*h,out);want_states[h]=p[23];
+            ++out;
+        }
+        unsigned char stack[40],dc[2];
+        const unsigned args[]={0x18000,0x20000,count,0x52000,0x53000,0x54000,0x60000,0x61000,0x30000,page};
+        for(unsigned i=0;i<10;++i)be32(stack+4*i,args[i]);
+        check(uc_mem_write(native,0x20000,initial,sizeof initial));
+        check(uc_mem_write(native,0x52000,handles,sizeof handles));
+        check(uc_mem_write(native,0x53000,index_bytes,sizeof index_bytes));
+        check(uc_mem_write(native,0x54000,states,sizeof states));
+        memset(got_dirty,0xcc,sizeof got_dirty);check(uc_mem_write(native,0x60000,got_dirty,sizeof got_dirty));
+        be16(dc,original_dirty_count);check(uc_mem_write(native,0x61000,dc,2));
+        check(uc_mem_write(native,0x90000,stack,sizeof stack));uint32_t sp=0x90000,result;
+        check(uc_reg_write(native,UC_M68K_REG_A7,&sp));
+        for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i){uint32_t v=0x13570000+i;check(uc_reg_write(native,preserved[i],&v));}
+        check(uc_emu_start(native,shared_entry,0x18000,0,200000));
+        check(uc_reg_read(native,UC_M68K_REG_D0,&result));
+        check(uc_mem_read(native,0x20000,actual,sizeof actual));
+        check(uc_mem_read(native,0x30000,got_pixels,sizeof got_pixels));
+        check(uc_mem_read(native,0x52000,got_handles,sizeof got_handles));
+        check(uc_mem_read(native,0x53000,got_index_bytes,sizeof got_index_bytes));
+        check(uc_mem_read(native,0x54000,got_states,sizeof got_states));
+        check(uc_mem_read(native,0x60000,got_dirty,sizeof got_dirty));check(uc_mem_read(native,0x61000,dc,2));
+        if((result&65535)!=out || memcmp(actual,expected,sizeof actual) ||
+           memcmp(pixels,got_pixels,sizeof pixels) || memcmp(want_handles,got_handles,sizeof handles) ||
+           memcmp(want_index,got_index_bytes,sizeof index_bytes) || memcmp(want_states,got_states,sizeof states) ||
+           memcmp(dirty,got_dirty,sizeof dirty) || get16(dc)!=dirty_count) {
+            fprintf(stderr,"Shared particle advance mismatch trial=%u count=%u/%u dirty=%u/%u pixels=%d handles=%d index=%d states=%d dirtybytes=%d\n",
+                trial,result&65535,out,get16(dc),dirty_count,memcmp(pixels,got_pixels,sizeof pixels),
+                memcmp(want_handles,got_handles,sizeof handles),memcmp(want_index,got_index_bytes,sizeof index_bytes),
+                memcmp(want_states,got_states,sizeof states),memcmp(dirty,got_dirty,sizeof dirty));
+            for(unsigned i=0;i<sizeof actual;++i)if(actual[i]!=expected[i]){fprintf(stderr,"particle byte %u actual=%u expected=%u\n",i,actual[i],expected[i]);break;}
+            return 1;
+        }
+        for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i){check(uc_reg_read(native,preserved[i],&result));if(result!=0x13570000+i)return 1;}
+        check(uc_reg_read(native,UC_M68K_REG_A7,&sp));if(sp!=0x90004)return 1;
+        check(uc_reg_read(native,UC_M68K_REG_PC,&result));if(result!=0x18000)return 1;
+    }
     puts("Native particle update: 1028 legacy/shared batches match DOS lifetime/motion, retirement bookkeeping, compaction, permanent pixels, dirty saturation and ABI");
+    puts("Native shared-pool particle update: 800 batches also match handle compaction, trail indices, slot states and untouched dead records");
     check(uc_close(native));check(uc_close(dos));return 0;
 }

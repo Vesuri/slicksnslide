@@ -290,3 +290,49 @@ about 14% of F1 samples; frame-keyed rebuilds and alternate-frame rebuilds
 for slowly sliding objects each regressed F1 worst frames by up to 120
 lines). The retained design is limited by the per-update pass in
 point-heavy frames, where conflicts also reduce the number kept.
+
+## Particle cost per live point
+
+Regressing per-frame sample counts against the live particle count (retain9
+profiles, `tmp/particle_slope.py`) gives about 1.1 raster lines per live
+point on BASIC and WHACKO: draw 29, advance 22, emission 16, the C loops
+around the advance 12, restore 11-15 and actor ordering 11 lines per 100
+points. The zero-point intercept is about 270 lines, so particle-heavy
+frames (130-170 points at the race start and in skids) are the BASIC,
+CITY and WHACKO worst cases. F1 is slow without points: about 150 lines
+per update of track-sprite work.
+
+Calibration from GCC's restore loop (24 instructions, 9 Chip data
+accesses, about 103 cycles per point) puts a Chip data access near 7 cycles
+and a cached instruction near 2.5. The compiled restore loop is already
+as lean as a hand-written one, so it stays in C.
+
+## Native shared-pool particle advance
+
+`slicks_advance_shared_particles` (`src/game/particle_runtime.s`) replaces
+the C handle/index/state loops that surrounded the shared-pool advance. One
+pass releases points retired on the previous pass (slot state 0, index -1),
+moves or retires the rest exactly as before, compacts records and handles,
+and publishes each survivor's trail index and slot state. Each record is
+read with one `movem` and written once; records past the new count are left
+untouched (the in-place reference also advanced those dead records, so the
+shadow site clears that tail in both runs before comparing).
+
+Verification: `make verify-particle-advance` adds 800 shared-pool batches
+checked against the DOS-derived motion/lifetime results plus handle
+compaction, trail indices, slot states and untouched dead records;
+injected mutations are caught. Shadow site 6 (render variant, chunky
+compared for permanent-mark baking) has no mismatches over 603 updates on
+all four tracks (`tmp/shadow-adv1-*.log`, `tmp/shadow-adv2-2.log`), with
+final positions and marks equal to the control. Host particle, dirty,
+surface, track- and weapon-actor suites pass (`tmp/host-adv-*.log`).
+
+| Track | Control (`retain9`) | Candidate (`adv1`) | Change | Max lines |
+| --- | ---: | ---: | ---: | --- |
+| BASIC | 176565 | 173064 | -2.0% | 421 -> 414 |
+| F1 | 232294 | 230657 | -0.7% | 569 -> 567 |
+| CITY | 183690 | 182464 | -0.7% | 441 -> 436 |
+| WHACKO | 182435 | 179804 | -1.4% | 497 -> 475 |
+
+Frames with 130 or more points gain 10-14 lines (about 7-8 lines per 100
+points, below the 130-cycle estimate); frames under 50 points gain 0-2.
