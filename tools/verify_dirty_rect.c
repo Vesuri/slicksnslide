@@ -72,7 +72,7 @@ int main(int argc,char **argv)
             r->top=(unsigned short)(next()%200); r->bottom=(unsigned short)(r->top+1+next()%40);
             if(r->bottom>200) r->bottom=200;
         }
-        if(chain<2){
+        if(chain<4){
             race.dirty_row_count=1;
             race.dirty_rows[0]=(struct SlicksDirtyRows){0,0,16,4};
         }
@@ -92,12 +92,20 @@ int main(int argc,char **argv)
         for(unsigned step=0;step<12;++step,++calls) {
             short args[4]={coordinate(),coordinate(),coordinate(),coordinate()};
             if(next()%4==0) { args[2]=(short)(args[0]+1+next()%40); args[3]=(short)(args[1]+1+next()%20); }
-            if(chain<2 && step==0){args[0]=16;args[1]=(short)(2+chain);args[2]=32;args[3]=4;}
+            if(chain<4 && step==0){
+                static const short edges[4][4]={
+                    {16,2,32,4}, /* horizontal contact */
+                    {0,4,16,6},  /* vertical contact */
+                    {16,4,32,6}, /* corner contact */
+                    {8,2,24,6}   /* genuine overlap */
+                };
+                memcpy(args,edges[chain],sizeof args);
+            }
             coverage(required,args[0],args[1],args[2],args[3]);
             unsigned before=race.dirty_row_count;
             mark_dirty_rect(&race,args[0],args[1],args[2],args[3]);
-            if(chain<2 && step==0 && race.dirty_row_count!=1){
-                fprintf(stderr,"touching rectangle merge failed\n");return 1;
+            if(chain<4 && step==0 && race.dirty_row_count!=(chain==3?1:2)){
+                fprintf(stderr,"strict overlap/contact policy failed\n");return 1;
             }
             if(race.dirty_row_count<before) ++merges;
             if(before==SLICKS_DIRTY_ROW_MAX && race.dirty_row_count==1) ++fallbacks;

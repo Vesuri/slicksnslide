@@ -3,6 +3,44 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Strict-overlap dirty rectangle merging (2026-09-28)
+
+Accepted the four branch-condition changes that leave edge/corner contact
+separate while still merging actual overlap. No new area arithmetic or
+runtime storage; the 16-entry conservative overflow fallback remains.
+C and native policies match across 240000 randomized calls, with independent
+coverage, register/stack checks, horizontal/vertical/corner contact and true
+overlap cases. Host dirty-tracking, surface-effects and status-cache suites
+pass, including full pixels, stale-pixel clearing and sparse-list saturation.
+
+| Track | Parent work / worst | Strict overlap work / worst | Over 312 |
+| --- | ---: | ---: | ---: |
+| BASIC | 157113 / 365 | 156507 / 368 | 73 |
+| F1 | 182983 / 456 | 182356 / 432 | 236 |
+| CITY | 152227 / 353 | 151876 / 352 | 47 |
+| WHACKO | 160716 / 423 | 160050 / 418 | 94 |
+
+603 uninterrupted updates per track, all canonical FINAL_STATE values
+unchanged. Total work falls 0.23-0.41%; worst F1 is now update 551, not
+481/613. BASIC's maximum increases three lines. Cadence is not uniformly
+improved (WHACKO cadence sum 201581 versus 200021); do not equate this small
+CPU-work reduction to achieving 50 FPS. The parent F1 repeat maximum was
+448, so the improvement also holds against that lower repeat.
+
+Actual target capture at F1 update 481 confirms identical 16 input requests
+and 1248 converted pixels instead of 3360; strict-policy offline replay
+matches the final list exactly. Full-screen display audits pass 600 frames
+each: F1 32 actors/2076 marks, CITY 18/1480, WHACKO 5/1854. No simulation,
+draw order or retention implementation was changed; no new shadow/RETCHECK
+run is claimed. All owned emulators closed, normal build retained.
+
+Evidence: `tmp/strict-overlap-20260928-{0,1,2,3}.log`,
+`tmp/strict-overlap-{oracles,edge-oracle,host}-20260928.log`,
+`tmp/strict-overlap-audit-20260928-{1,2,3}.log`,
+`tmp/strict-overlap-publications-f1-20260928.log`. Replay new captures with
+`tools/dirty_publications.py --policy strict LOG`; historical captures use
+the default touching policy.
+
 ## F1 update-481 dirty publication replay (2026-09-28)
 
 `amiga/diag_dirty_publications.gdb` captured the initial list, all native

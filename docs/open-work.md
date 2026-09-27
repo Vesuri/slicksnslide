@@ -13,11 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh empty-draw-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 157113/365, F1 182983/456,
-CITY 152227/353, WHACKO 160716/423. An F1 repeat gives 183025/448;
-retain the conservative 456 maximum. Means are 16.2-19.5 ms; the
-worst updates need 12-32% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh strict-overlap-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 156507/368, F1 182356/432,
+CITY 151876/352, WHACKO 160050/418. Means are 16.1-19.4 ms; the
+worst updates need 11-28% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. Current CPU captures are
 `tmp/pcprof-geometry-{f1,whacko}-20260927`; their sampler overhead is not part
 of the acceptance numbers above. F1 is also slow without points.
@@ -110,12 +109,12 @@ Candidate fixes, roughly in order of expected value per effort:
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Investigate how often old and new car rectangles
   merge into excessive areas, especially at the worst-update transitions;
-  measure alternative merge policies without losing dirty coverage. Trace
-  individual dirty-rectangle publications at F1 update 481 and replay their
-  unions to explain the 112x27 region at (96,116). Include initial rectangles
-  and platform-side publications, not only calls inside the race step.
-  Separate necessary changed area from merge inflation before designing
-  another policy. HUD cell publication is not the source of this region.
+  measure alternative merge policies without losing dirty coverage. Use
+  `diag_dirty_publications.gdb` and `tools/dirty_publications.py --policy strict`
+  on the remaining maxima (especially F1 551) to distinguish necessary
+  changed area from merge inflation before designing another policy.
+  Include initial rectangles and platform-side publications, not only
+  calls inside the race step. Keep update 481 as a regression probe.
   Avoid another area-arithmetic merge policy without new evidence.
 
 ## Deferred

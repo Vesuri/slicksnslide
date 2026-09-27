@@ -5,7 +5,7 @@
 
 ; C ABI: void slicks_mark_dirty_rect(race, left, top, right, bottom)
 ; Native race_runtime.c mark_dirty_rect(): clip, widen to 16-pixel columns,
-; then repeatedly fold overlapping or touching half-open rectangles; append,
+; then repeatedly fold overlapping half-open rectangles (not edge contact); append,
 ; or union everything when all SLICKS_DIRTY_ROW_MAX entries are in use.
 ; Arguments are signed shorts promoted to int. Clobbers d0/d1/a0/a1.
 slicks_mark_dirty_rect:
@@ -58,14 +58,14 @@ slicks_mark_dirty_rect:
 	cmp.w	6(a2),d4
 	bls.s	.store_count
 .outside:
-	cmp.w	(a2),d3			; separated (touching still merges)
-	bcs.s	.next
+	cmp.w	(a2),d3			; separated or merely touching
+	bls.s	.next
 	cmp.w	4(a2),d1
-	bhi.s	.next
+	bcc.s	.next
 	cmp.w	2(a2),d4
-	bcs.s	.next
+	bls.s	.next
 	cmp.w	6(a2),d2
-	bhi.s	.next
+	bcc.s	.next
 	cmp.w	(a2),d1
 	bls.s	.union_top
 	move.w	(a2),d1

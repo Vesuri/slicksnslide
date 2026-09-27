@@ -54,6 +54,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('log', nargs='?', type=Path)
     p.add_argument('--limit', type=int, default=16)
+    p.add_argument('--policy', choices=('touching', 'strict'), default='touching',
+                   help='policy of the captured executable (default: historical touching policy)')
     p.add_argument('--self-test', action='store_true')
     args = p.parse_args()
     if args.self_test:
@@ -94,7 +96,7 @@ def main():
             raw.append((max(0, l), max(0, t), min(320, rr), min(200, b)))
             aligned.append(r)
         before = sum(map(area, rows))
-        publish(rows, r, args.limit)
+        publish(rows, r, args.limit, strict=args.policy == 'strict')
         delta = sum(map(area, rows)) - before
         counts[caller] += 1
         if delta:

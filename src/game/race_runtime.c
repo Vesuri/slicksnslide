@@ -325,7 +325,7 @@ static void mark_dirty_rect(struct SlicksRaceRuntime *race,
     rows.right = (unsigned short)right;
     rows.bottom = (unsigned short)bottom;
 
-    /* Repeatedly fold overlapping or touching half-open intervals.  Removing
+    /* Repeatedly fold overlapping half-open intervals, not edge contact. Removing
      * a match can expose another overlap, so restart after every union. */
     for (;;) {
         unsigned char merged = 0;
@@ -336,8 +336,8 @@ static void mark_dirty_rect(struct SlicksRaceRuntime *race,
                 rows.right <= existing->right &&
                 rows.bottom <= existing->bottom)
                 return;
-            if (rows.right < existing->left || rows.left > existing->right ||
-                rows.bottom < existing->top || rows.top > existing->bottom)
+            if (rows.right <= existing->left || rows.left >= existing->right ||
+                rows.bottom <= existing->top || rows.top >= existing->bottom)
                 continue;
             if (existing->left < rows.left)
                 rows.left = existing->left;
