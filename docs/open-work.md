@@ -29,26 +29,6 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Reload the copper palette only when colours change.** The race view's
-  copper list (`build_copper` in `src/platform/amiga/amiga_platform.cpp`,
-  `COPPER_LONGS` 558) spends 528 moves on all 256 AGA colours (two nibble
-  halves plus BPLCON3 bank switches) every frame, although colour
-  registers persist; the only in-race palette update found is colours
-  199..203 (`slicks_amiga_platform_update_palette` from the boundary
-  animation in `slicks_diag.c`, applied after `wait_display_blank`; confirm
-  no other in-race caller). By estimate the block occupies the copper for
-  ~9 lines per frame, contending with Chip-only CPU accesses (unmeasured). First a throwaway measurement: overwrite the first three longs
-  of the palette block (`palette_at`) with MOVE COP2LCH/COP2LCL (0x084/0x086)
-  = address of the list's final WAIT and MOVE COPJMP2 (0x08A), colours
-  wrong, and benchmark. If it is worth ~1%, implement exactly: keep the
-  jump by default; `update_palette` (and `set_view`) write the colour words
-  as now and restore the three original longs so the next frame executes
-  the whole block; after one vertical blank has passed with the block
-  enabled (checked in the main loop while the beam is in the display blank,
-  never while the copper runs the block), put the jump back. Colour changes
-  then take effect on exactly the same frame as today. Verify with a
-  palette-change fixture (boundary animation frames) that the copper list
-  words and the displayed colours match the current build frame by frame.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

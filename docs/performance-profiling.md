@@ -399,3 +399,25 @@ Full-frame display audits pass for 600 updates each on F1 (32 actors,
 2076 marks), CITY (18 actors, 1480 marks) and WHACKO (5 actors, 1854 marks):
 `tmp/audit-nativeprune-20260927-{1,2,3}.log`. All owned emulator sessions
 closed on exit; debug audio was muted without disabling emulated audio.
+
+## Palette reload cost ceiling (2026-09-27)
+
+Temporarily replaced the palette block's first three MOVEs with COP2LC and
+COPJMP2 targeting the final WAIT. This deliberately incorrect-colour build
+isolates the cost of all 528 palette MOVEs; it is not a playable candidate.
+Restored the production source afterwards. Relative to f9dcca8:
+
+| Track | Normal work / 603 | Skip palette | Normal worst | Skip worst |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC | 172561 | 171437 | 414 | 414 |
+| F1 | 228718 | 227824 | 563 | 561 |
+| CITY | 181515 | 181160 | 432 | 427 |
+| WHACKO | 178931 | 177580 | 468 | 459 |
+
+All final positions and mark counts match. Logs:
+`tmp/palette-skip-20260927-{0,1,2,3}.log`, against
+`tmp/resume-nativeprune-20260927-{0,1,2,3}.log`. Total savings are only
+0.65%, 0.39%, 0.20% and 0.76%, before adding any palette-gate bookkeeping
+or necessary reloads. This falls below the handoff's roughly 1% threshold;
+do not introduce frame-sensitive palette gating for this small upper bound.
+The existing full-palette path remains unchanged.
