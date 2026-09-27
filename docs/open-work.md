@@ -13,10 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh steering-cache-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 158948/369, F1 193476/478,
-CITY 159409/369, WHACKO 162720/420. Means are 17-21 ms; the
-worst updates need 15-35% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh retained-metadata-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 158967/369, F1 190634/468,
+CITY 157609/370, WHACKO 162708/421. Means are 17-20.3 ms; the
+worst updates need 15-33% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
 retention overhead, with track-object motion down to 1.8% of non-wait samples.
@@ -50,12 +50,18 @@ Candidate fixes, roughly in order of expected value per effort:
 
 - **Remaining F1 sprite overhead.** Group retention now avoids repeated
   rendering of overlapping stationary track sprites, but its worst updates
-  remain well over budget. Inspect repeated kept-sprite metadata writes,
-  validated draw-packet checks and rebuild/late-restoration costs; prove any
+  remain well over budget. Redundant retained-descriptor copies are removed;
+  inspect validated draw-packet checks and rebuild/late-restoration costs; prove any
   removed check redundant. Preserve atomic group retention and exact reverse
   restoration order. The post-group F1 profile attributes about 24 sampled
   lines to retention preparation versus 10 to the sprite draw chain; prioritize
   reducing repeated checks without weakening their ordering guarantees.
+  Within preparation, the archived post-group F1 capture puts 240 samples
+  in final keep/restore decisions, 189 in geometry, 91 in point conflicts
+  and 29 in flag reset. Investigate using the already validated stable
+  handle/key/asset in the decision pass; retain full descriptor checks on
+  rebuild and keep colour/frame/occlusion checks. Prove stale-entry, movement,
+  removal and group-release cases before omitting any comparison.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

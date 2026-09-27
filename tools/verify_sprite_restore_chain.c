@@ -13,7 +13,10 @@ static void writes(uc_engine *u,uc_mem_type t,uint64_t a,int n,int64_t v,void *c
 {
     (void)u;(void)t;(void)v;(void)c;
     if(a>=0xd0000 && a<0xd0000+64*300)++packet_writes;
-    for(int i=0;i<n;++i)if(a+i>=sizeof allowed || !allowed[a+i])fail("chain wrote outside its exact destinations");
+    for(int i=0;i<n;++i)if(a+i>=sizeof allowed || !allowed[a+i]) {
+        fprintf(stderr,"Unexpected chain write at 0x%llx, size %d\n",(unsigned long long)a,n);
+        fail("chain wrote outside its exact destinations");
+    }
 }
 static void actors(unsigned char *out,const struct SlicksRaceRuntime *r)
 {
@@ -46,7 +49,7 @@ int main(void)
     for(unsigned y=0;y<256;++y)be32(rows+4*y,y*320);
     check(uc_mem_write(u,0x80000,rows,sizeof rows));
     uc_hook hook;check(uc_hook_add(u,&hook,UC_HOOK_MEM_WRITE,writes,0,1,0));
-    unsigned restored=0;
+    unsigned restored=0,retained=0;
     for(unsigned trial=0;trial<384;++trial) {
         memset(&race,0,sizeof race);race.chunky=pixels;race.sprite_dirty_deferred=1;
         memset(race.sprite_dirty_previous,0xcc,sizeof race.sprite_dirty_previous);
@@ -74,6 +77,16 @@ int main(void)
             case 4: a->old_width=0;break;
             default: break;
             }
+            if(trial%2 && i%3==0 && a->saved && a->old_x>=0 && a->old_y>=0 &&
+               a->old_width && a->old_height && a->old_x+a->old_width<=320 && a->old_y+a->old_height<=200) {
+                /* Model NEXT's producer invariant: unchanged drawing has
+                 * already validated the descriptor, clearing only kind. */
+                a->retain=1;
+                __typeof__(race.sprite_dirty_previous[0]) *p=&race.sprite_dirty_previous[h];
+                p->x=a->old_x;p->y=a->old_y;p->width=a->old_width;p->height=a->old_height;
+                p->kind=0;p->asset=a->asset;p->frame=a->motion.frame;p->colour=a->colour;
+                p->priority=a->priority;p->occlusion=a->occlusion;
+            }
         }
         if(trial%31==0)head=0;
         actors(araw,&race);previous(praw,&race);
@@ -86,6 +99,15 @@ int main(void)
         unsigned stop=head;
         while(stop && (short)((trail[stop*2]<<8)|trail[stop*2+1])<0) {
             struct SlicksWeaponActor *a=&race.weapons.actors[stop];
+            if((a->retain&1) && a->saved) {
+                allowed[0xa0000+stop*164+33]=1;
+                allowed[0xb0000+stop*12+6]=1;
+                a->retain=2;race.sprite_dirty_previous[stop].kind=a->kind;
+                ++retained;stop=next[stop];continue;
+            }
+            /* The dispatcher clears retention before even an unsupported
+             * sprite returns to its general fallback. */
+            allowed[0xa0000+stop*164+33]=1;a->retain=0;
             if(!a->saved || a->old_x<0 || a->old_y<0 || !a->old_width || !a->old_height ||
                a->old_x+a->old_width>320 || a->old_y+a->old_height>200)break;
             for(unsigned y=0;y<a->old_height;++y)
@@ -112,6 +134,6 @@ int main(void)
         check(uc_mem_read(u,0xb3000,actual,200));if(memcmp(actual,race.sprite_dirty_handles,200))fail("chain dirty handles");
         check(uc_mem_read(u,0xb4000,count,2));if(((count[0]<<8)|count[1])!=race.sprite_dirty_count)fail("chain count");
     }
-    printf("Native sprite restoration chain: 384 cases, %u restorations, exact state/write bounds/fallback/ABI passed\n",restored);
+    printf("Native sprite restoration chain: 384 cases, %u restorations, %u retained, exact state/write bounds/fallback/ABI passed\n",restored,retained);
 }
 #endif

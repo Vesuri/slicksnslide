@@ -3,6 +3,43 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Retained-sprite descriptor traffic reduction (2026-09-27)
+
+The restore chain used to recopy all twelve descriptor bytes for every
+retained sprite. NEXT can only come from a validated unchanged draw or a
+validated kept draw. Both preserve every descriptor field except the kind
+marker, which unchanged drawing clears for deferred dirty handling. The
+candidate refreshes only that marker and the retention flag; it does not
+write pixels, saved backgrounds or the other descriptor fields.
+
+The restore-chain oracle now exercises retained sprites with that producer
+invariant: 384 cases, 5287 restorations, 1409 retained sprites, full state,
+exact allowed writes, fallback return and ABI. The draw-chain oracle checks
+both producers (eligible unchanged and already kept), in addition to cold,
+warm, stale-mask, changed-frame and fractional-position cases: 2688 cases,
+28548 actual draws. Both pass. The old oracles had omitted the existing
+retention-byte write from their allowed-write maps; fallback clearing and
+draw-side retention updates are now explicitly checked, not silently ignored.
+Log: `tmp/retained-metadata-oracle-20260927.log`.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 158948 / 369 | 158967 / 369 |
+| F1 | 193476 / 478 | 190634 / 468 |
+| CITY | 159409 / 369 | 157609 / 370 |
+| WHACKO | 162720 / 420 | 162708 / 421 |
+
+Parent 38198d8; logs `tmp/retained-metadata-20260927-*.log`. All final
+states match. Total work falls 1.5% on F1 and 1.1% on CITY; the other
+tracks are effectively flat. Only F1's maximum improves meaningfully.
+Accepted after all four target RETCHECK runs passed 603 updates each with
+zero surface-hash and particle-record mismatches and canonical final states
+(`tmp/metadata-retcheck-20260927-*.log`). Full-frame dirty-region audits
+pass 600 updates each on F1/CITY/WHACKO, with 32/18/5 actors and
+2076/1480/1854 marks (`tmp/metadata-audit-20260927-*.log`). Host group
+and dirty-tracking suites also pass. All owned muted emulators closed;
+the normal executable is restored after the diagnostic build.
+
 ## Exact per-car steering cache (2026-09-27)
 
 The five staged signed-word steering divisions depend on four operands,
@@ -52,6 +89,14 @@ samples fall in steering arithmetic. WHACKO still correlates with roughly
 101 sampled lines per 100 live points, including about 26 for point drawing
 and 25 for advancement. Retention preparation and point traffic remain
 better opportunities than C2P-only optimization.
+
+Assembly-address attribution within F1's 579 preparation samples gives
+240 final-decision, 189 geometry, 91 point-conflict, 29 reset, 26 guard and
+4 car-call samples. Ranges in the matching archived ELF are respectively
+5061a..506d4, 503ca..5053c, 5053c..50610, 503a4..503ca,
+50320..503a4 and 50610..5061a (hex, exclusive end). The first two groups
+represent about 10.1 and 8.0 instrumented raster lines per update. These
+are pointers for the next experiment, not additional measured savings.
 
 ## Shared particle retirement row-table experiment (2026-09-27)
 

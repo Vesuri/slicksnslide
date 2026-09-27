@@ -75,7 +75,7 @@ int main(void)
         initial_race=race;memcpy(before,pixels,sizeof before);
         unsigned original_stop=stop;
         memset(packets,0,sizeof packets);check(uc_mem_write(u,0xd0000,packets,sizeof packets));
-        for(unsigned pass=0;pass<5;++pass) {
+        for(unsigned pass=0;pass<7;++pass) {
         race=initial_race;memcpy(pixels,before,sizeof pixels);stop=original_stop;
         if(pass==2)for(unsigned h=head;h && h!=stop;h=next[h]) {
             if(race.weapons.actors[h].occlusion && race.weapons.actors[h].old_y<190) {
@@ -87,6 +87,10 @@ int main(void)
         }
         if(pass==4)for(unsigned h=head;h && h!=stop;h=next[h])
             ++race.weapons.actors[h].motion.x;
+        if(pass>=5)for(unsigned h=head;h && h!=stop;h=next[h]) {
+            race.weapons.actors[h].retain=pass==5?8:2;
+            if(pass==6)race.weapons.actors[h].saved=1;
+        }
         actors(araw,&race);previous(praw,&race);
         for(unsigned i=0;i<64;++i) {
             memcpy(cache+136*i,&race.track_sprite_visibility[i],136);
@@ -101,11 +105,14 @@ int main(void)
         unsigned pass_draws=0;
         for(unsigned h=head;h && h!=stop;h=next[h]) {
             struct SlicksWeaponActor *a=&race.weapons.actors[h];
+            allowed[0xa0000+h*164+33]=1;
+            if(pass==6) {a->retain=1;continue;}
             for(unsigned y=0;y<a->old_height;++y)memset(allowed+0x30000+(a->old_y+y)*320+a->old_x,1,a->old_width);
             allowed[0xa0000+h*164+32]=1;memset(allowed+0xa0000+h*164+36,1,a->old_width*a->old_height);
             allowed[0xb0000+h*12+6]=1;
             memset(allowed+0xd0000+(h&63)*300,1,300);
             draw_weapon_actor_general(&race,h);++drawn;++pass_draws;
+            if(pass==5)a->retain=1;
         }
         memcpy(expected,pixels,sizeof expected);actors(araw,&race);previous(praw,&race);
         unsigned args[]={0x18000,0xa0000,0xb0000,0xc2000,0xc0000,0x30000,0xb1000,0xb2000,head,0xd0000};
@@ -127,5 +134,5 @@ int main(void)
         if(!pass && pass_draws && !packet_writes)fail("cold packets were not populated");
         }
     }
-    printf("Native sprite drawing chain: 1920 cold/warm/stale-mask/changed-frame/fractional-position cases, %u draws, exact pixels/state/write bounds/fallback/ABI passed\n",drawn);
+    printf("Native sprite drawing chain: 2688 cold/warm/stale-mask/changed-frame/fractional-position/eligible/kept cases, %u draws, exact pixels/state/write bounds/fallback/ABI passed\n",drawn);
 }

@@ -266,18 +266,15 @@ slicks_restore_sprite_chain:
 	movea.l d6,a3
 	adda.w d0,a3
 	; sprite_retention.inc: RETAIN_NEXT keeps the saved sprite on screen.
-	; Record only the pre-simulation description; no pixels, no dirty entry.
+	; NEXT is granted only by unchanged drawing (or a validated kept draw).
+	; That preserves every previous-description field except its kind marker,
+	; which unchanged painting clears to suppress deferred dirty rectangles.
+	; No pixels, no dirty entry, and no redundant metadata copies.
 	btst #0,33(a2)
 	beq.s .restore_now
 	tst.b 32(a2)
 	beq.s .restore_now
-	move.l 26(a2),(a3)
-	move.w 30(a2),4(a3)
 	move.b 21(a2),6(a3)
-	move.b 20(a2),7(a3)
-	move.b 16(a2),8(a3)
-	move.b 24(a2),9(a3)
-	move.w 22(a2),10(a3)
 	move.b #2,33(a2)		; RETAIN_KEPT
 	bra.s .restored
 .restore_now:
