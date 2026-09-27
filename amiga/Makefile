@@ -160,6 +160,11 @@ obj/car_emission.o: $(REPO)/src/game/car_emission.s obj/race_offsets.i | obj
 obj/track_motion.o: $(REPO)/src/game/track_motion.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
+OBJECTS += obj/dirty_prune.o
+
+obj/dirty_prune.o: $(REPO)/src/game/dirty_prune.s obj/race_offsets.i | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
 obj/dirty_rect.o: $(REPO)/src/game/dirty_rect.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 

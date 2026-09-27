@@ -366,3 +366,36 @@ Three tracks regress in total work, and the small F1 total saving does not
 improve its worst frame. Reverted the source experiment; display audits
 were therefore not run for this rejected draft. Fewer nominal accesses on
 one path are not sufficient evidence of a real-workload improvement.
+
+## Native sparse-pixel pruning (2026-09-27)
+
+First measured removing the prune call entirely. Both sparse and rectangle
+C2P read the final chunky image, so this is safe, but duplicated pixel
+conversions still cost enough to regress BASIC. Kept pruning instead:
+`src/game/dirty_prune.s` computes the union bounds once in registers and
+rejects outside pixels before visiting individual rectangles. It preserves
+the C result exactly, including ordering, unused bytes and the untouched
+tail of the list. No actor ordering, retention or timing boundary changes.
+
+| Track | Control work / 603 | No prune | Native prune | Worst: control -> native |
+| --- | ---: | ---: | ---: | --- |
+| BASIC | 172965 | 173392 | 172561 | 418 -> 414 |
+| F1 | 230702 | 229474 | 228718 | 567 -> 563 |
+| CITY | 182465 | 181772 | 181515 | 435 -> 432 |
+| WHACKO | 179791 | 179386 | 178931 | 475 -> 468 |
+
+Logs: `tmp/resume-{control,noprune,nativeprune}-20260927-{0,1,2,3}.log`.
+All final car positions and mark counts match. Native pruning improves
+total work by 0.23%, 0.86%, 0.52% and 0.48% respectively. Mean work times
+are 18.34, 24.31, 19.30 and 19.02 ms; maxima are 26.54, 36.09, 27.69 and
+30.00 ms. These small gains do not meet the 20 ms worst-update target.
+
+`make verify-dirty-prune` runs 12000 native lists against the unchanged C
+reference, checking half-open edges, empty/full lists, duplicates, unsigned
+outliers, stable compaction, all surrounding bytes and the preserved ABI.
+`verify-dirty-tracking` and `verify-planar-writes` also pass (3467 planar
+writer cases plus the original DOS-derived particle lifecycle checks).
+Full-frame display audits pass for 600 updates each on F1 (32 actors,
+2076 marks), CITY (18 actors, 1480 marks) and WHACKO (5 actors, 1854 marks):
+`tmp/audit-nativeprune-20260927-{1,2,3}.log`. All owned emulator sessions
+closed on exit; debug audio was muted without disabling emulated audio.

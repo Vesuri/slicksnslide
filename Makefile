@@ -1230,6 +1230,16 @@ build/verify_dirty_rect: tools/verify_dirty_rect.c src/game/race_runtime.c src/g
 verify-dirty-rect: build/dirty_rect.bin build/verify_dirty_rect build/offsets/race_offsets.i
 	build/verify_dirty_rect build/dirty_rect.bin build/offsets/race_offsets.i
 
+build/dirty_prune.bin: src/game/dirty_prune.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
+
+build/verify_dirty_prune: tools/verify_dirty_prune.c src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-dirty-prune
+verify-dirty-prune: build/dirty_prune.bin build/verify_dirty_prune build/offsets/race_offsets.i
+	build/verify_dirty_prune build/dirty_prune.bin build/offsets/race_offsets.i
+
 build/car_draw.bin: tools/car_draw_test.s src/game/car_draw.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 

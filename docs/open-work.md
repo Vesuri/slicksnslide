@@ -9,9 +9,10 @@ Publish/push only when explicitly requested.
 Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
-audio and rendering order. Status at 787d589 (`amiga/bench_tracks.sh`,
-outer-only work lines per 603 updates / worst update): BASIC 173064/414,
-F1 230657/567, CITY 182464/436, WHACKO 179804/475. Means are 19-24 ms; the
+audio and rendering order. Status after native sparse pruning
+(`amiga/bench_tracks.sh resume-nativeprune-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 172561/414, F1 228718/563,
+CITY 181515/432, WHACKO 178931/468. Means are 18-24 ms; the
 worst updates need 25-45% cuts. BASIC, CITY and WHACKO worst updates are
 particle-heavy (130-170 live points, about 1.1 lines per point on top of a
 ~270-line base); F1 is slow even without points (~150 lines per update of
@@ -27,20 +28,6 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
-
-  (`src/game/race_runtime.c`, called from `slicks_diag.c` before
-  `slicks_chunky_pixels_to_amiga`) tests every dirty pixel against every
-  pending C2P rectangle in C: O(pixels x rects), ~40-50 cycles per test.
-  It was a win when rectangles were large (sparse conversions 76 -> 11,
-  d9c7358); now a heavy frame has ~48 pixels and 3 rectangles and prunes
-  only 8, so the scan (~6500 cycles) costs more than the ~8 sparse
-  conversions it avoids (~200 cycles each). Converting a pixel that a
-  rectangle also converts is harmless: both read the final chunky surface
-  and the rectangle pass runs afterwards. First A/B simply skipping the
-  call (keep the function and its `verify-dirty-tracking` cases for other
-  callers). If some frames still benefit, replace it with a native prune
-  that loads the rectangle bounds once, rejects pixels outside the union
-  bounding box with four register compares, and only then scans the list.
 
 - **Reload the copper palette only when colours change.** The race view's
   copper list (`build_copper` in `src/platform/amiga/amiga_platform.cpp`,

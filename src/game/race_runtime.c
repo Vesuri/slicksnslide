@@ -4060,6 +4060,8 @@ void slicks_race_award_track(struct SlicksRaceRuntime *race)
     if(race->track_reward) race->track_reward(race);
 }
 
+/* Native target: dirty_prune.s; keep this independent reference for tests. */
+#if !defined(__m68k__)
 void slicks_race_prune_dirty_pixels(struct SlicksRaceRuntime *race)
 {
     unsigned out=0;
@@ -4075,6 +4077,7 @@ void slicks_race_prune_dirty_pixels(struct SlicksRaceRuntime *race)
     }
     race->dirty_pixel_count=(unsigned short)out;
 }
+#endif
 
 void slicks_race_clear_dirty_rows(struct SlicksRaceRuntime *race)
 {
