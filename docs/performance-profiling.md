@@ -3,6 +3,35 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Empty restoration-layer wrappers (2026-09-28)
+
+After reversing the authoritative actor chains, skip empty priority heads
+0, 1, 2, 4 and 5 before calling restoration wrappers. Priority 3 remains
+interleaved with cars; higher priorities already had this guard. Legacy
+non-track traversal is unchanged. The RETCHECK reference explicitly calls
+the old unconditional wrappers, rather than comparing the shortcut with
+itself. No actors are skipped when their head is nonzero, including saved
+retired actors awaiting restoration.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 156507 / 368 | 155903 / 364 |
+| F1 | 182356 / 432 | 182215 / 433 |
+| CITY | 151876 / 352 | 151791 / 352 |
+| WHACKO | 160050 / 418 | 159453 / 416 |
+
+603 uninterrupted updates and identical canonical final states on all four
+tracks. Savings are small (0.06-0.39% total); F1's maximum increases one
+line. Native actor-order, host dirty-tracking and sprite-group tests pass.
+Three 600-update display audits pass (F1 32 actors/2076 marks, CITY
+18/1480, WHACKO 5/1854). Four target RETCHECK runs each pass 603 surface
+and particle comparisons and 700 status-cache checks, with zero mismatches;
+F1/CITY geometry checks are 575/603 with zero mismatches. Logs:
+`tmp/empty-restore-20260928-{0,1,2,3}.log`,
+`tmp/empty-restore-oracles-20260928.log`,
+`tmp/empty-restore-audit-20260928-{1,2,3}.log`, and
+`tmp/empty-restore-retcheck-20260928-{0,1,2,3}.log`.
+
 ## Strict-overlap dirty rectangle merging (2026-09-28)
 
 Accepted the four branch-condition changes that leave edge/corner contact

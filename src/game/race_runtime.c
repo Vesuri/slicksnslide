@@ -2451,15 +2451,35 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
     if(profile) race->profile_marker(11);
     for(int p=race->actor_order_max;p>=6;--p)
         if(race->actor_order_head[p]) restore_trail_priority(race,3,p);
-    restore_trail_particles(race,2);
-    restore_trail_priority(race,3,4);
+#if defined(SLICKS_RETENTION_CHECK)
+    /* Independently exercise the old unconditional wrapper calls during
+     * the reference update, including empty layers. */
+    if(slicks_race_disable_retention) {
+        restore_trail_particles(race,2);
+        restore_trail_priority(race,3,4);
+        if(profile) race->profile_marker(12);
+        restore_layered_cars(race,logical);
+        if(profile) race->profile_marker(13);
+        restore_trail_priority(race,3,2);
+        restore_shadows(race,logical);
+        restore_trail_priority(race,3,1);
+        restore_trail_particles(race,0);
+        if(profile) race->profile_marker(14);
+        race->actor_order_ready=0;
+        return;
+    }
+#endif
+    /* The reversed chains are authoritative, including saved retired
+     * actors. Empty heads have no pixels or saved state to restore. */
+    if(race->actor_order_head[5])restore_trail_particles(race,2);
+    if(race->actor_order_head[4])restore_trail_priority(race,3,4);
     if(profile) race->profile_marker(12);
     restore_layered_cars(race,logical);
     if(profile) race->profile_marker(13);
-    restore_trail_priority(race,3,2);
+    if(race->actor_order_head[2])restore_trail_priority(race,3,2);
     restore_shadows(race,logical);
-    restore_trail_priority(race,3,1);
-    restore_trail_particles(race,0);
+    if(race->actor_order_head[1])restore_trail_priority(race,3,1);
+    if(race->actor_order_head[0])restore_trail_particles(race,0);
     if(profile) race->profile_marker(14);
     race->actor_order_ready=0;
 }

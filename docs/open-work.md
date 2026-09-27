@@ -13,9 +13,9 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh strict-overlap-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 156507/368, F1 182356/432,
-CITY 151876/352, WHACKO 160050/418. Means are 16.1-19.4 ms; the
+(`amiga/bench_tracks.sh empty-restore-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 155903/364, F1 182215/433,
+CITY 151791/352, WHACKO 159453/416. Means are 16.1-19.4 ms; the
 worst updates need 11-28% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. Current CPU captures are
 `tmp/pcprof-geometry-{f1,whacko}-20260927`; their sampler overhead is not part
@@ -32,6 +32,15 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
+
+- **Avoid redundant particle coordinate stores.** The draw routine already
+  compares old and new integer positions. On equality, branch past the two
+  old-position stores while retaining saved-under, colour, flags and dirty
+  semantics. Local draft `tmp/particle-same-position-20260928.s` passes
+  the native draw oracle (2048 single, 256 batch, 256 chain cases) assembled
+  with production `-no-opt`. Apply, benchmark all tracks, and audit display
+  output before accepting; the draft has not been applied to production or
+  measured on the target.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
