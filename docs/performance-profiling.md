@@ -3,6 +3,34 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected composed HUD cell publication (2026-09-28)
+
+Composed each changed 52x14 HUD cell from its original background and
+original font into temporary new-output storage (not a framebuffer shadow),
+then compared/published changed longwords and their bounds. Out-of-cell
+text retained the original direct path. Native tests passed 12000 restore
+and 12000 publication cases, including alignment, canaries and preserved
+registers; host dirty/stale-pixel tests and 768 full-screen DOS HUD
+transitions passed. Target display/retention audits were not run: timings
+already rejected this candidate. Diagnostic reference-path changes were
+drafted but not exercised.
+
+| Track | Accepted work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 157113 / 365 | 157704 / 368 |
+| F1 | 182983 / 456 | 183536 / 449 |
+| CITY | 152227 / 353 | 152755 / 359 |
+| WHACKO | 160716 / 423 | 161253 / 422 |
+
+All runs completed 603 updates with identical canonical FINAL_STATE.
+Total work increased on every track. F1's candidate maximum still spent
+74 lines in C2P; the inspected update-481 rectangles include a 112x27
+region at (96,116), not the HUD. Do not attribute that spike to HUD cell
+publication. Logs: `tmp/hud-compose-20260928-*.log` and
+`tmp/hud-compose-oracles-20260928.log`. Reverted the experiment; local
+archive: `tmp/hud-compose-rejected-20260928.patch` and
+`tmp/hud-compose-test-20260928.s`.
+
 ## Rejected area-aware dirty-rectangle merging (2026-09-28)
 
 Tried merging intersecting/touching rectangles only if bounding-box area

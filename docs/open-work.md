@@ -110,14 +110,12 @@ Candidate fixes, roughly in order of expected value per effort:
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Investigate how often old and new car rectangles
   merge into excessive areas, especially at the worst-update transitions;
-  measure alternative merge policies without losing dirty coverage. Next
-  candidate: compose the complete updated 52x14 HUD cell from its original
-  background and original text into temporary output storage, then publish
-  changed bounds. This is not an old-frame shadow: do not copy the previous
-  framebuffer. Preserve the original full clearing semantics, including
-  stale weapon pixels outside text, and fall back for out-of-cell text.
-  Compare against original DOS full-screen HUD transitions and the injected
-  stale-pixel tests; benchmark composing/comparing overhead as well as C2P.
+  measure alternative merge policies without losing dirty coverage. Trace
+  individual dirty-rectangle publications at F1 update 481 and replay their
+  unions to explain the 112x27 region at (96,116). Include initial rectangles
+  and platform-side publications, not only calls inside the race step.
+  Separate necessary changed area from merge inflation before designing
+  another policy. HUD cell publication is not the source of this region.
   Avoid another area-arithmetic merge policy without new evidence.
 
 ## Deferred
