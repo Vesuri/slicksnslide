@@ -3,6 +3,69 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Producer-invalidated sprite geometry cache (2026-09-27)
+
+The native retention pass can reuse its geometry entries when no producer
+changed their source keys. It still resets per-update conflicts, counts down
+settling, touches moved-entry rectangles, processes particle/car conflicts,
+and checks frame/colour/occlusion before retaining pixels. No actor update
+or rendering-order step is removed.
+
+Writer inventory: race-start/pause invalidation; actor allocation and
+configuration (including flag activation inside the car update); native
+track-object placement; generic kind-3 actor movement, expiry/retirement,
+and transitions across the frame-0..3 eligibility boundary. Navigation
+count, permanent track handles and loaded assets are immutable between
+starts. Point allocation uses only free slots; a formerly live track slot
+must retire first, which invalidates geometry. Within-union animation,
+colour and occlusion remain separately checked. Fractional movement may
+conservatively invalidate even when the pixel key stays the same.
+
+The reference advancement path conservatively dirties live kind-3 actors.
+The shadow harness saves/restores the derived dirty byte separately so
+reference invalidation cannot mask a missing native write. Exact dirty-byte
+equality is not required: RETCHECK independently scans every cached source
+key on cache hits, without shadow execution. The host diagnostic test
+injects nine missing invalidations (X/Y, asset, priority, state, kind, frame
+eligibility, handle and navigation count), all detected, and accepts four
+non-geometric changes. Native advancement passes 8192 random/single-slot
+pools plus fourteen isolated producer cases with independently required
+invalidations, unchanged state and ABI. Isolated cases include each motion
+axis/acceleration, expiry, frame eligibility in both directions, signed
+position/frame wrap, and unchanged within-union animation; one actor cannot
+mask another's missing write by setting the shared dirty flag first.
+Existing group, restore-chain and draw-chain oracles also pass.
+
+Initial outer-only benchmark against 7219259 (same control code as d4762ea):
+
+| Track | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 158981 / 368 | 159206 / 370 |
+| F1 | 189303 / 469 | 184400 / 459 |
+| CITY | 156635 / 365 | 153611 / 362 |
+| WHACKO | 162635 / 424 | 162975 / 422 |
+
+All final states match. F1 improves 2.6% total work, CITY 1.9%; other
+tracks are effectively flat. The worst updates remain over budget.
+Logs: `tmp/geometry-cache-20260927-*.log` and
+`tmp/geometry-cache-{host,final-oracles}-20260927.log`.
+
+All four tracks pass 603 RETCHECK updates with zero chunky-hash or particle
+mismatches and canonical final states. F1 exercises 575 clean geometry
+cache hits and CITY 603, with zero source-key mismatches; BASIC/WHACKO have
+too few track actors to enable sprite retention. Evidence:
+`tmp/geometry-retcheck-20260927-*.log`. Full-frame display audits pass
+600 updates each on F1/CITY/WHACKO (32/18/5 actors, 2076/1480/1854 marks):
+`tmp/geometry-audit-20260927-*.log`. Shadow sites 3 and 4 each pass 700 calls
+per track on all four tracks, zero state mismatches/race errors and matching
+final states (`tmp/geometry-shadow-20260927-*.log`); F1 exercises 27 moving
+track-object probes. The final normal-build timing repeat
+(`tmp/geometry-final-20260927-*.log`) reproduces the gain: work/worst
+159205/369, 184429/459, 153622/361 and 162979/423, with canonical final
+states. Accepted after these gates. All owned muted emulators are closed;
+the normal executable is restored. All four means are now below 20 ms,
+but worst updates still require 14-32% cuts; this is not attainment of 50 FPS.
+
 ## Whole-gameplay compiler footprint experiment (2026-09-27)
 
 Against d4762ea's accepted `GAMEPLAY_CFLAGS=-O3` build, force-rebuild

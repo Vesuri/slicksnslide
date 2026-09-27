@@ -264,6 +264,7 @@ static short allocate_weapon_actor(struct SlicksRaceRuntime *race,int asset,
 {
     short h=slicks_actor_allocate(&race->weapons.slots,1);
     if(!h) return 0;
+    slicks_retention.geometry_dirty=1;
     struct SlicksWeaponActor *a=&race->weapons.actors[h];
     reset_weapon_actor(a);
     a->kind=asset<0?2:1;a->asset=asset<0?0:(unsigned char)asset;
@@ -276,6 +277,7 @@ static void configure_weapon_actor(struct SlicksRaceRuntime *race,short handle,
     short x,short y,short vx,short vy,short life,unsigned priority,unsigned mask)
 {
     if(handle<=0 || handle>=SLICKS_ACTOR_CAPACITY) return;
+    slicks_retention.geometry_dirty=1;
     struct SlicksWeaponActor *a=&race->weapons.actors[handle];
     a->motion.x=(short)((unsigned short)x<<6);a->motion.y=(short)((unsigned short)y<<6);
     a->motion.vx=vx;a->motion.vy=vy;a->motion.ax=a->motion.ay=0;
@@ -292,6 +294,9 @@ static __attribute__((unused)) void advance_weapon_actors_reference(struct Slick
         if(!race->weapons.slots.state[h]) continue;
         struct SlicksWeaponActor *a=&race->weapons.actors[h];
         signed char *state=&race->weapons.slots.state[h];
+        /* The diagnostic/reference path may invalidate conservatively.
+         * Native cache-hit correctness is audited without shadow execution. */
+        if(a->kind==3) slicks_retention.geometry_dirty=1;
         /* Reserved car/shadow slots are advanced by their existing owners. */
         if(!a->kind && !a->motion.lifetime) continue;
         if(*state==-2) { *state=0;a->kind=0;continue; }

@@ -73,6 +73,14 @@ slicks_prepare_sprite_retention:
 	bne.s	.cached
 	moveq	#1,d5
 .cached:
+	btst	#0,d5
+	bne.s	.scan_geometry
+	tst.b	RET_GEOMETRY_DIRTY(a5)
+	bne.s	.scan_geometry
+	move.b	RET_COUNT(a5),d6
+	bra.w	.geometry_done
+.scan_geometry:
+	clr.b	RET_GEOMETRY_DIRTY(a5)
 	lea	RACE_TRACK_ACTOR_HANDLES(a4),a1
 	lea	RACE_ACTORS(a4),a6
 	move.w	RACE_NAVIGATION_ACTOR_COUNT(a4),d7
@@ -163,6 +171,7 @@ slicks_prepare_sprite_retention:
 	movea.l	(sp)+,a1
 .geo_next:
 	dbf	d7,.geo
+.geometry_done:
 	btst	#0,d5
 	bne.s	.rebuild
 	cmp.b	RET_COUNT(a5),d6

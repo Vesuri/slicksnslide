@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define SLICKS_RETENTION_CHECK
 #include "../src/game/race_runtime.c"
 static struct SlicksRaceRuntime race;
 static unsigned char pixels[64000],base[64000],expected[64000];
@@ -52,6 +53,38 @@ static void restore_expected(unsigned h){
         expected[(a->old_y+y)*320+a->old_x+x]=a->saved_under[y*5+x];
 }
 int main(void){
+    /* Deliberately omit invalidation after every source-key mutation. The
+     * diagnostic scan must expose it independently of native producers. */
+    for(unsigned t=0;t<13;++t){
+        setup(0);slicks_retention.geometry_dirty=0;
+        slicks_geometry_cache_checks=slicks_geometry_cache_mismatches=0;
+        audit_retention_geometry(&race);
+        require(slicks_geometry_cache_checks==1 && !slicks_geometry_cache_mismatches,"clean geometry audit",t);
+        struct SlicksWeaponActor *a=&race.weapons.actors[handles[0]];
+        switch(t){
+        case 0:a->motion.x+=64;break;
+        case 1:a->motion.y+=64;break;
+        case 2:a->asset=4;break;
+        case 3:++a->priority;break;
+        case 4:race.weapons.slots.state[handles[0]]=0;break;
+        case 5:a->kind=0;break;
+        case 6:a->motion.frame=4;break;
+        case 7:race.track_actor_handles[0]=0;break;
+        case 8:--race.navigation.actor_count;break;
+        case 9:++a->motion.x;break; /* fraction does not alter geometry */
+        case 10:a->motion.frame=1;break; /* same animation union */
+        case 11:++a->colour;break; /* validated separately before drawing */
+        case 12:++a->occlusion;break;
+        }
+        audit_retention_geometry(&race);
+        require(slicks_geometry_cache_mismatches==(t<9),"detect missing geometry invalidation",t);
+        slicks_retention.geometry_dirty=1;
+        audit_retention_geometry(&race);
+        require(slicks_geometry_cache_checks==2,"dirty geometry bypasses cache audit",t);
+    }
+    setup(0);slicks_retention.geometry_dirty=0;
+    configure_weapon_actor(&race,handles[0],42,43,0,0,0,6,0);
+    require(slicks_retention.geometry_dirty,"configuration invalidates geometry",0);
     for(unsigned t=0;t<1024;++t){
         setup(t);unsigned selected=t%5,group=slicks_retention.group_of_handle[handles[selected]],restored[12],n=0;
         for(unsigned i=12;i;--i){unsigned h=order[i-1];if(slicks_retention.group_of_handle[h]==group){restore_expected(h);restored[n++]=h;}}
@@ -108,6 +141,6 @@ int main(void){
         require(!slicks_retention.valid && !slicks_retention.group_count,"handoff invalidation",t);
         for(unsigned i=0;i<12;++i)require(!race.weapons.actors[handles[i]].retain,"handoff keep bits",t);
     }
-    puts("Sprite groups: 1024 priority/handle permutations; transitive groups, exact reverse saved-under restoration, atomic eligibility, rebuild/release/clipping/invalidation and metadata preservation pass");
+    puts("Sprite groups: 1024 priority/handle permutations; transitive groups, exact reverse saved-under restoration, atomic eligibility, rebuild/release/clipping/invalidation and metadata preservation pass; geometry audit catches 9 missing invalidations and accepts 4 non-geometric changes");
     return 0;
 }

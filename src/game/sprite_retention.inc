@@ -27,6 +27,19 @@
  * covers that actor's next restoration and any permanent mark it bakes
  * there. Shadows, weapon sprites, Arcade mode and the countdown disable
  * retention; so does a pause handoff (slicks_race_invalidate_retention).
+ *
+ * Geometry is rescanned only after producer invalidation. Race start/pause
+ * invalidates the complete cache; actor configuration (including flag
+ * activation) and native track placement dirty it. Generic native actor
+ * advancement dirties it on kind-3 movement, expiry and transitions across
+ * the frame-0..3 listing boundary. Handles/navigation count and track assets
+ * are immutable between race starts. Point allocation cannot steal a live
+ * track slot: it uses only free slots, whose prior retirement dirtied the
+ * cache. Reallocation to a weapon sprite also invalidates conservatively.
+ * Animation inside 0..3, colour and occlusion are checked separately by the
+ * final keep/restore decision. Cache hits still age the settling countdown
+ * and touch moved-entry conflict rectangles. RETCHECK independently scans
+ * all source keys on every cache hit to detect omitted invalidations.
  */
 #define RETAIN_NEXT 1
 #define RETAIN_KEPT 2
@@ -44,6 +57,33 @@ _Static_assert(sizeof(struct SlicksRetentionEntry)==20,"native retention layout"
 _Static_assert(SLICKS_POINT_HEIGHT==184,"retention row map");
 struct SlicksRetentionState slicks_retention;
 unsigned char slicks_race_disable_retention; /* diagnostic reference steps */
+
+#ifdef SLICKS_RETENTION_CHECK
+volatile unsigned long slicks_geometry_cache_checks,slicks_geometry_cache_mismatches;
+/* Independently scan source fields even on native cache hits. This catches
+ * missing producer invalidations, including ones a shadow reference might
+ * otherwise mask by setting shared derived metadata first. */
+static void audit_retention_geometry(const struct SlicksRaceRuntime *race)
+{
+    const struct SlicksRetentionState *s=&slicks_retention;
+    if(!s->valid || s->geometry_dirty) return;
+    unsigned count=0,mismatch=0;
+    ++slicks_geometry_cache_checks;
+    for(unsigned i=0;i<race->navigation.actor_count;++i) {
+        unsigned h=race->track_actor_handles[i];
+        if(!h || h>=SLICKS_ACTOR_CAPACITY) continue;
+        const struct SlicksWeaponActor *a=&race->weapons.actors[h];
+        if(a->kind!=3 || race->weapons.slots.state[h]<=0 || a->asset>=5 ||
+            (unsigned char)a->motion.frame>=4) continue;
+        const struct SlicksRetentionEntry *e=&s->entries[count++];
+        unsigned key=(((unsigned)(unsigned short)a->motion.x<<16)|
+            (unsigned short)a->motion.y)&0xffc0ffc0U;
+        if(e->handle!=h || e->asset!=a->asset || e->priority!=a->priority || e->key!=key)
+            mismatch=1;
+    }
+    if(mismatch || count!=s->count) ++slicks_geometry_cache_mismatches;
+}
+#endif
 
 void slicks_retention_late(struct SlicksRaceRuntime *,unsigned,unsigned);
 void slicks_retention_release(struct SlicksRaceRuntime *);
@@ -370,6 +410,9 @@ static __attribute__((unused)) void prepare_sprite_retention_reference(struct Sl
 
 static void prepare_sprite_retention(struct SlicksRaceRuntime *race)
 {
+#ifdef SLICKS_RETENTION_CHECK
+    audit_retention_geometry(race);
+#endif
 #if defined(__m68k__) && !defined(SLICKS_REFERENCE_RETENTION)
     extern void slicks_prepare_sprite_retention(struct SlicksRaceRuntime *);
     slicks_prepare_sprite_retention(race);
@@ -384,6 +427,7 @@ void slicks_race_invalidate_retention(struct SlicksRaceRuntime *race)
     if(!race) return;
     for(unsigned h=0;h<SLICKS_ACTOR_CAPACITY;++h) race->weapons.actors[h].retain=0;
     slicks_retention.valid=0;
+    slicks_retention.geometry_dirty=1;
     slicks_retention.group_count=0;
     __builtin_memset(slicks_retention.group_of_handle,0,sizeof slicks_retention.group_of_handle);
 }

@@ -4,6 +4,7 @@
 	xdef	slicks_update_track_actor_motion
 	xref	slicks_track_actor_probe
 	xref	slicks_track_material_sample
+	xref	slicks_retention
 	include	"race_offsets.i"
 
 ; Exact signed C division of \1 by 100; quotient in \2, \3 scratch.
@@ -124,6 +125,7 @@ slicks_update_track_actor_motion:
 	beq.s	.configured
 	cmpi.w	#ACTOR_CAPACITY,d0
 	bcc.s	.configured
+	move.b	#1,slicks_retention+RET_GEOMETRY_DIRTY
 	lea	RACE_WEAPON_SLOTS(a4),a0
 	move.b	#1,(a0,d0.w)
 	mulu.w	#ACTOR_SIZE,d0
@@ -362,6 +364,7 @@ slicks_advance_weapon_actors:
 .live:
 	cmpi.b	#-2,d0
 	bne.s	.advance
+	bsr.w	.geometry_changed
 	clr.b	(a2)
 	clr.b	ACTOR_KIND(a3)
 	bra.w	.skip
@@ -378,10 +381,15 @@ slicks_advance_weapon_actors:
 	move.w	#1,ACTOR_MOTION_LIFETIME(a3)
 	bra.s	.move
 .expire:
+	bsr.w	.geometry_changed
 	neg.b	d0
 	move.b	d0,(a2)
-	bra.s	.retired
+	bra.w	.retired
 .move:
+	cmpi.b	#4,ACTOR_MOTION_FRAME(a3)
+	bcs.s	.frame_was_listed
+	bsr.w	.geometry_changed
+.frame_was_listed:
 	; All remaining writes are no-ops for this exact state. Lifetime has
 	; already been processed above. Test animation first so moving/animated
 	; objects take the ordinary path cheaply; no cached ownership assumption.
@@ -396,10 +404,18 @@ slicks_advance_weapon_actors:
 	add.w	ACTOR_MOTION_AX(a3),d1
 	move.w	d1,ACTOR_MOTION_VX(a3)
 	add.w	d1,ACTOR_MOTION_X(a3)
+	tst.w	d1
+	beq.s	.x_unchanged
+	bsr.w	.geometry_changed
+.x_unchanged:
 	move.w	ACTOR_MOTION_VY(a3),d1
 	add.w	ACTOR_MOTION_AY(a3),d1
 	move.w	d1,ACTOR_MOTION_VY(a3)
 	add.w	d1,ACTOR_MOTION_Y(a3)
+	tst.w	d1
+	beq.s	.y_unchanged
+	bsr.w	.geometry_changed
+.y_unchanged:
 	move.b	ACTOR_MOTION_PERIOD(a3),d2
 	ext.w	d2
 	cmp.w	ACTOR_MOTION_AGE(a3),d2
@@ -415,6 +431,10 @@ slicks_advance_weapon_actors:
 	blt.s	.aged
 	clr.b	ACTOR_MOTION_FRAME(a3)
 .aged:
+	cmpi.b	#4,ACTOR_MOTION_FRAME(a3)
+	bcs.s	.frame_is_listed
+	bsr.w	.geometry_changed
+.frame_is_listed:
 	tst.b	d2
 	beq.s	.retired
 	addq.w	#1,ACTOR_MOTION_AGE(a3)
@@ -428,4 +448,14 @@ slicks_advance_weapon_actors:
 	dbf	d7,.slot
 .advanced:
 	movem.l	(sp)+,d2-d7/a2-a3
+	rts
+
+; Only kind-3 sprites participate in the track geometry cache. Fractional
+; moves conservatively invalidate too; animation within frames 0..3 does
+; not change its union rectangle. Preserve every data/address register.
+.geometry_changed:
+	cmpi.b	#3,ACTOR_KIND(a3)
+	bne.s	.geometry_done
+	move.b	#1,slicks_retention+RET_GEOMETRY_DIRTY
+.geometry_done:
 	rts

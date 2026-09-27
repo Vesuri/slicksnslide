@@ -438,6 +438,7 @@ struct SlicksRetentionState {
     unsigned char group_head[SLICKS_TRACK_ACTOR_MAX+1];
     unsigned char group_of_handle[SLICKS_ACTOR_CAPACITY];
     unsigned char group_next[SLICKS_ACTOR_CAPACITY];
+    unsigned char geometry_dirty; /* producers changed a geometry/listing key */
 };
 extern struct SlicksRetentionState slicks_retention;
 extern unsigned char slicks_race_disable_retention;

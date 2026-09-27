@@ -108,7 +108,8 @@ static long absolute_long(long value);
  * native routine runs. A mismatch captures the first differing kilobyte from
  * both versions and continues from the reference result. The window is the
  * leading hot working state (cars, counters, RNG); a site may only write
- * inside it. Never enabled in normal builds. */
+ * inside it, except derived retention geometry invalidation (saved separately
+ * and independently audited by RETCHECK). Never enabled in normal builds. */
 #define SLICKS_SHADOW_WINDOW 57344U
 #define SLICKS_SHADOW_BLOCKS (SLICKS_SHADOW_WINDOW/1024U)
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLICKS_SHADOW_WINDOW &&
@@ -198,8 +199,10 @@ static int shadow_native_done(struct SlicksRaceRuntime *race,unsigned site)
 } while(0)
 #define SLICKS_SHADOW_CALL(site,reference,native) do { \
     if(!(SLICKS_SHADOW_SITES & (1UL<<(site))) || !slicks_shadow_state) { native; break; } \
+    unsigned char shadow_geometry_dirty_=slicks_retention.geometry_dirty; \
     __builtin_memcpy(slicks_shadow_state,race,SLICKS_SHADOW_WINDOW); \
-    reference; shadow_reference_done(race); native; \
+    reference; shadow_reference_done(race); \
+    slicks_retention.geometry_dirty=shadow_geometry_dirty_; native; \
     int shadow_block_=shadow_native_done(race,site); \
     if(shadow_block_>=0) { \
         reference; \

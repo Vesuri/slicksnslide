@@ -31,6 +31,7 @@ int main(int argc,char **argv)
         "ACTOR_MOTION_AX","ACTOR_MOTION_AY","ACTOR_MOTION_LIFETIME","ACTOR_MOTION_AGE",
         "ACTOR_MOTION_FRAME","ACTOR_MOTION_PERIOD","ACTOR_MOTION_FRAMES"};
     unsigned o[18];for(unsigned i=0;i<18;++i)o[i]=off(argv[2],keys[i]);
+    unsigned dirty_offset=off(argv[2],"RET_GEOMETRY_DIRTY");
     enum {CODE=0x10000,RACE=0x100000,STACK=0x80000,STOP=0x9000,IMAGE=65536};
     static unsigned char before[IMAGE],expected[IMAGE],got[IMAGE];
     static struct SlicksRaceRuntime r;
@@ -41,9 +42,10 @@ int main(int argc,char **argv)
     const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,
         UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
-    for(unsigned trial=0;trial<8192;++trial) {
+    for(unsigned trial=0;trial<8192+14;++trial) {
         memset(before,0xa7,sizeof before);
-        r.weapons.slots.high_water=1+trial%200;r.actor_page=trial%4;
+        r.weapons.slots.high_water=trial>=8192 || trial%17==0?2:1+trial%200;
+        r.actor_page=trial>=8192?1:trial%4;
         w(before+o[0]+o[1],r.weapons.slots.high_water);before[o[6]]=r.actor_page;
         for(unsigned h=0;h<200;++h) {
             struct SlicksWeaponActor *a=&r.weapons.actors[h];
@@ -67,6 +69,27 @@ int main(int argc,char **argv)
                 if(k==7)a->motion.period=(signed char)(1u<<(trial%8));
                 if(k>=8)a->motion.lifetime=0;
             }
+            if(trial>=8192 && h==1) {
+                /* Isolate each producer: another actor must not hide a
+                 * missing dirty write by setting the shared flag first. */
+                a->motion=(struct SlicksActorMotion){0};a->motion.frames=4;
+                a->kind=3;r.weapons.slots.state[h]=1;r.weapons.trail_index[h]=-1;
+                switch(trial-8192) {
+                case 1:a->motion.vx=64;break;
+                case 2:a->motion.vy=64;break;
+                case 3:a->motion.ax=64;break;
+                case 4:a->motion.ay=64;break;
+                case 5:a->motion.frame=3;a->motion.age=2;a->motion.period=1;a->motion.frames=5;break;
+                case 6:a->motion.frame=4;break;
+                case 7:a->motion.lifetime=1;break;
+                case 8:r.weapons.slots.state[h]=-2;break;
+                case 9:a->motion.x=63;a->motion.vx=1;break;
+                case 10:a->motion.x=32767;a->motion.vx=1;break;
+                case 11:a->motion.frame=-1;a->motion.age=2;a->motion.period=1;break;
+                case 12:a->motion.frame=3;a->motion.age=2;a->motion.period=1;break;
+                case 13:a->motion.period=1;break;
+                }
+            }
             unsigned char *p=before+o[3]+h*o[4];
             for(unsigned k=0;k<8;++k)w(p+o[7+k],(unsigned short)*fields[k]);
             p[o[15]]=a->motion.frame;p[o[16]]=a->motion.period;p[o[17]]=a->motion.frames;
@@ -74,6 +97,7 @@ int main(int argc,char **argv)
             w(before+o[2]+2*h,(unsigned short)r.weapons.trail_index[h]);
         }
         memcpy(expected,before,sizeof expected);advance_weapon_actors_reference(&r);
+        unsigned must_invalidate=0;
         for(unsigned h=0;h<200;++h) {
             struct SlicksWeaponActor *a=&r.weapons.actors[h];
             const short fields[]={a->motion.x,a->motion.y,a->motion.vx,a->motion.vy,
@@ -82,8 +106,16 @@ int main(int argc,char **argv)
             for(unsigned k=0;k<8;++k)w(p+o[7+k],(unsigned short)fields[k]);
             p[o[15]]=a->motion.frame;p[o[16]]=a->motion.period;p[o[17]]=a->motion.frames;
             p[o[5]]=a->kind;expected[o[0]+h]=r.weapons.slots.state[h];
+            const unsigned char *old=before+o[3]+h*o[4];
+            unsigned was=old[o[5]]==3 && (signed char)before[o[0]+h]>0 && old[o[15]]<4;
+            unsigned now=a->kind==3 && r.weapons.slots.state[h]>0 && (unsigned char)a->motion.frame<4;
+            if(was!=now || (was && (old[o[7]]!=p[o[7]] ||
+                (old[o[7]+1]&0xc0)!=(p[o[7]+1]&0xc0) || old[o[8]]!=p[o[8]] ||
+                (old[o[8]+1]&0xc0)!=(p[o[8]+1]&0xc0))))must_invalidate=1;
         }
         ck(uc_mem_write(u,RACE,before,sizeof before));
+        unsigned char dirty=0;
+        ck(uc_mem_write(u,0x30000+dirty_offset,&dirty,1));
         unsigned char args[8];l(args,STOP);l(args+4,RACE);
         unsigned sp=STACK-8;ck(uc_mem_write(u,sp,args,8));ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         for(unsigned i=0;i<11;++i){unsigned v=0xa5000000u+i+trial;ck(uc_reg_write(u,regs[i],&v));}
@@ -92,6 +124,13 @@ int main(int argc,char **argv)
         if(pc!=STOP||sp!=STACK-4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=0xa5000000u+i+trial)return 1;}
         ck(uc_mem_read(u,RACE,got,sizeof got));
+        ck(uc_mem_read(u,0x30000+dirty_offset,&dirty,1));
+        if(must_invalidate && dirty!=1) {
+            fprintf(stderr,"trial=%u missed geometry invalidation\n",trial);return 1;
+        }
+        if((trial==8192 || trial>=8192+12) && dirty) {
+            fprintf(stderr,"trial=%u unnecessarily invalidated stable geometry\n",trial);return 1;
+        }
         if(memcmp(got,expected,sizeof got)) {
             for(unsigned i=0;i<IMAGE;++i)if(got[i]!=expected[i]) {
                 fprintf(stderr,"trial=%u offset=%u got=%u expected=%u\n",trial,i,got[i],expected[i]);break;
@@ -99,6 +138,6 @@ int main(int argc,char **argv)
             return 1;
         }
     }
-    uc_close(u);puts("Native actor advance: 8192 pools, inert/near-inert, signed overflow, expiry, animation, canaries and ABI match reference");
+    uc_close(u);puts("Native actor advance: 8192 pools plus 14 isolated geometry cases; inert/near-inert, signed overflow, expiry, animation, required geometry invalidations, canaries and ABI match reference");
     return 0;
 }

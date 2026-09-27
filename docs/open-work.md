@@ -13,13 +13,13 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh retention-stable-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 158981/368, F1 189303/469,
-CITY 156635/365, WHACKO 162635/424. Means are 16.6-20.1 ms; the
-worst updates need 15-34% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh geometry-final-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 159205/369, F1 184429/459,
+CITY 153622/361, WHACKO 162979/423. Means are 16.3-19.6 ms; the
+worst updates need 14-32% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
-points; the fresh F1 profile still shows significant sprite rendering and
-retention overhead, with track-object motion down to 1.8% of non-wait samples.
+points; refresh its profile after the geometry-cache change before
+attributing the remaining stage costs.
 Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
 `docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
@@ -48,27 +48,14 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Remaining F1 sprite overhead.** Group retention now avoids repeated
-  rendering of overlapping stationary track sprites, but its worst updates
-  remain well over budget. Redundant retained-descriptor copies are removed;
-  inspect validated draw-packet checks and rebuild/late-restoration costs; prove any
-  removed check redundant. Preserve atomic group retention and exact reverse
-  restoration order. The post-group F1 profile attributes about 24 sampled
-  lines to retention preparation versus 10 to the sprite draw chain; prioritize
-  reducing repeated checks without weakening their ordering guarantees.
-  Within preparation, the archived post-group F1 capture puts 240 samples
-  in final keep/restore decisions, 189 in geometry, 91 in point conflicts
-  and 29 in flag reset. Stable handle/key/asset checks are now reused in
-  the decision pass; rebuilds retain full descriptor checks. Investigate
-  producer-side geometry invalidation to avoid the repeated geometry scan,
-  but inventory every writer first, including generic actor advancement,
-  initialization, kind/state retirement and moving track-object setup.
-  Also cover `activate_track_flags` (configuration changes during car
-  updates), not just the track-motion pass. Preserve the 16-update settling
-  countdown and moved-entry conflict touches on cache hits. Derived dirty
-  metadata must be restored/compared by the shadow harness, or independently
-  audited against an unconditional geometry scan; do not let the reference
-  run clear or set metadata that hides a missing native invalidation.
+- **Remaining F1 sprite overhead.** Refresh CPU profiles after the geometry
+  cache before choosing another change. Inspect conflict processing, final
+  keep/restore decisions, draw-packet validation and group rebuild/late
+  restoration at the worst updates. Preserve atomic group retention and
+  exact reverse restoration order; prove any removed check redundant.
+  Archived post-group profiles predate the geometry cache and must not be
+  presented as current stage costs. Keep the independent geometry-cache
+  audit enabled in RETCHECK when changing any source-field writer.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at
@@ -94,16 +81,17 @@ Candidate fixes, roughly in order of expected value per effort:
   the grid maintenance costs well under the ~250-350 cycles saved per kept
   point.
 
-- **Remaining C inside `slicks_race_step` (~37 lines base).** Split the
+- **Remaining C inside `slicks_race_step`.** Refresh and split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:
   per-car `prepare_car_motion`, `update_actor_layer`, `finish_car_update`,
   `apply_throttle`, `display_time_centiseconds`,
   checkpoint and clock code. Per the cost model, only rewrite code whose
   executed volume can shrink (hoist per-update invariants out of the
   per-car/per-tick loops, drop repeated large-offset loads, fuse the per-car
-  tail into one pass over the car record); do not transliterate. Steering's
-  staged arithmetic is now cached exactly by all four inputs. Verify via
-  a shadow site per replaced function.
+  tail into one pass over the car record); do not transliterate. Investigate
+  repeated signed X/Y-to-pixel divisions across helper calls, caching only
+  if measured savings outweigh exact input-key checks. Verify via a shadow
+  site per replaced function.
 
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Investigate how often old and new car rectangles

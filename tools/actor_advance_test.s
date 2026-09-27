@@ -1,3 +1,4 @@
+slicks_retention equ $30000
 	include "src/game/track_motion.s"
 ; Not entered by this test; an accidental call must not silently succeed.
 slicks_track_actor_probe:

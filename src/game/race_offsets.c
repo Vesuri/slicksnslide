@@ -154,6 +154,7 @@ void slicks_race_offsets(void)
     OFFSET(ENTRY_BOTTOM, struct SlicksRetentionEntry, bottom);
     OFFSET(RET_COUNT, struct SlicksRetentionState, count);
     OFFSET(RET_VALID, struct SlicksRetentionState, valid);
+    OFFSET(RET_GEOMETRY_DIRTY, struct SlicksRetentionState, geometry_dirty);
     OFFSET(RET_CANDIDATES, struct SlicksRetentionState, candidates);
     OFFSET(RET_ENTRIES, struct SlicksRetentionState, entries);
     OFFSET(RET_ROWS, struct SlicksRetentionState, rows);

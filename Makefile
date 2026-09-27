@@ -1527,7 +1527,7 @@ build/verify_pc_sampler: tools/verify_pc_sampler.c | build
 verify-pc-sampler: build/pc_sampler_test.bin build/verify_pc_sampler
 	build/verify_pc_sampler build/pc_sampler_test.bin
 
-build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_runtime.c src/game/race_runtime.h src/game/sprite_retention.inc | build
+build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_runtime.c src/game/race_runtime.h src/game/sprite_retention.inc src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 .PHONY: verify-retention-groups
