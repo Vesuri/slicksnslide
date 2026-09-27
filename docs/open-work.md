@@ -111,12 +111,14 @@ Candidate fixes, roughly in order of expected value per effort:
   16-pixel columns. Investigate how often old and new car rectangles
   merge into excessive areas, especially at the worst-update transitions;
   measure alternative merge policies without losing dirty coverage. Next
-  candidate: merge touching/overlapping rectangles only when the bounding
-  rectangle's area is no larger than the two input areas plus a small
-  conversion-call allowance. Keep containment fast paths and the bounded
-  list's conservative capacity fallback. Check the native routine against
-  its C policy and independently verify pixel coverage; benchmark the cost
-  of the area arithmetic too, rather than assuming less area is faster.
+  candidate: compose the complete updated 52x14 HUD cell from its original
+  background and original text into temporary output storage, then publish
+  changed bounds. This is not an old-frame shadow: do not copy the previous
+  framebuffer. Preserve the original full clearing semantics, including
+  stale weapon pixels outside text, and fall back for out-of-cell text.
+  Compare against original DOS full-screen HUD transitions and the injected
+  stale-pixel tests; benchmark composing/comparing overhead as well as C2P.
+  Avoid another area-arithmetic merge policy without new evidence.
 
 ## Deferred
 

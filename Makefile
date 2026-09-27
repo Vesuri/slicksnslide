@@ -1221,7 +1221,7 @@ build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h | 
 
 build/dirty_rect.bin: src/game/dirty_rect.s build/offsets/race_offsets.i | build
 	printf '\tinclude "src/game/dirty_rect.s"\n' > build/offsets/dirty_rect_test.s
-	$(VASM) -quiet -m68020 -Fbin -Ibuild/offsets -I. -o $@ build/offsets/dirty_rect_test.s
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ build/offsets/dirty_rect_test.s
 
 build/verify_dirty_rect: tools/verify_dirty_rect.c src/game/race_runtime.c src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@

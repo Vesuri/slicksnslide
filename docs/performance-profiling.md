@@ -3,6 +3,38 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected area-aware dirty-rectangle merging (2026-09-28)
+
+Tried merging intersecting/touching rectangles only if bounding-box area
+was at most the two input areas plus 32 pixels of call allowance. Kept
+containment, equal-span fast paths and conservative full-list collapse.
+C and native policies agreed on 240000 randomized calls. Added an
+independent coverage oracle (20 column bits per row) to check that every
+requested pixel remains covered, plus clipping/alignment/threshold cases.
+The broader host dirty/rendering suite passed as well.
+
+| Track | Parent work / worst | First candidate | Cold-register-save refinement |
+| --- | ---: | ---: | ---: |
+| BASIC | 157113 / 365 | 158321 / 369 | 158325 / 369 |
+| F1 | 182983 / 456 | 184197 / 458 | 184084 / 457 |
+| CITY | 152227 / 353 | 154056 / 356 | 154008 / 356 |
+| WHACKO | 160716 / 423 | 161879 / 423 | 161850 / 421 |
+
+Parent 380664f (same gameplay as 93399ea), 603 updates per track, all
+canonical final states. The refinement saves extra registers only in the
+unequal-span arithmetic helper and returns comparison flags across MOVEM
+and RTS; its native oracle also passed all 240000 calls. It recovers a
+little work, but both versions are slower overall on every track. Reject
+this policy: less permissive merging does not repay its checks here.
+No target display/retention audit is claimed for these rejected builds.
+
+Logs: `tmp/area-merge{,-cold}-20260928-{0,1,2,3}.log`,
+`tmp/area-merge-oracles-20260928.log`, and
+`tmp/area-merge-cold-oracle-20260928.log`. The refinement is archived locally
+in `tmp/area-merge-20260928.patch`; production code is reverted. Retain the
+independent coverage tests on the original merge policy and align its
+Unicorn assembly setting with the production `-no-opt` setting.
+
 ## Rejected two-argument particle-chain entry (2026-09-28)
 
 Replaced the production ten-argument call with a race-pointer/first-handle

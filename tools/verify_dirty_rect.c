@@ -29,6 +29,21 @@ static short coordinate(void)
     return (short)(next()%321);
 }
 
+/* Independent coverage oracle: one bit per aligned 16-pixel column,
+ * not the C/native merge algorithm. Overlap and duplicate conversion are
+ * permitted, but every requested pixel must remain covered. */
+static void coverage(uint32_t rows[200],int left,int top,int right,int bottom)
+{
+    if(left<0)left=0;
+    if(top<0)top=0;
+    if(right>320)right=320;
+    if(bottom>200)bottom=200;
+    if(left>=right || top>=bottom)return;
+    unsigned first=(unsigned)left/16,last=((unsigned)right+15)/16;
+    uint32_t mask=((1U<<last)-1U)^((1U<<first)-1U);
+    for(int y=top;y<bottom;++y)rows[y]|=mask;
+}
+
 int main(int argc,char **argv)
 {
     if(argc!=3) return 2;
@@ -57,6 +72,15 @@ int main(int argc,char **argv)
             r->top=(unsigned short)(next()%200); r->bottom=(unsigned short)(r->top+1+next()%40);
             if(r->bottom>200) r->bottom=200;
         }
+        if(chain<2){
+            race.dirty_row_count=1;
+            race.dirty_rows[0]=(struct SlicksDirtyRows){0,0,16,4};
+        }
+        uint32_t required[200]={0};
+        for(unsigned i=0;i<race.dirty_row_count;++i){
+            const struct SlicksDirtyRows *r=&race.dirty_rows[i];
+            coverage(required,r->left,r->top,r->right,r->bottom);
+        }
         unsigned char image[SLICKS_DIRTY_ROW_MAX*8];
         for(unsigned i=0;i<SLICKS_DIRTY_ROW_MAX;++i) {
             const unsigned short v[4]={race.dirty_rows[i].left,race.dirty_rows[i].top,
@@ -68,8 +92,13 @@ int main(int argc,char **argv)
         for(unsigned step=0;step<12;++step,++calls) {
             short args[4]={coordinate(),coordinate(),coordinate(),coordinate()};
             if(next()%4==0) { args[2]=(short)(args[0]+1+next()%40); args[3]=(short)(args[1]+1+next()%20); }
+            if(chain<2 && step==0){args[0]=16;args[1]=(short)(2+chain);args[2]=32;args[3]=4;}
+            coverage(required,args[0],args[1],args[2],args[3]);
             unsigned before=race.dirty_row_count;
             mark_dirty_rect(&race,args[0],args[1],args[2],args[3]);
+            if(chain<2 && step==0 && race.dirty_row_count!=1){
+                fprintf(stderr,"touching rectangle merge failed\n");return 1;
+            }
             if(race.dirty_row_count<before) ++merges;
             if(before==SLICKS_DIRTY_ROW_MAX && race.dirty_row_count==1) ++fallbacks;
             if(race.dirty_row_count==before) ++contained;
@@ -95,9 +124,20 @@ int main(int argc,char **argv)
                 for(unsigned k=0;k<4;++k) if(got[i*8+k*2]*256U+got[i*8+k*2+1]!=v[k]) {
                     fprintf(stderr,"row mismatch call=%lu entry=%u field=%u\n",calls,i,k); return 1; }
             }
+            uint32_t actual[200]={0};
+            for(unsigned i=0;i<count;++i){
+                unsigned v[4];for(unsigned k=0;k<4;++k)v[k]=got[i*8+k*2]*256U+got[i*8+k*2+1];
+                if(v[0]>=v[2] || v[1]>=v[3] || v[2]>320 || v[3]>200 || ((v[0]|v[2])&15)){
+                    fprintf(stderr,"invalid output rectangle call=%lu\n",calls);return 1;
+                }
+                coverage(actual,(int)v[0],(int)v[1],(int)v[2],(int)v[3]);
+            }
+            for(unsigned y=0;y<200;++y)if(required[y]&~actual[y]){
+                fprintf(stderr,"lost dirty coverage call=%lu y=%u\n",calls,y);return 1;
+            }
         }
     }
-    printf("Native dirty rectangles: %lu calls match C (%lu merges, %lu full-list fallbacks, %lu unchanged counts)\n",
+    printf("Native dirty rectangles: %lu calls match C and independent coverage (%lu merges, %lu full-list fallbacks, %lu unchanged counts)\n",
         calls,merges,fallbacks,contained);
     return 0;
 }
