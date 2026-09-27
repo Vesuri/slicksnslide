@@ -1517,5 +1517,15 @@ build/verify_point_restore: tools/verify_point_restore.c | build
 verify-point-restore: build/point_restore.bin build/verify_point_restore
 	build/verify_point_restore build/point_restore.bin build/offsets/race_offsets.i
 
+build/pc_sampler_test.bin: tools/pc_sampler_test.s src/platform/amiga/pc_sampler.s | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -I. -o $@ $<
+
+build/verify_pc_sampler: tools/verify_pc_sampler.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-pc-sampler
+verify-pc-sampler: build/pc_sampler_test.bin build/verify_pc_sampler
+	build/verify_pc_sampler build/pc_sampler_test.bin
+
 clean:
 	rm -rf build

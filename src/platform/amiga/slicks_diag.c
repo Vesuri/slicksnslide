@@ -344,6 +344,8 @@ volatile unsigned long g_slicks_pc_sample_count;
 volatile unsigned long g_slicks_pc_sample_capacity;
 volatile unsigned long g_slicks_pc_sample_missed;
 volatile unsigned long g_slicks_pc_sample_period = 0x2545f491UL;
+volatile unsigned short g_slicks_pc_sample_frame = 0xffff;
+volatile unsigned long g_slicks_pc_sample_first_frame;
 volatile unsigned char *g_slicks_pc_sample_timer;
 volatile unsigned char g_slicks_pc_sampling, g_slicks_pc_sampler_bit = 0xff;
 static struct Library *g_slicks_pc_ciab;
@@ -5108,8 +5110,14 @@ int main(void)
                 profile ? slicks_diag_profile_raster_time() : 0;
             unsigned long frame_start = profile_line_at;
             unsigned char bench_racing = race->racing;
-            if (g_slicks_pc_sampling && bench_racing)
+            if (g_slicks_pc_sampling && bench_racing) {
                 pc_sampler_start();
+                if (!g_slicks_diag_bench_frames)
+                    g_slicks_pc_sample_first_frame=race->frame_count+1;
+                /* Match this update's WORK_SAMPLE index. The completed-frame
+                 * counter increments only after its work has finished. */
+                g_slicks_pc_sample_frame=(unsigned short)g_slicks_diag_bench_frames;
+            }
             if (g_slicks_diag_profile_all && bench_racing) {
                 if (g_slicks_diag_bench_previous) {
                     g_slicks_diag_bench_cadence_sum +=
@@ -5381,6 +5389,9 @@ int main(void)
                 g_slicks_diag_profile_diag_vblanks =
                     platform.vblank_count - profile_at;
                 g_slicks_diag_profile_diag_lines = now - profile_line_at;
+                /* Exclude benchmark aggregation and between-update polling
+                 * from the current update's CPU profile. */
+                if (g_slicks_pc_sampling) g_slicks_pc_sample_frame=0xffff;
                 g_slicks_diag_profile_total_vblanks =
                     g_slicks_diag_profile_step_vblanks +
                     g_slicks_diag_profile_audio_vblanks +

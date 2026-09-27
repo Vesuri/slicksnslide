@@ -1,6 +1,6 @@
 	section	code,code
 	xdef	slicks_pc_sampler_handler
-	xref	g_slicks_diag_bench_frames
+	xref	g_slicks_pc_sample_frame
 	xref	g_slicks_pc_samples
 	xref	g_slicks_pc_sample_count
 	xref	g_slicks_pc_sample_capacity
@@ -14,7 +14,8 @@
 ; period so samples cannot phase-lock to the display beam, then finds the
 ; level-6 exception frame (SR.w, PC.l, format/vector $0078) on the
 ; supervisor stack. Samples are 8 bytes: pc.l, measured-frame index.w,
-; stack offset.b, SR high byte.b. Only measured frames 1..602 are kept.
+; stack offset.b, SR high byte.b. The explicit active-window index matches
+; WORK_SAMPLE (0..703); $ffff excludes work outside the measured update.
 slicks_pc_sampler_handler:
 	movem.l	d2-d3,-(sp)
 	move.l	g_slicks_pc_sample_period,d0	; xorshift32 jitter
@@ -35,9 +36,9 @@ slicks_pc_sampler_handler:
 	move.b	d0,(a0)
 	lsr.w	#8,d0
 	move.b	d0,$100(a0)
-	move.l	g_slicks_diag_bench_frames,d1
-	subq.l	#1,d1
-	cmpi.l	#602,d1
+	moveq	#0,d1
+	move.w	g_slicks_pc_sample_frame,d1
+	cmpi.w	#704,d1
 	bcc.s	.done
 	lea	12(sp),a0			; above saved d2/d3 and return
 	moveq	#95,d2

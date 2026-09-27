@@ -9,7 +9,7 @@ mean raster lines per update, the zero-particle intercept and the slope per
 100 live particles (one sample is about 25.4 lines: the sampler period
 averages 1155 E-clock ticks). Wait loops are listed but excluded from totals.
 """
-import argparse, bisect, collections, os, re, struct, subprocess
+import argparse, bisect, collections, os, re, struct, subprocess, sys
 
 TC = os.path.expanduser('~/.local/opt/bin/m68k-amiga-elf-')
 LINES_PER_SAMPLE = 25.4
@@ -41,6 +41,8 @@ def main():
         addrs = [s[0] for s in syms]
         by_name = {s[1]: s[0] for s in syms}
         text = open(stem + '.log', errors='replace').read()
+        if 'PC_FRAME_INDEX=active-window' not in text:
+            print(f'WARNING: {path}: legacy completed-frame tags; particle correlations are approximate',file=sys.stderr)
         toff = int(re.search(r'TEXT_BASE=0x([0-9a-f]+)', text).group(1), 16) - by_name['slicks_race_step']
         cb = re.search(r'CODE_BASE=0x([0-9a-f]+)', text)
         coff = int(cb.group(1), 16) - by_name['slicks_advance_particles'] if cb else toff

@@ -3,6 +3,61 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Corrected CPU-sample frame attribution (2026-09-27)
+
+The old IRQ handler tagged samples with `completed_updates - 1`, although
+the completed-update counter advances only after the current work. Most
+work samples were therefore tagged one update behind, and post-work
+benchmark aggregation was also sampled. This does **not** change any
+uninterrupted WORK_SUM or maximum-work measurement, but earlier narrow-frame
+profiles and particle correlations are approximate. Whole-window historical
+shares also include benchmark bookkeeping; do not mistake its removal
+from sampling for a game speedup.
+
+The diagnostic now publishes an explicit active-window index at update
+entry and $ffff after the work timer stops. The handler accepts indices
+0..703, including the first and last measured updates, and ignores inactive
+intervals. Logs identify the new convention with
+`PC_FRAME_INDEX=active-window first=98`. The analysis tools warn for older
+captures; the summary's default includes all 603 measured updates. Its
+`--frames` filter is one-based within that window, not a race-frame number:
+race frame 613 is index 516 in this interface.
+
+`verify-pc-sampler` passes 1536 cases: exact first/last/boundary tags,
+inactive exclusion, valid/invalid exception frames, buffer capacity, timer
+jitter writes, untouched bytes and register/stack preservation. Full target
+captures cover every index 0..602 with no missed samples and canonical
+final states: BASIC 8435, F1 12542, CITY 8382, WHACKO 8847 samples.
+Files: `tmp/pcprof-indexed-{0,f1,2,3}-20260927.{log,bin,elf}`. All runs
+use normal presentation statistics off and close their muted emulators.
+
+Fresh F1 has 9113 non-wait samples. C2P is 450 (4.9%), the inlined race
+step 967 (10.6%), sprite draw chain 636 (7.0%), car integration 562 (6.2%),
+retention preparation 514 (5.6%), wheel emission 418 (4.6%), sprite restore
+chain/helper 517 (5.7%), point draw 316 (3.5%), and shared point advance
+266 (2.9%). Within the inlined step, motion preparation has 140 samples,
+steering 75, the per-car tail 67, update-loop glue 55 and layer update 55.
+No single remaining routine explains the required cut.
+
+Point-count regression gives approximately 88/90/99/100 additional sampled
+raster lines per 100 live points on BASIC/F1/CITY/WHACKO. These are
+instrumented correlations, not causal per-point costs or normal timings;
+they cannot explain retirement/compaction and HUD transition costs alone.
+The sampler adds roughly 11% work and is never used for the acceptance
+timing. Seven-update windows around BASIC 219, F1 551/613 and WHACKO 685
+contain only about 110-128 non-wait samples each: useful for locating groups
+of work, not precise single-frame percentages. CITY's end window is shorter
+and its update 700 also includes the final diagnostic snapshot.
+
+The uninterrupted post-correction control is
+`tmp/indexed-control-20260927-*.log`: work/worst 159466/370,
+208162/484, 162940/372, 163130/420, with canonical final states. Total
+work is essentially unchanged from 6569d64 (within 0.05%), but F1's maximum
+moves from 475 to 484 and back to update 613. This is not a speedup claim;
+use the fresh control for subsequent candidates and keep both F1 transitions
+in the regression set. Small peak changes do not establish a robust budget
+margin. No owned emulator remains after these runs.
+
 ## Consecutive point restoration (2026-09-27)
 
 The ordered restoration loop now has a native candidate for consecutive

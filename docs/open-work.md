@@ -13,10 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh point-restore-abi-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 159419/371, F1 208059/475,
-CITY 162949/373, WHACKO 163109/422. Means are 17-22 ms; the
-worst updates need 16-35% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh indexed-control-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 159466/370, F1 208162/484,
+CITY 162940/372, WHACKO 163130/420. Means are 17-22 ms; the
+worst updates need 16-36% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
 retention overhead, with track-object motion down to 1.8% of non-wait samples.
@@ -34,12 +34,14 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 219 (371 lines), CITY 700 (373 lines),
-  F1 551 (475 lines) and WHACKO 685 (422 lines). Retain the prior
-  CITY 506/F1 613 and BASIC 409/F1 482/WHACKO 688 transitions as regression probes.
+  Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
+  to target BASIC update 219 (370 lines), CITY 506 (372 lines),
+  F1 613 (484 lines) and WHACKO 685 (420 lines). Retain CITY 700,
+  F1 551 and BASIC 409/F1 482/WHACKO 688 as regression probes.
   Pre/post particle counts and dirty regions for all four are recorded in
-  the profiling evidence. Refresh the CPU sample breakdown: retirement
-  and compaction can cause work despite a low final live count.
+  the profiling evidence. Retirement and compaction can cause work despite
+  a low final live count. Narrow windows have few samples: use them to
+  locate groups, not to claim precise single-frame percentages.
   Use uninterrupted timings and the CIA-B sampler; debugger stops are
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
@@ -49,6 +51,13 @@ Candidate fixes, roughly in order of expected value per effort:
   draft in `tmp/dirty_prune_single.s` passes the 12000-case native oracle.
   Benchmark against the committed control before accepting it; retain
   stable sparse-list order, exact half-open coverage and untouched tails.
+
+- **F1 sprite overhead and overlapping groups.** Its sprite draw/restore
+  and retention work remains much larger than BASIC's. Investigate keeping
+  overlapping stationary track sprites as a group, with group-wide
+  invalidation and exact reverse-order late restoration. Never simply remove
+  the existing isolation check. Also inspect repeated kept-sprite metadata
+  writes and validated draw-packet checks; prove any removed check redundant.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

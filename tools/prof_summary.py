@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
-"""Summarize amiga/prof_sample.sh PC samples from the measured race window.
+"""Summarize target-side CIA-B samples or legacy debugger PC samples.
 
-  tools/prof_summary.py tmp/prof-A.log [tmp/prof-B.log ...]
+  tools/prof_summary.py tmp/pcprof-A.bin [tmp/pcprof-B.bin ...]
       [--elf amiga/out/SlicksDiag.elf] [--lines FUNC] [--callers FUNC]
       [--frames LO:HI] [--top N]
 
-Samples are wall-clock spaced SIGINT stops, so shares estimate emulated
-time including DMA contention. Wait loops are reported, not hidden.
+CIA-B .bin files come from amiga/pc_profile.sh and pair with matching .log
+and .elf files. Wait loops are reported, not hidden. Legacy SIGINT text logs
+are also supported, but those samples are phase-biased at frame boundaries.
+
+For corrected CIA-B input (PC_FRAME_INDEX=active-window in the log), --frames
+is a ONE-BASED MEASURED-WINDOW index, not the race frame number. The standard
+603-update benchmark covers race frames 98..700: race frame 613 is
+--frames 516:516. Older binaries tagged the preceding completed update;
+their per-frame attribution and particle-count correlations are approximate.
+Legacy text logs instead filter the race-frame numbers printed in the log.
 """
 import argparse, bisect, collections, os, re, subprocess, sys
 
@@ -40,7 +48,8 @@ def main():
     ap.add_argument('--callers', action='append', default=[])
     ap.add_argument('--inlined', action='append', default=[],
                     help='split FUNC samples by innermost inlined function')
-    ap.add_argument('--frames', default='1:602')
+    ap.add_argument('--frames', default='1:603',
+                    help='inclusive LO:HI; binary: one-based measured-window indices, text: race frames')
     ap.add_argument('--top', type=int, default=45)
     ap.add_argument('--work', default=None,
                     help='LO:HI measured work lines filter')
@@ -74,6 +83,8 @@ def main():
             return None
         if binary:
             import struct
+            if 'PC_FRAME_INDEX=active-window' not in text:
+                print(f'WARNING: {log}: legacy completed-frame tags; per-frame attribution is approximate',file=sys.stderr)
             data = open(log, 'rb').read()
             parts = {int(m.group(1)): int(m.group(2)) for m in
                      re.finditer(r'WORK_SAMPLE index=(\d+) lines=\d+ particles=(\d+)', text)}

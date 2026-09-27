@@ -12,6 +12,7 @@ commands
   printf "LIVE_STATS=%u (dirty-area/sparse/audio snapshots valid only when 1)\n",g_slicks_diag_live_stats
   printf "FINAL_STATE marks=%lu x=%ld,%ld,%ld,%ld y=%ld,%ld,%ld,%ld\n",g_slicks_diag_skidmarks,g_slicks_diag_car_x[0],g_slicks_diag_car_x[1],g_slicks_diag_car_x[2],g_slicks_diag_car_x[3],g_slicks_diag_car_y[0],g_slicks_diag_car_y[1],g_slicks_diag_car_y[2],g_slicks_diag_car_y[3]
   printf "PC_SAMPLES count=%lu capacity=%lu missed=%lu timer_bit=%u\n",g_slicks_pc_sample_count,g_slicks_pc_sample_capacity,g_slicks_pc_sample_missed,g_slicks_pc_sampler_bit
+  printf "PC_FRAME_INDEX=active-window first=%lu\n",g_slicks_pc_sample_first_frame
   set $sample=0
   while $sample<g_slicks_diag_bench_frames && $sample<704
     printf "WORK_SAMPLE index=%u lines=%lu particles=%u\n",$sample,g_slicks_diag_bench_work_samples[$sample],g_slicks_diag_bench_particle_samples[$sample]
