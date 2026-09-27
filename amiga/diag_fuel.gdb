@@ -26,7 +26,9 @@ commands 2 3
     if g_slicks_diag_service_requests[$car] && g_slicks_diag_refuel_frames[$car] && g_slicks_diag_service_departures[$car]
       set $stops = $stops + 1
     end
-    if g_slicks_diag_finished[$car] && g_slicks_diag_lap[$car] == 5
+    # Original completion ranks lapped drivers too; the visible lap counter
+    # is not a finish predicate (verify-race-completion runs the DOS branch).
+    if g_slicks_diag_finished[$car]
       set $finished = $finished + 1
     end
     set $position = g_slicks_diag_finish_position[$car]

@@ -19,6 +19,7 @@ commands 2 3
   set $repairs = 0
   set $damaged = 0
   set $finished = 0
+  set $positions = 0
   while $car < 4
     printf "DAMAGE_CAR=%u PEAK=%u REPAIR_FRAMES=%u FUEL=%d LAP=%u FINISHED=%u\n", $car, g_slicks_diag_damage_peak[$car], g_slicks_diag_repair_frames[$car], g_slicks_diag_fuel[$car], g_slicks_diag_lap[$car], g_slicks_diag_finished[$car]
     set $state = &$raceptr->cars[$car]
@@ -27,15 +28,20 @@ commands 2 3
     if g_slicks_diag_damage_peak[$car] >= 40
       set $damaged = $damaged + 1
     end
-    if g_slicks_diag_finished[$car] && g_slicks_diag_lap[$car] == 5
+    # Finish ranks, not a fixed visible lap, are the DOS completion contract.
+    if g_slicks_diag_finished[$car]
       set $finished = $finished + 1
+    end
+    set $position = g_slicks_diag_finish_position[$car]
+    if $position >= 1 && $position <= 4
+      set $positions = $positions | (1 << $position)
     end
     set $car = $car + 1
   end
   printf "DAMAGE_RACE FRAME=%u COMPLETE=%u STATUS_CHECKS=%u DAMAGE_CHECKS=%u PIXEL_FAILURES=%u\n", g_slicks_diag_race_frame, g_slicks_diag_race_complete, g_slicks_diag_status_checks, g_slicks_diag_damage_status_checks, g_slicks_diag_status_failures
   printf "DAMAGE_COLLISIONS CARS=%u TRACK=%u\n", g_slicks_diag_collisions, g_slicks_diag_track_collisions
   printf "DAMAGE_SETUP SCALE=%d ENABLED=%u PEAK_IMPACT=%u\n", $raceptr->damage_scale, $raceptr->damage_enabled, g_slicks_diag_damage_peak_impact
-  if !$damaged || !$repairs || $finished != 4 || !g_slicks_diag_race_complete || !g_slicks_diag_results_drawn || !g_slicks_diag_damage_status_checks || g_slicks_diag_status_failures
+  if !$damaged || !$repairs || $finished != 4 || $positions != 30 || !g_slicks_diag_race_complete || !g_slicks_diag_results_drawn || !g_slicks_diag_damage_status_checks || g_slicks_diag_status_failures
     printf "DAMAGE_RACE_FAILED\n"
     quit 1
   end
