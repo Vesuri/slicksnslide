@@ -123,6 +123,7 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLIC
     "shadow window covers the native motion, emission and track-object write sets");
 unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
 volatile unsigned long slicks_shadow_calls[8],slicks_shadow_mismatches[8];
+volatile short slicks_shadow_steering_expected,slicks_shadow_steering_actual;
 /* Compile-time selection avoids debugger writes to initialized data and
  * removes unselected wrappers completely. All sites remain the default. */
 #ifndef SLICKS_SHADOW_SITES
@@ -2618,6 +2619,20 @@ static short damage_heading_delta(const struct SlicksRaceCar *car,
     return value / 70;
 }
 
+static short cached_steering_delta(const struct SlicksRaceCar *car,
+    struct SlicksSteeringCache *cache,short input,unsigned short ticks)
+{
+    /* Only the last multiplication depends on elapsed ticks. Cache the
+     * exactly rounded signed-word result, keyed by every earlier operand. */
+    if(!cache->valid || cache->input!=input || cache->scale!=car->steering_scale ||
+       cache->damage!=car->damage[3] || cache->property!=car->steering_property) {
+        cache->input=input;cache->scale=car->steering_scale;
+        cache->damage=car->damage[3];cache->property=car->steering_property;
+        cache->delta=steering_delta(car,input,1);cache->valid=1;
+    }
+    return (short)((long)cache->delta*ticks);
+}
+
 static void apply_brake(struct SlicksRaceRuntime *race,
                         struct SlicksRaceCar *car, unsigned short ticks)
 {
@@ -2879,7 +2894,26 @@ static unsigned char prepare_car_motion(struct SlicksRaceRuntime *race,
      * penalty is zero in the captured normal race but remains explicit
      * for the recovered state. */
     car->steering_amount = steering_input;
-    steering_step = steering_delta(car, steering_input, timestep);
+    steering_step = cached_steering_delta(car,&race->steering_cache[car_index],
+        steering_input,timestep);
+#if defined(__m68k__) && defined(SLICKS_SHADOW_CHECK)
+    /* Site 7 compares the scalar directly: no race snapshot is needed for
+     * the pure reference arithmetic or the derived cache outside the state
+     * window. Normal builds contain none of this diagnostic work. */
+    if(SLICKS_SHADOW_SITES & 128U) {
+        short expected=steering_delta(car,steering_input,timestep);
+        ++slicks_shadow_calls[7];
+        if(expected!=(short)steering_step) {
+            if(!slicks_shadow_mismatches[0]++) {
+                slicks_shadow_first_site=7;slicks_shadow_first_block=0;
+                slicks_shadow_first_frame=race->frame_count;
+                slicks_shadow_steering_expected=expected;
+                slicks_shadow_steering_actual=(short)steering_step;
+            }
+            ++slicks_shadow_mismatches[7];
+        }
+    }
+#endif
     if (controls & SLICKS_CONTROL_LEFT)
         car->heading -= (short)steering_step;
     if (controls & SLICKS_CONTROL_RIGHT)

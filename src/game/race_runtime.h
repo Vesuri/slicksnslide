@@ -249,6 +249,11 @@ struct SlicksTrackDrawPacket {
     unsigned char clipped_pixels[128],clipped_opacity[128];
 };
 
+struct SlicksSteeringCache {
+    short input,scale,damage,property,delta;
+    unsigned char valid;
+};
+
 struct SlicksRaceRuntime {
     /* Keep working state before large resources/maps. The 68020 can then
      * address hot fields with short displacements instead of full 32-bit
@@ -410,6 +415,7 @@ struct SlicksRaceRuntime {
     struct SlicksTrackDrawPacket track_draw_packets[64];
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
+    struct SlicksSteeringCache steering_cache[SLICKS_RACE_CAR_COUNT];
 };
 
 /* Unchanged track-sprite retention state (sprite_retention.inc/.s): cached

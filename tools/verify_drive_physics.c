@@ -46,6 +46,26 @@ static void expect(long actual, long expected, const char *message)
 
 int main(void)
 {
+    {
+        struct SlicksRaceCar car={0};struct SlicksSteeringCache cache={0};
+        unsigned random=0x519d73U;short input=0;
+        for(unsigned n=0;n<200000;++n) {
+            random=random*1664525U+1013904223U;
+            short value=(short)(random>>16);
+            switch(n%8) {
+            case 0: input=value;break;
+            case 1: car.steering_scale=value;break;
+            case 2: car.damage[3]=value;break;
+            case 3: car.steering_property=value;break;
+            case 4: cache.valid=0;break;
+            default: break; /* Hits with changing ticks, including boundaries. */
+            }
+            unsigned short ticks=n%4==0?0:n%4==1?65535:n%4==2?32768:(unsigned short)random;
+            expect(cached_steering_delta(&car,&cache,input,ticks),
+                steering_delta(&car,input,ticks),"exact steering cache");
+        }
+        puts("Steering cache: 200000 exact signed-word hit/miss, key mutation and tick-boundary cases passed");
+    }
     for(unsigned combination=0;combination<81;++combination) {
         static struct SlicksRaceRuntime race;
         memset(&race,0,sizeof race);

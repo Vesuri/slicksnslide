@@ -3,6 +3,56 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Exact per-car steering cache (2026-09-27)
+
+The five staged signed-word steering divisions depend on four operands,
+not on elapsed ticks. A per-driver cache keys the exact one-tick result by
+input, steering scale, damage channel 3 and steering property; the final
+signed-word tick multiplication still happens on every call. Changes to any
+operand invalidate the cached result. No approximations or changes to the
+order of steering, damage yaw, motion or car tails are made. The cache is
+appended to the runtime so existing native field offsets remain unchanged.
+
+| Track | Parent work / worst | Cached work / worst |
+| --- | ---: | ---: |
+| BASIC | 159509 / 370 | 158948 / 369 |
+| F1 | 193977 / 473 | 193476 / 478 |
+| CITY | 159977 / 368 | 159409 / 369 |
+| WHACKO | 163236 / 423 | 162720 / 420 |
+
+Logs: `tmp/steering-cache-20260927-*.log`, parent 2b3bcbc (c64e40c
+changes documentation only). All final states match. The total-work gain
+is only 0.26-0.36%; worst updates are mixed, so this is not a worst-frame
+budget breakthrough. Verification includes 200000 signed-word hit/miss,
+individual-key-change and tick-boundary cases, all driving-physics tests,
+and eleven original-DOS trajectory comparisons of 7200 updates each.
+Logs: `tmp/steering-cache-{host,trajectory}-20260927.log`.
+
+Opt-in target shadow site 7 compares each cached scalar directly with the
+uncached arithmetic and reports the first differing pair. It requires no
+state snapshot and compiles out of normal builds. Four tracks and the jump
+fixture pass 2412 comparisons each with zero mismatches and race errors:
+`tmp/shadow-steering-cache-20260927-{0,1,2,3,SLICKS_JUMP_TRACK_1}.log`.
+An incorrectly named `SLICKS_ICE_TEST` launch was stopped and is not evidence
+of ice coverage; only the explicit corrected fixture runs count.
+The corrected ice and high-zone fixtures pass 412 comparisons each, zero
+mismatches/race errors (`tmp/shadow-steering-cache-special-20260927-*.log`).
+The normal build is restored afterward and all owned emulators close.
+
+## Fresh post-group CPU profiles (2026-09-27)
+
+`tmp/pcprof-postgroups-{f1,whacko}-20260927.{bin,log,elf}` captures the
+accepted pre-steering-cache build, with active-window indexing, 603 updates,
+zero missed samples and canonical final states. F1 has 11235 samples,
+WHACKO 8841. These are instrumented profiles, not acceptance timings.
+In F1 the sprite draw chain now averages 9.7 sampled raster lines, down
+from 26.8 in the earlier isolated-sprite profile, while retention preparation
+is 24.4 lines. The inlined race step averages 40.4 lines; 70 of its 960
+samples fall in steering arithmetic. WHACKO still correlates with roughly
+101 sampled lines per 100 live points, including about 26 for point drawing
+and 25 for advancement. Retention preparation and point traffic remain
+better opportunities than C2P-only optimization.
+
 ## Shared particle retirement row-table experiment (2026-09-27)
 
 Replacing the one remaining shared-retirement `mulu.w #320` with the

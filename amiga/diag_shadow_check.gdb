@@ -25,7 +25,10 @@ commands
   printf "SHADOW calls=%lu,%lu,%lu,%lu,%lu,%lu,%lu mismatches=%lu first_site=%lu block=%lu frame=%lu state=0x%x\n",slicks_shadow_calls[1],slicks_shadow_calls[2],slicks_shadow_calls[3],slicks_shadow_calls[4],slicks_shadow_calls[5],slicks_shadow_calls[6],slicks_shadow_calls[7],slicks_shadow_mismatches[0],slicks_shadow_first_site,slicks_shadow_first_block,slicks_shadow_first_frame,slicks_shadow_state
   printf "RACE_ERROR=%u frames=%lu\n",g_slicks_diag_race_error,g_slicks_diag_bench_frames
   printf "FINAL_STATE marks=%lu x=%ld,%ld,%ld,%ld y=%ld,%ld,%ld,%ld\n",g_slicks_diag_skidmarks,g_slicks_diag_car_x[0],g_slicks_diag_car_x[1],g_slicks_diag_car_x[2],g_slicks_diag_car_x[3],g_slicks_diag_car_y[0],g_slicks_diag_car_y[1],g_slicks_diag_car_y[2],g_slicks_diag_car_y[3]
-  if slicks_shadow_mismatches[0]
+  if slicks_shadow_mismatches[0] && slicks_shadow_first_site==7
+    printf "STEERING_DIFF actual=%d expected=%d\n",slicks_shadow_steering_actual,slicks_shadow_steering_expected
+  end
+  if slicks_shadow_mismatches[0] && slicks_shadow_first_site!=7
     set $i=0
     while $i<1024
       if slicks_shadow_native[$i]!=slicks_shadow_reference[$i]
@@ -37,12 +40,12 @@ commands
   if slicks_shadow_mismatches[0] || g_slicks_diag_race_error
     quit 1
   end
-  if !(slicks_shadow_sites & 126)
+  if !(slicks_shadow_sites & 254)
     printf "SHADOW_INVALID no implemented sites selected\n"
     quit 1
   end
   set $site=1
-  while $site<=6
+  while $site<=7
     if (slicks_shadow_sites & (1<<$site)) && !slicks_shadow_calls[$site]
       printf "SHADOW_INVALID selected site %u was not exercised\n",$site
       quit 1

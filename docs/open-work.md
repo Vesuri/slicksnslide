@@ -13,10 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh groups-selective-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 159509/370, F1 193977/473,
-CITY 159977/368, WHACKO 163236/423. Means are 17-21 ms; the
-worst updates need 15-34% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh steering-cache-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 158948/369, F1 193476/478,
+CITY 159409/369, WHACKO 162720/420. Means are 17-21 ms; the
+worst updates need 15-35% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
 retention overhead, with track-object motion down to 1.8% of non-wait samples.
@@ -35,9 +35,10 @@ Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
-  as the pre-group baseline. Target BASIC updates 209/219 (maximum 370
-  lines), CITY 506 (368 lines), F1 613 (473 lines) and WHACKO 685
-  (423 lines). Retain F1 507 (group-rebuild regression probe), CITY 700,
+  as the pre-group baseline; refreshed post-group F1/WHACKO captures are
+  `tmp/pcprof-postgroups-{f1,whacko}-20260927`. Target BASIC updates 209/219,
+  CITY 506, F1 613 and WHACKO 685. Retain F1 507
+  (group-rebuild regression probe), CITY 700,
   F1 551 and BASIC 409/F1 482/WHACKO 688 as regression probes.
   Pre/post particle counts and dirty regions for all four are recorded in
   the profiling evidence. Retirement and compaction can cause work despite
@@ -52,8 +53,9 @@ Candidate fixes, roughly in order of expected value per effort:
   remain well over budget. Inspect repeated kept-sprite metadata writes,
   validated draw-packet checks and rebuild/late-restoration costs; prove any
   removed check redundant. Preserve atomic group retention and exact reverse
-  restoration order. Refresh profiles before attributing the remaining costs
-  using the older isolated-sprite baseline.
+  restoration order. The post-group F1 profile attributes about 24 sampled
+  lines to retention preparation versus 10 to the sprite draw chain; prioritize
+  reducing repeated checks without weakening their ordering guarantees.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at
@@ -82,11 +84,12 @@ Candidate fixes, roughly in order of expected value per effort:
 - **Remaining C inside `slicks_race_step` (~37 lines base).** Split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:
   per-car `prepare_car_motion`, `update_actor_layer`, `finish_car_update`,
-  `steering_delta`, `apply_throttle`, `display_time_centiseconds`,
+  `apply_throttle`, `display_time_centiseconds`,
   checkpoint and clock code. Per the cost model, only rewrite code whose
   executed volume can shrink (hoist per-update invariants out of the
   per-car/per-tick loops, drop repeated large-offset loads, fuse the per-car
-  tail into one pass over the car record); do not transliterate. Verify via
+  tail into one pass over the car record); do not transliterate. Steering's
+  staged arithmetic is now cached exactly by all four inputs. Verify via
   a shadow site per replaced function.
 
 - **Further C2P area reduction.** The rectangle converter now handles
