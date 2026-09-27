@@ -3,6 +3,28 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected HUD covered-row publication shortcut (2026-09-28)
+
+Tested a second twelve-bit mask, accumulated while scanning producer dirty
+rectangles, to suppress sparse dirty entries for already fully covered HUD
+cell rows. The rectangle scan continued until all active rows were covered,
+rather than stopping once all were invalidated. Painting itself was unchanged.
+The complete host status oracle passed, including dirty coverage, but the
+extra scan/coverage tests outweighed saved dirty-list writes.
+
+| Track | Parent work / worst | Covered-row candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 158617 / 370 | 158851 / 370 |
+| F1 | 183724 / 448 | 184220 / 456 |
+| CITY | 153068 / 358 | 153337 / 349 |
+| WHACKO | 162130 / 421 | 162484 / 424 |
+
+Parent b2fa364, 603 updates each, canonical final states on every track.
+Logs: `tmp/hud-covered-20260928-{0,1,2,3}.log` and
+`tmp/hud-covered-oracle-20260928.log`. Overall work regresses 0.15-0.27%
+on all four tracks and the F1/WHACKO maxima worsen. Rejected and reverted
+without spending further target-audit time on a slower implementation.
+
 ## Exact HUD row repainting (2026-09-28)
 
 The bounded status renderer uses a twelve-bit car/row repaint mask. Changed

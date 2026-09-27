@@ -33,14 +33,6 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Reduce redundant HUD dirty publication.** Measure skipping per-pixel
-  dirty entries for bar rows already wholly covered by a producer dirty
-  rectangle. Track coverage while inspecting existing rectangles, rather
-  than adding a separate full scan per pixel. Preserve exact painting and
-  conversion coverage, weapon icons and unbounded-width behavior. Verify
-  with the forced-cold status oracle, original DOS HUD tests and target
-  display/retention audits. Reject if bookkeeping outweighs saved writes.
-
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
   as the pre-group baseline; refreshed post-group F1/WHACKO captures are
