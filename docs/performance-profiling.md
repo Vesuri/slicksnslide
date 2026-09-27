@@ -3,6 +3,50 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Consecutive point restoration (2026-09-27)
+
+The ordered restoration loop now has a native candidate for consecutive
+point handles, stopping at a sprite handle so the existing mixed ordering
+is preserved. Short base pointers and a packed old-X/Y load reduce address
+calculation and executed code. Only saved pixels are written; saved-valid
+flags make the same transition to 2. No dirty coverage or retention rule
+changes. The RETCHECK reference deliberately retains the scalar C path.
+
+The first six-argument interface saved little total work: BASIC 159694/371,
+F1 208331/476, CITY 163229/373, WHACKO 163437/423 (work/worst). Passing
+only the race pointer and first handle removes repeated argument pushes;
+the routine derives its short-offset array bases itself.
+
+| Track | Parent work / 603 | Two-argument work / 603 | Worst: parent -> candidate |
+| --- | ---: | ---: | --- |
+| BASIC | 160230 | 159419 | 375 -> 371 |
+| F1 | 208376 | 208059 | 486 -> 475 |
+| CITY | 162914 | 162949 | 372 -> 373 |
+| WHACKO | 163792 | 163109 | 428 -> 422 |
+
+Parent 2cc044d; logs `tmp/point-restore-20260927-*.log` and
+`tmp/point-restore-abi-20260927-*.log`. All final states match. CITY is
+essentially flat, not an improvement. New maximum-frame indices are
+219/551/700/685; the earlier 613/506 transitions remain regression probes.
+
+`verify-point-restore` checks 4096 chains, 335076 point visits, 170497
+restores and 1359 sprite boundaries against an independent scalar oracle.
+It compares the full 128 KiB working image, returned handle, saved registers
+and stack; cases include repeated pixels, flags 0..3, screen edges and
+invalid old coordinates on unsaved points. Deliberately broken flags,
+stride and saved colour were all rejected in both the isolated draft and
+the final two-argument version.
+Host dirty-tracking/order and original-DOS surface-effect tests pass.
+Full-frame display audits pass 600 updates each on F1/CITY/WHACKO with
+statistics off, 32/18/5 actors and 2076/1480/1854 marks:
+`tmp/audit-point-restore-20260927-{1,2,3}.log`. All four tracks pass 603
+RETCHECK updates with zero surface-hash or particle-record mismatches and
+canonical final states: `tmp/point-restore-retcheck-20260927-{0,1,2,3}.log`.
+The host track/weapon actor and original-DOS expiry suites also pass.
+All owned muted emulators closed; the normal build was restored. The
+two-argument candidate is accepted for its lower busy-frame cost, without
+claiming a meaningful CITY or overall F1 average improvement.
+
 ## Car force-vector experiments (2026-09-27)
 
 Caching per-call force coefficients and direction vectors on the stack saved

@@ -58,12 +58,16 @@ OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/fra
 OBJECTS += obj/hud_restore.o
 OBJECTS += obj/c2p16_interleaved.o
 OBJECTS += obj/actor_order.o
+OBJECTS += obj/point_restore.o
 
 .PHONY: all clean verify-runtime
 # Never leave a truncated executable that looks up to date after elf2hunk fails.
 .DELETE_ON_ERROR:
 
 all: $(OUT).exe
+
+obj/point_restore.o: $(REPO)/src/game/point_restore.s obj/race_offsets.i | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/actor_order.o: $(REPO)/src/game/actor_order.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<

@@ -1843,7 +1843,7 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
         const short *trail_index=race->weapons.trail_index;
         struct SlicksTrailParticle *particles=race->trail_particles;
         unsigned char *chunky=race->chunky;
-        for(unsigned h=race->actor_order_head[p];h;h=next[h]) {
+        for(unsigned h=race->actor_order_head[p];h;) {
             int t=trail_index[h];
 #if defined(__m68k__)
             if(t<0 && race->sprite_dirty_deferred) {
@@ -1859,13 +1859,29 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
                 if(!h)break;
                 t=trail_index[h];
             }
+            if(t>=0
+#if defined(SLICKS_RETENTION_CHECK)
+                && !slicks_race_disable_retention
 #endif
-            if(t<0) { restore_weapon_actor(race,h);continue; }
+            ) {
+                _Static_assert(sizeof(struct SlicksTrailParticle)==24 &&
+                    __builtin_offsetof(struct SlicksTrailParticle,old_x)==12 &&
+                    __builtin_offsetof(struct SlicksTrailParticle,old_y)==14 &&
+                    __builtin_offsetof(struct SlicksTrailParticle,saved_under)==16 &&
+                    __builtin_offsetof(struct SlicksTrailParticle,saved_valid)==20,
+                    "native point restoration ABI");
+                extern unsigned slicks_restore_point_chain(struct SlicksRaceRuntime *,unsigned);
+                h=slicks_restore_point_chain(race,h);
+                continue;
+            }
+#endif
+            if(t<0) { restore_weapon_actor(race,h);h=next[h];continue; }
             struct SlicksTrailParticle *particle=particles+t;
             if(particle->saved_valid&1) {
                 chunky[mult320[(unsigned short)particle->old_y]+(unsigned short)particle->old_x]=particle->saved_under;
                 particle->saved_valid=2;
             }
+            h=next[h];
         }
         return;
     }
