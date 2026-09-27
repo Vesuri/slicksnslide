@@ -2071,6 +2071,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
 #ifdef SLICKS_SHADOW_CHECK
     {
         extern unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
+        extern volatile unsigned long slicks_shadow_sites;
+        slicks_shadow_sites=SLICKS_SHADOW_SITES;
         if (!slicks_shadow_state)
             slicks_shadow_state = AllocMem(57344, MEMF_ANY);
         if (!slicks_shadow_chunky)

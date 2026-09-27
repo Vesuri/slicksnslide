@@ -12,10 +12,10 @@ open until target measurements meet it; closing experiments is not enough.
 Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
-audio and rendering order. Status with opt-in diagnostic bookkeeping
-(`amiga/bench_tracks.sh optin-outlined-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 172240/416, F1 229191/565,
-CITY 181644/431, WHACKO 178154/442. Means are 18-24 ms; the
+audio and rendering order. Latest benchmark
+(`amiga/bench_tracks.sh inert-advance-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 172131/414, F1 227283/563,
+CITY 180000/436, WHACKO 178179/442. Means are 18-24 ms; the
 worst updates need 25-45% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima: BASIC's worst has zero
 live points, CITY's 16, F1's 63 and WHACKO's 159. F1 is also slow without
@@ -33,10 +33,11 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Reprofile BASIC update 409 (416 lines, zero live points, 116 C2P lines),
-  CITY 506 (431 lines, 16 points), F1 482 (565 lines, 63 points) and
+  Reprofile BASIC update 409 (414 lines, zero live points),
+  CITY 506 (436 lines, 16 points), F1 482 (563 lines, 63 points) and
   WHACKO 687 (442 lines, 159 points). Record pre/post particle counts and
-  the dirty regions: retirement can cause work despite a low final live
+  the dirty regions (BASIC geometry is recorded in the profiling evidence):
+  retirement can cause work despite a low final live
   count. Use uninterrupted timings and the CIA-B sampler; debugger stops
   are only for correctness/region inspection. Include these transitions
   when evaluating C2P bounds and particle retention.
@@ -80,10 +81,11 @@ Candidate fixes, roughly in order of expected value per effort:
   hits/explosions, retention, pause handoff); if none can change them for a
   stationary object, keep a per-object key (x, y, layer, kind) and skip the
   sample and the configure writes when the key and velocity are unchanged,
-  keeping the car-contact test every update. Similarly check whether
-  `slicks_advance_weapon_actors` (~14 lines on F1) is a provable no-op for
-  zero-motion, single-frame, unlimited-lifetime objects and skip them.
-  Shadow sites 3/4 verify; also run the jump, ice and zone fixtures.
+  keeping the car-contact test every update. Check whether the existing
+  `RETAIN_KEPT` metadata can prove eligibility without a second cache;
+  preserve first-frame initialization and moving/contact cases. Shadow
+  site 3 verifies; also run the jump, ice and zone fixtures, and retention
+  checks if eligibility uses the retention metadata.
 
 - **Emission slot scan.** `.add_scan` in `src/game/car_emission.s` walks
   slot-state bytes one at a time from `emission_slot_cursor` to the first

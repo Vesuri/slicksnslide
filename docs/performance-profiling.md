@@ -462,3 +462,61 @@ converted rectangle/sparse lists (`tmp/live-stats-check2-20260927.log`). It
 inspects just before the list is cleared, not at the later race-progress
 checkpoint. Detailed statistics remain accurate, including per-rectangle
 integer rounding. All four benchmark final states match the control.
+
+## Inert shared-actor advancement (2026-09-27)
+
+The native advance loop processes lifetime/retirement first, then skips its
+remaining writes only when age, frame, period, both velocities and both
+accelerations are all zero. In this state position, animation and age are
+unchanged even when the frame count is zero. This is a direct state test,
+not an ownership cache; initial randomized animation periods still take
+the ordinary path. Two existing short branches grew to word branches.
+
+| Track | Parent work / 603 | Candidate work / 603 | Worst: parent -> candidate |
+| --- | ---: | ---: | --- |
+| BASIC | 172240 | 172131 | 416 -> 414 |
+| F1 | 229191 | 227283 | 565 -> 563 |
+| CITY | 181644 | 180000 | 431 -> 436 |
+| WHACKO | 178154 | 178179 | 442 -> 442 |
+
+Parent is c1909a2 (`tmp/optin-outlined-20260927-*`); candidate logs are
+`tmp/inert-advance-20260927-*`. All final states match. F1/CITY total work
+improves 0.83%/0.91%; BASIC/WHACKO barely change, and CITY's worst update
+regresses five lines. This is not a solution to the worst-update budget.
+
+`make verify-actor-advance` compares 8192 complete 200-slot pools with the
+reference, covering inert/near-inert states, signed wrapping, expiry on all
+page values 0..3, animation, reserved/point slots, surrounding bytes and
+callee-saved registers. `verify-actor-slots` also passes its original DOS
+motion and allocator comparisons. Host track-object, weapon-object and
+dirty-tracking suites pass (`tmp/inert-advance-host-20260927.log`).
+
+Actor-only shadow checks pass 700 calls on each of BASIC, F1, CITY, WHACKO
+and the jump fixture, and 200 each on ice and zones, with zero mismatches
+and race errors. F1 also exercises 27 moving-object probes. All four main
+track final states match their benchmark controls. Logs:
+`tmp/shadow-inert-final-20260927-*.log`. The runner exits successfully,
+restores the normal build and closes its emulators.
+
+The diagnostic-only shadow build now has a compile-time site mask
+(`SHADOW_SITES`, default 0xfe/all sites). Both ordinary and render wrappers
+honor it before snapshotting; normal builds contain no mask or extra branch.
+`SHADOW_SITES=16 ./shadow_check.sh LABEL ...` checks only actor advancement.
+The report prints the mask and per-site call counts and fails on mismatches,
+race errors or an unexercised selected site. An initial debugger-controlled
+selector did not take effect; constant-data reporting then returned code
+bytes, and the first BSS-report assignment was mistakenly in shutdown.
+The final version publishes the mask to BSS in race setup. Earlier aborted
+or reporting-invalid runs are not counted as verification.
+
+## BASIC worst-update rectangle inspection (2026-09-27)
+
+At update 409 the actual pre-clear dirty list is `(64,186)-(160,200)`,
+`(160,83)-(256,112)`, `(0,2)-(32,9)`: 1344 + 2784 + 224 = 4352 pixels.
+The final live particle count is zero. This confirms HUD/car/flag rectangle
+conversion, not merely a stale area statistic. The first attempt to inspect
+at an earlier target frame failed because startup overwrites that setting;
+the successful inspection stops at `slicks_race_clear_dirty_rows` and reads
+the list itself. Log: `tmp/regions2-20260927-0.log`. Its debugger-interrupted
+timings are not benchmark results. CITY and the other worst transitions
+still need equivalent inspection.

@@ -121,6 +121,14 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLIC
     "shadow window covers the native motion, emission and track-object write sets");
 unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
 volatile unsigned long slicks_shadow_calls[8],slicks_shadow_mismatches[8];
+/* Compile-time selection avoids debugger writes to initialized data and
+ * removes unselected wrappers completely. All sites remain the default. */
+#ifndef SLICKS_SHADOW_SITES
+#define SLICKS_SHADOW_SITES 0xfe
+#endif
+/* Published into BSS by platform setup: this debugger does not reliably
+ * relocate reads of initialized/constant data symbols. */
+volatile unsigned long slicks_shadow_sites;
 volatile unsigned long slicks_shadow_first_site,slicks_shadow_first_block,
     slicks_shadow_first_frame;
 unsigned char slicks_shadow_native[1024],slicks_shadow_reference[1024];
@@ -179,14 +187,14 @@ static int shadow_native_done(struct SlicksRaceRuntime *race,unsigned site)
     return -1;
 }
 #define SLICKS_SHADOW_RENDER_CALL(site,reference,native) do { \
-    if(!slicks_shadow_chunky || !race->chunky) { native; break; } \
+    if(!(SLICKS_SHADOW_SITES & (1UL<<(site))) || !slicks_shadow_chunky || !race->chunky) { native; break; } \
     shadow_render=1; \
     __builtin_memcpy(slicks_shadow_chunky,race->chunky,64000); \
     SLICKS_SHADOW_CALL(site,reference,native); \
     shadow_render=0; \
 } while(0)
 #define SLICKS_SHADOW_CALL(site,reference,native) do { \
-    if(!slicks_shadow_state) { native; break; } \
+    if(!(SLICKS_SHADOW_SITES & (1UL<<(site))) || !slicks_shadow_state) { native; break; } \
     __builtin_memcpy(slicks_shadow_state,race,SLICKS_SHADOW_WINDOW); \
     reference; shadow_reference_done(race); native; \
     int shadow_block_=shadow_native_done(race,site); \

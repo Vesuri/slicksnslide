@@ -345,10 +345,10 @@ slicks_advance_weapon_actors:
 	bne.s	.advance
 	clr.b	(a2)
 	clr.b	ACTOR_KIND(a3)
-	bra.s	.skip
+	bra.w	.skip
 .advance:
 	tst.b	d0
-	ble.s	.retired
+	ble.w	.retired
 	move.w	ACTOR_MOTION_LIFETIME(a3),d1
 	beq.s	.move
 	subq.w	#1,d1
@@ -363,6 +363,16 @@ slicks_advance_weapon_actors:
 	move.b	d0,(a2)
 	bra.s	.retired
 .move:
+	; All remaining writes are no-ops for this exact state. Lifetime has
+	; already been processed above. Test animation first so moving/animated
+	; objects take the ordinary path cheaply; no cached ownership assumption.
+	tst.l	ACTOR_MOTION_AGE(a3)	; age=0, frame=0, period=0
+	bne.s	.moving
+	tst.l	ACTOR_MOTION_VX(a3)	; vx=vy=0
+	bne.s	.moving
+	tst.l	ACTOR_MOTION_AX(a3)	; ax=ay=0
+	beq.s	.skip
+.moving:
 	move.w	ACTOR_MOTION_VX(a3),d1
 	add.w	ACTOR_MOTION_AX(a3),d1
 	move.w	d1,ACTOR_MOTION_VX(a3)

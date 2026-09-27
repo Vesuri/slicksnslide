@@ -12,11 +12,13 @@ break *slicks_race_start
 commands
   silent
   set $race=*(struct SlicksRaceRuntime **)($sp+4)
+  printf "SHADOW_START sites=0x%lx\n",slicks_shadow_sites
   continue
 end
 break slicks_diag_gameplay_ready
 commands
   silent
+  printf "SHADOW_SITES=0x%lx\n",slicks_shadow_sites
   if $race
     printf "TRACK_HITS probes=%u collisions=%lu special=%d,%d,%d,%d\n",$probes,$race->track_collision_count,$race->cars[0].special_drive_state,$race->cars[1].special_drive_state,$race->cars[2].special_drive_state,$race->cars[3].special_drive_state
   end
@@ -31,6 +33,21 @@ commands
       end
       set $i=$i+1
     end
+  end
+  if slicks_shadow_mismatches[0] || g_slicks_diag_race_error
+    quit 1
+  end
+  if !(slicks_shadow_sites & 126)
+    printf "SHADOW_INVALID no implemented sites selected\n"
+    quit 1
+  end
+  set $site=1
+  while $site<=6
+    if (slicks_shadow_sites & (1<<$site)) && !slicks_shadow_calls[$site]
+      printf "SHADOW_INVALID selected site %u was not exercised\n",$site
+      quit 1
+    end
+    set $site=$site+1
   end
   quit
 end

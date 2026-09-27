@@ -3,12 +3,13 @@
 # rebuild the normal executable. Cases are benchmark tracks 0..3 or
 # VAR=VALUE debug.sh fixtures (e.g. SLICKS_JUMP_TRACK=1).
 #   . ./env.sh; ./shadow_check.sh LABEL [CASES...]
+# SHADOW_SITES=16 checks only site 4; default 0xfe checks all sites.
 set -uo pipefail
 cd "$(dirname "$0")"
 LABEL="${1:?label}"; shift
 CASES="${*:-0 1 2 3}"
 rm -f obj/race_runtime.o obj/slicks_diag.o
-make SHADOW=1 >/dev/null || exit 1
+make SHADOW=1 SHADOW_SITES="${SHADOW_SITES:-0xfe}" >/dev/null || exit 1
 status=0
 for c in $CASES; do
   name=$(printf '%s' "$c" | tr -c 'A-Za-z0-9' '_')
