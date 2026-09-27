@@ -409,7 +409,7 @@ static void pc_sampler_release(void)
 
 #ifdef SLICKS_RETENTION_CHECK
 volatile unsigned long g_slicks_retention_checks, g_slicks_retention_mismatches,
-    g_slicks_retention_first_mismatch;
+    g_slicks_retention_first_mismatch, g_slicks_retention_particle_mismatches;
 static unsigned long retention_check_hash(const unsigned char *chunky)
 {
     const unsigned long *p = (const unsigned long *)chunky;
@@ -5143,6 +5143,7 @@ int main(void)
             {
                 static unsigned char *saved_race, *saved_chunky;
                 static struct SlicksRetentionState saved_retention;
+                static struct SlicksTrailParticle reference_particles[SLICKS_TRAIL_PARTICLE_MAX];
                 if (!saved_race) saved_race = AllocMem(sizeof *race, MEMF_ANY);
                 if (!saved_chunky) saved_chunky = AllocMem(64000, MEMF_ANY);
                 if (race->racing && saved_race && saved_chunky) {
@@ -5154,12 +5155,21 @@ int main(void)
                     slicks_race_disable_retention = 1;
                     slicks_race_step(race, logical);
                     reference = retention_check_hash(chunky);
+                    unsigned short reference_count=race->trail_particle_count;
+                    __builtin_memcpy(reference_particles,race->trail_particles,
+                        reference_count*sizeof *reference_particles);
                     __builtin_memcpy(race, saved_race, sizeof *race);
                     __builtin_memcpy(chunky, saved_chunky, 64000);
                     slicks_retention = saved_retention;
                     slicks_race_disable_retention = 0;
                     slicks_race_step(race, logical);
                     ++g_slicks_retention_checks;
+                    unsigned particle_difference=race->trail_particle_count!=reference_count;
+                    const volatile unsigned char *expected_points=(const unsigned char *)reference_particles;
+                    const volatile unsigned char *actual_points=(const unsigned char *)race->trail_particles;
+                    for(unsigned i=0;!particle_difference && i<reference_count*sizeof *reference_particles;++i)
+                        particle_difference=expected_points[i]!=actual_points[i];
+                    if(particle_difference) ++g_slicks_retention_particle_mismatches;
                     if (retention_check_hash(chunky) != reference &&
                         !g_slicks_retention_mismatches++)
                         g_slicks_retention_first_mismatch = race->frame_count;
