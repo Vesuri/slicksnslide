@@ -68,14 +68,6 @@ Candidate fixes, roughly in order of expected value per effort:
   the grid maintenance costs well under the ~250-350 cycles saved per kept
   point.
 
-- **Emission slot scan.** `.add_scan` in `src/game/car_emission.s` walks
-  slot-state bytes one at a time from `emission_slot_cursor` to the first
-  free slot (~8% of emission samples; up to ~200 bytes when the pool is
-  full of points). Scan four state bytes per longword with the zero-byte
-  test ((x - $01010101) & ~x & $80808080), then locate the byte, handling
-  alignment and the high-water end exactly as now, so the allocation order
-  is unchanged. `make verify-actor-slots` plus shadow site 2 verify.
-
 - **Remaining C inside `slicks_race_step` (~37 lines base).** Split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:
   per-car `prepare_car_motion`, `update_actor_layer`, `finish_car_update`,

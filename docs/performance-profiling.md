@@ -524,3 +524,30 @@ the successful inspection stops at `slicks_race_clear_dirty_rows` and reads
 the list itself. Log: `tmp/regions2-20260927-0.log`. Its debugger-interrupted
 timings are not benchmark results. CITY and the other worst transitions
 still need equivalent inspection.
+
+## Rejected four-byte emission slot scan (2026-09-27)
+
+Tested the handoff's zero-byte detection formula on four aligned state bytes,
+using scalar selection within a word containing a free byte. The initial
+first-free-byte path stayed unchanged; occupied prefixes and short tails
+used scalar reads, and no longword crossed the high-water boundary. It was
+semantically correct but slower in the measured workloads.
+
+| Track | Parent work / 603 | Candidate work / 603 | Worst: parent -> candidate |
+| --- | ---: | ---: | --- |
+| BASIC | 172409 | 172688 | 413 -> 413 |
+| F1 | 220834 | 221466 | 550 -> 551 |
+| CITY | 174249 | 174701 | 420 -> 422 |
+| WHACKO | 178390 | 178868 | 445 -> 466 |
+
+Parent is e888664 (`tmp/stationary-final-20260927-*`); candidate logs are
+`tmp/emission-quad-20260927-*`. All final states match. Total work regresses
+on every track, so the candidate was reverted without further in-game
+shadow or display checks. The normal scalar production scan remains.
+
+Kept `make verify-emission-scan`: it enters the actual production scan and
+stops before allocation, comparing 100000 pools against scalar first-free
+selection. It verifies signed state bytes, high-water tails, odd cursors,
+word/longword alignment, no out-of-range reads, unchanged pool bytes,
+preserved argument registers and balanced stack. Both candidate and restored
+scalar code pass (33607 first-free and 66393 end exits).
