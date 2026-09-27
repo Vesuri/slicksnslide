@@ -13,10 +13,10 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh indexed-control-20260927`, outer-only work lines
-per 603 updates / worst update): BASIC 159466/370, F1 208162/484,
-CITY 162940/372, WHACKO 163130/420. Means are 17-22 ms; the
-worst updates need 16-36% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh groups-selective-20260927`, outer-only work lines
+per 603 updates / worst update): BASIC 159509/370, F1 193977/473,
+CITY 159977/368, WHACKO 163236/423. Means are 17-21 ms; the
+worst updates need 15-34% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. F1 is also slow without
 points; the fresh F1 profile still shows significant sprite rendering and
 retention overhead, with track-object motion down to 1.8% of non-wait samples.
@@ -35,8 +35,9 @@ Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
-  to target BASIC update 219 (370 lines), CITY 506 (372 lines),
-  F1 613 (484 lines) and WHACKO 685 (420 lines). Retain CITY 700,
+  as the pre-group baseline. Target BASIC updates 209/219 (maximum 370
+  lines), CITY 506 (368 lines), F1 613 (473 lines) and WHACKO 685
+  (423 lines). Retain F1 507 (group-rebuild regression probe), CITY 700,
   F1 551 and BASIC 409/F1 482/WHACKO 688 as regression probes.
   Pre/post particle counts and dirty regions for all four are recorded in
   the profiling evidence. Retirement and compaction can cause work despite
@@ -46,12 +47,13 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **F1 sprite overhead and overlapping groups.** Its sprite draw/restore
-  and retention work remains much larger than BASIC's. Investigate keeping
-  overlapping stationary track sprites as a group, with group-wide
-  invalidation and exact reverse-order late restoration. Never simply remove
-  the existing isolation check. Also inspect repeated kept-sprite metadata
-  writes and validated draw-packet checks; prove any removed check redundant.
+- **Remaining F1 sprite overhead.** Group retention now avoids repeated
+  rendering of overlapping stationary track sprites, but its worst updates
+  remain well over budget. Inspect repeated kept-sprite metadata writes,
+  validated draw-packet checks and rebuild/late-restoration costs; prove any
+  removed check redundant. Preserve atomic group retention and exact reverse
+  restoration order. Refresh profiles before attributing the remaining costs
+  using the older isolated-sprite baseline.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

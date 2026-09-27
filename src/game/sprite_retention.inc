@@ -19,8 +19,10 @@
  *
  * A lower actor is anything drawn before the sprite: points, cars, shadows,
  * weapon sprites or other track sprites. Track actors hold permanent handles
- * below every point handle, so a point is lower only with lower priority. Candidates must not overlap any
- * other track sprite and must end above the HUD rows. Every drawn point and
+ * below every point handle, so a point is lower only with lower priority.
+ * Overlapping candidates form connected groups: all members must earn NEXT,
+ * and any late invalidation restores the entire group in reverse draw order.
+ * Candidates must end above the HUD rows. Every drawn point and
  * car rectangle touching a candidate clears its eligibility, which also
  * covers that actor's next restoration and any permanent mark it bakes
  * there. Shadows, weapon sprites, Arcade mode and the countdown disable
@@ -43,6 +45,42 @@ _Static_assert(SLICKS_POINT_HEIGHT==184,"retention row map");
 struct SlicksRetentionState slicks_retention;
 unsigned char slicks_race_disable_retention; /* diagnostic reference steps */
 
+void slicks_retention_late(struct SlicksRaceRuntime *,unsigned,unsigned);
+void slicks_retention_release(struct SlicksRaceRuntime *);
+
+static void retention_release_group(struct SlicksRaceRuntime *race,unsigned group)
+{
+    struct SlicksRetentionState *s=&slicks_retention;
+    s->group_releasing=1;
+    for(unsigned h=s->group_head[group];h;h=s->group_next[h]) {
+        struct SlicksWeaponActor *a=&race->weapons.actors[h];
+        if(a->retain&RETAIN_KEPT) slicks_retention_late(race,h,0);
+        else a->retain=0;
+    }
+    s->group_releasing=0;
+}
+
+/* Native unchanged drawing is the only path that grants NEXT. A general
+ * draw, clipping, animation or conflict on any member prevents a partial
+ * group from being kept on the following restoration pass. */
+static void retention_finish_groups(struct SlicksRaceRuntime *race)
+{
+    struct SlicksRetentionState *s=&slicks_retention;
+    for(unsigned g=1;g<=s->group_count;++g) {
+        unsigned all=1;
+        for(unsigned h=s->group_head[g];h;h=s->group_next[h])
+            if(!(race->weapons.actors[h].retain&RETAIN_NEXT)) { all=0;break; }
+        if(!all) for(unsigned h=s->group_head[g];h;h=s->group_next[h])
+            race->weapons.actors[h].retain&=(unsigned char)~RETAIN_NEXT;
+    }
+}
+
+static unsigned retention_root(const unsigned char *parent,unsigned n)
+{
+    while(parent[n]!=n) n=parent[n];
+    return n;
+}
+
 static int retention_listed(const struct SlicksRaceRuntime *race,unsigned h)
 {
     const struct SlicksWeaponActor *a=&race->weapons.actors[h];
@@ -63,6 +101,17 @@ void slicks_retention_rebuild(struct SlicksRaceRuntime *race,unsigned count)
     static const unsigned char frames[5][4]={{0,5,6,7},{1,1,1,1},{2,8,9,10},{3,3,3,3},{4,11,12,13}};
     struct SlicksRetentionState *s=&slicks_retention;
     unsigned candidates=0,max_priority=0;
+    /* Old groups may have a different order/geometry. Release them before
+     * replacing their lists. Old isolated sprites have disjoint saved
+     * backgrounds and can stay kept unless they join a new group below. */
+    for(unsigned g=1;g<=s->group_count;++g) retention_release_group(race,g);
+    s->group_count=s->group_releasing=0;
+    __builtin_memset(s->group_head,0,sizeof s->group_head);
+    __builtin_memset(s->group_of_handle,0,sizeof s->group_of_handle);
+    __builtin_memset(s->group_next,0,sizeof s->group_next);
+    unsigned char parent[SLICKS_TRACK_ACTOR_MAX],valid[SLICKS_TRACK_ACTOR_MAX],
+        members[SLICKS_TRACK_ACTOR_MAX],group[SLICKS_TRACK_ACTOR_MAX];
+    for(unsigned c=0;c<count;++c) {parent[c]=(unsigned char)c;valid[c]=1;members[c]=group[c]=0;}
     unsigned char *width=s->kind_width,*height=s->kind_height;
     /* Each kind's union over its animation frames keeps the rectangles
      * stable while animating; frame changes still redraw normally. */
@@ -81,21 +130,48 @@ void slicks_retention_rebuild(struct SlicksRaceRuntime *race,unsigned count)
         e->right=(short)(e->left+width[e->asset]); e->bottom=(short)(e->top+height[e->asset]);
         e->flags=0;
     }
+    for(unsigned c=0;c<count;++c)
+        for(unsigned o=0;o<c;++o)
+            if(retention_overlap(&s->entries[o],s->entries[c].left,s->entries[c].top,
+                                 s->entries[c].right,s->entries[c].bottom)) {
+                unsigned a=retention_root(parent,c),b=retention_root(parent,o);
+                if(a!=b) parent[a]=(unsigned char)b;
+            }
     for(unsigned c=0;c<count;++c) {
         struct SlicksRetentionEntry *e=&s->entries[c];
+        unsigned root=retention_root(parent,c);
+        ++members[root];
         if(e->left<0 || e->top<0 || e->right>320 || e->bottom>SLICKS_POINT_HEIGHT ||
-           e->right<=e->left || e->bottom<=e->top) continue;
-        unsigned isolated=1;
-        for(unsigned o=0;o<count && isolated;++o)
-            if(o!=c && retention_overlap(&s->entries[o],e->left,e->top,e->right,e->bottom)) isolated=0;
-        if(isolated) {
+           e->right<=e->left || e->bottom<=e->top) valid[root]=0;
+    }
+    for(unsigned c=0;c<count;++c) {
+        struct SlicksRetentionEntry *e=&s->entries[c];
+        unsigned root=retention_root(parent,c);
+        if(valid[root]) {
             e->flags=RETENTION_CANDIDATE; ++candidates;
             if(e->priority>max_priority) max_priority=e->priority;
+            if(members[root]>1) {
+                if(!group[root]) group[root]=++s->group_count;
+                unsigned g=group[root],h=e->handle;
+                s->group_of_handle[h]=(unsigned char)g;
+                unsigned char *link=&s->group_head[g];
+                while(*link && (race->weapons.actors[*link].priority>e->priority ||
+                    (race->weapons.actors[*link].priority==e->priority && *link>h)))
+                    link=&s->group_next[*link];
+                s->group_next[h]=*link;*link=(unsigned char)h;
+            }
         }
     }
+    /* Any old isolated sprite joining a group must be restored too: the
+     * new component must not mix kept and already-restored members. Old
+     * isolated saved rectangles cannot overlap any old group/member, so
+     * these remaining restores are independent of the releases above. */
+    for(unsigned g=1;g<=s->group_count;++g) retention_release_group(race,g);
     if(candidates<RETENTION_MIN_CANDIDATES) {
         for(unsigned c=0;c<count;++c) s->entries[c].flags=0;
         candidates=max_priority=0;
+        s->group_count=0;
+        __builtin_memset(s->group_of_handle,0,sizeof s->group_of_handle);
     }
     s->candidates=(unsigned char)(candidates>255?255:candidates);
     s->max_priority=(unsigned char)max_priority;
@@ -163,6 +239,11 @@ void slicks_retention_cars(struct SlicksRaceRuntime *race)
 void slicks_retention_late(struct SlicksRaceRuntime *race,unsigned h,unsigned eligible);
 void slicks_retention_late(struct SlicksRaceRuntime *race,unsigned h,unsigned eligible)
 {
+    struct SlicksRetentionState *s=&slicks_retention;
+    if(!s->group_releasing && s->group_of_handle[h]) {
+        retention_release_group(race,s->group_of_handle[h]);
+        return;
+    }
     struct SlicksWeaponActor *a=&race->weapons.actors[h];
     if(a->saved) {
         int left=a->old_x,top=a->old_y,width=a->old_width,height=a->old_height;
@@ -190,6 +271,8 @@ void slicks_retention_late(struct SlicksRaceRuntime *race,unsigned h,unsigned el
 void slicks_retention_release(struct SlicksRaceRuntime *race);
 void slicks_retention_release(struct SlicksRaceRuntime *race)
 {
+    for(unsigned g=1;g<=slicks_retention.group_count;++g)
+        retention_release_group(race,g);
     for(unsigned i=0;i<race->navigation.actor_count;++i) {
         unsigned h=race->track_actor_handles[i];
         if(!h || h>=SLICKS_ACTOR_CAPACITY) continue;
@@ -301,4 +384,6 @@ void slicks_race_invalidate_retention(struct SlicksRaceRuntime *race)
     if(!race) return;
     for(unsigned h=0;h<SLICKS_ACTOR_CAPACITY;++h) race->weapons.actors[h].retain=0;
     slicks_retention.valid=0;
+    slicks_retention.group_count=0;
+    __builtin_memset(slicks_retention.group_of_handle,0,sizeof slicks_retention.group_of_handle);
 }

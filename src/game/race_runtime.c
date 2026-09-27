@@ -2484,6 +2484,7 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
     for(unsigned p=6;p<=race->actor_order_max;++p)
         if(race->actor_order_head[p]) draw_trail_priority(race,3,p);
     finish_sprite_dirty_batch(race);
+    retention_finish_groups(race);
     if(profile) race->profile_marker(24);
     race->actor_order_drawn=1;
     race->actor_order_ready=0;
@@ -3858,6 +3859,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
+    slicks_race_invalidate_retention(race);
     race->car_render_cache.ready=0;
     for(unsigned i=0;i<64;++i)race->track_draw_packets[i].valid=0;
     race->status_bar_cache.valid=0;

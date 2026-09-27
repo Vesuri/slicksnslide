@@ -426,6 +426,12 @@ struct SlicksRetentionState {
     unsigned char cells[23*40];   /* 8x8 cells: 0, entry+1, or 255 */
     unsigned char kind_width[5],kind_height[5]; /* union over animation */
     unsigned char rebuild_pending;  /* a sprite moved; rebuild once settled */
+    /* Connected overlapping rectangles are retained atomically. Each group's
+     * list is in reverse draw order, using the geometry before simulation. */
+    unsigned char group_count,group_releasing;
+    unsigned char group_head[SLICKS_TRACK_ACTOR_MAX+1];
+    unsigned char group_of_handle[SLICKS_ACTOR_CAPACITY];
+    unsigned char group_next[SLICKS_ACTOR_CAPACITY];
 };
 extern struct SlicksRetentionState slicks_retention;
 extern unsigned char slicks_race_disable_retention;

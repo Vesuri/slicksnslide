@@ -3,6 +3,57 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Overlapping stationary sprite groups (2026-09-27)
+
+The candidate extends isolated sprite retention to connected components of
+overlapping track rectangles. Every member must earn retention for the next
+update; invalidation of any kept member restores the whole component in
+descending priority/handle order. Rebuilding geometry releases the old
+components before replacing their lists. Clipped components remain excluded.
+The selective-rebuild version is accepted after timing and display audits.
+
+The first version released every isolated retained sprite on a rebuild too.
+Although it passed equivalence, F1's worst update rose to 507 lines at race
+frame 507. A correctly indexed profile puts rebuild and late restoration in
+that update. The revised version restores old groups first, then restores
+only formerly isolated members that join new groups. Their old saved
+rectangles were disjoint, so those remaining restores are independent.
+The host oracle also checks this transition and preservation of unrelated
+isolated sprites. This removes the new maximum while retaining the average
+gain. No simulation or drawing-order changes are made.
+
+| Track | Control work / worst | Selective group work / worst |
+| --- | ---: | ---: |
+| BASIC | 159466 / 370 | 159509 / 370 |
+| F1 | 208162 / 484 | 193977 / 473 |
+| CITY | 162940 / 372 | 159977 / 368 |
+| WHACKO | 163130 / 420 | 163236 / 423 |
+
+Logs: `tmp/groups-selective-20260927-*.log`. All 603-update final states
+match. F1 total work falls 6.8%, CITY 1.8%; BASIC/WHACKO total changes
+are under 0.1%, not improvements, and WHACKO's maximum is three lines
+higher. F1 still needs a substantial further cut to reach the 312-line
+budget. Initial version logs/profile are `tmp/groups-20260927-*.log` and
+`tmp/pcprof-groups-f1-20260927.{bin,log,elf}`.
+
+The host group oracle passes 1024 priority/handle permutations, including
+transitive overlap, independent reverse saved-background restoration,
+all-or-none eligibility, rebuilding after motion, clipped components and
+invalidation. The target RETCHECK build passes 603 updates on each of BASIC,
+F1, CITY and WHACKO, with zero surface-hash or particle-record mismatches
+and unchanged canonical final states. Logs:
+`tmp/group-retcheck-20260927-{0,1,2,3}.log`. All four muted correctness
+emulators closed before rebuilding the normal executable for timing.
+
+The final selective version repeats all four RETCHECK runs successfully:
+603 updates each, zero surface-hash and particle-record mismatches, canonical
+final states (`tmp/group-selective-retcheck-20260927-*.log`). Full-frame
+dirty-region audits pass 600 updates each on F1/CITY/WHACKO, statistics off,
+with 32/18/5 actors and 2076/1480/1854 marks
+(`tmp/group-audit-20260927-*.log`). Host dirty-tracking, track/weapon actors,
+surface effects and original-DOS particle-expiry suites pass. All owned
+emulators closed after their tests. No gameplay effects were removed.
+
 ## Rejected single-rectangle prune specialization (2026-09-27)
 
 An exact single-rectangle path avoided testing the same bounds as both the
