@@ -3,6 +3,38 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected two-argument particle-chain entry (2026-09-28)
+
+Replaced the production ten-argument call with a race-pointer/first-handle
+entry, loading the same arrays from generated offsets and sharing the
+unchanged chain/body loop. Both entries stored the dirty-count pointer in
+an existing local stack slot. The scalar, ordered-batch and old chain entry
+remained available during the experiment.
+
+Expanded native tests passed: 2048 single points and 256 each of ordered
+batches, old chains and new race-pointer chains. The new entry checked
+complete pixels, metadata, dirty queues, empty chains, sprite boundaries,
+overflow, preserved registers, stack balance and a 256 KiB race-image
+canary covering untouched fields. Tests also passed with the production
+assembler's `-no-opt` setting. Logs:
+`tmp/race-chain-oracle{,-noopt}-20260928.log`.
+
+| Track | Parent work / worst | Two-argument work / worst |
+| --- | ---: | ---: |
+| BASIC | 157113 / 365 | 157321 / 367 |
+| F1 | 182983 / 456 | 183559 / 448 |
+| CITY | 152227 / 353 | 152648 / 354 |
+| WHACKO | 160716 / 423 | 161061 / 424 |
+
+Parent 93399ea; 603 updates per track and canonical final states throughout.
+The separate parent F1 repeat was 183025/448, so its apparent maximum gain
+is not reliable. Overall work regresses 0.13-0.31% on every track.
+Logs: `tmp/race-chain-20260928-{0,1,2,3}.log`. Rejected: moving setup from
+the C caller into assembly is not itself a saving. Reverted the entry,
+caller and experiment-specific test/build changes; no dead alternate
+production interface is retained. No target rendering audits are claimed
+for this rejected candidate.
+
 ## Empty drawing-layer call experiment (2026-09-28)
 
 After building authoritative actor chains, test heads 0, 1, 2, 4 and 5 at

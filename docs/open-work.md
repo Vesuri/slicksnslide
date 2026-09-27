@@ -57,11 +57,10 @@ Candidate fixes, roughly in order of expected value per effort:
   Archived post-group profiles predate the geometry cache and must not be
   presented as current stage costs. Keep the independent geometry-cache
   audit enabled in RETCHECK when changing any source-field writer.
-  Measure reducing native-chain argument setup; preserve legacy traversal
-  and sprite/overflow boundaries. A two-argument race/handle particle entry
-  is drafted locally in `tmp/draw_race_entry_draft.s`; test all frame pixels,
-  particle metadata, dirty overflow, sprite stops, preserved registers and
-  stack balance before target benchmarking. Do not treat the draft as tested.
+  Focus further wrapper work on eliminating repeated sprite validation or
+  whole traversals, not merely moving argument setup across the call.
+  Preserve legacy traversal and sprite/overflow boundaries; any removed
+  checks need explicit invariant coverage in the native oracle.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at
