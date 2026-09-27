@@ -28,6 +28,12 @@ the frame-700 checkpoint together with per-update work/particle samples.
     cd amiga; . ./env.sh; ./pc_profile.sh TRACK LABEL
     tools/prof_summary.py tmp/pcprof-LABEL.bin [--inlined FUNC] [--lines FUNC]
         [--particles LO:HI]
+    tools/particle_slope.py tmp/pcprof-LABEL.bin   # mean/intercept/slope per function
+
+Whole-update timings (no sampler) come from `amiga/bench_tracks.sh LABEL`,
+which builds, refuses stale executables and prints WORK_SUM, maximum work,
+cadence and FINAL_STATE per track; compare with a control of the parent
+commit. A behaviour-preserving change must leave FINAL_STATE identical.
 
 `pc_profile.sh` archives the matching ELF as `tmp/pcprof-LABEL.elf`; old
 sample files cannot be resolved against a rebuilt layout. The sampler adds
@@ -294,7 +300,7 @@ point-heavy frames, where conflicts also reduce the number kept.
 ## Particle cost per live point
 
 Regressing per-frame sample counts against the live particle count (retain9
-profiles, `tmp/particle_slope.py`) gives about 1.1 raster lines per live
+profiles, `tools/particle_slope.py`) gives about 1.1 raster lines per live
 point on BASIC and WHACKO: draw 29, advance 22, emission 16, the C loops
 around the advance 12, restore 11-15 and actor ordering 11 lines per 100
 points. The zero-point intercept is about 270 lines, so particle-heavy
