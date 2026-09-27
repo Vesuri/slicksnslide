@@ -342,3 +342,27 @@ surface, track- and weapon-actor suites pass (`tmp/host-adv-*.log`).
 
 Frames with 130 or more points gain 10-14 lines (about 7-8 lines per 100
 points, below the 130-cycle estimate); frames under 50 points gain 0-2.
+
+## Rejected tighter particle draw chain (2026-09-27)
+
+Applied the handoff's local `tmp/chain_draft.s` without changing the single
+or ordered-batch entries. It packs metadata/old coordinates/dirty writes,
+keeps chain tables in registers and moves material/surface loads to the
+occluded path. The estimated saving did not survive four-track timing.
+Fresh outer-only controls use eb4d4f4; logs are
+`tmp/resume-{control,chain}-20260927-{0,1,2,3}.log`.
+
+| Track | Control work / 603 | Draft work / 603 | Control worst | Draft worst |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC | 172965 | 174390 | 418 | 414 |
+| F1 | 230702 | 230012 | 567 | 569 |
+| CITY | 182465 | 183011 | 435 | 435 |
+| WHACKO | 179791 | 180290 | 475 | 484 |
+
+All four final states match exactly. The native draw oracle passed 2048
+single, 256 ordered-batch and 256 actor-chain cases; host surface-effect,
+dirty-tracking, track/weapon-actor and DOS particle-expiry suites passed.
+Three tracks regress in total work, and the small F1 total saving does not
+improve its worst frame. Reverted the source experiment; display audits
+were therefore not run for this rejected draft. Fewer nominal accesses on
+one path are not sufficient evidence of a real-workload improvement.

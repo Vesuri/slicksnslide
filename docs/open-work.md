@@ -28,28 +28,6 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Tighter particle draw chain (drafted, ~10 lines at 170 points).** A
-  replacement for `slicks_draw_particle_chain` is in the local, uncommitted
-  `tmp/chain_draft.s`; `tmp/apply_chain.py` swaps it into
-  `src/game/particle_draw.s` in place of the old `.chain_*` walker. Same C
-  ABI (pool, chunky, material, surface, dirty list, dirty count, mult320,
-  next bytes, trail-index words, first handle; returns the first
-  unprocessed handle). Changes: next/trail-index tables and the pool base
-  live in a2/a3/a5 instead of stack slots; the record offset is t*24
-  computed with add/shift instead of the `.particle_offsets` table read;
-  old_x:old_y is compared and written as one longword (written only when
-  the pixel moved); bytes 20..23 (saved/permanent/occlusion/state) are one
-  longword read; dirty entries are one longword write (x<<16 | y<<8); the
-  510-entry overflow test runs only after an entry is queued; material and
-  surface pointers are loaded from the stack only on the occluded path
-  (a6 borrowed, then reloaded). An unmoved visible point drops from ~19 to
-  12 Chip accesses; the hot loop stays under 256 bytes. It already passes
-  `make verify-particle-draw` (with the broadened unmoved/off-surface cases)
-  and six injected mutations. Remaining: apply, keep the batch/single
-  entries unchanged, run the verifier, the display audits and
-  `bench_tracks.sh`, document, commit.
-
-- **Drop or cheapen the sparse-pixel prune.** `slicks_race_prune_dirty_pixels`
   (`src/game/race_runtime.c`, called from `slicks_diag.c` before
   `slicks_chunky_pixels_to_amiga`) tests every dirty pixel against every
   pending C2P rectangle in C: O(pixels x rects), ~40-50 cycles per test.
