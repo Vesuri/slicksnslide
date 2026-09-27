@@ -13,10 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh hud-rows-final-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 158617/370, F1 183724/448,
-CITY 153068/358, WHACKO 162130/421. Means are 16.3-19.5 ms; the
-worst updates need 13-30% cuts. Particle-heavy frames remain expensive,
+(`amiga/bench_tracks.sh empty-draw-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 157113/365, F1 182983/456,
+CITY 152227/353, WHACKO 160716/423. An F1 repeat gives 183025/448;
+retain the conservative 456 maximum. Means are 16.2-19.5 ms; the
+worst updates need 12-32% cuts. Particle-heavy frames remain expensive,
 but live count alone does not explain the maxima. Current CPU captures are
 `tmp/pcprof-geometry-{f1,whacko}-20260927`; their sampler overhead is not part
 of the acceptance numbers above. F1 is also slow without points.
@@ -56,8 +57,11 @@ Candidate fixes, roughly in order of expected value per effort:
   Archived post-group profiles predate the geometry cache and must not be
   presented as current stage costs. Keep the independent geometry-cache
   audit enabled in RETCHECK when changing any source-field writer.
-  Measure eliminating empty-priority wrapper calls or reducing native-chain
-  argument setup; preserve legacy traversal and sprite/overflow boundaries.
+  Measure reducing native-chain argument setup; preserve legacy traversal
+  and sprite/overflow boundaries. A two-argument race/handle particle entry
+  is drafted locally in `tmp/draw_race_entry_draft.s`; test all frame pixels,
+  particle metadata, dirty overflow, sprite stops, preserved registers and
+  stack balance before target benchmarking. Do not treat the draft as tested.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

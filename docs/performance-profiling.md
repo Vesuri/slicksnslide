@@ -3,6 +3,38 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Empty drawing-layer call experiment (2026-09-28)
+
+After building authoritative actor chains, test heads 0, 1, 2, 4 and 5 at
+the caller before entering the drawing wrapper. Higher priorities already
+had this check. Priority 3 remains interleaved with the cars, and the legacy
+unordered drawing path is unchanged. Nonempty layers retain the same order.
+
+Normal-build measurements, parent a5ea419 (same code as b2fa364), 603
+updates per track, all canonical final states:
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 158617 / 370 | 157113 / 365 |
+| F1 | 183724 / 448 | 182983 / 456 |
+| CITY | 153068 / 358 | 152227 / 353 |
+| WHACKO | 162130 / 421 | 160716 / 423 |
+
+Logs `tmp/empty-draw-20260928-{0,1,2,3}.log`. A separate F1 repeat
+(`tmp/empty-draw-repeat-20260928-1.log`) gives 183025/448, with identical
+final state. Total work improves 0.4-1.0%; maximum timing is mixed and the
+repeat demonstrates variation. Do not claim a reliable worst-frame gain.
+`make verify-actor-order` passes 12000 mixed/empty/full pools and 413394
+linked handles, including all priorities, signed states and stable chains.
+All three target display audits pass 600 updates: F1 32 actors/2076 marks,
+CITY 18/1480 and WHACKO 5/1854, with no bitmap mismatches. Logs:
+`tmp/empty-draw-audit-20260928-{1,2,3}.log`. All four retention/reference
+runs pass 603 updates and 700 HUD comparisons with zero surface, particle,
+geometry-cache or status mismatches and canonical final states. Logs:
+`tmp/empty-draw-retcheck-20260928-{0,1,2,3}.log`. The independent host
+surface-effects, retention-groups and dirty-tracking suites also pass
+(`tmp/empty-draw-host-20260928.log`). All owned emulators exited cleanly.
+
 ## Rejected HUD covered-row publication shortcut (2026-09-28)
 
 Tested a second twelve-bit mask, accumulated while scanning producer dirty

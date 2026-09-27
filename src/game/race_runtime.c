@@ -2476,15 +2476,17 @@ static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logic
     build_actor_order(race,0);
     prepare_sprite_retention(race);
     if(profile) race->profile_marker(21);
-    draw_trail_particles(race,0);
-    draw_trail_priority(race,3,1);
+    /* build_actor_order has made these heads authoritative. Avoid the
+     * native-chain wrapper's register saves/setup for empty layers. */
+    if(race->actor_order_head[0])draw_trail_particles(race,0);
+    if(race->actor_order_head[1])draw_trail_priority(race,3,1);
     draw_shadows(race,logical);
-    draw_trail_priority(race,3,2);
+    if(race->actor_order_head[2])draw_trail_priority(race,3,2);
     if(profile) race->profile_marker(22);
     draw_layered_cars(race,logical);
     if(profile) race->profile_marker(23);
-    draw_trail_priority(race,3,4);
-    draw_trail_particles(race,2);
+    if(race->actor_order_head[4])draw_trail_priority(race,3,4);
+    if(race->actor_order_head[5])draw_trail_particles(race,2);
     for(unsigned p=6;p<=race->actor_order_max;++p)
         if(race->actor_order_head[p]) draw_trail_priority(race,3,p);
     finish_sprite_dirty_batch(race);
