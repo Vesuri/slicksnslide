@@ -3,6 +3,48 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Retention addressing trial and F1 fuel-blink phase (2026-09-28)
+
+Tested a signed-word actor-offset table in the final retention decision
+loop and scaled addressing for handle*12. All 200 handles, eight even base
+alignments, both actual assembled address sequences and the full table
+passed Unicorn; the host group/geometry test passed. Full target retention
+and display audits have not been run, so this is not an accepted change.
+
+| Track | Parent work / worst | Address candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 155903 / 364 | 155907 / 366 |
+| F1 | 182215 / 433 | 181611 / 459 |
+| CITY | 151791 / 352 | 151401 / 353 |
+| WHACKO | 159453 / 416 | 159446 / 416 |
+
+All 603-update final states match. The recurring F1 peak at update 613
+prompted read-only captures of candidate and restored parent. Both have
+identical final rectangles and car fuel/service/damage state. Cars 0, 2 and
+3 have empty-fuel service flag 1. The candidate status clock changes
+303->304 (vblank 833->835), while the parent stays at 304 (835->837).
+Thus the candidate repaints three blinking fuel bars at this update and
+the parent does not: workload placement changes with wall-clock cadence,
+not only the execution cost of the edited instructions. This explains a
+specific additional rendering workload, not a measured allocation of every
+line of the peak. Sparse HUD pixels were not counted in these captures;
+the diagnostic now reports them for subsequent runs.
+
+Source inspection shows bounded bars enqueue each changed pixel separately
+for sparse C2P. Test batching a sufficiently large set of changes within a
+car's 20x3 cell into a rectangle, reserving rectangle capacity and retaining
+the sparse path for small changes/overflow cases. Preserve blink timing,
+all colours and exactly the same chunky pixels. Revisit small CPU-address
+savings after this periodic work is cheaper; do not tune the blink phase to
+make a benchmark pass.
+
+The address candidate and its new arithmetic test were parked locally and
+production reverted: `tmp/retention-address-20260928.patch`,
+`tmp/retention_address_test.s`, `tmp/verify_retention_address.c`.
+Evidence: `tmp/retention-address-20260928-{0,1,2,3}.log`,
+`tmp/retention-address-oracles-20260928.log`,
+`tmp/retention-address{,-parent}-f1-613-20260928.log`.
+
 ## Refreshed accepted-build CPU profiles (2026-09-28)
 
 Sequential F1/WHACKO captures at production code b5e8e7c (documentation/test

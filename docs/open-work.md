@@ -33,11 +33,22 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
+- **Batch changed HUD bar pixels for C2P.** At F1 update 613, the faster
+  address trial crosses the fuel-blink clock phase while the control does
+  not; three empty-fuel bars repaint using individual sparse pixel updates.
+  Preserve the BIOS-rate blink clock. For sufficiently many changed pixels
+  in one bounded 20x3 car cell, publish one rectangle instead of its sparse
+  entries. Reserve list capacity, retain sparse updates for small changes
+  and near-full lists, and preserve all pixel/dirty coverage semantics.
+  Verify forced-cold status, DOS HUD, display audits and reference runs.
+  Revisit parked address arithmetic after reducing this periodic workload.
+
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the refreshed current F1/WHACKO CPU captures to choose further CPU
   work; recent small changes alter which updates incur the largest work.
-  Treat raster-phase/HUD-clock effects as hypotheses
-  to measure, not established explanations. Keep F1 551 and 613 in scope.
+  The paired update-613 capture establishes a different fuel-blink phase;
+  measure its cost separately rather than tuning cadence. Raster contention
+  remains an unproven additional explanation. Keep F1 551 and 613 in scope.
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
   as the pre-group baseline; refreshed post-group F1/WHACKO captures are
   `tmp/pcprof-postgroups-{f1,whacko}-20260927`. Target BASIC updates 209/219,
@@ -56,6 +67,9 @@ Candidate fixes, roughly in order of expected value per effort:
   Measure cheaper exact addressing in the final decision loop (handle*164
   actor offset and handle*12 previous-descriptor offset) without weakening
   its frame/colour/occlusion checks or geometry invalidation contract.
+  The local `tmp/retention-address-20260928.patch` and accompanying native
+  test are parked for re-evaluation after HUD batching; they still require
+  full target display/retention audits if accepted.
   Inspect conflict processing, final
   keep/restore decisions, draw-packet validation and group rebuild/late
   restoration at the worst updates. Preserve atomic group retention and
