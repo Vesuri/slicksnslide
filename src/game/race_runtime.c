@@ -2925,7 +2925,6 @@ static unsigned char prepare_car_motion(struct SlicksRaceRuntime *race,
         }
     }
     active_drive=controls&(SLICKS_CONTROL_ACCELERATE|SLICKS_CONTROL_BRAKE);
-    car->speed = (short)(car->speed_fixed / 100L);
 
     /* 2000:0c79..0d54 performs these divisions separately with signed IDIV;
      * preserving their order is observable. The final IMUL at 0cd6/0d4c

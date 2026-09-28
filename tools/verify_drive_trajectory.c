@@ -282,6 +282,10 @@ int main(int argc,char **argv)
         check(uc_emu_start(u,0x202f0,0x214df,0,100000));check(uc_reg_read(u,UC_X86_REG_IP,&ip));
         if(ip!=0x214df-0x19870) {fprintf(stderr,"Motion exit %x\n",ip);return 1;}
         controls[d]=prepare_car_motion(&race,d,ticks);compare_car(u,&race,d,step);
+        if(race.cars[d].speed!=(short)(race.cars[d].speed_fixed/100L)) {
+            fprintf(stderr,"Published speed mismatch driver=%u step=%u\n",d,step);
+            return 1;
+        }
         }
         for(unsigned d=0;d<4;++d) if(race.participation[d]) {
         word(u,FRAME-0x68,d);

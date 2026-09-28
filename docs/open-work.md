@@ -13,12 +13,13 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh direct-div-both-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 152628/365, F1 177844/432,
-CITY 147876/344, WHACKO 155632/406. Means are 15.7-18.9 ms; the
-worst updates in that run need 9-28% cuts. The refreshed F1 HUD-clock
+(`amiga/bench_tracks.sh redundant-speed-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 152436/364, F1 177562/428,
+CITY 147694/343, WHACKO 155424/409. Means are 15.7-18.9 ms; the
+worst updates in that run need 9-27% cuts. The parent F1 HUD-clock
 phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
-final states across all four phases. These are
+final states across all four phases. Refresh that sweep after the redundant
+speed calculation removal before claiming a new phase-wide maximum. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1 CPU capture is
@@ -41,6 +42,11 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
+
+- **Refresh F1 HUD-phase coverage after redundant speed removal.** Run the
+  four native initial clock phases with `diag_benchmark_hud_phase.gdb`,
+  checking remainder readbacks and final states. Retain the worst phase in
+  the acceptance figures, not just the default-phase result.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing
@@ -73,6 +79,10 @@ Candidate fixes, roughly in order of expected value per effort:
   audit enabled in RETCHECK when changing any source-field writer.
   Focus further wrapper work on eliminating repeated sprite validation or
   whole traversals, not merely moving argument setup across the call.
+  One smaller candidate is the remaining `164*handle` and `300*(handle&63)`
+  address calculations in `track_sprite_fast.s`: benchmark signed-word offset
+  lookups without changing validation. The corresponding retention-loop
+  addressing improvement is already present; do not reimplement that part.
   Preserve legacy traversal and sprite/overflow boundaries; any removed
   checks need explicit invariant coverage in the native oracle.
 

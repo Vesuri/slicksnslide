@@ -3,6 +3,40 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Redundant pre-integration diagnostic speed (2026-09-28)
+
+Removed the first `car->speed = speed_fixed / 100` in `prepare_car_motion`.
+The field is diagnostic: its sole production reader is the platform snapshot,
+after simulation. Steering, damage yaw and integration use `speed_fixed`, not
+`speed`; the retained assignment immediately after integration overwrote the
+removed value before any reader. No assembly offset for this field exists.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 152628 / 365 | 152436 / 364 |
+| F1 | 177844 / 432 | 177562 / 428 |
+| CITY | 147876 / 344 | 147694 / 343 |
+| WHACKO | 155632 / 406 | 155424 / 409 |
+
+Logs: `tmp/direct-div-both-20260928-*` and
+`tmp/redundant-speed-20260928-*`. All four 603-update final states match.
+Total work falls 0.12-0.16%; over-budget counts are 61/211/33/77, versus
+62/212/37/80. WHACKO's maximum increases three lines: this is a small
+redundancy removal, not an across-the-board latency improvement. The earlier
+four-phase F1 maximum belongs to the parent, not this changed code layout.
+
+Host physics and original-DOS damage/throttle suites pass. The composed DOS
+trajectory suite passes all nine numbered scenarios and BRIDGES/BUMPS,
+7200 updates each, with an added assertion that each published diagnostic
+speed equals the post-integration fixed speed divided by 100.
+Target native/reference integration checks also pass all four tracks:
+2412 calls per track, zero mismatches, zero race errors and matching final
+states. Logs: `tmp/shadow-redundant-speed-20260928-{0,1,2,3}.log`.
+These checks verify integration with the changed incoming diagnostic field;
+the reader audit and trajectory assertion establish removal of the redundant
+write itself. The runner restored the normal build. No rendering or retention
+policy changed, so no new display or retention audit is claimed or required.
+
 ## Direct 68020 constant division (2026-09-28)
 
 Replaced the car integrator's signed `/100` and `/2000` reciprocal sequences
