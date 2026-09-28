@@ -38,6 +38,11 @@ ground truth.
   loop, never a host approximation or the Amiga port compared with itself.
 - Profile an end-to-end target skeleton before choosing optimization work or
   promising a performance target.
+- Fail performance experiments cheaply: build and run quick correctness
+  smoke tests, then benchmark against the parent before expensive shadow,
+  full-frame rendering or exhaustive validation. Reject clear performance
+  failures immediately. Promising changes still require every applicable
+  fidelity gate before acceptance and a final performance confirmation.
 - Reuse the established Amiga build, FS-UAE/GDB, measurement, and documentation
   practices from `~/Documents/Rescue on Fractalus`, `~/Documents/Revs`, and
   `~/Documents/Vette`; do not re-derive target-side lessons without evidence.
