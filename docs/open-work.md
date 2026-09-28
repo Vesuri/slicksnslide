@@ -71,9 +71,11 @@ Candidate fixes, roughly in order of expected value per effort:
   seventh fallback is the offscreen setup flag.
   The isolated candidate `src/game/track_sprite_animation.s` now passes
   `make verify-sprite-animation`; it is not linked into gameplay. Integrate
-  its register entry into the chain, with old/new dirty publication and
-  packet invalidation, then extend the chain oracle for those operations.
-  The isolated test deliberately does not claim publication coverage.
+  `slicks_draw_animated_track_sprite_publish_regs` into the chain and extend
+  the chain oracle for animation changes, interleaved handles and packet
+  aliases. `make verify-sprite-animation-publication` already verifies the
+  combined drawing, native old/new dirty publication and packet invalidation
+  entry in isolation; it does not yet cover chain traversal or gameplay.
   Support validated in-bounds track sprites whose position/style stay fixed, selecting the
   new frame's actual dimensions/pixels/opacity. Preserve saved-under bytes,
   old/new dirty coverage, descriptor and packet invalidation, retention

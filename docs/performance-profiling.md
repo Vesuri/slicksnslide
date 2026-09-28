@@ -3,6 +3,36 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Native animation publication entry verified in isolation (2026-09-28)
+
+`track_sprite_animation_publish.s` wraps the validated drawing register
+entry without another full register-save frame. On success it invalidates
+the supplied drawing packet and publishes the previous then current
+rectangle through the real `slicks_mark_dirty_rect` routine, preserving
+the scalar general renderer's publication order. Unsupported draws leave
+pixels, metadata, packet and dirty state untouched. A C-ABI wrapper exists
+for isolated checking; the future chain uses the register entry directly.
+
+`make verify-sprite-animation verify-sprite-animation-publication` passes
+both 4096-case suites. The publication suite includes 0..16 pre-existing
+rectangles and compares every dirty-list entry, including unused entries,
+the count and surrounding 16 KiB state canary against the scalar general
+renderer. It also compares the entire packet (only valid-byte clearing is
+allowed), full pixels, actor pool and previous descriptors, exact writes
+and preserved registers/stack. Of 1024 accepted draws, 975 resize; 3072
+rejections must leave all output state unchanged. These checks exercise
+the native drawing and native dirty code together, not a callback mock.
+Log: `tmp/sprite-animation-publication-20260928.log`.
+
+The first test-binary layout attempted to combine two independently named
+assembler sections and was rejected by the binary assembler. The corrected
+harness loads the existing independently built dirty-rectangle image at
+its own address and resolves the candidate's call there. Both suites then
+pass. This was a test layout repair, not a gameplay change.
+
+Still not linked into gameplay. Chain traversal/alias coverage, live display
+and retention checks and end-to-end benchmark/phase sweeps remain open.
+
 ## Isolated native animation-change drawing (2026-09-28)
 
 `src/game/track_sprite_animation.s` supplies C and register-contract entries
