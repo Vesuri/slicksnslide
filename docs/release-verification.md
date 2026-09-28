@@ -1,5 +1,42 @@
 # Development release audit
 
+## 2026-09-28 — display-end publication pacing
+
+Supersedes the VBlank-at-loop-entry limiter below. Simulation and chunky
+rendering now run immediately after the preceding publication. Once ready,
+the main race path waits for a **fresh** row `$100` display-end edge, then
+updates audio/palette and performs C2P without another synchronization wait.
+If preparation finishes during the lower border, it waits for the next edge
+rather than publishing late or twice in one refresh. Missed opportunities
+do not accumulate catch-up updates. Existing menu and modal timing is unchanged.
+The original level-sensitive `wait_display_blank` remains for those callers;
+`wait_display_end` is a separate edge-sensitive publication wait.
+
+`diag_display_end_limit.gdb` replaces `diag_vblank_limit.gdb`: it checks
+publication timing, not simulation-start VBlank counters. On 2 MiB Chip,
+no-Fast, confirmed 4 KiB-stack native runs:
+
+- Accelerated 68040: 120 publications spanning 119 VBlank intervals, all at
+  row 256 (`tmp/standalone-release-ed26g3lg`).
+- Stock-speed 68020: 120 publications spanning 121 VBlank intervals, at
+  rows 256–257 (`tmp/standalone-release-11xv4vz_`).
+
+Repeat using `tools/test_standalone_release.py PRIVATE_INSTALL --default-stack
+--args NATURALQB --checks amiga/diag_display_end_limit.gdb
+--marker DISPLAY_END_LIMIT_OK`, adding `--cpu 68040 --cpu-speed max` for the
+accelerated case. Use a disposable installation for the test's game saves.
+
+The required stock-speed, live-statistics-off full-frame display audits pass
+600 updates each: F1 (`tmp/standalone-release-otwrfnx1`), CITY
+(`tmp/standalone-release-5sxrw5qw`) and WHACKO
+(`tmp/standalone-release-kjjbcn4o`). All sessions are muted and closed on exit.
+
+These breakpoint-observed timing checks establish phase and rate, not an
+uninterrupted performance benchmark or proof that C2P always fits inside the
+blanking window. The single-buffered design and outstanding worst-frame
+performance target are unchanged. The publication wait remains excluded from
+measured CPU work; end-to-end cadence includes it.
+
 ## 2026-09-28 — gameplay refresh-rate limiter
 
 The main loop now permits at most one iteration per new vertical-blank count

@@ -53,6 +53,8 @@ void slicks_amiga_platform_show(struct SlicksAmigaPlatform *platform,
 void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform);
 void slicks_amiga_platform_wait_display_blank(
     struct SlicksAmigaPlatform *platform);
+void slicks_amiga_platform_wait_display_end(
+    struct SlicksAmigaPlatform *platform);
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
                                   unsigned short *raw);
 int slicks_amiga_platform_left_mouse(void);

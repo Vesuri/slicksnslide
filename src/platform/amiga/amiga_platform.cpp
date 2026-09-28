@@ -365,6 +365,22 @@ void slicks_amiga_platform_wait_display_blank(
     } while (line < 0x100);
 }
 
+void slicks_amiga_platform_wait_display_end(
+    struct SlicksAmigaPlatform *platform)
+{
+    if (!platform || !platform->active)
+        return;
+    /* Edge, not level: if preparation finished during the lower border,
+     * that publication opportunity has passed. Wait for a fresh $100 edge
+     * so audio/C2P get the complete blanking window, once per refresh. */
+    unsigned short line;
+    do {
+        line = (unsigned short)(((CUSTOM_WORD(REG_VPOSR) & 7) << 8) |
+                                (CUSTOM_WORD(REG_VHPOSR) >> 8));
+    } while (line >= 0x100);
+    slicks_amiga_platform_wait_display_blank(platform);
+}
+
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
                                   unsigned short *raw)
 {
