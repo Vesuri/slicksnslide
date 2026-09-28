@@ -179,6 +179,17 @@ void slicks_race_offsets(void)
     VALUE(CONTROL_BRAKE, SLICKS_CONTROL_BRAKE);
 
     VALUE(CAR_SIZE, sizeof(struct SlicksRaceCar));
+    OFFSET(RACE_PAIR_DISABLED, struct SlicksRaceRuntime, car_collisions_disabled);
+    OFFSET(RACE_PARTICIPATION_READY, struct SlicksRaceRuntime, participation_ready);
+    OFFSET(RACE_PARTICIPATION, struct SlicksRaceRuntime, participation);
+    OFFSET(RACE_PAIR_COUNT, struct SlicksRaceRuntime, collision_count);
+    OFFSET(RACE_PAIR_IMPACT, struct SlicksRaceRuntime, collision_impact);
+    OFFSET(PROPERTY_COLLISION_RADIUS, struct SlicksCarProperties, collision_radius);
+    OFFSET(PROPERTY_COLLISION_WEIGHT, struct SlicksCarProperties, collision_weight);
+    OFFSET(CAR_TOUCHING_CAR, struct SlicksRaceCar, touching_car);
+    OFFSET(CAR_COLLISION_PARTNER, struct SlicksRaceCar, collision_partner);
+    OFFSET(CAR_PAIR_IMPACT, struct SlicksRaceCar, collision_impact);
+    OFFSET(CAR_PENDING_DAMAGE_IMPACT, struct SlicksRaceCar, pending_damage_impact);
     OFFSET(CAR_X, struct SlicksRaceCar, x);
     OFFSET(CAR_Y, struct SlicksRaceCar, y);
     OFFSET(CAR_SPEED_FIXED, struct SlicksRaceCar, speed_fixed);

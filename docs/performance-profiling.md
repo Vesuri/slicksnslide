@@ -3,6 +3,35 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Whole native car-pair candidate: initial oracle (2026-09-28)
+
+Added an isolated `car_collision.s` implementation of the complete original
+four-opponent loop. One save frame spans every opponent. Current-car and
+property bases, extent, original speed denominator, opponent index and
+cached probe coordinates stay in registers; the two loop flags and current
+index occupy four stack bytes. There are no inner helper calls. An impulse
+invalidates the probe exactly as in production C, but does not recompute
+the original speed denominator. Position separation is still forbidden.
+Opponent order, layer/participation gates, one-shot contact latch, separate
+truncating divisions, impact maxima and pending damage writes are retained.
+
+`make verify-native-car-collision` initially passes 12000 packed full-image
+and ABI comparisons against the existing scalar resolver: 2224 impulses,
+706 disabled calls and 2863 inactive-current cases. Every unspecified byte
+of the 64 KiB packed state remains unchanged, all callee-saved registers
+and stack return are checked, and a write hook rejects accesses outside
+that state or the 48-byte save frame. Fixtures include unequal weights,
+both bridge layers, dense/sparse placements, contact latches, zero speed,
+multiple overlapping entrants, inactive/human/AI roles and all four current
+indices. They intentionally keep signed intermediate arithmetic within
+range; this is not full-domain overflow verification. Existing named DOS
+collision fixtures remain required evidence, not replaced by random tests.
+
+The new routine is not linked into gameplay and no target speed or shadow
+acceptance is claimed. Explicit boundary/wrap tests and a live reference
+comparison are outstanding before promotion. Initial verification log:
+`tmp/native-car-pairs-initial-20260928.log`.
+
 ## Eight-pixel dirty/hybrid target integration rejected (2026-09-28)
 
 Connected the verified hybrid converter to the actual chunky-rectangle

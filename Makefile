@@ -1577,6 +1577,16 @@ build/verify_car_integration: tools/verify_car_integration.c src/game/race_runti
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-integration
+build/car_collision.bin: src/game/car_collision.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
+
+build/verify_native_car_collision: tools/verify_native_car_collision.c src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-native-car-collision
+verify-native-car-collision: build/car_collision.bin build/verify_native_car_collision
+	build/verify_native_car_collision build/car_collision.bin build/offsets/race_offsets.i
+
 verify-car-integration: build/car_integration.bin build/verify_car_integration
 	build/verify_car_integration build/car_integration.bin build/offsets/race_offsets.i
 

@@ -131,7 +131,16 @@ Candidate fixes, roughly in order of expected value per effort:
   bookkeeping and bypass-path overhead substantially; do not simply repeat
   the archived sparse-hash prototype.
 
-- **Remaining C inside `slicks_race_step`.** Refresh and split the
+- **Remaining C inside `slicks_race_step`.**
+  A larger register-resident candidate now exists in `car_collision.s`:
+  the complete four-opponent pair loop, one save frame and no helper calls.
+  It is isolated, not linked into gameplay. `verify-native-car-collision`
+  compares 12000 packed-state/ABI cases with the existing resolver and
+  guards writes outside the race/save frame. Before target acceptance,
+  extend explicit boundary/wrap coverage, add a live reference comparison,
+  benchmark all tracks and retain the independent DOS collision fixtures.
+  No speed gain is established by the isolated oracle.
+  Refresh and split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:
   per-car `prepare_car_motion`, `update_actor_layer`, `finish_car_update`,
   `apply_throttle`, `display_time_centiseconds`,
