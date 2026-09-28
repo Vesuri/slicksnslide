@@ -1526,6 +1526,13 @@ build/c2p8_test.bin: src/platform/amiga/c2p8_interleaved.s | build
 verify-c2p8: build/c2p8_test.bin build/verify_c2p16
 	build/verify_c2p16 build/c2p8_test.bin 8
 
+build/c2p_hybrid_test.bin: tools/c2p_hybrid_test.s src/platform/amiga/c2p8_16_interleaved.s src/platform/amiga/c2p8_interleaved.s src/platform/amiga/c2p16_interleaved.s | build
+	$(VASM) -quiet -m68020 -Fbin -I. -I$(HOME)/.local/opt/m68k-amiga-elf/sys-include -o $@ $<
+
+.PHONY: verify-c2p-hybrid
+verify-c2p-hybrid: build/c2p_hybrid_test.bin build/verify_c2p16
+	build/verify_c2p16 build/c2p_hybrid_test.bin hybrid
+
 build/actor_order.bin: src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
 

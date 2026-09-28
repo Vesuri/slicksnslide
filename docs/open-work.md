@@ -163,8 +163,12 @@ Candidate fixes, roughly in order of expected value per effort:
   An isolated eight-pixel native converter now exists as
   `src/platform/amiga/c2p8_interleaved.s`, with `make verify-c2p8` covering
   final-only byte stores, complete pixels, bounds, empty inputs and ABI.
-  It is not linked into gameplay. Next: implement eight-pixel edge handling
-  around sixteen-pixel interiors, preserve dirty coverage, and benchmark
+  The isolated hybrid `c2p8_16_interleaved.s` now uses eight-pixel edges
+  around sixteen-pixel interiors, with an unchanged-converter fast path
+  for already aligned rectangles. `make verify-c2p-hybrid` passes all
+  820 valid horizontal spans plus randomized, single-bit and empty cases.
+  Neither candidate is linked into gameplay. Next: change publication
+  alignment, extend dirty-coverage verification to eight pixels, and benchmark
   before accepting any publication-alignment change. Byte stores still
   consume Chip accesses, so narrower area alone does not establish a gain.
   The production converter handles

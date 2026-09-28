@@ -3,6 +3,31 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated hybrid C2P verification (2026-09-28)
+
+Added `c2p8_16_interleaved.s`: an optional leading eight-pixel strip,
+sixteen-pixel interior, and optional trailing eight-pixel strip. Each
+converter processes the rectangle height, with the original source stride
+and interleaved plane layout. Already sixteen-aligned input jumps directly
+to the existing sixteen-pixel converter without a new register-save frame.
+Split input retains width, height, source, bitmap, X and row offset across
+the component calls. It is not yet linked into production.
+
+`make verify-c2p-hybrid verify-c2p8 verify-c2p16` passes the actual assembled
+routines. The mixed-store oracle checks complete plane pixels, exact byte/
+word store counts, every store's final value, rectangle read/write bounds,
+source preservation and callee-saved registers/stack. In addition to single
+bits, 1536 random rectangles and 32 empty cases per converter, it now
+enumerates every horizontal span: 820 for eight-pixel and hybrid input,
+210 for sixteen-pixel input. Deterministic spans cover top and bottom rows,
+odd destination-byte edges, edge-only rectangles, both edges and interiors.
+Log: `tmp/c2p-hybrid-oracles-20260928.log`.
+
+No target timing or gameplay display acceptance is implied. Dirty rectangle
+publication remains sixteen-aligned; eight-pixel coverage and target audits
+are the next integration gates. No emulator was started for these isolated
+tests, and the production executable was not rebuilt or changed.
+
 ## Isolated eight-pixel native C2P probe (2026-09-28)
 
 Added `c2p8_interleaved.s`, folding the unused half of the existing Kalms-
