@@ -3,6 +3,29 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated compact-particle restoration (2026-09-28)
+
+`make verify-point-restore verify-point-compact-restore` passes both layouts:
+4096 chains, 335076 point visits, 170497 restores and 1359 sprite boundaries.
+The scalar reference still operates on canonical 24-byte records; only after
+reference execution are both images projected to 20-byte records. Every
+represented byte and the complete surrounding image are compared, with
+1024 guard bytes in the unused pool tail. Invalid unsaved coordinates,
+repeated pixels, saved flags, return PC, stack and preserved registers are
+checked. Restoration does not read current coordinates, so arbitrary high
+coordinate words in the canonical fixture are intentionally irrelevant here.
+
+Two locally assembled deliberate errors are rejected with exit 1: wrong
+record stride fails case 2 at byte 8300; wrong saved-pixel offset fails
+case 4 at byte 96448. Mutation files are under
+`tmp/point-restore-mutant-{stride,saved}-20260928.*` and are not production code.
+The rebuilt default binary matches a fresh assembly of the parent source
+with the same current offsets (SHA-256
+`e69a2f8fd54faca4a7417292c39a45eb5f2685bcffc13d24a60f2fcadef15e17`).
+The pre-existing binary had a different hash; only the fresh like-for-like
+comparison is evidence of unchanged instructions. No target performance
+gain or complete layout migration is claimed.
+
 ## Isolated compact-particle drawing (2026-09-28)
 
 The point renderer now has an opt-in 20-byte layout for isolated tests;

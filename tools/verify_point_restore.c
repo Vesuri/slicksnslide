@@ -15,7 +15,9 @@ static unsigned off(const char *path,const char *name){
     fclose(f);fprintf(stderr,"Missing %s\n",name);exit(2);
 }
 int main(int argc,char **argv){
-    if(argc!=3)return 2;
+    if(argc!=3 && argc!=4)return 2;
+    int compact=argc==4;
+    if(compact && strcmp(argv[3],"compact"))return 2;
     unsigned char code[4096];FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t n=fread(code,1,sizeof code,f);fclose(f);if(!n||n==sizeof code)return 2;
     enum{CODE=0x10000,BASE=0x20000,N=0x20000,PIX=32768,ROWS=100000,STACK=0x80000,STOP=0x90000};
@@ -55,15 +57,33 @@ int main(int argc,char **argv){
             if(p[20]&1){expected[PIX+word(p+14)*320+word(p+12)]=p[16];p[20]=2;++restored;}
             h=expected[NEXT+h];
         }
+        /* Keep the canonical 24-byte reference above independent of the
+         * compact layout. Project only redundant coordinate high words;
+         * retain every represented byte and guard the unused pool tail. */
+        if(compact){
+            unsigned char canonical[256*24];
+            unsigned char *buffers[]={image,expected};
+            for(unsigned b=0;b<2;++b){
+                unsigned char *pool=buffers[b]+PART;
+                memcpy(canonical,pool,sizeof canonical);
+                for(unsigned i=0;i<256;++i){
+                    memcpy(pool+i*20,canonical+i*24+2,2);
+                    memcpy(pool+i*20+2,canonical+i*24+6,2);
+                    memcpy(pool+i*20+4,canonical+i*24+8,16);
+                }
+                memset(pool+256*20,0xcc,256*4);
+            }
+        }
         ck(uc_mem_write(u,BASE,image,N));be32(stack,STOP);
         be32(stack+4,BASE);be32(stack+8,first);
         ck(uc_mem_write(u,STACK,stack,12));unsigned sp=STACK;ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         unsigned values[11];for(unsigned i=0;i<11;++i){values[i]=0xa5000000u+i*0x10101u+t;ck(uc_reg_write(u,regs[i],values+i));}
         ck(uc_emu_start(u,CODE,STOP,0,100000));ck(uc_mem_read(u,BASE,got,N));
+        unsigned pc;ck(uc_reg_read(u,UC_M68K_REG_PC,&pc));if(pc!=STOP)return 1;
         if(memcmp(got,expected,N)){for(unsigned i=0;i<N;++i)if(got[i]!=expected[i]){fprintf(stderr,"Case %u byte %u got %u expected %u\n",t,i,got[i],expected[i]);break;}return 1;}
         unsigned result;ck(uc_reg_read(u,UC_M68K_REG_D0,&result));if(result!=h){fprintf(stderr,"Case %u returned %u instead of %u\n",t,result,h);return 1;}
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=values[i])return 1;}
     }
-    uc_close(u);printf("Point restore: 4096 chains, %u visits, %u restores, %u sprite boundaries; saved flags, repeated pixels, invalid unsaved coordinates, full-image canaries and ABI pass\n",visited,restored,boundaries);return 0;
+    uc_close(u);printf("Point restore (%u-byte records): 4096 chains, %u visits, %u restores, %u sprite boundaries; saved flags, repeated pixels, invalid unsaved coordinates, full-image canaries and ABI pass\n",compact?20:24,visited,restored,boundaries);return 0;
 }

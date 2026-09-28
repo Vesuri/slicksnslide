@@ -1525,6 +1525,13 @@ verify-car-integration: build/car_integration.bin build/verify_car_integration
 build/point_restore.bin: tools/point_restore_test.s src/game/point_restore.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
+build/point_compact_restore.bin: tools/point_compact_restore_test.s src/game/point_restore.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+.PHONY: verify-point-compact-restore
+verify-point-compact-restore: build/point_compact_restore.bin build/verify_point_restore
+	build/verify_point_restore build/point_compact_restore.bin build/offsets/race_offsets.i compact
+
 build/verify_point_restore: tools/verify_point_restore.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 

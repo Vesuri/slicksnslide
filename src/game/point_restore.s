@@ -2,6 +2,18 @@
     section code,code
     xdef slicks_restore_point_chain
     xref mult320
+    ifnd SLICKS_PARTICLE_WORD_COORDINATES
+SLICKS_PARTICLE_WORD_COORDINATES equ 0
+    endif
+    ifne SLICKS_PARTICLE_WORD_COORDINATES
+PR_OLD equ 8
+PR_SAVED equ 12
+PR_FLAGS equ 16
+    else
+PR_OLD equ 12
+PR_SAVED equ 16
+PR_FLAGS equ 20
+    endif
 ; C ABI: race, first handle. Restore consecutive points, returning the first sprite
 ; handle unchanged (or zero). Saved points have valid old screen positions.
 ; Stride/field offsets are checked by the C caller and the native oracle.
@@ -20,18 +32,24 @@ slicks_restore_point_chain:
     move.w (a3,d3.w*2),d0
     bmi.s .done
     move.w d0,d1
+    ifne SLICKS_PARTICLE_WORD_COORDINATES
+    lsl.w #2,d1
+    add.w d1,d0
+    lea (a0,d0.w*4),a5
+    else
     add.w d1,d1
     add.w d1,d0
     lea (a0,d0.w*8),a5
-    btst #0,20(a5)
+    endif
+    btst #0,PR_FLAGS(a5)
     beq.s .next
-    move.l 12(a5),d1
+    move.l PR_OLD(a5),d1
     move.w d1,d2
     move.l (a4,d2.w*4),d2
     swap d1
     add.w d1,d2
-    move.b 16(a5),(a1,d2.l)
-    move.b #2,20(a5)
+    move.b PR_SAVED(a5),(a1,d2.l)
+    move.b #2,PR_FLAGS(a5)
 .next:
     move.b (a2,d3.w),d3
     bne.s .point
