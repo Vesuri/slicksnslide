@@ -1715,7 +1715,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         if(p<0 || p>=g_slicks_profiles.count) goto done;
         c.names[d]=g_slicks_profiles.names[p];
     }
-    if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+    if(slicks_resource_archive_cached(&archive,menu_cache)) goto done;
     m=slicks_amiga_shop_create(&archive,chunky,&c,&state);
     if(!m) goto done;
     slicks_shop_computers(rules,&session->options,session->inventory,session->cash,
@@ -1767,22 +1767,20 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             if(m->help) {
                 if(slicks_help_viewer_key(m->help,scan==1?27:0,scan)) goto done;
                 if(m->help->navigation.done) {
-                    slicks_amiga_platform_end(platform);
                     if(slicks_amiga_help_close(m) || slicks_amiga_shop_draw(m,&c,&state)) goto done;
                     if(shop_test) g_slicks_shop_help_phase=2;
                     present_menu_surface(platform,m);
-                    if(slicks_amiga_platform_begin(platform,0)) goto done;
+                    if(show_menu(platform)) goto done;
                 } else present_menu_surface(platform,m);
                 continue;
             }
             enum SlicksShopAction action=slicks_shop_key(&state,session->players.participation,scan);
             if(action==SLICKS_SHOP_HELP) {
-                slicks_amiga_platform_end(platform);
                 if(slicks_amiga_help_open(m,&archive,slicks_original_shop_help) &&
                     slicks_amiga_help_warning_open(m)) goto done;
                 if(shop_test && m->help) g_slicks_shop_help_phase=1;
                 present_menu_surface(platform,m);
-                if(slicks_amiga_platform_begin(platform,0)) goto done;
+                if(show_menu(platform)) goto done;
             } else if(action==SLICKS_SHOP_CAPTURE) {
                 /* File I/O is performed only while AmigaOS owns the machine. */
                 slicks_amiga_platform_end(platform);
@@ -2933,8 +2931,7 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     const unsigned char *palette)
 {
     struct SlicksResourceArchive a={0};struct SlicksAmigaPlayerMenu *m=0;int result=-1;
-    slicks_amiga_platform_end(p);
-    if(slicks_resource_archive_open(&a,"SLICKS.000")) goto done;
+    if(slicks_resource_archive_cached(&a,menu_cache)) goto done;
     m=slicks_amiga_help_surface_create(&a,chunky,palette);
     if(!m) goto done;
     if(open_help(p,m,slicks_registration_help_topic)) goto done;
@@ -2956,7 +2953,6 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
         }
     }
 done:
-    slicks_amiga_platform_end(p);
     if(m && m->help && slicks_amiga_help_close(m)) result=-1;
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&a);
@@ -3010,8 +3006,9 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     if(key<0) goto done;
     if(kind==1 && slicks_registration_help_requested(key)) {
         if(registration_exit_help(p,chunky,palette)) goto done;
+        slicks_amiga_platform_wait_display_blank(p);
         for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,p->views[i].bitmap,0,200);
-        if(slicks_amiga_platform_set_view(p,0,palette) || slicks_amiga_platform_begin(p,0)) goto done;
+        if(slicks_amiga_platform_set_view(p,0,palette) || show_menu(p)) goto done;
         view=0;
     }
     if(kind && result_fade(p,palette,100,0,10,timer,&view)) goto done;

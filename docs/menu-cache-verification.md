@@ -25,6 +25,9 @@ cache. RAM-only open/close and player name/colour/picker transitions retain
 hardware ownership. Pause Help/Controllers/speed and race resume also retain it.
 Palette list replacement waits for display blanking; switching views does not
 restore AmigaOS. Actual file operations still have explicit boundaries.
+Shop and registration Help also use cached resources and retain takeover for
+their Help navigation. Shop screenshot saving and registration exit-image
+loading remain explicit disk operations.
 Intermission resources and track-preview fonts/icons use the cache; selected
 track and SLICKS.DAT loading remains an allowed disk operation.
 
@@ -63,6 +66,11 @@ progression, zero race error and restoration 31. No larger stack is requested.
   every restored screen compares byte-for-byte. Name allocation failure retains
   the editor and passes retry/edit/cancel, with exact saved pixels and profiles.
   Title Help archive/surface/viewer/navigation failure recovery passes.
+- Shop: purchases/sale, Help open/close and correct cash/inventory at race
+  entry pass. Keyless registration exit Help reaches original chapter 353,
+  closes with byte-identical restored pixels and system restoration 31.
+  `SLICKS_REGISTRATION_TEST=2/3` supplies the existing Y/F1 diagnostic input;
+  value 1 retains the ordinary registration fixture.
 
 Local-only logs are `tmp/menu-cache-*.log`, with the successful intermission
 stack run in `tmp/cache-intermission-stack.log`. All native runs are muted PAL

@@ -53,8 +53,9 @@ Implementation and completed verification evidence are separate in
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
   Cache the SLICKS.TRK and saved-game catalogues, preserving transactional
-  save/delete updates and recovery/error handling. Migrate remaining Shop,
-  registration Help, chooser and RAM-only transition owners. Keep explicit
+  save/delete updates and recovery/error handling. Migrate remaining chooser,
+  results/return and RAM-only transition owners. Shop and registration Help
+  use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.
 - Restore original title status indicators/counts, verifying actual runtime
