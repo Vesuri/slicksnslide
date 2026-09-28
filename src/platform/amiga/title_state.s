@@ -6,6 +6,7 @@
 	xdef	slicks_title_phase
 	xdef	slicks_title_ordinary_color
 	xdef	slicks_title_selected_color
+	xdef slicks_title_background
 
 slicks_title_counter:
 	dc.b	0
@@ -24,3 +25,5 @@ slicks_title_ordinary_color:
 	dc.w	0
 slicks_title_selected_color:
 	dc.w	0
+slicks_title_background:
+	dc.l 0

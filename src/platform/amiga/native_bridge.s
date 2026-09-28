@@ -25,6 +25,8 @@
 	xref	slicks_title_phase
 	xref	slicks_title_ordinary_color
 	xref	slicks_title_selected_color
+	xref slicks_title_background
+	xref sgfx_title_crop
 
 ; C ABI: slicks_prepare_title_frame(asset, frame)
 ; C ABI: slicks_draw_original_text(chunky, font, text, x, y)
@@ -86,6 +88,14 @@ slicks_draw_title_pages:
 slicks_draw_title_menu_selection:
 	movem.l	d2-d7/a2-a6,-(sp)
 	movea.l	48(sp),a0
+	; Erase the old selection from the original artwork, not a flat fill.
+	movea.l slicks_title_background,a1
+	move.l a1,d0
+	beq.s .selection_background_ready
+	moveq #100,d4
+	moveq #0,d7
+	jsr sgfx_title_crop
+.selection_background_ready:
 	movea.l	52(sp),a1
 	move.w	58(sp),d2
 	move.w	slicks_title_ordinary_color,d0

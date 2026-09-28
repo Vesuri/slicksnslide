@@ -1098,6 +1098,29 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 		$< -lunicorn -o $@
 
 .PHONY: verify-title-bridge
+.PHONY: verify-title-navigation
+build/verify_title_navigation: tools/verify_title_navigation.c tools/verify_options_menu.c src/ui/title_navigation.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \
+		-L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+
+verify-title-navigation: build/verify_title_navigation
+	build/verify_title_navigation
+
+build/title_menu.elf: tools/title_menu_test.s src/ui/sui_title_menu.s Makefile
+	@mkdir -p build
+	$(VASM) -quiet -m68020 -Felf -I. -o build/title_menu.o $<
+	$(M68K_CC) -nostdlib -Wl,--section-start=code=0,--section-start=data=0x2000,-e,sui_title_menu build/title_menu.o -o $@
+
+build/verify_title_menu: tools/verify_title_menu.c
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \
+		-L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+
+.PHONY: verify-title-menu
+verify-title-menu: build/title_menu.elf build/verify_title_menu
+	build/verify_title_menu build/title_menu.elf
+
 build/title_bridge.bin: tools/title_bridge_test.s src/platform/amiga/native_bridge.s src/ui/sui_title_dispatch.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<

@@ -75,10 +75,30 @@ attempt exposed an unsupported cross-section PC32 sibling jump after shrinking
 the redraw function; an empty compiler memory barrier retains a normal call
 without adding rendering work, and the rebuilt HUNK passes the native check.
 
-The user has been asked to resolve the conflict between strict hidden
-save/load presentation and the previously requested accessible save/load
-feature. Do not remove the serializer or disable legitimate keyfile behaviour;
-this decision concerns UI availability, not registration bypasses.
+## F03–F05 title layout and arrows
+
+The user's subsequent instruction to fix differences is applied as strict
+original presentation: the normal title hides entry 4, without removing the
+serializer or internal action handler. READ THIS and QUIT return to y=137/150.
+The selected bevel follows the selected row. Before redraw, the existing
+translated title crop restores the original artwork, erasing the old bevel.
+Up/Down clamp and skip entry 4; Left/Right edit track count or game mode on
+their respective rows. The stale mouse Read This index is corrected to 5;
+this does not establish all mouse/shortcut behaviour as verified.
+
+`make verify-title-menu` compares the production 68020 renderer's ordered
+label/bevel commands against original instructions `29852..29928`: 224 cases
+(seven selection values, sixteen colour pairs, two pages) pass. The pre-fix
+renderer fails this oracle with an extra draw. This checks layout and drawing
+commands, not the still-missing status area or complete title pixels.
+
+`make verify-title-navigation` executes original `2a0cb..2a1b6` at CS=266c
+and compares selection, count, mode and refresh state: 17,920 cases pass.
+`make verify-title-bridge` passes 65,536 dispatch, 512 text/selection and
+320 font-argument cases. Native build and keyless title/exit smoke pass in
+`.run/fidelity-title-controls`, with all 8,000 lower-title artwork pixels
+unchanged and restoration 31. This muted 2 MiB/no-Fast run does not exercise
+an interactive arrow sequence; it is not whole-title or whole-port acceptance.
 
 ## Coverage review required for whole-port acceptance
 

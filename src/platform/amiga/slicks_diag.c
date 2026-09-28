@@ -40,6 +40,7 @@
 #include "../../ui/player_menu.h"
 #include "../../ui/profile_actions.h"
 #include "../../ui/title_help.h"
+#include "../../ui/title_navigation.h"
 #include "../../ui/language_table.h"
 #include "resource_archive.h"
 #include "../../ui/font_resource.h"
@@ -101,6 +102,7 @@ void __attribute__((noinline)) slicks_diag_shop_ready(void) { __asm__ volatile("
 struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
+extern unsigned char *slicks_title_background;
 /* Setup-owned state survives races; it is not an emulated DOS data segment. */
 struct SlicksPlayerProfiles g_slicks_profiles;
 struct SlicksSetupSession g_slicks_setup_session;
@@ -3524,6 +3526,7 @@ int main(void)
                                      sizeof(source_palette)) != 768L ||
         slicks_prepare_title_frame(title_asset, title_frame) != 0)
         goto cleanup;
+    slicks_title_background=title_frame;
 
     slicks_title_font=(unsigned char *)AllocMem(TITLE_FONT_CAPACITY,MEMF_ANY);
     if(!slicks_title_font) goto cleanup;
@@ -4709,7 +4712,17 @@ int main(void)
                     }
                     continue;
                 }
-                if (raw == 0x4c) {
+                if(original_setup && (raw==0x4c || raw==0x4d || raw==0x4f || raw==0x4e)) {
+                    short selection=(short)menu_selection;
+                    short count=(short)g_slicks_track_playlist.count;
+                    short old_mode=configuration.options[0];
+                    unsigned char refresh=0;
+                    redraw=slicks_title_navigation(&selection,&count,(short)track_count,
+                        &configuration.options[0],&refresh,amiga_raw_to_dos_scan(raw));
+                    menu_selection=(unsigned short)selection;
+                    g_slicks_track_playlist.count=(unsigned short)count;
+                    if(configuration.options[0]!=old_mode) setup_dirty=1;
+                } else if (raw == 0x4c) {
                     menu_selection = (unsigned short)(
                         menu_selection ? menu_selection - 1 : 6);
                     redraw = 1;
@@ -5166,7 +5179,7 @@ int main(void)
             unsigned short action = slicks_dispatch_title_key(0x1c);
             if(g_slicks_player_menu || g_slicks_options_menu || g_slicks_track_menu || g_slicks_title_help || g_slicks_title_help_warning) {
                 action=0; /* Original player menu is keyboard-driven. */
-            } else if(action==2 && menu_selection==4) {
+            } else if(action==2 && menu_selection==5) {
                 if(open_title_help(&platform,logical,chunky,source_palette,slicks_title_help_topic(action,menu_selection))) goto cleanup;
                 action=0;
             } else if(action==2 && menu_selection==1 && original_setup) {
@@ -5764,6 +5777,7 @@ cleanup:
     if (logical)
         FreeMem(logical, 0x40000UL);
     g_slicks_diag_logical = 0;
+    slicks_title_background=0;
     if (title_frame)
         FreeMem(title_frame, TITLE_FRAME_ALLOCATION_BYTES);
     if (title_asset)

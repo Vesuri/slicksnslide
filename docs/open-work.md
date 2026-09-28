@@ -36,11 +36,10 @@ Implementation and completed verification evidence are separate in
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.
   Do not claim feature completeness from isolated or historical passes.
-- Close F02–F05/F08: original title status/layout/highlight, clamped
-  navigation and shortcuts, animation. Verify original save/load entry routes
-  before changing menu availability; preserve functioning persistence.
-  User choice requested: strict original hidden save/load UI versus explicitly
-  documented Amiga access, given the earlier save/load completion request.
+- Close F02/F08: original title status indicators and animation. Audit the
+  remaining title shortcuts and mouse routes against original callers.
+  F03–F05 now have direct original-instruction layout/navigation comparisons;
+  native interactive sequence coverage remains to be extended.
 - Repair UIMENU2's extra-buffer fragmentation and assert that fault injection
   reaches the intended allocation/render boundary. The production F06
   intermission edit/next-race path passes; the old 17-phase fixture does not.
@@ -54,9 +53,8 @@ Implementation and completed verification evidence are separate in
   on 2 MiB Chip RAM. Remove unnecessary platform end/begin transitions; preserve
   explicit save/load failure handling and on-demand track/exit presentations.
   The inventory is complete; the cache and lifecycle changes are not implemented.
-- Restore original title status indicators/counts and conditional menu layout.
-  Replace the port-specific CAR/TRACK footer with the original presentation,
-  verifying against DOS rather than treating the current title as faithful.
+- Restore original title status indicators/counts, verifying actual runtime
+  state against DOS rather than treating the current title as faithful.
 
 ## Remaining performance work
 

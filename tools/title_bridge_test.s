@@ -6,15 +6,21 @@
 	include "src/ui/sui_title_dispatch.s"
 ; Drawing is a boundary here: verify incoming registers, not fake pixels.
 sui_draw_text:
+sui_draw_small_text:
 sui_font_string:
+sui_font_string_planar:
 sui_title_menu:
 sgfx_title_pages:
+sgfx_title_crop:
 sui_title_step:
 sui_title_tail:
 sgfx_mode_setup:
 sgfx_chunky_asset_to_planar:
 	rts
 slicks_title_counter:
+slicks_title_background:
+slicks_title_small_font:
+slicks_title_text_page:
 slicks_title_third_color:
 slicks_title_render_state:
 slicks_title_fallback_color:

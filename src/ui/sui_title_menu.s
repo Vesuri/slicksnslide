@@ -3,7 +3,7 @@
 	xref	sui_bevel
 	xref	sui_draw_text
 
-; Native title menu, including the original saved-game action at index four.
+; Original 29852..29928. Entry four is unconditionally skipped by this build.
 ;
 ; In: a0 = logical planes, a1 = RGB palette
 ;     d0.b = ordinary label colour, d1.b = selected label colour
@@ -19,17 +19,6 @@ sui_title_menu:
 	move.w	d7,2(a6)
 	move.l	a1,4(a6)
 	move.w	d2,8(a6)
-
-	moveq	#120,d0
-	moveq	#82,d1
-	moveq	#81,d2
-	moveq	#14,d3
-	moveq	#50,d4
-	moveq	#10,d5
-	moveq	#10,d6
-	move.w	2(a6),d7
-	movea.l	4(a6),a1
-	jsr	sui_bevel
 
 	lea	.label_go,a1
 	moveq	#85,d1
@@ -47,16 +36,12 @@ sui_title_menu:
 	moveq	#124,d1
 	moveq	#3,d6
 	bsr.s	.label
-	lea	.label_load,a1
-	move.w	#137,d1
-	moveq	#4,d6
-	bsr.s	.label
 	lea	.label_read,a1
-	move.w	#150,d1
+	move.w	#137,d1
 	moveq	#5,d6
 	bsr.s	.label
 	lea	.label_quit,a1
-	move.w	#163,d1
+	move.w	#150,d1
 	moveq	#6,d6
 	bsr.s	.label
 	bra.s	.done
@@ -67,6 +52,19 @@ sui_title_menu:
 .check_selected:
 	cmp.w	8(a6),d6
 	bne.s	.draw
+	; Original bevel follows the selected label, before drawing its text.
+	movem.l d0-d7/a0-a1,-(sp)
+	moveq #120,d0
+	subq.w #3,d1
+	moveq #81,d2
+	moveq #14,d3
+	moveq #50,d4
+	moveq #10,d5
+	moveq #10,d6
+	move.w 2(a6),d7
+	movea.l 4(a6),a1
+	jsr sui_bevel
+	movem.l (sp)+,d0-d7/a0-a1
 	move.b	1(a6),d2
 .draw:
 	move.w	#160,d0
@@ -84,7 +82,6 @@ sui_title_menu:
 .label_players:	dc.b	"PLAYERS",0
 .label_tracks:	dc.b	"TRACKS",0
 .label_options:	dc.b	"OPTIONS",0
-.label_load:	dc.b	"LOAD GAME",0
 .label_read:	dc.b	"READ THIS",0
 .label_quit:	dc.b	"QUIT",0
 	even
