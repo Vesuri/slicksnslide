@@ -17,7 +17,8 @@ int main(void)
     check(uc_mem_write(u,0x80000,rows,sizeof rows));
     uc_hook hook;check(uc_hook_add(u,&hook,UC_HOOK_MEM_WRITE,writes,0,1,0));
     unsigned drawn=0;
-    for(unsigned trial=0;trial<384;++trial) {
+    unsigned char actor_seen[200]={0},packet_seen[64]={0};
+    for(unsigned trial=0;trial<768;++trial) {
         memset(&race,0,sizeof race);race.chunky=pixels;race.sprite_dirty_deferred=1;race.track_actors_ready=1;
         memset(race.sprite_dirty_previous,0xcc,sizeof race.sprite_dirty_previous);
         for(unsigned i=0;i<64000;++i) {
@@ -33,7 +34,7 @@ int main(void)
             }
         }
         unsigned char next[200]={0},trail[400];memset(trail,255,sizeof trail);
-        unsigned head=trial<128?1:trial<256?65:169;
+        unsigned head=trial<384?(trial<128?1:trial<256?65:169):1+(trial-384)%169;
         unsigned stop=0,first=head;
         for(unsigned i=0;i<31;++i) {
             unsigned h=first+i;if(i<30)next[h]=h+1;
@@ -112,6 +113,7 @@ int main(void)
             allowed[0xb0000+h*12+6]=1;
             memset(allowed+0xd0000+(h&63)*300,1,300);
             draw_weapon_actor_general(&race,h);++drawn;++pass_draws;
+            actor_seen[h]=packet_seen[h&63]=1;
             if(pass==5)a->retain=1;
         }
         memcpy(expected,pixels,sizeof expected);actors(araw,&race);previous(praw,&race);
@@ -134,5 +136,7 @@ int main(void)
         if(!pass && pass_draws && !packet_writes)fail("cold packets were not populated");
         }
     }
-    printf("Native sprite drawing chain: 2688 cold/warm/stale-mask/changed-frame/fractional-position/eligible/kept cases, %u draws, exact pixels/state/write bounds/fallback/ABI passed\n",drawn);
+    for(unsigned h=1;h<200;++h)if(!actor_seen[h])fail("missing actor handle coverage");
+    for(unsigned p=0;p<64;++p)if(!packet_seen[p])fail("missing packet key coverage");
+    printf("Native sprite drawing chain: 5376 cold/warm/stale-mask/changed-frame/fractional-position/eligible/kept cases, %u draws, all actor handles and packet keys, exact pixels/state/write bounds/fallback/ABI passed\n",drawn);
 }

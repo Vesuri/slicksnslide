@@ -13,11 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh redundant-speed-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 152436/364, F1 177562/428,
-CITY 147694/343, WHACKO 155424/409. Means are 15.7-18.9 ms; the
+(`amiga/bench_tracks.sh sprite-address-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 152402/365, F1 176686/427,
+CITY 147150/341, WHACKO 155339/404. Means are 15.6-18.8 ms; the
 worst updates in that run need 9-27% cuts. The refreshed F1 HUD-clock
-phase sweep reaches 441 lines (28.3 ms, 29% cut needed), with matching
+phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
@@ -73,10 +73,6 @@ Candidate fixes, roughly in order of expected value per effort:
   audit enabled in RETCHECK when changing any source-field writer.
   Focus further wrapper work on eliminating repeated sprite validation or
   whole traversals, not merely moving argument setup across the call.
-  One smaller candidate is the remaining `164*handle` and `300*(handle&63)`
-  address calculations in `track_sprite_fast.s`: benchmark signed-word offset
-  lookups without changing validation. The corresponding retention-loop
-  addressing improvement is already present; do not reimplement that part.
   Preserve legacy traversal and sprite/overflow boundaries; any removed
   checks need explicit invariant coverage in the native oracle.
 

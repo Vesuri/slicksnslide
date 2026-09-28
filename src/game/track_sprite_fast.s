@@ -255,8 +255,7 @@ slicks_restore_sprite_chain:
 	movea.l d7,a0
 	tst.w 0(a0,d5.w*2)
 	bpl.w .done
-	move.w d5,d0
-	mulu.w #164,d0
+	move.w slicks_sprite_actor_offsets(pc,d5.w*2),d0
 	movea.l a5,a2
 	adda.w d0,a2
 	move.w d5,d0
@@ -313,8 +312,7 @@ slicks_draw_sprite_chain:
 	movea.l 76(sp),a0
 	tst.w 0(a0,d0.w*2)
 	bpl.w .done
-	move.w d0,d1
-	mulu.w #164,d1
+	move.w slicks_sprite_actor_offsets(pc,d0.w*2),d1
 	movea.l 52(sp),a2
 	adda.w d1,a2
 	btst #1,33(a2)		; RETAIN_KEPT: pixels and background remain
@@ -337,7 +335,7 @@ slicks_draw_sprite_chain:
 	adda.w d0,a4
 	move.l (sp),d0
 	andi.w #63,d0
-	mulu.w #300,d0
+	move.w slicks_sprite_packet_offsets(pc,d0.w*2),d0
 	movea.l 84(sp),a0
 	adda.w d0,a0
 	tst.b 33(a0)
@@ -421,7 +419,7 @@ slicks_draw_sprite_chain:
 	; a0/a3 point one rectangle past the destination/mask respectively.
 	move.l (sp),d0
 	andi.w #63,d0
-	mulu.w #300,d0
+	move.w slicks_sprite_packet_offsets(pc,d0.w*2),d0
 	movea.l 84(sp),a2
 	adda.w d0,a2
 	clr.w 32(a2)
@@ -544,3 +542,18 @@ slicks_draw_sprite_chain:
 	adda.w #312,a0
 	dbf d3,.opaque8_row
 	bra.w .painted
+
+; Active actor handles are 1..199; packet keys are explicitly masked to 63.
+; Both byte offsets fit the signed word consumed by ADDA.W above.
+slicks_sprite_actor_offsets:
+sprite_actor_offset set 0
+	rept 200
+	dc.w sprite_actor_offset
+sprite_actor_offset set sprite_actor_offset+164
+	endr
+slicks_sprite_packet_offsets:
+sprite_packet_offset set 0
+	rept 64
+	dc.w sprite_packet_offset
+sprite_packet_offset set sprite_packet_offset+300
+	endr

@@ -3,6 +3,49 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Sprite-chain address lookups (2026-09-28)
+
+Replace two `164*handle` multiplications in native sprite restore/draw and
+two `300*(handle&63)` multiplications in drawing-packet access/publication
+with signed-word offset lookups. The tables contain 200 and 64 entries
+(528 bytes total), outside the hot loop. Maximum offsets 32636 and 18900
+fit the existing `ADDA.W` consumers. The production layout assertions still
+require 164-byte actors, 200 slots and 300-byte packets. All sprite geometry,
+packet-key, visibility, aliasing, retention and fallback checks are unchanged.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 152436 / 364 | 152402 / 365 |
+| F1 | 177562 / 428 | 176686 / 427 |
+| CITY | 147694 / 343 | 147150 / 341 |
+| WHACKO | 155424 / 409 | 155339 / 404 |
+
+Controls: `tmp/redundant-speed-20260928-*`; candidate:
+`tmp/sprite-address-20260928-*`. All final states match over 603 updates.
+Total work reductions are 0.02/0.49/0.37/0.05%. Over-budget counts are
+58/209/32/79 versus 61/211/33/77; WHACKO's count increases despite its lower
+maximum. These are work timings, not a claim of sustained 50 FPS.
+
+The four native F1 clock phases give work totals
+176693/176736/176751/176770 and maxima 427/437/437/433 lines. Remainder
+readbacks are 0/819200/1638400/2457600; all four 603-update final states
+match. Logs: `tmp/sprite-address-phase-20260928-{0,1,2,3}.log`.
+Every phase total improves against the parent; the worst observed phase
+falls from 441 to 437 lines. Retain the change, without claiming every
+individual deadline improves or that the target is met.
+
+Expanded the native drawing-chain oracle from 2688 to 5376 cases while
+preserving the original vectors. Explicit coverage assertions require all
+199 active actor handles and all 64 packet keys. All 57504 draws match
+complete scalar pixels, actor state, previous descriptors, exact write
+bounds, cached/fallback behavior and return/register ABI. The 384-case
+restoration oracle passes 5287 restores and 1409 retained sprites. Host
+dirty tracking and retention-group suites pass, including nine intentionally
+missing geometry invalidations. Target display audits pass 600 updates each
+on F1/CITY/WHACKO with live statistics off:
+`tmp/sprite-address-audit-20260928-{1,2,3}.log`. No simulation, drawing-order
+or retention-policy change is involved.
+
 ## Redundant pre-integration diagnostic speed (2026-09-28)
 
 Removed the first `car->speed = speed_fixed / 100` in `prepare_car_motion`.
