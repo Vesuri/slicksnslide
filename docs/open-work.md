@@ -21,6 +21,9 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
 ## Remaining performance work
 
+Immediate focus (user-directed): item 3, larger register-oriented simulation
+blocks. Do not return to particle/C2P experiments before pursuing this work.
+
 1. **Particle pipeline and memory traffic.** Examine substantial native
    blocks spanning restoration, ordering, advancement and drawing. Reduce
    repeated scans and Chip-RAM accesses; keep pointers/intermediates in
@@ -54,6 +57,16 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
    Surface-table/cache/fusion experiments are closed; do not spend further
    iterations on that narrow family. Previous isolated assembly or C
    experiments do not settle the value of a larger register-oriented design.
+   Current isolated candidate: `src/game/car_progress.s` directly implements
+   the contiguous clock/checkpoint/layer/lap-clock sequence, with one saved
+   register frame and coordinate reuse. Rare checkpoint and finish side
+   effects remain C bridges, with coordinates reloaded after checkpoint
+   callbacks. It assembles but is not linked into gameplay or verified yet.
+   Next: independent raw-target-state/ABI oracle using the scalar clock,
+   checkpoint and layer helpers, signed/unsigned narrowing boundaries,
+   wrapping counters, low-word display clamping, finished entrants and
+   deliberately mutating callbacks. Then real bridge integration and quick
+   timing before live shadows. Preserve stateful lap-limit query order.
 
 4. **C2P/publication, secondary priority.** Only pursue a new design with
    evidence of reduced total memory/instruction cost. The eight-pixel/hybrid
@@ -76,11 +89,9 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
   promising candidates, followed by final timing confirmation. Do not pay
   for full validation of a candidate already rejected by performance.
 - Current profiling baseline is
-  `tmp/pcprof-post-surface-{f1,whacko}-20260928`, captured from 10f12e1
+  `tmp/pcprof-post-bound-{f1,whacko}-20260928`, captured from 7eeeb1f
   with exact companion ELFs and zero missed samples.
   The profiling document records all earlier measurements and rejected work.
-  Refresh F1/WHACKO profiles now that the bounded actor scan is accepted;
-  use exact companion ELFs, and select larger hot blocks from that evidence.
 - Compare `amiga/bench_tracks.sh` against an exact parent-build control;
   FINAL_STATE must match. Use uninterrupted timing, not debugger-stopped runs.
   Include HUD phases when timing variation could obscure a regression.

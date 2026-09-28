@@ -3,6 +3,45 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Post-bound CPU profiles and simulation focus (2026-09-28)
+
+Fresh profiles from accepted 7eeeb1f complete on F1 and WHACKO, 603 updates
+each, matching canonical final states and zero missed samples. Exact paired
+ELFs/logs/data: `tmp/pcprof-post-bound-{f1,whacko}-20260928.{elf,log,bin}`.
+F1 collects 8976 samples (1632 in display-blank wait); WHACKO 7907 (1416
+waiting). Instrumented work/max is 186407/461 and 163813/425 respectively;
+these include sampling overhead and do not replace normal timing results.
+The runner exits successfully and closes its emulators.
+
+| Sampled routine | F1 | WHACKO |
+| --- | ---: | ---: |
+| C race-step body, including inlined helpers | 795 | 833 |
+| Native car motion | 473 | 479 |
+| Wheel emission | 423 | 452 |
+| C2P | 416 | 462 |
+| Native shared-particle advance | 266 | 291 |
+| Native actor advance | 202 | 74 |
+
+The C race-step body is about 10.8%/12.8% of non-wait samples. Its leading
+inlined preparation body has 124/123 samples. Clock/checkpoint/layer work
+adds 16/15 (advance_car_clock), 23/16 (display formatting), 29/27
+(advance_checkpoint), 39/36 (update_actor_layer), plus divisions attributed
+to slicks_div100 (41/51 across the whole body). Attribution is statistical;
+not all division samples belong to those three helpers. Full counts are
+reproducible with `python3 tools/prof_summary.py ... --inlined slicks_race_step`.
+
+At the user's direction, the next work is coherent register-oriented
+simulation, not more particle/C2P variants. The first isolated block combines
+clock advancement, checkpoint geometry, layer selection and lap-clock
+recording. Unlike the rejected preparation integration, these arithmetic
+stages are directly implemented in the new native body. It shares coordinates
+only across stages with no intervening callback, reloads them after the cold
+checkpoint side-effect bridge, and retains the distinct word/full-long bounds
+of layer and lap tests. Clock formatting must clamp the low word before
+scaling; best-lap selection compares signed 32-bit raw counters. Assembly
+alone passes; no semantic/performance acceptance is claimed. It is not linked
+into gameplay. The oracle and real side-effect bridges remain to be built.
+
 ## Non-point actor scan bound (2026-09-28, accepted)
 
 The generic actor updater formerly scanned every shared slot, including
