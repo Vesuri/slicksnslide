@@ -68,8 +68,13 @@ Candidate fixes, roughly in order of expected value per effort:
   Next implement and measure native animation-change handling inside the
   sprite chain. F1 update 613's six changing, stationary, unmasked sprites
   currently fall back to the general renderer and restart the chain; its
-  seventh fallback is the offscreen setup flag. Start with validated
-  in-bounds track sprites whose position/style stay fixed, selecting the
+  seventh fallback is the offscreen setup flag.
+  The isolated candidate `src/game/track_sprite_animation.s` now passes
+  `make verify-sprite-animation`; it is not linked into gameplay. Integrate
+  its register entry into the chain, with old/new dirty publication and
+  packet invalidation, then extend the chain oracle for those operations.
+  The isolated test deliberately does not claim publication coverage.
+  Support validated in-bounds track sprites whose position/style stay fixed, selecting the
   new frame's actual dimensions/pixels/opacity. Preserve saved-under bytes,
   old/new dirty coverage, descriptor and packet invalidation, retention
   flags, aliases and exact handle order. Never assume animation dimensions

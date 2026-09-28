@@ -3,6 +3,36 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated native animation-change drawing (2026-09-28)
+
+`src/game/track_sprite_animation.s` supplies C and register-contract entries
+for unmasked, stationary, changed-frame track sprites. All gates precede
+writes; unsupported cases return zero unchanged. It checks actual new-frame
+dimensions and opacity, requires the new rectangle in bounds and limits the
+source/saved area to 128 bytes. Different old/new sizes are supported. The
+paint uses the existing register-contract opaque primitive with no nested
+C argument frame. It saves the background, updates old dimensions/saved
+state, clears retention and consumes the previous descriptor like the general
+renderer. Active-slot, track-ready and deferred-dirty guarantees belong to
+the caller. Integration must still publish old/new dirty rectangles and
+invalidate or revalidate the drawing packet.
+
+`make verify-sprite-animation` passes 4096 isolated cases: 1024 successful
+draws (975 with changed dimensions) and 3072 write-free rejections. Full
+64000-byte images, the entire actor pool and previous-descriptor array match
+the independent scalar general renderer for successful draws. Fallbacks
+leave them unchanged. Exact output write bounds and all eleven callee-saved
+registers plus stack balance are checked. Fixtures cover frame/asset mapping,
+fractional positions, transparent/opaque source, viewport edges, 128-byte
+extreme aspect ratios, changed keys, invalid frames/assets, clipping, missing
+opacity and oversized/empty sources. The test reports explicitly that dirty
+publication is not exercised. Log: `tmp/sprite-animation-isolated-20260928.log`.
+
+This candidate is **not linked into gameplay**, not a completed optimization
+and has no target timing result yet. The game ELF was not rebuilt for these
+isolated tests. Chain integration, dirty/packet verification, full-frame
+display and retention audits and matched timing remain required.
+
 ## Ordered drawing dispatch screen (2026-09-28)
 
 Read-only captures on 2bccdaf use `amiga/diag_draw_chain_screen.gdb` and

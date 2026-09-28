@@ -1330,6 +1330,16 @@ build/verify_sprite_draw_chain: tools/verify_sprite_draw_chain.c tools/verify_sp
 verify-sprite-draw-chain: build/sprite_opaque.bin build/verify_sprite_draw_chain
 	build/verify_sprite_draw_chain
 
+build/sprite_animation.bin: tools/sprite_animation_test.s src/game/track_sprite_animation.s src/game/sprite_opaque.s | build
+	$(VASM) -quiet -m68020 -Fbin -o $@ $<
+
+build/verify_sprite_animation: tools/verify_sprite_animation.c tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/weapon_actors.inc | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-sprite-animation
+verify-sprite-animation: build/sprite_animation.bin build/verify_sprite_animation
+	build/verify_sprite_animation
+
 build/verify_copper_palette: tools/verify_copper_palette.c src/platform/amiga/copper_palette.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 .PHONY: verify-copper-palette
