@@ -13,9 +13,9 @@ particle-heavy frames, must take at most 20 ms / 312 PAL raster lines per
 update on a stock A1200 (68020, 2 MiB Chip RAM, no Fast RAM).
 Preserve behaviour, effects, permanent marks, audio and rendering order.
 
-Latest accepted bounded-clear benchmark, work lines per 603 updates /
-worst: BASIC 146033/348, F1 170942/415, CITY 142376/333, WHACKO 149752/384.
-The phase checks reach F1 416 and WHACKO 386, so the
+Latest accepted lazy-AI benchmark, work lines per 603 updates /
+worst: BASIC 145800/350, F1 170663/414, CITY 142006/332, WHACKO 149009/368.
+The phase checks reach F1 418 and WHACKO 386, so the
 worst observed F1 update still needs about a 25% reduction. These are sampled
 maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
@@ -54,13 +54,6 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
    Surface-table/cache/fusion experiments are closed; do not spend further
    iterations on that narrow family. Previous isolated assembly or C
    experiments do not settle the value of a larger register-oriented design.
-   Next inexpensive algorithmic screen: in ai_steering, calculate velocity
-   direction only when speed > 700 and the wrapped heading difference lies
-   outside [-1,1]. The existing final branch accelerates unconditionally
-   inside that interval, so the pure direction result cannot affect controls.
-   Preserve the target-direction calculation, steering latch and all rounding
-   when velocity direction is needed. Check against verify-dos-ai, then time
-   F1/WHACKO before broader validation. Do not change the running build.
 
 4. **C2P/publication, secondary priority.** Only pursue a new design with
    evidence of reduced total memory/instruction cost. The eight-pixel/hybrid

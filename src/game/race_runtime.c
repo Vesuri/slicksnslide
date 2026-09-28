@@ -1179,7 +1179,10 @@ static unsigned char ai_steering(struct SlicksRaceRuntime *race,
         /* e2a2..e302 divides measured speed by ten, then divides each
          * component by that rounded result. Neither vx*10/(speed+1) nor
          * recomputing speed after pair collisions is equivalent. */
-        if (speed > 700L)
+        /* A heading error within one sector takes the throttle branch
+         * regardless of velocity direction. Skip its pure calculation in
+         * that case, retaining the DOS divisions when the result matters. */
+        if (speed > 700L && (difference < -1 || difference > 1))
             velocity_direction = dos_vector_direction(
                 car->velocity_x / (speed / 10L),
                 car->velocity_y / (speed / 10L));

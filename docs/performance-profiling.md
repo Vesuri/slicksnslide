@@ -3,6 +3,57 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Lazy AI velocity direction (2026-09-28, accepted)
+
+In ai_steering, a wrapped heading difference within [-1,1] always selects
+acceleration, regardless of the velocity direction. The candidate skips
+that pure calculation in this interval; it preserves target direction,
+steering latch, speed threshold and the original two-stage rounding whenever
+the velocity direction affects the result. No physics step is skipped.
+
+The existing original-DOS e204 oracle passes all 655360 decision/return-stack
+cases, including speed 700/701/709 and independent post-collision velocity
+components; associated service/route/fuel checks also pass. Log:
+`tmp/ai-lazy-smoke-20260928.log`. The F1/WHACKO performance screen is running
+against the accepted bounded-clear parent before any further expensive
+validation. The screen completes with canonical states: F1 170638/415 and
+WHACKO 148994/370, versus parent 170942/415 and 149752/384. The aggregate
+reductions are 0.18% and 0.51%; individual maxima remain phase-sensitive.
+Archive: `tmp/ai-lazy-candidate-20260928.{elf,exe}`. Other tracks and the
+four F1/WHACKO HUD phases are now running before acceptance.
+
+Validation scope: the changed helper only reads state and returns control
+bits; the skipped calculation is pure and its result cannot affect those
+bits for the guarded interval. The independent original-DOS oracle checks
+those returned bits and latch semantics. Existing target shadow sites do
+not independently compare this AI branch, so running them would not supply
+additional coverage of this change. Rendering paths are unchanged.
+
+Final normal-build measurements, 603 updates each:
+
+| Track / HUD phase | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 146033 / 348 | 145800 / 350 |
+| CITY | 142376 / 333 | 142006 / 332 |
+| F1 / 0 | 170942 / 415 | 170663 / 414 |
+| F1 / 1 | 170992 / 414 | 170674 / 415 |
+| F1 / 2 | 171004 / 414 | 170619 / 415 |
+| F1 / 3 | 170975 / 416 | 170659 / 418 |
+| WHACKO / 0 | 149752 / 384 | 149009 / 368 |
+| WHACKO / 1 | 149717 / 386 | 149003 / 372 |
+| WHACKO / 2 | 149803 / 370 | 149077 / 370 |
+| WHACKO / 3 | 149772 / 383 | 149042 / 386 |
+
+Every final state matches. Logs: `tmp/ai-lazy-final-20260928-{0,2}.log`,
+`tmp/ai-lazy-phase-20260928-{1,3}-{0,1,2,3}.log`. Aggregate work improves in
+every comparison (0.16% to 0.50%), but maxima are mixed: F1's observed
+envelope rises two lines to 418, with the peak at race frame 613, while
+WHACKO remains 386. Accepted as a small elimination of provably irrelevant
+calculation, not as a worst-frame improvement. This does not establish
+50 FPS or an improved display cadence. All timing runners exited normally
+and closed their owned emulators. No additional shadow/display coverage is
+claimed for this pure control-decision change.
+
 ## Bounded priority-bucket clearing (2026-09-28, accepted)
 
 The native builder clears only the first 32/64/96/128 head and tail buckets,
