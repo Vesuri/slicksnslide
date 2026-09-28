@@ -157,6 +157,7 @@ slicks_draw_unchanged_track_sprite_regs:
 	dc.b 0,5,6,7,1,1,1,1,2,8,9,10,3,3,3,3,4,11,12,13
 
 	xdef slicks_restore_actor_sprite
+	xdef slicks_restore_actor_sprite_regs
 ; C ABI: actor, previous description, chunky. Called only with deferred
 ; sprite dirtiness. Reject clipped/empty/unsaved rectangles without writes.
 ; Copy the original saved background and capture the same twelve metadata

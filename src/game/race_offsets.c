@@ -128,6 +128,8 @@ void slicks_race_offsets(void)
     OFFSET(SHADOW_STATE, struct SlicksCarShadow, state);
     OFFSET(RACE_WEAPONS_READY, struct SlicksRaceRuntime, weapons.ready);
     OFFSET(RACE_SPRITE_DIRTY_PREVIOUS, struct SlicksRaceRuntime, sprite_dirty_previous);
+    OFFSET(RACE_SPRITE_DIRTY_HANDLES, struct SlicksRaceRuntime, sprite_dirty_handles);
+    OFFSET(RACE_SPRITE_DIRTY_COUNT, struct SlicksRaceRuntime, sprite_dirty_count);
     VALUE(PREV_SIZE, sizeof(((struct SlicksRaceRuntime *)0)->sprite_dirty_previous[0]));
     VALUE(PREV_X, __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0].x)-
         __builtin_offsetof(struct SlicksRaceRuntime, sprite_dirty_previous[0]));

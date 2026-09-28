@@ -1647,6 +1647,16 @@ verify-car-integration: build/car_integration.bin build/verify_car_integration
 build/point_restore.bin: tools/point_restore_test.s src/game/point_restore.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
+build/actor_restore.bin: tools/actor_restore_test.s tools/sprite_opaque_test.s src/game/actor_restore.s src/game/track_sprite_fast.s src/game/sprite_opaque.s src/game/track_sprite_animation.s src/game/track_sprite_animation_publish.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/verify_actor_restore: tools/verify_actor_restore.c tools/verify_point_restore.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-actor-restore
+verify-actor-restore: build/actor_restore.bin build/verify_actor_restore
+	build/verify_actor_restore build/actor_restore.bin build/offsets/race_offsets.i
+
 build/point_compact_restore.bin: tools/point_compact_restore_test.s src/game/point_restore.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 

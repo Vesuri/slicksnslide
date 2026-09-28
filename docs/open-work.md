@@ -31,11 +31,11 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
    [point-retention-design.md](point-retention-design.md).
    Do not repeat the measured slow C retention policies or compact-pool
    integration unchanged.
-   Next concrete implementation: a shared ordered restoration entry for
-   points and sprites, retaining race/chain state across the existing private
-   sprite renderer and a native point loop. Cover validation and fallback
-   resumption, not just replace a C call with another wrapper. Use mixed-chain
-   oracle cases and RETCHECK before accepting target performance results.
+   A new design must reduce per-point work or whole traversals, not merely
+   combine existing restore dispatchers. Use mixed-chain oracle cases and
+   RETCHECK before accepting target performance results. The isolated mixed
+   restoration entry is available, but is not linked into production;
+   its rejected integration must not be repeated unchanged.
 
 2. **F1 sprite overhead.** Reduce conflict processing, repeated validation,
    group rebuilding and late restoration. Inspect complete hot paths, not
@@ -71,6 +71,10 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
 ## Verification and working rules
 
+- Fail-fast order: build/quick correctness smoke tests, parent performance
+  comparison, then expensive correctness/rendering validation only for
+  promising candidates, followed by final timing confirmation. Do not pay
+  for full validation of a candidate already rejected by performance.
 - Current profiling baseline is
   `tmp/pcprof-post-surface-{f1,whacko}-20260928`, captured from 10f12e1
   with exact companion ELFs and zero missed samples.

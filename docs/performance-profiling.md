@@ -3,6 +3,55 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Shared native restoration integration rejected (2026-09-28)
+
+`actor_restore.s` restores a whole mixed reverse-order chain under one
+register contract. It retains the race, reverse links, chunky pointer, point
+base and index base across the private sprite renderer; point restores are
+in the same loop. It preserves RETAIN_NEXT handling and returns only at an
+unsupported sprite, allowing the unchanged general restoration to execute
+in place before resumption. The integration bypasses this entry for the
+independent RETCHECK reference. No update, drawing order or effect is omitted.
+
+The new raw big-endian oracle passes 1024 mixed/homogeneous/shuffled chains,
+26722 native segments and 25976 fallback resumptions. It compares the entire
+state/pixel arena and register/stack ABI after every segment, including
+overlapping pixels, invalid unsaved point coordinates, retained sprites,
+clipped/zero-size/unsaved sprites and empty chains. Existing tests also pass:
+4096 point chains (335076 visits, 170497 restores) and 384 sprite chains
+(5287 restorations, 1409 retained). Log:
+`tmp/actor-restore-oracles-20260928.log`.
+The first host test build caught misleading indentation in a failure-report
+branch; it was fixed before the passing run. No failed run counts as a pass.
+
+The exact parent normal build is archived as
+`tmp/actor-restore-control-20260928.{elf,exe}`. The completed comparison is:
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 146379 / 348 | 146222 / 351 |
+| F1 | 171313 / 417 | 170613 / 415 |
+| CITY | 142689 / 331 | 142642 / 331 |
+| WHACKO | 150098 / 368 | 150246 / 391 |
+
+All 603-update final states match. F1 saves 0.41% total work, while WHACKO
+regresses 0.10% and its sampled maximum rises by 23 lines. Single-run maxima
+are phase-sensitive (as the preceding experiment demonstrates); this is not
+proof of a universal 23-line regression. Nevertheless the mixed aggregate
+results do not justify the expensive acceptance gates for this design.
+Rejected without a phase sweep, full-frame RETCHECK or display audits, per
+the fail-fast workflow. Those unrun checks are not claimed as passes.
+The production integration is reverted. The isolated implementation/oracle
+remain available but are not accepted for gameplay. Logs:
+`tmp/actor-restore-{control,candidate}-20260928-{0,1,2,3}.log`.
+Candidate binaries and the rejected integration patch are local-only:
+`tmp/actor-restore-candidate-20260928.{elf,exe}` and
+`tmp/actor-restore-integration-rejected-20260928.patch`.
+The rebuilt normal executable's .text/code contents are byte-identical to
+the accepted control. All experiment emulators exited. The isolated routine
+is intentionally unlinked; its host oracle can still be run with
+`make verify-actor-restore` without rebuilding or changing gameplay.
+
 ## Post-surface profiles and next native boundary (2026-09-28)
 
 Fresh sequential muted captures from committed 10f12e1:
