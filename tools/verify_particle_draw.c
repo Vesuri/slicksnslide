@@ -11,6 +11,14 @@ static void ck(uc_err e) { if(e) { fprintf(stderr,"Unicorn: %s\n",uc_strerror(e)
 static void be16(unsigned char *p,unsigned n) { p[0]=n>>8;p[1]=n; }
 static void be32(unsigned char *p,uint32_t n) { be16(p,n>>16);be16(p+2,n); }
 static unsigned particle_stride=24;
+static void upload_visibility(uc_engine *u,struct SlicksRaceRuntime *race)
+{
+    static unsigned char words[SLICKS_PARTICLE_VISIBILITY_SIZE*2];
+    prepare_particle_visibility(race);
+    for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at)
+        be16(words+at*2,race->particle_visibility[at]);
+    ck(uc_mem_write(u,0xa0000,words,sizeof words));
+}
 static void packed(unsigned char p[24],const struct SlicksTrailParticle *s)
 {
     be32(p,s->x);be32(p+4,s->y);be16(p+8,s->velocity_x);be16(p+10,s->velocity_y);
@@ -58,7 +66,57 @@ int main(int argc,char **argv)
     puts("Point address: all 58880 visible coordinates match with poisoned register high halves");
     static struct SlicksRaceRuntime race;
     static unsigned char pixels[64000],before[64000],actual[64000],dirty[2048],got_dirty[2048];
-    const unsigned addresses[]={0x20000,0x30000,0x40000,0x50000,0x60000,0x70000,0x80000};
+    const unsigned addresses[]={0x20000,0x30000,0xa0000,0,0x60000,0x70000,0x80000};
+    /* Build/rebuild covers all material/surface byte pairs, independently
+     * checking every stored value and replacement of poisoned cache data. */
+    for(unsigned pass=0;pass<2;++pass) {
+        for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at) {
+            unsigned key=(at+pass*SLICKS_PARTICLE_VISIBILITY_SIZE)&65535;
+            race.material_map[at]=(unsigned char)(key>>8);
+            race.surface_map[at]=(unsigned char)key;
+            race.particle_visibility[at]=0xbeef;
+        }
+        prepare_particle_visibility(&race);
+        for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at) {
+            unsigned key=(at+pass*SLICKS_PARTICLE_VISIBILITY_SIZE)&65535;
+            if(race.particle_visibility[at]!=((key>>8)*8+(key&7)))
+                fail("visibility cache build/rebuild mismatch");
+        }
+    }
+    /* Every combined terrain value and every limit through the complete
+     * native single-point entry. The scalar equation remains independent
+     * of the precomputation and unsigned native comparison. */
+    for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at) {
+        race.material_map[at]=(unsigned char)(at>>3);
+        race.surface_map[at]=(unsigned char)(at&7);
+    }
+    upload_visibility(u,&race);
+    {
+        unsigned char stack[32],zero[2]={0},raw[24],got[24],pixel,count[2];
+        be32(stack,0x18000);
+        for(unsigned i=0;i<7;++i)be32(stack+4+i*4,addresses[i]);
+        ck(uc_mem_write(u,0x90000,stack,sizeof stack));
+        for(unsigned value=0;value<2048;++value)for(unsigned limit=0;limit<256;++limit) {
+            struct SlicksTrailParticle p={.x=(long)(value%320)*64,
+                .y=(long)(value/320)*64,.colour=85,.occlusion_limit=(unsigned char)limit};
+            packed(raw,&p);pixel=40;
+            ck(uc_mem_write(u,addresses[0],raw,sizeof raw));
+            ck(uc_mem_write(u,addresses[1]+value,&pixel,1));
+            ck(uc_mem_write(u,addresses[5],zero,2));
+            uint32_t sp=0x90000,pc;
+            ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
+            ck(uc_emu_start(u,0x10000,0x18000,0,1000));
+            ck(uc_reg_read(u,UC_M68K_REG_PC,&pc));
+            ck(uc_mem_read(u,addresses[0],got,sizeof got));
+            ck(uc_mem_read(u,addresses[1]+value,&pixel,1));
+            ck(uc_mem_read(u,addresses[5],count,2));
+            unsigned visible=!limit || value<=limit;
+            if(pc!=0x18000 || pixel!=(visible?85:40) ||
+               got[particle_stride==24?20:16]!=visible || count[0] || count[1]!=visible)
+                fail("native visibility threshold mismatch");
+        }
+    }
+    puts("Visibility: all byte-pair rebuilds and 524288 native value/limit cases pass");
     const int preserved[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
     for(unsigned trial=0;trial<4096;++trial) {
@@ -95,8 +153,7 @@ int main(int argc,char **argv)
         unsigned char original[24],expected[24],got[24],count_bytes[2],stack[32];
         packed(original,&p);ck(uc_mem_write(u,addresses[0],original,24));
         ck(uc_mem_write(u,addresses[1],pixels,sizeof pixels));
-        ck(uc_mem_write(u,addresses[2],race.material_map,sizeof race.material_map));
-        ck(uc_mem_write(u,addresses[3],race.surface_map,sizeof race.surface_map));
+        upload_visibility(u,&race);
         memset(dirty,0,sizeof dirty);ck(uc_mem_write(u,addresses[4],dirty,sizeof dirty));
         be16(count_bytes,count);ck(uc_mem_write(u,addresses[5],count_bytes,2));
         be32(stack,0x18000);for(unsigned i=0;i<7;++i)be32(stack+4+i*4,addresses[i]);
@@ -157,8 +214,7 @@ int main(int argc,char **argv)
         be16(count_bytes,race.dirty_pixel_count);
         ck(uc_mem_write(u,0x20000,packed_points,sizeof packed_points));
         ck(uc_mem_write(u,0x30000,pixels,sizeof pixels));
-        ck(uc_mem_write(u,0x40000,race.material_map,sizeof race.material_map));
-        ck(uc_mem_write(u,0x50000,race.surface_map,sizeof race.surface_map));
+        upload_visibility(u,&race);
         ck(uc_mem_write(u,0x60000,dirty,sizeof dirty));ck(uc_mem_write(u,0x70000,count_bytes,2));
         ck(uc_mem_write(u,0x81000,order,sizeof order));
         be32(stack,0x18000);for(unsigned i=0;i<7;++i)be32(stack+4+i*4,addresses[i]);

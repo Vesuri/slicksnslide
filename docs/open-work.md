@@ -13,11 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh particle-offset-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 152149/360, F1 176520/426,
-CITY 146991/343, WHACKO 155094/406. Means are 15.6-18.8 ms; the
-worst updates in that run need 9-27% cuts. The refreshed F1 HUD-clock
-phase sweep reaches 436 lines (27.9 ms, 28% cut needed), with matching
+(`amiga/bench_tracks.sh particle-visibility-chain-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 150485/358, F1 176290/435,
+CITY 146470/338, WHACKO 154217/397. Means are 15.6-18.7 ms; the
+worst updates in that run need 8-28% cuts. The refreshed F1 HUD-clock
+phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
@@ -42,20 +42,6 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Precompute immutable particle visibility values.** The point renderer
-  combines material and surface bytes for every occluded point. Prototype a
-  load-time map of `(material<<3)|(surface&7)` and compare directly against
-  the point's limit. This is terrain metadata, not a framebuffer shadow.
-  Prefer exact word values for the full byte-input domain initially (117760
-  bytes for the 320x184 point area); measure memory headroom on the stock
-  2 MiB target and loading cost as well as frame savings. Append derived
-  storage so existing native offsets remain stable. Initialize before any
-  race drawing, leave the scalar oracle using the independent original maps,
-  and test all visibility thresholds, limit-zero bypass, edges and restart.
-  Verify all native callers and synthetic fixtures use the new ABI, then
-  benchmark before accepting the additional storage. A byte representation
-  requires an explicit loader-range proof or invalid-value fallback.
-
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing
   further CPU work; recent small changes alter
@@ -76,6 +62,19 @@ Candidate fixes, roughly in order of expected value per effort:
   Use uninterrupted timings and the CIA-B sampler; debugger stops are
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
+
+- **Eliminate the actor-chain reversal pass, if cheaper overall.**
+  `restore_actor_order` currently rewrites every live link to reverse the
+  previous draw chains. Prototype backward links and tail heads produced
+  alongside forward links by the existing order builder, then restore by
+  walking those links directly. Preserve ascending handle order for equal
+  priorities when drawing and its exact inverse when restoring. Keep the
+  independent initial/no-prior-draw restoration fallback. Account for added
+  link writes and tail initialization in the benchmark; this is not a free
+  saving. Extend the native ordering oracle to verify both directions and
+  all handles, then use mixed point/sprite/retired/clipped-chain tests,
+  display audits and RETCHECK. No allocator, simulation or effect ordering
+  may change as part of this representation experiment.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
   Inspect conflict processing, final

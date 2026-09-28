@@ -3,6 +3,79 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Precomputed particle visibility (2026-09-28)
+
+Append 58880 word values to the runtime, prepared at every successful race
+start before drawing from `(material<<3)|(surface&7)`. The scalar renderer
+still reads the original maps; the native renderer uses one word lookup.
+Words preserve all byte-input values (0..2047), including values above any
+nonzero particle limit. Zero limits still bypass masking. No framebuffer
+pixels are cached. A second variant retains the particle-index pointer in
+the address register freed by the former surface-map pointer. The seven
+argument slots remain stable; slot four is reserved and may be null.
+
+| Track | Parent work / worst | Word map | Word map + index register |
+| --- | ---: | ---: | ---: |
+| BASIC | 152149 / 360 | 150829 / 355 | 150485 / 358 |
+| F1 | 176520 / 426 | 176434 / 437 | 176290 / 435 |
+| CITY | 146991 / 343 | 146608 / 342 | 146470 / 338 |
+| WHACKO | 155094 / 406 | 154384 / 398 | 154217 / 397 |
+
+All 603-update final states match. Logs: `tmp/particle-offset-20260928-*`,
+`tmp/particle-visibility-20260928-*`, and
+`tmp/particle-visibility-chain-20260928-*`. The combined version saves
+1.09/0.13/0.35/0.57% total work. Its over-budget counts are 39/205/20/71.
+The F1 phase sweep gives totals 176296/176285/176269/176274 and maxima
+434/427/437/436 lines, with the expected clock remainders and identical
+final states. Logs: `tmp/particle-visibility-phase-20260928-{0,1,2,3}.log`.
+All phase totals improve, but the largest observed update is one line above
+the parent's phase-wide 436. Retain the verified total-work reduction with
+the measured memory headroom below; this is not a universal latency gain.
+The 312-line deadline remains unmet.
+
+Both native layouts pass all 4096 single, 256 batch and 256 chain cases.
+Extra tests cover all material/surface byte pairs across two full rebuilds,
+and 524288 native value/limit combinations per layout, with independent
+expected pixels, flags and dirty counts. The existing 58880-coordinate
+native address test also passes. Host surface effects/dirty tracking,
+original track/weapon actors and original DOS particle lifecycle suites pass.
+Display audits pass 600 updates each on F1/CITY/WHACKO:
+`tmp/particle-visibility-audit-20260928-{1,2,3}.log`.
+
+Read-only F1 startup inspection gives runtime size 368724, visibility storage
+117760, free Chip RAM 356424 and largest free block 220104 bytes. The entire
+load stage 6-to-7 takes 36-37 PAL ticks. A startup-only control with the
+preparation call disabled takes 29 ticks; restoring the call gives 37 ticks
+again. This suggests 140-160 ms of one-time preparation per track load,
+excluding the additional allocation/zeroing cost because the control retains
+the storage. Both controls stop before the first simulation update; no game
+is run with an uninitialized map. Logs:
+`tmp/visibility-startup-{control,restored}-20260928.log`.
+Log: `tmp/particle-visibility-memory-20260928-fixed.log`. The initial attempt
+used an unavailable debugger MemHeader type; the retry uses offsets derived
+by the target compiler from installed Exec headers, not guessed addresses.
+
+The old full-runtime RETCHECK allocation would not fit this headroom. Its
+replacement snapshots every mutable byte (prefix and steering cache), with
+compile-time layout coverage assertions, and hashes all three excluded
+immutable arrays before/after reference and optimized passes. A mismatch
+fails the debugger acceptance gate. This is diagnostic-only, not measured
+normal gameplay work. The host snapshot test restores the complete original
+runtime after poisoning all mutable bytes and detects first/last-byte
+mutations and full clears/fills in each immutable array. All four target
+checks complete 603 updates with zero rendering/particle/immutable-map
+mismatches and matching final states; each also passes 700 status-cache
+checks. Logs: `tmp/particle-visibility-ret-20260928-{0,1,2,3}.log`.
+A byte-address-expression clarification was separately compiled; instructions
+and relocations are identical to those in the target audit. Subsequently,
+compile-time-proven alignment was supplied to the hash reader so the compiler
+uses long reads instead of copying each byte through the stack. A separate
+Unicorn check executes the old and new actual native hash helpers on 32 full
+runtime images at four long-aligned base positions, checking against an
+independent big-endian scalar hash and checking return/stack/callee-save
+registers. All pass. The four full target audits used the earlier equivalent
+hash, not the faster helper. The normal build has been restored.
+
 ## Bounds-proven particle address calculation (2026-09-28)
 
 The native particle body checks unsigned word x<=319 and y<=183 before

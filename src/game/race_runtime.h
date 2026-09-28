@@ -13,6 +13,7 @@
 #define SLICKS_FONT_PIXEL_MAX 4096
 #define SLICKS_RACE_FONT_NAME "kirj.@f"
 #define SLICKS_TRACK_MATERIAL_SIZE (320U * 190U)
+#define SLICKS_PARTICLE_VISIBILITY_SIZE (320U * 184U)
 #define SLICKS_SURFACE_GROUP_COUNT 5
 #define SLICKS_START_LIGHT_COUNT 4
 #define SLICKS_START_LIGHT_PIXEL_COUNT (23U * 38U)
@@ -416,6 +417,9 @@ struct SlicksRaceRuntime {
     unsigned char material_map[SLICKS_TRACK_MATERIAL_SIZE];
     unsigned char surface_map[SLICKS_TRACK_MATERIAL_SIZE];
     struct SlicksSteeringCache steering_cache[SLICKS_RACE_CAR_COUNT];
+    /* Immutable terrain metadata, not displayed pixels. Word values retain
+     * the complete byte-input domain of (material<<3)|(surface&7). */
+    unsigned short particle_visibility[SLICKS_PARTICLE_VISIBILITY_SIZE];
 };
 
 /* Unchanged track-sprite retention state (sprite_retention.inc/.s): cached

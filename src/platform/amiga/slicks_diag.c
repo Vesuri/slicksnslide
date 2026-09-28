@@ -410,6 +410,8 @@ static void pc_sampler_release(void)
 }
 
 #ifdef SLICKS_RETENTION_CHECK
+#include "retention_snapshot.h"
+volatile unsigned long g_slicks_retention_immutable_mismatches;
 volatile unsigned long g_slicks_retention_checks, g_slicks_retention_mismatches,
     g_slicks_retention_first_mismatch, g_slicks_retention_particle_mismatches;
 volatile unsigned long g_slicks_status_cache_checks,g_slicks_status_cache_mismatches,
@@ -5156,17 +5158,18 @@ int main(void)
                 race->profile_scope=g_slicks_diag_profile_all>=3?g_slicks_diag_profile_all-2:0;
             }
 #ifdef SLICKS_RETENTION_CHECK
-            static unsigned char *saved_race, *saved_chunky;
+            static struct SlicksRetentionSnapshot *saved_race;
+            static unsigned char *saved_chunky;
             /* RETCHECK=1: run each racing update first without retention
              * from a snapshot, then for real; the chunky surfaces must match. */
             {
                 static struct SlicksRetentionState saved_retention;
                 static struct SlicksTrailParticle reference_particles[SLICKS_TRAIL_PARTICLE_MAX];
-                if (!saved_race) saved_race = AllocMem(sizeof *race, MEMF_ANY);
+                if (!saved_race) saved_race = AllocMem(sizeof *saved_race, MEMF_ANY);
                 if (!saved_chunky) saved_chunky = AllocMem(64000, MEMF_ANY);
                 if (race->racing && saved_race && saved_chunky) {
                     unsigned long reference;
-                    __builtin_memcpy(saved_race, race, sizeof *race);
+                    slicks_retention_capture(saved_race,race);
                     __builtin_memcpy(saved_chunky, chunky, 64000);
                     saved_retention = slicks_retention;
                     slicks_race_invalidate_retention(race);
@@ -5176,12 +5179,15 @@ int main(void)
                     unsigned short reference_count=race->trail_particle_count;
                     __builtin_memcpy(reference_particles,race->trail_particles,
                         reference_count*sizeof *reference_particles);
-                    __builtin_memcpy(race, saved_race, sizeof *race);
+                    if(!slicks_retention_restore(race,saved_race))
+                        ++g_slicks_retention_immutable_mismatches;
                     __builtin_memcpy(chunky, saved_chunky, 64000);
                     slicks_retention = saved_retention;
                     slicks_race_disable_retention = 0;
                     slicks_race_step(race, logical);
                     ++g_slicks_retention_checks;
+                    if(!slicks_retention_maps_match(saved_race,race))
+                        ++g_slicks_retention_immutable_mismatches;
                     unsigned particle_difference=race->trail_particle_count!=reference_count;
                     const volatile unsigned char *expected_points=(const unsigned char *)reference_particles;
                     const volatile unsigned char *actual_points=(const unsigned char *)race->trail_particles;
@@ -5215,15 +5221,18 @@ int main(void)
                  * Compare cached bar updates with a forced full repaint,
                  * including damage left by the just-completed race step. */
                 if(race->chunky_authoritative && saved_race && saved_chunky) {
-                    __builtin_memcpy(saved_race,race,sizeof *race);
+                    slicks_retention_capture(saved_race,race);
                     __builtin_memcpy(saved_chunky,chunky,64000);
                     race->status_bar_cache.valid=0;
                     int expected_status=slicks_race_draw_status(race,logical,status_clock.ticks);
                     unsigned long expected_pixels=retention_check_hash(chunky);
-                    __builtin_memcpy(race,saved_race,sizeof *race);
+                    if(!slicks_retention_restore(race,saved_race))
+                        ++g_slicks_retention_immutable_mismatches;
                     __builtin_memcpy(chunky,saved_chunky,64000);
                     status_result=slicks_race_draw_status(race,logical,status_clock.ticks);
                     ++g_slicks_status_cache_checks;
+                    if(!slicks_retention_maps_match(saved_race,race))
+                        ++g_slicks_retention_immutable_mismatches;
                     if((status_result!=expected_status || retention_check_hash(chunky)!=expected_pixels) &&
                         !g_slicks_status_cache_mismatches++)
                         g_slicks_status_cache_first_mismatch=race->frame_count;

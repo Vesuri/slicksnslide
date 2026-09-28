@@ -1577,6 +1577,11 @@ build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_run
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 .PHONY: verify-retention-groups
+.PHONY: verify-retention-snapshot
+build/verify_retention_snapshot: tools/verify_retention_snapshot.c src/platform/amiga/retention_snapshot.h src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-retention-snapshot: build/verify_retention_snapshot
+	build/verify_retention_snapshot
 build/retention_address.bin: tools/retention_address_test.s src/game/sprite_retention.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 

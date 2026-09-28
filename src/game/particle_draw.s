@@ -25,7 +25,7 @@ PD_FLAGS equ 20
 PD_OCCLUSION equ 22
 	endif
 
-; C ABI: particle, chunky, material, surface, dirty_pixels, dirty_count,
+; C ABI: particle, chunky, visibility words, reserved, dirty_pixels, dirty_count,
 ;        mult320. Returns 1 WITHOUT changes if the dirty list needs the
 ; existing rectangle-overflow path; otherwise returns 0.
 ; Default layout is the checked 24-byte particle_runtime.s ABI. The isolated
@@ -79,22 +79,12 @@ slicks_particle_address_start equ *
 	move.l (a6,d1.w*4),d2
 	add.w d0,d2
 slicks_particle_address_end equ *
-	tst.b PD_OCCLUSION(a0)
-	beq.s .visible
 	moveq #0,d4
-	move.b (a2,d2.l),d4
-	lsl.w #3,d4
-	move.b (a3,d2.l),d3
-	andi.w #7,d3
-	or.w d3,d4
-	moveq #0,d3
-	move.b PD_OCCLUSION(a0),d3
-	cmp.w d3,d4
-	bhi.s .masked
-	move.b PD_FLAGS(a0),d3
+	move.b PD_OCCLUSION(a0),d4
+	beq.s .visible
+	cmp.w (a2,d2.l*2),d4
+	bcs.s .hidden
 	bra.s .visible
-.masked:
-	move.b PD_FLAGS(a0),d3
 .hidden:
 	btst #1,d3
 	beq.s .clear
@@ -148,9 +138,8 @@ slicks_particle_address_end equ *
 	beq.s .chain_done
 	cmpi.w #510,d5
 	bhi.s .chain_done
-	movea.l 4(sp),a0
 	moveq #0,d0
-	move.w (a0,d6.w*2),d0
+	move.w (a3,d6.w*2),d0
 	bmi.s .chain_done
 	move.w .particle_offsets(pc,d0.w*2),d0
 	movea.l d7,a0
@@ -175,11 +164,10 @@ slicks_draw_particle_batch equ .batch_entry
 .batch_entry:
 	movem.l d2-d7/a2-a6,-(sp)
 	subq.l #8,sp
-	move.l 84(sp),(sp)
+	movea.l 84(sp),a3
 	move.l 56(sp),4(sp)
 	movea.l 60(sp),a1
 	movea.l 64(sp),a2
-	movea.l 68(sp),a3
 	movea.l 72(sp),a4
 	movea.l 76(sp),a5
 	movea.l 80(sp),a6
@@ -194,10 +182,8 @@ slicks_draw_particle_batch equ .batch_entry
 	beq.s .batch_done
 	cmpi.w #510,d5
 	bhi.s .batch_done
-	movea.l (sp),a0
 	moveq #0,d0
-	move.w (a0)+,d0
-	move.l a0,(sp)
+	move.w (a3)+,d0
 	move.w .particle_offsets(pc,d0.w*2),d0
 	movea.l 4(sp),a0
 	adda.l d0,a0
@@ -222,11 +208,10 @@ slicks_draw_particle_chain equ .chain_entry
 	movem.l d2-d7/a2-a6,-(sp)
 	lea -12(sp),sp
 	move.l 88(sp),(sp)
-	move.l 92(sp),4(sp)
+	movea.l 92(sp),a3		; freed terrain register retains the index table
 	move.l 60(sp),d7		; persistent particle base across the chain
 	movea.l 64(sp),a1
 	movea.l 68(sp),a2
-	movea.l 72(sp),a3
 	movea.l 76(sp),a4
 	movea.l 80(sp),a5
 	movea.l 84(sp),a6

@@ -2324,10 +2324,10 @@ static void draw_trail_point(struct SlicksRaceRuntime *race,
 {
 #if defined(__m68k__)
     extern int slicks_draw_particle(struct SlicksTrailParticle *,unsigned char *,
-        const unsigned char *,const unsigned char *,struct SlicksDirtyPixel *,
+        const unsigned short *,const unsigned char *,struct SlicksDirtyPixel *,
         unsigned short *,const unsigned int *);
-    if(!slicks_draw_particle(particle,race->chunky,race->material_map,
-        race->surface_map,race->dirty_pixels,&race->dirty_pixel_count,mult320))
+    if(!slicks_draw_particle(particle,race->chunky,race->particle_visibility,
+        0,race->dirty_pixels,&race->dirty_pixel_count,mult320))
         return;
 #endif
         /* 3000:39af/39ca use SAR on signed 16-bit coordinates. Negative
@@ -2387,7 +2387,7 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
         struct SlicksTrailParticle *particles=race->trail_particles;
 #if defined(__m68k__)
         extern unsigned slicks_draw_particle_chain(struct SlicksTrailParticle *,
-            unsigned char *,const unsigned char *,const unsigned char *,
+            unsigned char *,const unsigned short *,const unsigned char *,
             struct SlicksDirtyPixel *,unsigned short *,const unsigned int *,
             const unsigned char *,const short *,unsigned);
         for(unsigned h=race->actor_order_head[p];h;) {
@@ -2410,7 +2410,7 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
                 h=next[h];continue;
             }
             unsigned remaining=slicks_draw_particle_chain(particles,race->chunky,
-                race->material_map,race->surface_map,race->dirty_pixels,
+                race->particle_visibility,0,race->dirty_pixels,
                 &race->dirty_pixel_count,mult320,next,trail_index,h);
             if(remaining==h) {
                 draw_trail_point(race,particles+t);
@@ -3947,6 +3947,15 @@ int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
     return 0;
 }
 
+static void prepare_particle_visibility(struct SlicksRaceRuntime *race)
+{
+    _Static_assert(SLICKS_PARTICLE_VISIBILITY_SIZE==SLICKS_SCREEN_WIDTH*SLICKS_POINT_HEIGHT,
+                   "particle visibility covers the native point bounds");
+    for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at)
+        race->particle_visibility[at]=(unsigned short)
+            ((race->material_map[at]<<3)|(race->surface_map[at]&7));
+}
+
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky)
 {
@@ -3960,6 +3969,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
+    prepare_particle_visibility(race);
     slicks_race_invalidate_retention(race);
     race->car_render_cache.ready=0;
     for(unsigned i=0;i<64;++i)race->track_draw_packets[i].valid=0;
