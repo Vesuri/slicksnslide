@@ -119,6 +119,13 @@ Candidate fixes, roughly in order of expected value per effort:
   repeated signed X/Y-to-pixel divisions across helper calls, caching only
   if measured savings outweigh exact input-key checks. Verify via a shadow
   site per replaced function.
+  Next concrete trial: precompute steering/speed surface limits from loaded
+  vehicle properties. Preserve the signed 16-bit product before division,
+  surface-18 collision-property gate, and signed nonpositive-tick fallback
+  on surfaces 7/8/11/12. Property reloads must refresh/invalidate the derived
+  table; keep it outside the authoritative simulation state. Extend the
+  existing DOS-backed vehicle-property oracle and add a target comparison
+  before accepting. Do not cache arbitrary mutable car values implicitly.
 
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Investigate how often old and new car rectangles

@@ -3,6 +3,37 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected deferred particle-record loads (2026-09-28)
+
+Tried loading x/y/velocity and flags first, lifetime/colour/priority only
+for live records, and old screen coordinates only for compaction or expiry.
+The 24-byte layout, ordering, mapping publication and all writes stayed
+unchanged. This saves reads on in-place motion and release at the cost of
+more instructions and separate loads when compacting.
+
+| Track | Parent work / worst | Trial work / worst |
+| --- | ---: | ---: |
+| BASIC | 153390 / 365 | 152666 / 362 |
+| F1 | 178463 / 432 | 178062 / 441 |
+| CITY | 148559 / 344 | 148352 / 341 |
+| WHACKO | 156342 / 406 | 155880 / 409 |
+
+Parent game code d096904; trial logs
+`tmp/particle-lazy-load-20260928-{0,1,2,3}.log`. All 603-update final states
+match. Total savings are 0.14-0.47%; the difficult F1/WHACKO peaks do not
+improve. F1's trial 441 is one line above the known parent phase envelope
+440, but no trial phase sweep establishes a phase-independent regression.
+Rejected for marginal throughput benefit without progress on the difficult
+frames. Archived locally as `tmp/particle-lazy-load-20260928.patch`.
+
+The unchanged DOS-backed native oracle passes: 1028 legacy batches and
+800 shared-pool batches, including signed motion, lifetime, compaction,
+permanent pixels, dirty saturation, arbitrary prior mappings, surrounding
+bytes and ABI (`tmp/particle-lazy-load-oracle-20260928.log`). No shadow or
+target display audit is claimed for this rejected candidate. The accepted
+source and normal executable were restored and the oracle rerun in
+`tmp/particle-lazy-restored-oracle-20260928.log`. All benchmark sessions exited.
+
 ## Refreshed WHACKO profile after address optimization (2026-09-28)
 
 Normal game code d096904 (documentation HEAD a12fd17), inner profiling
