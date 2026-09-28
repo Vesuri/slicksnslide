@@ -17,6 +17,21 @@ AO_PARTICLE_PRIORITY equ PARTICLE_PRIORITY
 slicks_build_draw_order:
     movem.l d2-d3/a2-a6,-(sp)
     movea.l 32(sp),a0
+; Previous builders leave all heads/tails above actor_order_max zero.
+; Race initialization clears the state; the initial reverse builder clears
+; all heads and copies them to tails. Round the old bound up to 32 buckets
+; and jump into the unrolled clears. Invalid bounds conservatively clear all.
+    moveq #0,d1
+    move.b RACE_ACTOR_ORDER_MAX(a0),d1
+    cmpi.w #127,d1
+    bhi.s .full_clear
+    eori.w #127,d1
+    andi.w #96,d1
+    lsr.w #1,d1
+    bra.s .clear
+.full_clear:
+    moveq #0,d1
+.clear:
     lea RACE_ACTOR_ORDER_HEAD(a0),a5
     moveq #0,d0
 ; Clear the odd-aligned head array with aligned body stores.
@@ -29,6 +44,8 @@ slicks_build_draw_order:
     endif
     move.b d0,(a5)+
     move.w d0,(a5)+
+    jmp .head_clear(pc,d1.w)
+.head_clear:
     rept 31
     move.l d0,(a5)+
     endr
@@ -38,6 +55,8 @@ slicks_build_draw_order:
     ifne (RACE_ACTOR_ORDER_TAIL&3)
     fail "Actor-order tail clear requires long alignment"
     endif
+    jmp .tail_clear(pc,d1.w)
+.tail_clear:
     rept 32
     move.l d0,(a5)+
     endr

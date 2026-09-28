@@ -37,10 +37,34 @@ int main(int argc,char **argv){
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,
         UC_M68K_REG_A5,UC_M68K_REG_A6};
     unsigned linked=0;
+    unsigned char prior_head[128]={0},prior_tail[128]={0};
+    unsigned prior_max=0;
     for(unsigned t=0;t<12000;++t){
         unsigned char image[N],expected[N],got[N],stack[8];
         for(unsigned i=0;i<N;++i)image[i]=rnd();
         unsigned count=t%201;
+        /* Producer invariant: buckets beyond the previous maximum are
+         * already empty. Vary the old maximum independently of this frame;
+         * include invalid maxima to exercise the full-clear fallback. */
+        unsigned old_max=(t/4)%256;
+        image[RACE_ACTOR_ORDER_MAX]=old_max;
+        if(old_max<128) {
+            memset(image+RACE_ACTOR_ORDER_HEAD+old_max+1,0,127-old_max);
+            memset(image+RACE_ACTOR_ORDER_TAIL+old_max+1,0,127-old_max);
+        }
+        if(t%4==1) {
+            /* Previous native build, with this frame's actors independently
+             * mutated below; new maxima can both grow and shrink. */
+            memcpy(image+RACE_ACTOR_ORDER_HEAD,prior_head,128);
+            memcpy(image+RACE_ACTOR_ORDER_TAIL,prior_tail,128);
+            image[RACE_ACTOR_ORDER_MAX]=prior_max;
+        } else if(t%4==2) {
+            /* Previous trial ends with the independently checked initial
+             * reverse builder/copy, not a previous native forward build. */
+            memcpy(image+RACE_ACTOR_ORDER_HEAD,race.actor_order_head,128);
+            memcpy(image+RACE_ACTOR_ORDER_TAIL,race.actor_order_tail,128);
+            image[RACE_ACTOR_ORDER_MAX]=race.actor_order_max;
+        }
         race.weapons.slots.high_water=count;
         be16(image+RACE_WEAPON_SLOTS+SLOTS_HIGH_WATER,count);
         for(unsigned i=0;i<256;++i){
@@ -106,6 +130,9 @@ int main(int argc,char **argv){
         ck(uc_emu_start(u,CODE,STOP,0,100000));ck(uc_mem_read(u,RACE,got,N));
         unsigned pc;ck(uc_reg_read(u,UC_M68K_REG_PC,&pc));if(pc!=STOP)return 1;
         if(memcmp(got,expected,N)){for(unsigned i=0;i<N;++i)if(got[i]!=expected[i]){fprintf(stderr,"Case %u byte %u got %u expected %u\n",t,i,got[i],expected[i]);break;}return 1;}
+        memcpy(prior_head,got+RACE_ACTOR_ORDER_HEAD,128);
+        memcpy(prior_tail,got+RACE_ACTOR_ORDER_TAIL,128);
+        prior_max=got[RACE_ACTOR_ORDER_MAX];
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=values[i])return 1;}
         race.actor_order_drawn=1;

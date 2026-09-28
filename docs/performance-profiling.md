@@ -3,6 +3,97 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Bounded priority-bucket clearing (2026-09-28, accepted)
+
+The native builder clears only the first 32/64/96/128 head and tail buckets,
+rounding the previous maximum up. It jumps into the existing unrolled aligned
+stores, without adding a per-store loop. Invalid maxima use a full clear.
+For a maximum below 32 it avoids 192 bytes of Chip-RAM writes per update;
+the bound calculation and two jumps are additional work. No list is reused,
+and every live actor is still sorted in its exact original order.
+
+Producer inspection: slicks_race_initialize clears the complete runtime;
+both forward builders leave heads/tails above the new maximum zero. The
+initial reverse builder clears all heads and restore_actor_order copies
+those to tails. The diagnostic reversal writes only through the maximum.
+No other production writers to the heads/tails/maximum were found.
+
+The quick native oracle passes 12000 cases / 412321 links with old maxima
+0..255, new priorities independent of the old bound, empty/full pools,
+signed states, exact forward/inverse chains and whole-arena/ABI checks.
+Inputs now express the producer invariant above a valid old maximum; below
+it and with invalid maxima they retain randomized old bytes. The C oracle
+still clears all 128 buckets. Log: tmp/order-clear-smoke-20260928.log.
+Multi-frame target/rendering validation is intentionally deferred until the
+F1/WHACKO performance screen shows whether the experiment is worthwhile.
+Control: tmp/order-clear-control-20260928.{elf,exe}; screen logs:
+tmp/order-clear-screen-20260928-{1,3}.log. No acceptance claim yet.
+
+The screen completes with canonical final states: F1 170954/414 and WHACKO
+149752/384 (work/worst). The exact parent produced 171313/417 and 150098/368
+in the preceding matched-build run; the accepted parent's broader WHACKO
+measurements reached 386 (389 belongs to the earlier, unfused control).
+Both total-work screens improve about 0.2%, enough to proceed to
+correctness gates, not enough to establish the worst-frame envelope.
+The correctness gates and final phase-aware timing follow below.
+The expanded lifecycle oracle also passes all 12000 cases: 3000 calls
+consume the preceding native builder's actual heads/tails/maximum, and
+3000 consume the independently checked initial reverse-builder state,
+with independently changed actors and priorities on the next call. The
+remaining 6000 exercise randomized valid/invalid old bounds. Log:
+`tmp/order-clear-lifecycle-20260928.log`.
+All three display audits pass 600 updates: F1 32 actors/2076 marks,
+CITY 18/1480, WHACKO 5/1854 (`tmp/order-clear-audit-20260928-{1,2,3}.log`).
+Full-frame RETCHECK comparisons on tracks 0..3 are now running sequentially,
+muted and in warp mode; these are correctness runs, not timing evidence.
+The runner forces both diagnostic-flag-sensitive objects and restores a
+normal build on exit. The normal timing log also reports
+INITIAL_CACHE_CONTROL=0x1; this is not a run with the instruction cache
+disabled. No cache setting was changed for this experiment.
+The first full-frame RETCHECK result passes on BASIC: 603 compared racing
+updates, zero surface/particle/immutable-map mismatches, 700 status-cache
+comparisons with zero mismatches, and canonical final state. BASIC has no
+eligible sprite-geometry cache checks (reported zero); this is not coverage
+of that cache. F1 also passes 603 compared racing updates and 700 status-cache
+comparisons with zero mismatches, plus 575 successful geometry-cache audits
+and canonical final state. CITY also passes: 603 full-frame and geometry-cache
+comparisons, 700 status-cache comparisons, zero mismatches and canonical
+final state. WHACKO also passes 603 full-frame and 700 status-cache
+comparisons with zero mismatches and canonical final state; it has zero
+eligible geometry-cache checks. The suite exits successfully and restores
+the normal build. Logs: `tmp/order-clear-retcheck-20260928-{0,1,2,3}.log`.
+The archived control's .text/code contents match both the earlier mixed-chain
+control and the accepted surface-tail archive byte-for-byte. All allocated
+initialized sections also match the surface-tail archive, with identical BSS
+size/address. Thus its already completed F1/WHACKO HUD-phase measurements
+are reusable parent controls for final timing; do not rerun unchanged control
+phases merely because the experiment label changed. The candidate still
+needs its own complete phase measurements. Those are now complete:
+
+| Track / HUD phase | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 146379 / 348 | 146033 / 348 |
+| CITY | 142689 / 331 | 142376 / 333 |
+| F1 / 0 | 171304 / 415 | 170942 / 415 |
+| F1 / 1 | 171287 / 415 | 170992 / 414 |
+| F1 / 2 | 171287 / 416 | 171004 / 414 |
+| F1 / 3 | 171307 / 417 | 170975 / 416 |
+| WHACKO / 0 | 150091 / 368 | 149752 / 384 |
+| WHACKO / 1 | 150051 / 383 | 149717 / 386 |
+| WHACKO / 2 | 150157 / 370 | 149803 / 370 |
+| WHACKO / 3 | 150100 / 369 | 149772 / 383 |
+
+Every run has 603 updates and canonical final state. Logs:
+`tmp/order-clear-final-20260928-{0,2}.log` and
+`tmp/order-clear-phase-20260928-{1,3}-{0,1,2,3}.log`.
+Total work improves consistently by about 0.2%. Individual maxima remain
+phase-sensitive: CITY rises two lines and several WHACKO phases rise, while
+the broader observed WHACKO envelope remains 386, including the parent's
+repeat. This is accepted for the repeatable aggregate reduction and complete
+correctness gates, not as a meaningful worst-frame improvement or 50 FPS
+claim. F1 still reaches 416 lines. All owned validation/timing runners exit
+successfully and close their emulators; the normal build is restored.
+
 ## Shared native restoration integration rejected (2026-09-28)
 
 `actor_restore.s` restores a whole mixed reverse-order chain under one
