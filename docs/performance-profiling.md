@@ -3,6 +3,58 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Ordered drawing dispatch screen (2026-09-28)
+
+Read-only captures on 2bccdaf use `amiga/diag_draw_chain_screen.gdb` and
+`tools/draw_chain_screen.py`. Complete forward/inverse chains and signed
+point indices are captured for updates 98..700; the parser validates stable
+ordering, unique membership, inverse links, index bounds and consecutive
+frames. Five new synthetic tests plus the five existing order-parser tests
+pass. No game code or ELF changes. Debugger-interrupted timings are invalid.
+
+F1: `tmp/draw-chain-f1-20260928.{bin,log}`. WHACKO:
+`tmp/draw-chain-whacko-20260928.{bin,log}`. Both have 603 captures and
+canonical final states. F1 averages 4.89 point/nonpoint runs and 0.51
+within-priority type transitions per update, with maxima 7 and 1. WHACKO
+averages 2.90 runs and 0.62 transitions, maxima 5 and 1. WHACKO update
+685 has 158 points, five nonpoints, four runs and **zero** type transitions.
+Thus frequent sprite/particle alternation is not a large overhead in these
+workloads. Run counts are lower bounds on dispatch calls, not exact fast-path
+counts: a general actor, packet failure or dirty overflow can split a run.
+
+The refined F1 capture `tmp/draw-dispatch-f1-20260928.{bin,log}` also counts
+actual entries. Means/maxima: point chain 1.89/4, sprite chain 4.55/9,
+general renderer 1.63/7. Target updates:
+
+| Update | Point calls | Sprite calls | General calls | Type transitions |
+| --- | ---: | ---: | ---: | ---: |
+| 481 | 4 | 7 | 5 | 1 |
+| 551 | 3 | 4 | 1 | 1 |
+| 613 | 3 | 9 | 7 | 1 |
+
+This narrows the next experiment toward general-renderer fallback handling,
+not a traversal merger justified by frequent actor-type alternation. A larger
+register-resident renderer may still help, but its proposed savings must cover
+the actual fallback/validation work. These counts do not measure cycles and
+are not a performance rejection of every unified native renderer design.
+
+The corrected key capture `tmp/draw-keys-f1-20260928.{bin,log}` confirms
+all seven general entries at update 613: handles 5, 6, 7, 10, 12 and 36
+are kind-3 asset-0 sprites with unchanged positions, colour, layer and
+occlusion=0, but changed animation frame. Handle 13 is the setup flag at
+x=-1 with no previous descriptor. Update 481 has one moving masked object,
+three animation changes and the same hidden flag; 551 has only the flag.
+This points to native animation-change handling as the next concrete
+renderer experiment, preserving old/new dirty coverage and source sizes.
+
+The preliminary `draw-reasons-f1` log labelled fallback entries with the
+pre-increment counter, one update earlier than publication. Its chain/call
+counts are valid but those key lines are not the requested probes. The
+committed script corrects this by using frame_count+1 at drawing and the
+completed counter at publication; `draw-keys-f1` has matching per-probe
+fallback and dispatch counts. All runs end with canonical state and close
+their emulators. No runtime performance improvement is claimed by this screen.
+
 ## Post-car-pair CPU profiles (2026-09-28)
 
 Fresh captures on 17ed4ac are

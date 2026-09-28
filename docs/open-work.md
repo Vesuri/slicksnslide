@@ -65,20 +65,24 @@ Candidate fixes, roughly in order of expected value per effort:
   regression set when evaluating further changes.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
-  First evaluate a unified native ordered draw traversal: the current C
-  `draw_trail_priority` dispatcher repeatedly switches between separately
-  saved sprite and point chains, stacking nine or ten arguments each time.
-  Keep invariant bases in one outer frame and use register-contract entries
-  for both chains. Count actual transitions before estimating savings;
-  dispatcher samples alone do not include all entry/exit overhead. Preserve
-  exact next-handle order, saved-under writes, packet-key validation,
-  retained sprites and dirty-list overflow. General actors and overflow
-  require explicit fallback boundaries, not silent omissions. Test mixed
-  alternating and contiguous chains, cache aliases and overflow against the
-  independent renderer before display/retention audits and target timing.
-  This is a broader native traversal change, not an unchanged C-ABI wrapper
-  around the same calls. Restoration can follow only after the drawing
-  experiment establishes its actual benefit.
+  Next implement and measure native animation-change handling inside the
+  sprite chain. F1 update 613's six changing, stationary, unmasked sprites
+  currently fall back to the general renderer and restart the chain; its
+  seventh fallback is the offscreen setup flag. Start with validated
+  in-bounds track sprites whose position/style stay fixed, selecting the
+  new frame's actual dimensions/pixels/opacity. Preserve saved-under bytes,
+  old/new dirty coverage, descriptor and packet invalidation, retention
+  flags, aliases and exact handle order. Never assume animation dimensions
+  match without checking. Test against the independent general renderer,
+  then display/retention audits and matched four-track/phase benchmarks.
+  Explicitly retain the general path for invalid assets, clipped/moving or
+  occluded cases not covered by the new entry. The hidden flag is a separate
+  possible fast rejection; preserve its original saved/retain/error semantics.
+  Read-only counts are in `docs/performance-profiling.md`: within-priority
+  point/sprite transitions never exceed one per update on F1/WHACKO.
+  Do not justify a unified traversal by frequent type alternation. A broader
+  register-contract design remains possible if it covers real validation
+  and fallback work, rather than merely relocating argument setup.
   A register-only shared-cell particle scan replacing the C call is measured
   effectively neutral (<0.04% on F1/CITY), archived rather than accepted.
   Do not repeat that narrow boundary change; any native redesign must cover
