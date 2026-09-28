@@ -22,9 +22,9 @@ final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1/WHACKO CPU captures are
-`tmp/pcprof-post-pairs-{f1,whacko}-20260928`, including native car-pair
-integration, with exact companion ELFs and zero missed samples.
-These captures predate animation-chain integration. Their sampler overhead is not part of
+`tmp/pcprof-post-animation-{f1,whacko}-20260928`, including native car-pair
+and animation-chain integration, with exact companion ELFs and zero missed samples.
+Their sampler overhead is not part of
 the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
 `INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
@@ -42,7 +42,7 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Use the post-pairs F1 and WHACKO CPU captures for further changes.
+  Use the post-animation F1 and WHACKO CPU captures for further changes.
   Keep WHACKO 685's latest regression in scope. Older archived captures
   predate recent visibility/order/division work; do not present their stage
   percentages as current. Recent small changes alter
@@ -64,8 +64,8 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Remaining F1 sprite overhead.** Refresh CPU profiles after the verified
-  native animation-chain integration; do not attribute its removed general
+- **Remaining F1 sprite overhead.** Use the post-animation CPU profiles;
+  do not attribute removed animation general-renderer
   fallbacks to the current build. Preserve the independent RETCHECK reference
   pass, which disables the new animation entry. The hidden setup flag is a separate
   possible fast rejection; preserve its original saved/retain/error semantics.
@@ -142,6 +142,13 @@ Candidate fixes, roughly in order of expected value per effort:
   the archived sparse-hash prototype.
 
 - **Remaining C inside `slicks_race_step`.**
+  Next evaluate a coherent preparation/integration register contract using
+  the post-animation profiles: preparation, throttle, cached steering and
+  heading updates feeding the existing native integrator. Include full
+  packed target-state and steering-cache oracle coverage, then a live shadow
+  site before accepting it. Keep AI/weapon callbacks and all-car-motion-before-
+  tails order unchanged. Do not claim the whole C sample share as the saving
+  available from this subset; other expensive paths remain.
   Preserve the native car-pair loop and its site-8 diagnostic comparison
   (`SHADOW_SITES=256`). Keep F1 phase 3/update 613 as a regression probe:
   reduced total work did not improve the four-phase worst-update envelope.

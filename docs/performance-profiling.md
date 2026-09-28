@@ -3,6 +3,47 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Post-animation CPU profiles (2026-09-28)
+
+Fresh captures on a852985 are
+`tmp/pcprof-post-animation-{f1,whacko}-20260928.{bin,log,elf}`. Both cover
+603 updates, preserve canonical final states and report zero missed samples.
+The scripts ran sequentially with muted audio and closed their emulators.
+Sampler-instrumented work totals/maxima are not acceptance timings; use the
+normal animation-chain benchmarks below for those.
+
+| Sample attribution | F1 | WHACKO |
+| --- | ---: | ---: |
+| All samples | 9229 | 8009 |
+| Display-blank wait | 1697 | 1335 |
+| Remaining C race-step body, including inlined helpers | 846 | 862 |
+| Native motion integration | 504 | 478 |
+| Native wheel emission | 439 | 445 |
+| C2P | 408 | 451 |
+| Sprite retention preparation | 323 | outside top 25 |
+| Draw-order builder | 305 | 212 |
+| Shared-particle advance | 259 | 285 |
+| C draw-priority dispatcher | 162 | 83 |
+
+Excluding the explicit display wait, the remaining C race-step body is
+11.2%/12.9% of samples and C2P is 5.4%/6.8%. These are whole-window sample
+fractions, not exact per-stage times or worst-update percentages. Symbol
+`slicks_particle_address_end` still includes the following particle paint
+body; its 215/240 samples must not be described as address arithmetic alone.
+
+The inlined C split identifies `prepare_car_motion` (111/106 samples),
+`finish_car_update` (55/67), throttle (49/37), steering cache (35/43),
+actor-layer update (41/38), surface limits (29/30), checkpoint (27/30),
+special-state advance (37/27), and `update_cars` orchestration (53/46).
+This supports a coherent native preparation/integration register contract,
+not a claim that another tiny helper substitution can finish the goal.
+Keep AI/weapon callback order, signed-word arithmetic, heading wrapping,
+fuel/throttle order and integration output intact. Motion for all cars must
+still precede all car tails and pair collisions. Existing original-DOS
+steering/yaw and drive-physics fixtures are useful reference coverage;
+new native regions additionally need packed target-state/ABI oracles and
+live shadow comparisons, including derived steering-cache state.
+
 ## Verified animation-chain integration (2026-09-28)
 
 The drawing chain now attempts the verified register-contract animation
