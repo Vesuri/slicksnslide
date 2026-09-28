@@ -57,7 +57,12 @@ elif [ -n "${SLICKS_GAMEPLAY_BENCHMARK:-}" ]; then
   # 2..7 isolate stages, actor layers, simulation, tail, car/point drawing and
   # track motion; 8 is outer timing plus target-side PC sampling.
   case "${SLICKS_BENCHMARK_DETAIL:-1}" in 0) BENCHMARK_MODE=B;; 1) BENCHMARK_MODE=M;; 2) BENCHMARK_MODE=1;; 3) BENCHMARK_MODE=2;; 4) BENCHMARK_MODE=3;; 5) BENCHMARK_MODE=4;; 6) BENCHMARK_MODE=5;; 7) BENCHMARK_MODE=6;; 8) BENCHMARK_MODE=S;; *) exit 2;; esac
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s%s\n' "$BENCHMARK_MODE" "$SLICKS_GAMEPLAY_BENCHMARK" > "$DH0/s/startup-sequence"
+  HUD_PHASE_SUFFIX=""
+  if [ -n "${SLICKS_HUD_PHASE:-}" ]; then
+    [ "$BENCHMARK_MODE" = B ] || { echo 'HUD phase sweep requires outer-only timing.' >&2; exit 2; }
+    case "$SLICKS_HUD_PHASE" in 0|1|2|3) HUD_PHASE_SUFFIX="P$SLICKS_HUD_PHASE";; *) exit 2;; esac
+  fi
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s%s%s\n' "$BENCHMARK_MODE" "$SLICKS_GAMEPLAY_BENCHMARK" "$HUD_PHASE_SUFFIX" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_MODE_TRANSITION:-}" ]; then
   case "$SLICKS_MODE_TRANSITION" in 0|1|2|3|4|5) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONST%s\n' "$SLICKS_MODE_TRANSITION" > "$DH0/s/startup-sequence"

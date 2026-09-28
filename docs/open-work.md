@@ -17,6 +17,8 @@ audio and rendering order. Latest benchmark
 per 603 updates / worst update): BASIC 155903/364, F1 182215/433,
 CITY 151791/352, WHACKO 159453/416. Means are 16.1-19.4 ms; the
 worst updates need 11-28% cuts. Particle-heavy frames remain expensive,
+The additional verified F1 HUD-clock phase sweep reaches 460 lines on the
+control, so its general worst-case gap is larger than that single run.
 but live count alone does not explain the maxima. Current CPU captures are
 `tmp/pcprof-current-{f1,whacko}-20260928`; their sampler overhead is not part
 of the acceptance numbers above. F1 is also slow without points.
@@ -41,6 +43,11 @@ Candidate fixes, roughly in order of expected value per effort:
   entries. Reserve list capacity, retain sparse updates for small changes
   and near-full lists, and preserve all pixel/dirty coverage semantics.
   Verify forced-cold status, DOS HUD, display audits and reference runs.
+  The direct-bounds candidate in `tmp/hud-bar-direct-20260928.patch` passes
+  host/DOS checks and improves all four verified F1 phases (worst 460->449).
+  Finish target display/reference audits and ordinary four-track timing
+  before accepting. The native `SLICKS_HUD_PHASE` fixture asserts actual
+  initialization; the earlier debugger-write phase runs are invalid.
   Revisit parked address arithmetic after reducing this periodic workload.
 
 - **Resolve worst-update transitions, not just particle-count averages.**

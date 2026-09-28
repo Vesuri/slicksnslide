@@ -3,6 +3,38 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Verified HUD-clock phase fixture (2026-09-28)
+
+`SLICKS_HUD_PHASE=0..3` with an outer-only gameplay benchmark adds a native
+diagnostic launch suffix. It initializes only the BIOS-clock remainder to
+0/819200/1638400/2457600; the tick rate and all subsequent clock advancement
+remain unchanged. `diag_benchmark_hud_phase.gdb` checks the actual initial
+remainder at the first update, before the measured racing window. It never
+writes target memory. The option is absent from ordinary launches/run.sh.
+
+The earlier `tmp/hud-direct-phase-20260928-*.log` runs are INVALID as a phase
+sweep: GDB target assignments did not take effect (all readbacks were zero).
+Do not use them to claim coverage of four phases. The native fixture was
+introduced specifically to make failed initialization an explicit failure.
+
+F1, 603 updates per phase, identical canonical final states throughout:
+
+| Initial fraction | Parent work / worst | Direct HUD bounds candidate work / worst |
+| --- | ---: | ---: |
+| 0 | 181780 / 459 | 181552 / 449 |
+| 819200 | 181759 / 457 | 181607 / 449 |
+| 1638400 | 181810 / 460 | 181517 / 427 |
+| 2457600 | 181705 / 456 | 181503 / 435 |
+
+Both builds include the same native launch option. Logs:
+`tmp/hud-{parent,direct}-native-phase-20260928-{0,1,2,3}.log`.
+The candidate reduces total work at every phase and the worst sampled peak
+from 460 to 449. This supports further verification, not acceptance yet:
+full target display/reference audits are pending. Four fractions are a
+regression set, not exhaustive proof of all possible phase/contention
+combinations. The earlier single-run parent maximum 433 must not be used
+as a universal F1 bound.
+
 ## Retention addressing trial and F1 fuel-blink phase (2026-09-28)
 
 Tested a signed-word actor-offset table in the final retention decision

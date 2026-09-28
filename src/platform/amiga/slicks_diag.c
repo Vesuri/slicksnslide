@@ -3178,6 +3178,14 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
+    /* Explicit diagnostic clock fraction, never a normal-game override.
+     * Set natively: debugger writes are not reliable on every FS-UAE stub. */
+    if(argc==11 && argv[0]=='N' && argv[1]=='A' && argv[2]=='T' && argv[3]=='U' &&
+       argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && argv[7]=='B' && argv[8]>='0' && argv[8]<='3' &&
+       argv[9]=='P' && argv[10]>='0' && argv[10]<='3') {
+        status_clock.remainder=819200UL*(unsigned)(argv[10]-'0');
+        argc=9;
+    }
     /* NATIVE is the normal interactive route with explicit debug snapshots.
      * Plain launches should not pay for per-update inspection/checksums. */
     unsigned char native_debug=(unsigned char)(argc==6 && argv[0]=='N' &&
