@@ -19,6 +19,8 @@ def main():
     parser.add_argument('--args',default='')
     parser.add_argument('--checks',type=Path)
     parser.add_argument('--marker',default='STANDALONE_RELEASE_TITLE_OK')
+    parser.add_argument('--cpu',default='68020')
+    parser.add_argument('--cpu-speed',choices=('real','max'),default='real')
     args=parser.parse_args()
     if (args.args or args.checks) and not args.default_stack:
         parser.error('--args and --checks require --default-stack')
@@ -74,6 +76,7 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
     env=dict(os.environ,SDL_AUDIODRIVER='dummy',HOME=str(base/'home'),XDG_CACHE_HOME=str(base/'home'))
     with (base/'emulator.log').open('w') as log:
         emu=subprocess.Popen(['fs-uae','--amiga_model=A1200','--chip_memory=2048','--fast_memory=0',
+          '--cpu='+args.cpu,'--uae_cpu_speed='+args.cpu_speed,
           '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10','--hard_drive_1='+str(installed),
           '--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
           '--remote_debugger=20','--remote_debugger_port='+str(port),'--remote_debugger_trigger=Slicks',
@@ -89,7 +92,7 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
             assert result.returncode==0 and args.marker in output,str(base)
             if args.default_stack:
                 assert 'DEFAULT_STACK_CONFIRMED bytes=4096' in output,str(base)
-            print('PASS:',args.marker,'on 2 MiB/no-Fast A1200;',base)
+            print('PASS:',args.marker,'on 2 MiB/no-Fast A1200, CPU',args.cpu,args.cpu_speed+';',base)
         finally:
             emu.terminate()
             try:emu.wait(timeout=5)

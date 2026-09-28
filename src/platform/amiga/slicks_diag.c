@@ -3971,6 +3971,7 @@ int main(void)
      * on debugger writes to target variables. Other audit checks stay on. */
     g_slicks_diag_live_stats=(unsigned char)(!(actor_case_test && argc==10) &&
         (continuous_diagnostics || (g_slicks_diag_profile_all && g_slicks_diag_profile_all!=2)));
+    unsigned long update_vblank=platform.vblank_count;
     for (;;) {
         unsigned short code;
         unsigned char left_down;
@@ -4006,8 +4007,14 @@ int main(void)
             static const unsigned char keys[]={0x45};
             championship_test_keys(&platform,keys,1); championship_test_stage=3;
         }
-        if (!g_slicks_diag_ingame)
+        /* Display-blank waits protect DMA writes, but can return repeatedly
+         * within the same blank on a fast CPU. Admit only one main-loop
+         * update per VBlank; an over-budget update needs no extra wait and
+         * missed refreshes never accumulate catch-up simulation steps. Keep
+         * the existing unconditional menu wait. This is outside work timing. */
+        if (!g_slicks_diag_ingame || platform.vblank_count==update_vblank)
             slicks_amiga_platform_wait_vblank(&platform);
+        update_vblank=platform.vblank_count;
         if (g_slicks_diag_force_exit || (natural_results_test && argv[7]=='O' &&
             g_slicks_diag_ingame && race->frame_count>=600) ||
             (natural_results_test && audio_pcm_test && g_slicks_diag_ingame && race->frame_count>=150) ||

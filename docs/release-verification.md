@@ -1,5 +1,33 @@
 # Development release audit
 
+## 2026-09-28 — gameplay refresh-rate limiter
+
+The main loop now permits at most one iteration per new vertical-blank count
+while racing. The existing display-blank wait only protects visible DMA writes:
+it returns immediately throughout the lower border and therefore could permit
+multiple updates in one refresh on a fast CPU. Menus retain their unconditional
+VBlank wait. Updates that already cross a VBlank incur no additional wait;
+missed refreshes do not accumulate catch-up updates. The limiter is outside
+the measured work region. Simulation and rendering code are unchanged.
+
+`diag_vblank_limit.gdb` observes 120 consecutive real simulation updates and
+rejects any repeated VBlank counter. Muted A1200 tests with 2 MiB Chip, no Fast
+RAM and the confirmed default 4 KiB task stack passed:
+
+- 68040, maximum CPU speed: 120 updates spanning 120 VBlanks,
+  `tmp/standalone-release-77armh10`.
+- 68020, real CPU speed: 120 updates spanning 122 VBlanks,
+  `tmp/standalone-release-fo5cp1dn`.
+- Options edit/reopen/race entry (`tmp/standalone-release-9rqn9w4c`) and
+  championship save/normal system-restoring exit
+  (`tmp/standalone-release-nz430lqg`) also pass on the stock configuration.
+
+These short pacing checks include countdown/startup; they do not establish
+that all gameplay now meets the outstanding 20 ms performance target.
+Repeat with `tools/test_standalone_release.py PRIVATE_INSTALL --default-stack
+--args NATURALQB --checks amiga/diag_vblank_limit.gdb --marker VBLANK_LIMIT_OK`
+and optionally `--cpu 68040 --cpu-speed max`.
+
 ## 2026-09-28 — default 4 KiB stack verification
 
 The unchanged stripped release executable was launched directly, bypassing
