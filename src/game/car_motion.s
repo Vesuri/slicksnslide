@@ -7,23 +7,16 @@
 	xref	slicks_car_direction_y
 	include	"race_offsets.i"
 
-; Exact signed C truncating division by 100/2000 (GCC's reciprocal forms).
-; \1 dividend (clobbered), \2 quotient, \3 scratch.
+; Exact signed C truncating division by 100/2000. The direct 68020 forms
+; reduce instruction fetches versus the former reciprocal multiply sequence.
+; \1 dividend (preserved), \2 quotient, \3 unused legacy scratch argument.
 DIV100	macro
-	move.l	\1,\3
-	muls.l	#$51eb851f,\2:\3
-	asr.l	#5,\2
-	add.l	\1,\1
-	subx.l	\1,\1
-	sub.l	\1,\2
+	move.l	\1,\2
+	divs.l	#100,\2
 	endm
 DIV2000	macro
-	move.l	\1,\3
-	muls.l	#$10624dd3,\2:\3
-	asr.l	#7,\2
-	add.l	\1,\1
-	subx.l	\1,\1
-	sub.l	\1,\2
+	move.l	\1,\2
+	divs.l	#2000,\2
 	endm
 
 ; One step of move_car_through_track's ray (steps 1..count).

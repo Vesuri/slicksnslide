@@ -3,6 +3,43 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Direct 68020 constant division (2026-09-28)
+
+Replaced the car integrator's signed `/100` and `/2000` reciprocal sequences
+(64-bit multiply, shift and sign correction) with a register move and direct
+32-bit signed `DIVS.L`. Quotients still truncate toward zero over the entire
+signed-long domain; no input bounds, skipped quanta or cached simulation
+state are introduced. The old scratch argument remains unused in the macro
+interface. Integration's callers do not depend on its former scratch values.
+
+| Track | Parent work / 603 | Direct /100 only | Both direct divisions | Worst parent -> both |
+| --- | ---: | ---: | ---: | --- |
+| BASIC | 153387 | 152889 | 152628 | 365 -> 365 |
+| F1 | 178466 | 178127 | 177844 | 432 -> 432 |
+| CITY | 148557 | 148112 | 147876 | 344 -> 344 |
+| WHACKO | 156323 | 155902 | 155632 | 408 -> 406 |
+
+Controls: `tmp/compact-control-20260928-{0,1,2,3}.log` (same parent game
+code). Candidates: `tmp/direct-div100-20260928-*` and
+`tmp/direct-div-both-20260928-*`. All final states match. The combined form
+reduces total work on every track by 0.35-0.50%, but does not solve the
+worst-frame budget. Over-312 counts are 62/212/37/80 versus 60/216/40/80 in
+the fresh control: a smaller total is not a guarantee that every update or
+deadline improves. The old F1 HUD-phase sweep still needs refreshing for
+this layout before claiming a new phase-wide maximum.
+
+Both candidates pass the 24000-case full-car integration oracle (signed-long
+position extremes, normal/coast/special states, signed tick counts, clamps,
+complete return/stack/register checks) and the 24000-case ray oracle (10525
+hits, 5440 bounds errors, 8035 clear rays, including 2279 large rays).
+Target native/reference integration checks pass all four tracks: 2412 calls
+each (9648 total), zero mismatches and race errors, with 25/42/7/5 track
+collisions and 27 moving-object probes on F1. Logs:
+`tmp/shadow-direct-div-both-20260928-{0,1,2,3}.log`. All final states match.
+The runner restores the normal build and closes its emulators. No rendering
+or retention policy changes are involved. The direct divisions are retained
+as a small verified simplification, not a claim of achieving 50 FPS.
+
 ## Rejected unchanged-pixel visibility cache (2026-09-28)
 
 Tested caching successful particle visibility in saved-valid bit 2. On a
