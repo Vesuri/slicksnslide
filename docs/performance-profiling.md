@@ -3,6 +3,30 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Fresh F1 CPU profile after sprite addressing (2026-09-28)
+
+Capture: `tmp/pcprof-sprite-address-f1-20260928.{bin,log,elf}`. It completes
+603 updates with the canonical final state, 9660 samples and zero missed
+samples. Instrumented work is 196541/487, about 11.2% more total work than
+the uninstrumented benchmark; these are not acceptance timings.
+
+Across the whole capture, 1883 samples are display-blank waiting. Leading
+non-wait symbols are race-step C (836), integration (484), wheel emission
+(419), C2P (403), point drawing (314), weapon advancement (305), retention
+preparation (295), car collisions (271), shared-point advancement (257),
+ordering (254) and sprite drawing chain (237). Inside race-step C,
+prepare-car-motion has 142 samples, finish-car-update 59, update-cars 52,
+actor-layer sampling 51 and steering-cache work 39.
+
+Filtering instrumented updates above 400 lines leaves 1267 samples, of which
+397 are waiting. Point draw/advance/restore account for 71/61/27 samples;
+wheel emission 69, C2P 42 and retention preparation 33. The expensive work
+remains distributed; neither C2P nor sprite address arithmetic alone can
+close the remaining gap. Race update 613 (measured index 516) has only 26
+samples, including two in late restoration: enough to retain that path as
+a suspect, not to claim precise single-update percentages. Use the complete
+capture or wider windows when selecting the next change.
+
 ## Sprite-chain address lookups (2026-09-28)
 
 Replace two `164*handle` multiplications in native sprite restore/draw and

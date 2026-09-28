@@ -22,7 +22,7 @@ final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1 CPU capture is
-`tmp/pcprof-inner-integrated-20260928` (before the small address change);
+`tmp/pcprof-sprite-address-f1-20260928` (current sprite-address build);
 the refreshed WHACKO capture is
 `tmp/pcprof-whacko-current-20260928`, with inner profiling disabled and
 the accepted address change present. Their sampler overhead is not part of
