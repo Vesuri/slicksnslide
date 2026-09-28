@@ -3,6 +3,46 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected precomputed vehicle surface limits (2026-09-28)
+
+Built an 800-byte derived table outside the authoritative simulation window:
+19 steering/speed pairs plus validity per vehicle. The property loader used
+the original signed-word arithmetic to populate it and invalidated it before
+any accepted-input property mutation, rebuilding only after successful load.
+Missing tables fell back to the reference. Lookup preserved surface 18's
+property gate, default surfaces and signed nonpositive-tick fallback for
+7/8/11/12. No car-update ordering or effects changed.
+
+| Track | Parent work / worst | Table work / worst |
+| --- | ---: | ---: |
+| BASIC | 153390 / 365 | 153842 / 365 |
+| F1 | 178463 / 432 | 179126 / 442 |
+| CITY | 148559 / 344 | 149105 / 345 |
+| WHACKO | 156342 / 406 | 156740 / 404 |
+
+Parent game code d096904 (documentation HEAD 5d887df). Candidate logs:
+`tmp/surface-limits-20260928-{0,1,2,3}.log`; 603 updates per track, all final
+states identical. Overall work regresses 0.25-0.37% on every track. Rejected
+and reverted despite the two-line WHACKO peak improvement. The measurements
+do not isolate lookup overhead from code-layout effects; neither should be
+presented as the proven sole cause. No trial blink-phase sweep was run.
+
+Extended DOS-backed vehicle-property tests passed 32768 surface dispatch
+cases with the cached and fallback outputs compared to the reference and
+original DOS results. All 20520 property-load variants checked the generated
+table for all 256 surface bytes. Additional lifecycle tests covered malformed
+size/null input leaving a valid table intact, zero-divisor property load
+invalidating it, a subsequent changed-property reload, and all 65536 tick
+words over eight representative/default surfaces. Existing oil, velocity,
+drive, input and property-layout comparisons also pass. Logs:
+`tmp/surface-limits-{oracle,expanded-oracle}-20260928.log`.
+
+No native shadow-site or target display-audit completion is claimed for
+this slower trial. Code and expanded test are archived locally in
+`tmp/surface-limits-20260928.patch`. Restored production is rebuilt and
+rechecked in `tmp/surface-limits-restored-{build,oracle}-20260928.log`.
+All owned benchmark emulators exited; no push was performed.
+
 ## Rejected deferred particle-record loads (2026-09-28)
 
 Tried loading x/y/velocity and flags first, lifetime/colour/priority only
