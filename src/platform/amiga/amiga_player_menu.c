@@ -378,7 +378,6 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     d->surface=(struct SlicksRecordsRenderer){.ui=m->renderer.ui,.fonts={m->fonts[0],m->fonts[1]},
         .text=records_text,.icon=records_icon,.context=m};
     d->renderer.surface=&d->surface; d->renderer.fastest_icon=-1;
-    d->renderer.expose_actions=1; /* Native Save/Change Cars extension. */
     d->old_colour=m->renderer.fonts[0][6];
     for(unsigned long i=0;i<64000;++i) m->saved[i]=m->renderer.ui.pixels[i];
     m->intermission=d;
@@ -395,10 +394,7 @@ int slicks_amiga_intermission_key(struct SlicksAmigaPlayerMenu *m,unsigned char 
 {
     if(!m || !m->intermission || m->change_cars) return -1;
     struct SlicksAmigaIntermission *d=m->intermission;
-    enum SlicksIntermissionAction action=SLICKS_INTERMISSION_NONE;
-    if(key==72 && d->state.selected>0 && d->state.selected<=2) {
-        --d->state.selected; d->state.redraw=1;
-    } else action=slicks_intermission_key(&d->state,key);
+    enum SlicksIntermissionAction action=slicks_intermission_key(&d->state,key);
     if(slicks_intermission_renderer_draw(&d->renderer,&d->state,&d->content)) return -1;
     return (int)action;
 }

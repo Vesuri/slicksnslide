@@ -14,8 +14,8 @@ commands
       quit 1
     end
     if $phases == 4
-      if !$m->intermission->renderer.expose_actions
-        printf "NATIVE_INTERMISSION_ACTION_ROWS_HIDDEN\n"
+      if $m->intermission->state.selected != 2
+        printf "NATIVE_INTERMISSION_INITIAL_SELECTION_MISMATCH\n"
         quit 1
       end
       dump binary memory .run/intermission-owner-v1/open.chunky $m->renderer.ui.pixels $m->renderer.ui.pixels+64000

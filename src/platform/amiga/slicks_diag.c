@@ -793,29 +793,15 @@ static void redraw_title_configuration(
     unsigned short vehicle,
     const char *track_name, unsigned short laps)
 {
-    char vehicle_text[] = "CAR AUTO 01";
-    unsigned char lap_number[64];
-    char laps_text[10]="LAPS ";
-    static char track_text[19];
-    static const char prefix[] = "TRACK ";
-    unsigned short at;
-    for (at = 0; at < sizeof(prefix) - 1; ++at)
-        track_text[at] = prefix[at];
-    while (*track_name && *track_name != '.' && at < sizeof(track_text) - 1)
-        track_text[at++] = *track_name++;
-    track_text[at] = 0;
-    vehicle_text[9] = (char)('0' + (vehicle + 1) / 10);
-    vehicle_text[10] = (char)('0' + (vehicle + 1) % 10);
-    slicks_option_number(lap_number,(short)laps,(const unsigned char *)"");
-    for(unsigned i=0;i<4;++i) { laps_text[5+i]=(char)lap_number[i]; if(!lap_number[i]) break; }
-    laps_text[9]=0;
+    /* These legacy diagnostic arguments never belong on the original title.
+     * Its status is alongside PLAYERS/TRACKS/OPTIONS, not a black footer. */
+    (void)vehicle; (void)track_name; (void)laps;
     slicks_draw_title_menu_selection(logical, palette, selection);
-    clear_title_rectangle(logical, 105, 172, 235, 200);
-    slicks_draw_title_text(logical, vehicle_text, 160, 174, 15);
-    slicks_draw_title_text(logical, track_text, 160, 182, 15);
     if(registration.name[0]) slicks_draw_title_registration(logical,registration.name);
-    else slicks_draw_title_text(logical, laps_text, 160, 190, 15);
     slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
+    /* Keep GCC from emitting a cross-section PC32 sibling jump, which the
+     * HUNK converter cannot relocate. No extra hardware or rendering work. */
+    __asm volatile("" ::: "memory");
 }
 
 static void present_menu_surface(struct SlicksAmigaPlatform *platform,struct SlicksAmigaPlayerMenu *menu)
@@ -2551,8 +2537,10 @@ retry:
     g_slicks_diag_intermission_menu=m;
     slicks_diag_intermission_checkpoint();
     if(championship_test==1 || championship_test==3) {
-        static const unsigned char keys[]={0x4c,0x44};
-        championship_test_keys(platform,keys,2);
+        /* Original hidden Save route: F2, close Change Cars, Down, Enter.
+         * Up from NEXT TRACK must not expose the removed native extension. */
+        static const unsigned char keys[]={0x51,0x45,0x4d,0x44};
+        championship_test_keys(platform,keys,sizeof keys);
     }
     intermission_test_key(platform,diagnostic,test_step);
     while(!m->intermission->state.exit_code) {

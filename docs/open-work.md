@@ -1,6 +1,6 @@
 # Open work
 
-Updated 2026-09-28. Actionable open and deferred work only.
+Updated 2026-09-29. Actionable open and deferred work only.
 Historical experiments, rejections and verification evidence are in
 [performance-profiling.md](performance-profiling.md).
 Installer/packaging evidence is in [release-verification.md](release-verification.md),
@@ -31,6 +31,22 @@ Implementation and completed verification evidence are separate in
 [registration-support.md](registration-support.md).
 
 ## Menu loading and presentation
+
+- **Whole-port fidelity audit is active and incomplete.** Use the coverage
+  matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
+  production callers, parameters and overrides as well as translated helpers.
+  Do not claim feature completeness from isolated or historical passes.
+- Close F02–F05/F08: original title status/layout/highlight, clamped
+  navigation and shortcuts, animation. Verify original save/load entry routes
+  before changing menu availability; preserve functioning persistence.
+  User choice requested: strict original hidden save/load UI versus explicitly
+  documented Amiga access, given the earlier save/load completion request.
+- Repair UIMENU2's extra-buffer fragmentation and assert that fault injection
+  reaches the intended allocation/render boundary. The production F06
+  intermission edit/next-race path passes; the old 17-phase fixture does not.
+  Recheck save/edit fixtures which previously assumed the extra rows.
+- Audit every remaining subsystem in the coverage matrix, distinguishing
+  confirmed defects from unverified coverage and user-authorized adaptations.
 
 - Implement disk-free ordinary menu navigation using the startup-resident
   inventory in [menu-resident-assets.md](menu-resident-assets.md). Reuse existing

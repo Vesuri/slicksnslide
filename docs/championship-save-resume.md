@@ -1,5 +1,12 @@
 # Championship save/load/resume evidence
 
+2026-09-29 fidelity correction: intermission no longer displays the two extra
+native rows or permits Up from Next Track into them. Original F2 still opens
+Change Cars; close it, then Down/Enter reaches the hidden Save action. Title
+Load remains visible pending the user's choice about retaining that extension.
+The integration description below records the earlier implementation, not the
+current intermission policy. See [fidelity-audit.md](fidelity-audit.md).
+
 Use **Save Game** between races, then **Load Game** on the title after restart.
 The picker offers Save, Save As and Delete; Tab changes actions and arrows
 choose files. Filenames are 1–8 letters/digits/hyphens/underscores, stored as
