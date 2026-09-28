@@ -268,6 +268,10 @@ int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,
 {
     if (!platform || view >= SLICKS_AMIGA_VIEW_COUNT || !vga_palette)
         return -1;
+    /* Menu-to-menu palette replacement must not rewrite an executing copper
+     * list. The display remains owned; there is no LoadView/Permit handoff. */
+    if (platform->active)
+        slicks_amiga_platform_wait_display_blank(platform);
     if (build_copper(view, vga_palette) != COPPER_LONGS - 1)
         return -1;
     return validate_framework_view(view);

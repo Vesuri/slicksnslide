@@ -47,12 +47,16 @@ Implementation and completed verification evidence are separate in
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 
-- Implement disk-free ordinary menu navigation using the startup-resident
-  inventory in [menu-resident-assets.md](menu-resident-assets.md). Reuse existing
-  resident assets, cache catalogues/keymap state, and budget shared modal storage
-  on 2 MiB Chip RAM. Remove unnecessary platform end/begin transitions; preserve
-  explicit save/load failure handling and on-demand track/exit presentations.
-  The inventory is complete; the cache and lifecycle changes are not implemented.
+- Finish disk-free ordinary navigation using the startup-resident inventory in
+  [menu-resident-assets.md](menu-resident-assets.md). The 57-resource cache and
+  keyboard snapshot are implemented; title Help, Options, Players, Controllers,
+  main Tracks and pause paths have been migrated. Evidence is separate in
+  [menu-cache-verification.md](menu-cache-verification.md).
+  Cache the SLICKS.TRK and saved-game catalogues, preserving transactional
+  save/delete updates and recovery/error handling. Migrate remaining Shop,
+  registration Help, chooser and RAM-only transition owners. Keep explicit
+  track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
+  assertions across every owner; rerun full 2 MiB/default-stack release gates.
 - Restore original title status indicators/counts, verifying actual runtime
   state against DOS rather than treating the current title as faithful.
 

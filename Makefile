@@ -630,7 +630,7 @@ build/verify_help_refresh: tools/verify_help_refresh.c tools/verify_help_navigat
 verify-help-refresh: build/verify_help_refresh
 	build/verify_help_refresh
 
-build/verify_resource_archive: tools/verify_resource_archive.c tools/host_archive.h src/platform/amiga/resource_archive.c src/platform/amiga/resource_archive.h | build
+build/verify_resource_archive: tools/verify_resource_archive.c tools/host_archive.h src/platform/amiga/resource_archive.c src/platform/amiga/resource_archive.h src/platform/amiga/menu_resources.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-resource-archive: build/verify_resource_archive
 	build/verify_resource_archive

@@ -7,6 +7,18 @@
 #include <proto/exec.h>
 #endif
 
+struct CachedResource {
+    unsigned char name[16];
+    unsigned char *data;
+    unsigned long size, stored;
+    unsigned char packed;
+};
+struct SlicksResourceCache {
+    unsigned short count;
+    unsigned long bytes;
+    struct CachedResource *entries;
+};
+
 static int resource_name_matches(const unsigned char *field, const char *name)
 {
     unsigned short index;
@@ -34,6 +46,7 @@ int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
     archive->file = Open((CONST_STRPTR)path, MODE_OLDFILE);
     archive->count = 0;
     archive->directory = 0;
+    archive->cache = 0;
     if (!archive->file)
         return -1;
     if (Read(archive->file, header, sizeof(header)) != sizeof(header) ||
@@ -66,11 +79,11 @@ void slicks_resource_archive_close(struct SlicksResourceArchive *archive)
     archive->file = 0;
     archive->count = 0;
     archive->directory = 0;
+    archive->cache = 0;
 }
 
-long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
-                                  const char *name, void *destination,
-                                  unsigned long capacity)
+static int resource_range(struct SlicksResourceArchive *archive,
+    const char *name, unsigned long *offset, unsigned long *length)
 {
     unsigned short index;
 
@@ -81,7 +94,6 @@ long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
             (unsigned long)index * 19UL;
         unsigned long start;
         unsigned long end;
-        unsigned long size;
         if (!resource_name_matches(entry, name))
             continue;
         start = read_u24_be(entry + 16);
@@ -100,13 +112,140 @@ long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
          * name instead of treating the marker as the requested resource. */
         if (end == start)
             continue;
-        if (end < start || end - start > capacity)
+        if (end < start)
             return -1;
-        size = end - start;
-        if (Seek(archive->file, (LONG)start, OFFSET_BEGINNING) < 0 ||
-            Read(archive->file, destination, (LONG)size) != (LONG)size)
-            return -1;
-        return (long)size;
+        *offset = start;
+        *length = end - start;
+        return 0;
     }
     return -1;
+}
+
+long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
+    const char *name, void *destination, unsigned long capacity)
+{
+    unsigned long offset, size;
+    if (archive->cache) {
+        const struct SlicksResourceCache *cache = archive->cache;
+        for (unsigned i=0; i<cache->count; ++i) {
+            const struct CachedResource *e = cache->entries+i;
+            if (!resource_name_matches(e->name, name)) continue;
+            if (e->size>capacity || !destination) return -1;
+            unsigned char *out = destination;
+            if (!e->packed) {
+                for (unsigned long j=0; j<e->size; ++j) out[j]=e->data[j];
+            } else {
+                unsigned long at=0;
+                for (unsigned long j=0; j<e->stored; j+=2) {
+                    unsigned n=e->data[j];
+                    if (!n || n>e->size-at) return -1;
+                    while (n--) out[at++]=e->data[j+1];
+                }
+                if (at!=e->size) return -1;
+            }
+            return (long)e->size;
+        }
+        return -1;
+    }
+    if (resource_range(archive,name,&offset,&size) || size>capacity || !destination)
+        return -1;
+    if (Seek(archive->file,(LONG)offset,OFFSET_BEGINNING)<0 ||
+        Read(archive->file,destination,(LONG)size)!=(LONG)size) return -1;
+    return (long)size;
+}
+
+/* Two streaming passes avoid a 64K temporary allocation. RLE is private,
+ * lossless storage of the supplied bytes, never a substitute rendered asset. */
+static long pack_resource(BPTR file, unsigned long offset, unsigned long size,
+    unsigned char *out, unsigned long capacity)
+{
+    unsigned char buffer[256], value=0;
+    unsigned run=0;
+    unsigned long used=0;
+    if (Seek(file,(LONG)offset,OFFSET_BEGINNING)<0) return -1;
+    while (size) {
+        unsigned n=size>sizeof buffer?sizeof buffer:(unsigned)size;
+        if (Read(file,buffer,n)!=(LONG)n) return -1;
+        for (unsigned i=0; i<n; ++i) {
+            if (run && (buffer[i]!=value || run==255)) {
+                if (out) {
+                    if (used+2>capacity) return -1;
+                    out[used]=(unsigned char)run; out[used+1]=value;
+                }
+                used+=2; run=0;
+            }
+            value=buffer[i]; ++run;
+        }
+        size-=n;
+    }
+    if (run) {
+        if (out) {
+            if (used+2>capacity) return -1;
+            out[used]=(unsigned char)run; out[used+1]=value;
+        }
+        used+=2;
+    }
+    return (long)used;
+}
+
+void slicks_resource_cache_destroy(struct SlicksResourceCache *cache)
+{
+    if (!cache) return;
+    if (cache->entries) {
+        for (unsigned i=0; i<cache->count; ++i) {
+            struct CachedResource *e=cache->entries+i;
+            if (e->data) FreeMem(e->data,e->stored);
+        }
+        FreeMem(cache->entries,(unsigned long)cache->count*sizeof *cache->entries);
+    }
+    FreeMem(cache,sizeof *cache);
+}
+
+struct SlicksResourceCache *slicks_resource_cache_create(
+    struct SlicksResourceArchive *disk, const char *const *names, unsigned short count)
+{
+    if (!disk || !disk->file || disk->cache || !names || !count) return 0;
+    struct SlicksResourceCache *cache=AllocMem(sizeof *cache,MEMF_ANY);
+    if (!cache) return 0;
+    cache->count=count;
+    cache->bytes=sizeof *cache+(unsigned long)count*sizeof *cache->entries;
+    cache->entries=AllocMem((unsigned long)count*sizeof *cache->entries,MEMF_ANY);
+    if (!cache->entries) { slicks_resource_cache_destroy(cache); return 0; }
+    for (unsigned i=0; i<count; ++i) cache->entries[i].data=0;
+    for (unsigned i=0; i<count; ++i) {
+        struct CachedResource *e=cache->entries+i;
+        unsigned long offset;
+        if (resource_range(disk,names[i],&offset,&e->size)) goto failed;
+        unsigned j=0;
+        while (j<16 && names[i][j]) { e->name[j]=(unsigned char)names[i][j]; ++j; }
+        if (j==16 && names[i][j]) goto failed;
+        while (j<16) e->name[j++]=0;
+        long packed=pack_resource(disk->file,offset,e->size,0,0);
+        if (packed<=0) goto failed;
+        e->packed=(unsigned long)packed<e->size;
+        e->stored=e->packed?(unsigned long)packed:e->size;
+        e->data=AllocMem(e->stored,MEMF_ANY);
+        if (!e->data) goto failed;
+        if (e->packed) {
+            if (pack_resource(disk->file,offset,e->size,e->data,e->stored)!=(long)e->stored)
+                goto failed;
+        } else if (Seek(disk->file,(LONG)offset,OFFSET_BEGINNING)<0 ||
+                   Read(disk->file,e->data,(LONG)e->size)!=(LONG)e->size) goto failed;
+        cache->bytes+=e->stored;
+    }
+    return cache;
+failed:
+    slicks_resource_cache_destroy(cache); return 0;
+}
+
+int slicks_resource_archive_cached(struct SlicksResourceArchive *archive,
+    const struct SlicksResourceCache *cache)
+{
+    archive->file=0; archive->directory=0; archive->count=0; archive->cache=cache;
+    return cache?0:-1;
+}
+
+unsigned long slicks_resource_cache_bytes(const struct SlicksResourceCache *cache)
+{
+    return cache?cache->bytes:0;
 }

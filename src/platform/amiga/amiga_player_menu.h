@@ -1,5 +1,8 @@
 #ifndef SLICKS_AMIGA_PLAYER_MENU_H
 #define SLICKS_AMIGA_PLAYER_MENU_H
+
+/* Call with AmigaOS available before any hardware-owned menu is opened. */
+int slicks_amiga_menu_keymap_init(void);
 #include "resource_archive.h"
 #include "../../ui/player_menu_renderer.h"
 #include "../../ui/list_renderer.h"
@@ -124,7 +127,8 @@ struct SlicksAmigaPlayerMenu {
     struct SlicksAmigaIntermission *intermission;
     unsigned char key_characters[8][128],key_modifiers;
 };
-/* OS available for open/close. Drawing and key dispatch need no OS calls.
+/* Open/close use Exec allocations; a cached archive permits hardware ownership.
+ * Disk-backed archives still require an explicit OS boundary.
  * Use a dedicated help-surface object: its saved[] belongs to the race page. */
 int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,
     const char *,const unsigned char [6][64],unsigned char,unsigned char);
@@ -193,7 +197,8 @@ void slicks_amiga_track_lists_close(struct SlicksAmigaPlayerMenu *);
 int slicks_amiga_player_menu_draw(struct SlicksAmigaPlayerMenu *,unsigned,
     const short [4],const signed char [4],const struct SlicksPlayerProfiles *);
 void slicks_amiga_player_menu_clear_dirty(struct SlicksAmigaPlayerMenu *);
-/* Open/close allocate/free: call only while AmigaOS is available. */
+/* RAM-only dialog open/close uses Exec allocation, not DOS or library opens.
+ * The keyboard snapshot must have been prepared before takeover. */
 /* Original .SSS picker geometry, copied nine-byte records, maximum 40.
  * OS available; existing picker draw/key/close APIs apply. */
 int slicks_amiga_saved_files_picker(struct SlicksAmigaPlayerMenu *,const unsigned char [][9],
@@ -216,7 +221,8 @@ int slicks_amiga_name_dialog_open(struct SlicksAmigaPlayerMenu *,const unsigned 
 struct SlicksTrackRecords;
 int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,
     const unsigned char *,unsigned long,const unsigned char *,unsigned long,
-    const unsigned char *,unsigned char,unsigned char,signed char);
+    const unsigned char *,unsigned char,unsigned char,signed char,
+    unsigned char * /* borrowed 65536-byte preview workspace */);
 void slicks_amiga_track_info_close(struct SlicksAmigaPlayerMenu *);
 void slicks_amiga_track_info_tick(struct SlicksAmigaPlayerMenu *,unsigned long *);
 int slicks_amiga_records_icons_load(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *);

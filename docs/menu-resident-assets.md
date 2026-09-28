@@ -1,7 +1,9 @@
 # Menu-resident asset inventory
 
-Inventory date: 2026-09-28. This is a loading/lifetime plan, not an implemented
-cache. Goal: navigating menus must neither read disk nor restore the AmigaOS
+Inventory date: 2026-09-28; implementation started 2026-09-29. The archive cache
+and several menu owners are implemented; catalogue/lifecycle migration is not
+complete. Evidence is in [menu-cache-verification.md](menu-cache-verification.md).
+Goal: navigating menus must neither read disk nor restore the AmigaOS
 display. Explicit save/load operations, individual track loading and exit/end
 presentations may perform disk I/O.
 
@@ -130,6 +132,6 @@ original payload is included here. Call paths audited:
 - `src/platform/amiga/amiga_saved_files.c` and `amiga_setup_storage.c`:
   directory discovery and persistent state.
 
-Memory figures are read-only release checkpoints, not predictions of the
-proposed implementation. No cache or lifecycle changes have been made as part
-of this inventory.
+The older memory figures above are pre-cache checkpoints. Current target
+measurements and remaining integration boundaries are recorded in the separate
+verification document and `open-work.md`; they are not whole-game peak bounds.

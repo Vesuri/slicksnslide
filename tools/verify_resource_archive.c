@@ -28,6 +28,7 @@ static void FreeMem(void *p,unsigned long n)
 { (void)n; --allocations; free(p); }
 #define SLICKS_ARCHIVE_HOST_TEST
 #include "../src/platform/amiga/resource_archive.c"
+#include "../src/platform/amiga/menu_resources.h"
 #include "host_archive.h"
 int main(void)
 {
@@ -50,7 +51,40 @@ int main(void)
     }
     fail_at=0;
     assert(slicks_resource_archive_load(&a,"HELP.TXT",actual,sizeof actual)==13104);
+    unsigned base_allocations=allocations;
+    operations=0;
+    struct SlicksResourceCache *cache=slicks_resource_cache_create(&a,
+        slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT);
+    assert(cache);
+    unsigned create_operations=operations;
+    printf("Resident menu cache: %u resources, %lu bytes including host metadata\n",
+        (unsigned)SLICKS_MENU_RESOURCE_COUNT,slicks_resource_cache_bytes(cache));
+    struct SlicksResourceArchive memory={0};
+    operations=0; fail_at=1;
+    assert(!slicks_resource_archive_cached(&memory,cache));
+    for(unsigned i=0;i<SLICKS_MENU_RESOURCE_COUNT;++i) {
+        long size=host_archive_load("ref/SLICKS.000",slicks_menu_resources[i],expected,sizeof expected);
+        assert(size>0);
+        assert(slicks_resource_archive_load(&memory,slicks_menu_resources[i],actual,sizeof actual)==size);
+        assert(!memcmp(expected,actual,(size_t)size));
+        assert(slicks_resource_archive_load(&memory,slicks_menu_resources[i],actual,(unsigned long)size-1)==-1);
+    }
+    assert(slicks_resource_archive_load(&memory,"absent",actual,sizeof actual)==-1);
+    slicks_resource_archive_close(&memory);
+    assert(!operations); /* No DOS operation or allocation on the cached path. */
+    fail_at=0;
+    slicks_resource_cache_destroy(cache); assert(allocations==base_allocations);
+    for(unsigned fail=1;fail<=create_operations;++fail) {
+        operations=0; fail_at=fail;
+        cache=slicks_resource_cache_create(&a,slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT);
+        assert(!cache && allocations==base_allocations);
+    }
+    operations=0; fail_at=0;
+    const char *missing[]={"HELP.TXT","absent"};
+    assert(!slicks_resource_cache_create(&a,missing,2));
+    assert(allocations==base_allocations);
     slicks_resource_archive_close(&a); assert(!allocations);
+    printf("Cache: byte-identical resources, zero-I/O reads/misses/close, %u injected construction failures unwind\n",create_operations);
     printf("Archive adapter: %u named-resource comparisons, final HELP.TXT, capacity rejection and all four EOF/seek/read faults pass\n",cases);
     return 0;
 }

@@ -204,21 +204,24 @@ static int load_car_menu_icons(struct SlicksAmigaPlayerMenu *m,struct SlicksReso
     const char *marker,unsigned char records_faults)
 {
     if(!m || !archive) return -1;
-    unsigned char *resource=records_faults && track_info_fault(4)?0:AllocMem(32768,MEMF_ANY);
+    /* These eleven encoded resources are at most 338 bytes in Slix 1.51;
+     * the decoded icons have their own checked destination capacity. */
+    const unsigned long capacity=512;
+    unsigned char *resource=records_faults && track_info_fault(4)?0:AllocMem(capacity,MEMF_ANY);
     if(!resource) return -1;
     int result=-1;
     for(unsigned i=0;i<11;++i) {
         char name[]="auto01.@16"; name[5]=(char)('0'+i-1);
         const char *resource_name=i==0?marker:i==1?"carimage16":name;
         if(records_faults && i==5 && track_info_fault(5)) resource_name="missing-track-icon";
-        long size=slicks_resource_archive_load(archive,resource_name,resource,32768);
+        long size=slicks_resource_archive_load(archive,resource_name,resource,capacity);
         if(size<0 || slicks_decode_menu_icon(resource,(unsigned long)size,m->palette,m->pixels[i],sizeof m->pixels[i],
             &m->icons[i].width,&m->icons[i].height)) goto done;
         m->icons[i].pixels=m->pixels[i];
     }
     m->renderer.icons=m->icons; m->renderer.icon_count=11; result=0;
 done:
-    FreeMem(resource,32768); return result;
+    FreeMem(resource,capacity); return result;
 }
 int slicks_amiga_records_icons_load(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive)
 { return load_car_menu_icons(m,archive,"top10cc.@16",1); }
@@ -240,22 +243,25 @@ void slicks_amiga_track_info_close(struct SlicksAmigaPlayerMenu *m)
 }
 int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,
     const unsigned char *dat,unsigned long dat_size,const unsigned char *track,unsigned long track_size,
-    const unsigned char *name,unsigned char percent,unsigned char separator,signed char date_order)
+    const unsigned char *name,unsigned char percent,unsigned char separator,signed char date_order,
+    unsigned char *arena)
 {
-    if(!m || !archive || !name || m->track_info || m->message || m->track_lists) return -1;
+    if(!m || !archive || !name || !arena || m->track_info || m->message || m->track_lists) return -1;
     struct SlicksTrackRecords records;
     unsigned char description[64];
     if(slicks_track_records(track,track_size,&records)!=1 ||
         slicks_track_description(track,track_size,description,sizeof description)) return -1;
     struct SlicksAmigaTrackInfo *d=track_info_fault(1)?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
-    unsigned char *arena=track_info_fault(2)?0:AllocMem(65536,MEMF_ANY);
-    if(!d || !arena) { if(d) FreeMem(d,sizeof *d); if(arena) FreeMem(arena,65536); return -1; }
+    if(!d) return -1;
     for(unsigned long i=0;i<64000;++i) d->saved[i]=m->renderer.ui.pixels[i];
     for(unsigned i=0;i<2;++i) d->font_colours[i]=m->fonts[i][6];
     m->track_info=d;
     d->phase=1;
     if(slicks_resource_archive_load(archive,track_info_fault(3)?"missing-track-palette":"peli.@p",d->palette,sizeof d->palette)!=768 ||
         slicks_amiga_records_icons_load(m,archive)) goto failed;
+    /* The owner reserves the large workspace before loading smaller files.
+     * Keep the diagnostic workspace-failure boundary transactional. */
+    if(track_info_fault(2)) goto failed;
     struct SlicksChunkyUi *ui=&m->renderer.ui;
     d->phase=2;
     if(slicks_restore_menu_background(ui,m->saved,0,0,100,20,240,190)) goto failed;
@@ -267,9 +273,9 @@ int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksRe
     if(slicks_build_track_preview(ui,dat,dat_size,track,track_size,arena,65536,245,20)) goto failed;
     for(unsigned y=0;y<40;++y) for(unsigned x=0;x<64;++x)
         d->preview[y*64+x]=ui->pixels[mult320[y+20]+x+245];
-    d->phase=6; FreeMem(arena,65536); return 0;
+    d->phase=6; return 0;
 failed:
-    FreeMem(arena,65536); slicks_amiga_track_info_close(m); return -1;
+    slicks_amiga_track_info_close(m); return -1;
 }
 void slicks_amiga_track_info_tick(struct SlicksAmigaPlayerMenu *m,unsigned long *seed)
 {
@@ -543,10 +549,12 @@ int slicks_amiga_controllers_close(struct SlicksAmigaPlayerMenu *m)
     FreeMem(d,sizeof *d); m->controllers_dialog=0;
     return result;
 }
-static int prepare_keymap(struct SlicksAmigaPlayerMenu *m)
+static unsigned char menu_keymap[8][128],menu_keymap_ready;
+int slicks_amiga_menu_keymap_init(void)
 {
     /* Snapshot the installed keyboard layout while AmigaOS is available.
      * No library calls occur from the hardware-owned input loop. */
+    if(menu_keymap_ready) return 0;
     struct Library *KeymapBase=OpenLibrary((CONST_STRPTR)"keymap.library",37);
     if(!KeymapBase) return -1;
     for(unsigned mode=0;mode<8;++mode) for(unsigned raw=0;raw<128;++raw) {
@@ -554,9 +562,16 @@ static int prepare_keymap(struct SlicksAmigaPlayerMenu *m)
         event.ie_Class=IECLASS_RAWKEY; event.ie_Code=(UWORD)raw;
         event.ie_Qualifier=(mode&1?IEQUALIFIER_LSHIFT:0)|(mode&2?IEQUALIFIER_CAPSLOCK:0)|(mode&4?IEQUALIFIER_LALT:0);
         WORD count=MapRawKey(&event,bytes,sizeof bytes,0);
-        m->key_characters[mode][raw]=count==1?(unsigned char)bytes[0]:0;
+        menu_keymap[mode][raw]=count==1?(unsigned char)bytes[0]:0;
     }
-    CloseLibrary(KeymapBase); return 0;
+    CloseLibrary(KeymapBase); menu_keymap_ready=1; return 0;
+}
+static int prepare_keymap(struct SlicksAmigaPlayerMenu *m)
+{
+    if(!menu_keymap_ready) return -1;
+    for(unsigned mode=0;mode<8;++mode) for(unsigned raw=0;raw<128;++raw)
+        m->key_characters[mode][raw]=menu_keymap[mode][raw];
+    return 0;
 }
 unsigned char slicks_amiga_menu_character(struct SlicksAmigaPlayerMenu *m,unsigned char code)
 {
