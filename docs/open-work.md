@@ -152,11 +152,17 @@ Candidate fixes, roughly in order of expected value per effort:
   merely moving its existing operations into another assembly symbol.
   Do not repeat the precomputed surface-limit tables unchanged: both the
   enlarged-property layout and separate power-of-two-stride layout increase
-  total work. Investigate skipping unchanged limit updates instead, only if
-  the validity check costs less than the original default-surface path.
-  Cover initial 1000/100 values, race restart, vehicle/property reloads and
-  signed-tick gates; steering/speed fields must not become stale. Evidence
-  for the rejected tables is in `docs/performance-profiling.md`.
+  total work. The subsequent eight-byte unchanged-limit key cache also
+  measures neutral/slower and does not improve the F1 maximum; do not repeat
+  that narrow C shortcut. Evidence is in `docs/performance-profiling.md`.
+  A different next design can fuse the consecutive surface dispatches for
+  limits, oil spin and velocity damping, then evaluate a larger native
+  surface/pit/contact tail with one resident car/property base. Preserve
+  the existing limit -> oil/RNG -> velocity -> repair -> refuel -> jump ->
+  contact -> sampling order, signed ticks and per-quantum low-word/dword
+  rounding. Keep the existing standalone DOS-backed routines as references
+  and verify complete car/RNG/pit-counter/error results. This is a candidate,
+  not a measured saving; avoid further small caches without a cost argument.
   Keep AI/weapon callbacks and all-car-motion-before-tails order unchanged.
   Preserve the native car-pair loop and its site-8 diagnostic comparison
   (`SHADOW_SITES=256`). Keep F1 phase 3/update 613 as a regression probe:

@@ -3,6 +3,55 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Unchanged surface-limit key cache rejected (2026-09-28)
+
+Tested skipping the original surface-limit calculation when its inputs
+remain unchanged. Four word keys (eight bytes appended to the runtime)
+encode the effective surface plus one and signed-nonpositive-tick flag.
+Zero is invalid. The property loader invalidates all keys before its field
+writes (including a later validation failure); the vehicle setter invalidates
+the selected car, and race start invalidates before assigning its original
+1000/100 initial limits. Production searches found no other writers of the
+limit words or per-car vehicle selection during racing. The candidate keeps
+the original arithmetic on a miss and adds no sample/frame shortcuts.
+
+| Track | Archived control work / worst | Key-cache work / worst |
+| --- | ---: | ---: |
+| BASIC | 146824 / 351 | 146985 / 349 |
+| F1 | 171743 / 416 | 172006 / 416 |
+| CITY | 143107 / 334 | 143316 / 332 |
+| WHACKO | 150563 / 372 | 150680 / 369 |
+
+All four 603-update final states match. Total work is 0.08–0.15% higher on
+every track, while the F1 maximum is unchanged. Small reductions in other
+single-run maxima do not establish a repeatable gain. Rejected as effectively
+neutral/slower for the overall target; do not repeat this narrow C cache.
+The compiled hit path avoids the property-record address arithmetic but
+still executes a key calculation, tick branch, word comparison and branch,
+and changes register allocation in the surrounding inlined car tail. This
+is not evidence that broader register-resident native car processing cannot
+help.
+
+The expanded host test passes 4718592 complete-car comparisons including
+3932160 cache hits, all 256 surface bytes, signed-tick boundary transitions,
+byte-value property sweeps, initial 1000/100 values, vehicle setters, changed
+property reloads and failed reload invalidation. It compares with the
+existing arithmetic reference independently checked by 32768 DOS dispatch
+cases. Existing drive-physics and all vehicle-property oracles also pass.
+Race-start invalidation was inspected in code; this rejected candidate did
+not receive a full restart fixture or native live-shadow acceptance run.
+No such acceptance is implied by the host tests or final-state benchmarks.
+
+Local patch and exact executable pair: `tmp/surface-skip-20260928.patch`,
+`.elf` and `.exe`. Logs: `tmp/surface-skip-20260928-{0,1,2,3}.log`,
+`tmp/surface-skip-transitions-oracle-20260928.log`. Control logs are the
+preceding table experiment's `tmp/surface-limits-control-20260928-*.log`.
+Production and test sources are restored, with no cache in the accepted game.
+The restored build succeeds (`tmp/surface-skip-restored-build-20260928.log`),
+and normalized `.text`/`code` contents match the archived control exactly,
+with the same SHA-256 recorded in the table experiment below. All owned
+emulator sessions have exited.
+
 ## Precomputed surface-limit tables rejected (2026-09-28)
 
 Tested replacing per-car surface steering/speed arithmetic with limits derived
