@@ -3,6 +3,33 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated eight-pixel native C2P probe (2026-09-28)
+
+Added `c2p8_interleaved.s`, folding the unused half of the existing Kalms-
+derived 16-pixel transpose out and storing one final byte per plane.
+Eight pixels require two source longword reads; no plane read/modify/write,
+intermediate display value, framebuffer shadow or neighboring pixel write
+is used. ABI and source/destination strides match the sixteen-pixel entry.
+This is not linked into the game and is not an accepted speed optimization.
+
+`make verify-c2p8 verify-c2p16` passes both actual assembly routines against
+the independent scalar pixel oracle. The new probe covers 64 single-bit
+inputs, 1536 randomized rectangles, 32 empty rectangles, exact store count,
+each final-value-only store, source access bounds, complete framebuffer
+canaries and callee-saved registers/stack. The original converter retains
+its 128 single-bit cases and the same randomized/empty coverage. Unicorn
+reports byte stores sign-extended; the hook masks to the actual store width
+before comparing, rather than treating a correct 0x80 store as 0xff80.
+
+Current archived publication replays (strict overlap) give converted areas
+at 16 -> 8 alignment: BASIC 219 624->464, F1 551 624->608,
+CITY 146 448->344, WHACKO 685 880->648 pixels. Existing initial rectangles
+remain unchanged because their original paint bounds were not captured.
+These are geometric hypotheses, not target timings or full-work savings.
+A practical next comparison should retain sixteen-pixel interior blocks
+and use the new entry only for eight-pixel edges; doubling byte-store
+transactions across an otherwise full-width interior may erase the gain.
+
 ## Shared C checkpoint/layer/lap coordinates: no useful gain (2026-09-28)
 
 Tested dividing each car's fixed X/Y once after wheel emission and passing

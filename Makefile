@@ -1519,6 +1519,13 @@ build/verify_c2p16: tools/verify_c2p16.c | build
 verify-c2p16: build/c2p16_test.bin build/verify_c2p16
 	build/verify_c2p16 build/c2p16_test.bin
 
+build/c2p8_test.bin: src/platform/amiga/c2p8_interleaved.s | build
+	$(VASM) -quiet -m68020 -Fbin -I$(HOME)/.local/opt/m68k-amiga-elf/sys-include -o $@ $<
+
+.PHONY: verify-c2p8
+verify-c2p8: build/c2p8_test.bin build/verify_c2p16
+	build/verify_c2p16 build/c2p8_test.bin 8
+
 build/actor_order.bin: src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
 

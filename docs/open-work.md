@@ -159,7 +159,15 @@ Candidate fixes, roughly in order of expected value per effort:
   DIVS. A different design needs a concrete reduction in lookup/instruction
   overhead before another target experiment.
 
-- **Further C2P area reduction.** The rectangle converter now handles
+- **Further C2P area reduction.**
+  An isolated eight-pixel native converter now exists as
+  `src/platform/amiga/c2p8_interleaved.s`, with `make verify-c2p8` covering
+  final-only byte stores, complete pixels, bounds, empty inputs and ABI.
+  It is not linked into gameplay. Next: implement eight-pixel edge handling
+  around sixteen-pixel interiors, preserve dirty coverage, and benchmark
+  before accepting any publication-alignment change. Byte stores still
+  consume Chip accesses, so narrower area alone does not establish a gain.
+  The production converter handles
   16-pixel columns. Lower priority than simulation/particle work: even the
   full measured C2P phase is smaller than the excess budget on each current
   worst update. Four current publication replays show little merge inflation;

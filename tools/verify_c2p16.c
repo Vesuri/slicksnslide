@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unicorn/unicorn.h>
 enum { CODE=0x10000,SRC=0x20000,DST=0x40000,BM=0x60000,STACK=0x80000,STOP=0x90000,N=64064 };
-static unsigned seed=71,left,top,width,height,writes;
+static unsigned seed=71,left,top,width,height,writes,block=16;
 static unsigned char expected[N];
 static void ck(uc_err e){if(e){fprintf(stderr,"%s\n",uc_strerror(e));exit(2);}}
 static unsigned rnd(void){seed=seed*1664525u+1013904223u;return seed>>8;}
@@ -12,11 +12,15 @@ static void access_hook(uc_engine *u,uc_mem_type type,uint64_t address,int size,
 {
     (void)u;(void)data;
     if(address>=DST && address<DST+N && type==UC_MEM_WRITE){
+        if(address<DST+32 || size!=(int)(block/8) || address+(unsigned)size>DST+N){
+            fputs("Invalid plane store bounds/width\n",stderr);exit(1);
+        }
         unsigned offset=address-DST-32,row=offset/320,col=offset%40;
-        if(address<DST+32 || size!=2 || row<top || row>=top+height ||
+        unsigned final_value=block==8?expected[address-DST]:expected[address-DST]*256+expected[address-DST+1];
+        if(address<DST+32 || size!=(int)(block/8) || row<top || row>=top+height ||
            col<left/8 || col>= (left+width)/8 ||
-           (unsigned short)value!=(unsigned)(expected[address-DST]*256+expected[address-DST+1])){
-            fprintf(stderr,"Invalid/non-final plane store %llx size %d\n",address,size);exit(1);
+           ((unsigned)value&(block==8?255U:65535U))!=final_value){
+            fprintf(stderr,"Invalid/non-final plane store %llx size %d got=%llx expected=%x\n",address,size,(unsigned long long)value,final_value);exit(1);
         }
         ++writes;
     }
@@ -28,7 +32,9 @@ static void access_hook(uc_engine *u,uc_mem_type type,uint64_t address,int size,
 }
 int main(int argc,char **argv)
 {
-    if(argc!=2)return 2;
+    if(argc!=2 && argc!=3)return 2;
+    if(argc==3)block=(unsigned)atoi(argv[2]);
+    if(block!=8 && block!=16)return 2;
     unsigned char code[4096];FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t n=fread(code,1,sizeof code,f);fclose(f);if(!n || n==sizeof code)return 2;
     uc_engine *u;ck(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&u));
@@ -38,13 +44,14 @@ int main(int argc,char **argv)
     const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,
         UC_M68K_REG_A5,UC_M68K_REG_A6};
-    for(unsigned t=0;t<1696;++t){
+    unsigned singles=block*8,total=singles+1536+32;
+    for(unsigned t=0;t<total;++t){
         unsigned char src[N],got[N],bm[40]={0},ret[4];
-        left=(rnd()%20)*16;top=rnd()%200;width=(1+rnd()%((320-left)/16))*16;height=1+rnd()%(200-top);
-        if(t<128){left=0;top=0;width=16;height=1;}
-        if(t>=1664){if(t&1)width=0;else height=0;}
-        for(unsigned i=0;i<N;++i){src[i]=t<128?0:rnd();expected[i]=rnd();}
-        if(t<128)src[32+t/8]=1<<(t%8);
+        left=(rnd()%(320/block))*block;top=rnd()%200;width=(1+rnd()%((320-left)/block))*block;height=1+rnd()%(200-top);
+        if(t<singles){left=0;top=0;width=block;height=1;}
+        if(t>=total-32){if(t&1)width=0;else height=0;}
+        for(unsigned i=0;i<N;++i){src[i]=t<singles?0:rnd();expected[i]=rnd();}
+        if(t<singles)src[32+t/8]=1<<(t%8);
         ck(uc_mem_write(u,SRC,src,N));ck(uc_mem_write(u,DST,expected,N));
         for(unsigned y=top;y<top+height;++y)for(unsigned x=left;x<left+width;++x){
             unsigned v=src[32+y*320+x],mask=0x80>>(x&7);
@@ -62,10 +69,10 @@ int main(int argc,char **argv)
         ck(uc_reg_write(u,UC_M68K_REG_D2,&left));ck(uc_reg_write(u,UC_M68K_REG_D3,&values[1]));
         writes=0;ck(uc_emu_start(u,CODE,STOP,0,2000000));
         ck(uc_mem_read(u,DST,got,N));if(memcmp(got,expected,N)){fprintf(stderr,"Pixels case %u\n",t);return 1;}
-        if(writes!=width*height/2){fputs("Store coverage\n",stderr);return 1;}
+        if(writes!=width*height*8/block){fputs("Store coverage\n",stderr);return 1;}
         ck(uc_mem_read(u,SRC,got,N));if(memcmp(got,src,N))return 1;
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=values[i])return 1;}
     }
-    uc_close(u);puts("C2P16: 128 single-bit + 1536 random + 32 empty rectangles; final-value-only stores, source bounds, canaries and ABI pass");return 0;
+    uc_close(u);printf("C2P%u: %u single-bit + 1536 random + 32 empty rectangles; final-value-only stores, source bounds, canaries and ABI pass\n",block,singles);return 0;
 }
