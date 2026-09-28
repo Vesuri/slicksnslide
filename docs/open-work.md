@@ -81,6 +81,9 @@ Candidate fixes, roughly in order of expected value per effort:
   audit enabled in RETCHECK when changing any source-field writer.
   Focus further wrapper work on eliminating repeated sprite validation or
   whole traversals, not merely moving argument setup across the call.
+  Do not repeat the shared-cell early-return micro-change in
+  `slicks_retention_touch`: matched repeats show more total work on F1/CITY.
+  Its full-state reference comparison remains in `verify-retention-groups`.
   Preserve legacy traversal and sprite/overflow boundaries; any removed
   checks need explicit invariant coverage in the native oracle.
 

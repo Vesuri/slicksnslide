@@ -3,6 +3,37 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected shared-cell early exit (2026-09-28)
+
+`slicks_retention_touch` scans every candidate against the full input
+rectangle when a grid cell is shared (255). Subsequent cells can therefore
+only set conflict bits already set by that complete scan. Tested returning
+immediately after the shared-cell inner loop. No rectangle, priority or
+overlap semantics changed. The new host comparison independently executes
+the original nested traversal and compares the complete retention state
+over 10000 cases: all counts 0..100, random grid contents, prior flags,
+priorities, clipped/empty rectangles and early/late shared cells. It passes,
+as do the 1024 group-order permutations and geometry-cache audit cases.
+
+| Track | Parent work / worst | Early-exit work / worst |
+| --- | ---: | ---: |
+| BASIC | 148314 / 355 | 148306 / 350 |
+| F1 | 174105 / 426 | 174762 / 421 |
+| CITY | 144701 / 337 | 145347 / 336 |
+| WHACKO | 152256 / 392 | 152284 / 393 |
+
+All final states match. After reverting the production change, F1 repeats
+at 174164/427 and CITY at 144706/336. Thus the early exit increases total
+work about 0.34%/0.44% on the tracks with sprite retention; it does not
+justify keeping the extra branch based on a lower sampled F1 maximum.
+Logs: `tmp/touch-once-20260928-*`,
+`tmp/touch-restored-20260928-{1,2}.log`; parent uses the unchanged gameplay
+code from `tmp/direct-point-control-20260928-*`. No target display or
+retention audit is claimed for the rejected candidate. The restored build
+and stronger host test pass (`tmp/touch-restored-oracle-20260928.log`).
+Only the stronger regression test is retained. This rules out this tiny
+early-exit change, not a redesigned conflict index or fused native loop.
+
 ## Direct-cell point-retention eligibility correction (2026-09-28)
 
 The experimental direct 2x2 conflict grid occupies 58880 bytes and replaces

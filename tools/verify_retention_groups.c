@@ -53,6 +53,41 @@ static void restore_expected(unsigned h){
         expected[(a->old_y+y)*320+a->old_x+x]=a->saved_under[y*5+x];
 }
 int main(void){
+    /* Independent original per-cell traversal, including crowded cells.
+     * Arbitrary cell contents exercise early/late shared cells, clipping,
+     * empty rectangles, prior conflict flags and all candidate counts. */
+    unsigned rng=719;
+    for(unsigned t=0;t<10000;++t){
+        static struct SlicksRetentionState want;
+        memset(&slicks_retention,0,sizeof slicks_retention);
+        unsigned count=t%101;slicks_retention.count=count;
+        for(unsigned i=0;i<count;++i){
+            struct SlicksRetentionEntry *e=&slicks_retention.entries[i];
+            rng=rng*1664525U+1013904223U;
+            e->left=(rng>>8)%320;e->top=(rng>>17)%184;
+            e->right=e->left+1+(rng%40);e->bottom=e->top+1+(rng%24);
+            e->flags=(rng>>24)&7;e->priority=(rng>>20)&127;
+        }
+        for(unsigned i=0;i<sizeof slicks_retention.cells;++i){
+            rng=rng*1664525U+1013904223U;
+            slicks_retention.cells[i]=!count?0:(rng%5==0?255:rng%(count+1));
+        }
+        want=slicks_retention;
+        int l=(int)(t%400)-40,top=(int)((t*13)%240)-30;
+        int r=l+(int)(t%160)-8,b=top+(int)(t%96)-4,p=(int)(t%130)-1;
+        int cl=l<0?0:l,ct=top<0?0:top,cr=r>320?320:r,cb=b>184?184:b;
+        if(cl<cr && ct<cb)for(int y=ct>>3;y<=(cb-1)>>3;++y)
+            for(int x=cl>>3;x<=(cr-1)>>3;++x){
+                unsigned cell=want.cells[y*40+x];if(!cell)continue;
+                for(unsigned i=cell==255?0:cell-1;i<(cell==255?count:cell);++i){
+                    struct SlicksRetentionEntry *e=&want.entries[i];
+                    if((e->flags&1) && e->priority>p && e->left<cr && cl<e->right && e->top<cb && ct<e->bottom)e->flags|=2;
+                }
+            }
+        slicks_retention_touch(l,top,r,b,p);
+        require(!memcmp(&want,&slicks_retention,sizeof want),"conflict traversal equivalence",t);
+    }
+    puts("Retention touch: 10000 complete-state comparisons against original per-cell traversal pass");
     /* Deliberately omit invalidation after every source-key mutation. The
      * diagnostic scan must expose it independently of native producers. */
     for(unsigned t=0;t<13;++t){
