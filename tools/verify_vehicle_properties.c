@@ -378,6 +378,62 @@ static void verify_limits(uc_engine *u)
     printf("DOS surface limits: %u dispatch cases match steering/speed words, unsigned properties, signed product wrap and zero-tick gates\n",cases);
 }
 
+static void verify_surface_sequence(void)
+{
+    static struct SlicksRaceRuntime actual,expected;
+    const short ticks[]={-32768,-1,0,1,2,7};
+    const int32_t velocities[]={INT32_MIN,INT32_MAX,-65536,-1,0,1,65536,123456789};
+    const int32_t speeds[]={INT32_MIN,INT32_MAX,-1,0,1,299,300,301,349,350,351,1000};
+    unsigned cases=0;
+    memset(&actual,0xa5,sizeof actual);
+    for(unsigned seed=0;seed<256;++seed)
+    for(unsigned surface=0;surface<256;++surface)
+    for(unsigned t=0;t<sizeof ticks/sizeof *ticks;++t) {
+        unsigned driver=(seed+surface)%4,vehicle=seed%10;
+        struct SlicksRaceCar *car=&actual.cars[driver];
+        struct SlicksCarProperties *p=&actual.properties[vehicle];
+        p->property_4=(unsigned char)(seed+7);
+        p->property_6=(unsigned char)(seed+19);
+        p->collision_sound=seed&1;
+        p->model_class=(unsigned char)seed;
+        for(unsigned group=0;group<5;++group)
+            for(unsigned channel=0;channel<3;++channel)
+                p->surface[group][channel]=(signed char)(seed+group*31+channel*7);
+        car->vehicle=vehicle;car->effective_surface=surface;
+        car->velocity_x=velocities[(seed+t)%8];
+        car->velocity_y=velocities[(seed+surface+t+3)%8];
+        car->measured_speed=speeds[(seed+surface)%12];
+        car->collision_sampling=(seed>>2)&1;
+        car->fuel=(unsigned int)velocities[(seed+t)%8];
+        car->fuel_capacity=(unsigned int)velocities[(seed+t+1)%8];
+        car->service_flags=(unsigned char)seed;
+        for(unsigned d=0;d<4;++d) car->damage[d]=(short)(seed*257U+d);
+        actual.damage_scale=seed&1;
+        actual.pit_repair_ticks=(short)(seed*257U);
+        car->drive_bias=(short)(seed*257U);
+        car->heading=(short)(seed*163U+surface);
+        car->oil_active=(seed>>1)&1;
+        car->oil_turn_sign=(signed char)seed;
+        actual.random_state=(unsigned int)(seed*0x1010101U+surface);
+        memcpy(&expected,&actual,sizeof actual);
+        struct SlicksRaceCar *reference=&expected.cars[driver];
+        update_surface_limits(reference,&expected.properties[vehicle],(unsigned short)ticks[t]);
+        apply_oil_spin(&expected,reference,(unsigned short)ticks[t]);
+        apply_surface_velocity(reference,&expected.properties[vehicle],(unsigned short)ticks[t]);
+        (void)repair_car_at_pit(&expected,reference,(unsigned short)ticks[t]);
+        refuel_car_at_pit(reference,(unsigned short)ticks[t]);
+        unsigned char jump=apply_surface_jump(&expected,reference);
+        apply_surface_contact(reference);
+        unsigned char actual_jump=update_surface_physics(&actual,car,(unsigned short)ticks[t]);
+        if(actual_jump!=jump || memcmp(&actual,&expected,sizeof actual)) {
+            fprintf(stderr,"Surface sequence mismatch seed=%u surface=%u ticks=%d\n",seed,surface,ticks[t]);
+            exit(1);
+        }
+        ++cases;
+    }
+    printf("Fused surface sequence: %u complete-runtime comparisons match separate DOS-backed limits/oil/velocity/pit/jump/contact, RNG, jump request, signed ticks and overflow\n",cases);
+}
+
 int main(void)
 {
     unsigned char runtime[300000]; FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
@@ -429,6 +485,7 @@ int main(void)
         ++cases;
     }
     verify_limits(u);
+    verify_surface_sequence();
     verify_surface_velocity(u);
     verify_oil_spin(u);
     verify_drive_setup(u,runtime);

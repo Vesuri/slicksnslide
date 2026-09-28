@@ -35,7 +35,7 @@ ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
 VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)" -Iobj
 # SHADOW=1: diagnostic dual execution of native replacements (never release).
 ifeq ($(SHADOW),1)
-SHADOW_SITES ?= 0x1fe
+SHADOW_SITES ?= 0x3fe
 CCFLAGS += -DSLICKS_SHADOW_CHECK -DSLICKS_SHADOW_SITES=$(SHADOW_SITES)
 endif
 # RETCHECK=1: compare every racing update with a non-retention reference.

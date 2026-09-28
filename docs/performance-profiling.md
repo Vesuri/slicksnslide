@@ -3,6 +3,115 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Fused surface-tail candidate and verification (2026-09-28)
+
+The candidate replaces the consecutive limit/oil/damping/pit/jump/contact
+dispatches with one surface switch. It still applies the original default
+limits first, keeps the signed nonpositive-tick gates only on surfaces
+7/8/11/12, consumes oil-entry RNG before damping even for nonpositive ticks,
+and preserves every per-tick low-dword Q15 rounding step. Pit repair precedes
+refueling; the returned jump request is still consumed at its original later
+sound-emission point. No persistent cache, reduced effects, rendering changes
+or changed physics are involved. The standalone arithmetic routines remain
+as DOS-backed references.
+
+An initial limits/oil/damping-only version saved just 0.04–0.09% total work.
+The broader tail avoids repeated surface checks in the remaining branches:
+
+| Track | Archived control work / worst | Limits-only fusion | Complete surface tail |
+| --- | ---: | ---: | ---: |
+| BASIC | 146824 / 351 | 146759 / 351 | 146354 / 347 |
+| F1 | 171743 / 416 | 171638 / 415 | 171283 / 415 |
+| CITY | 143107 / 334 | 143048 / 332 | 142660 / 331 |
+| WHACKO | 150563 / 372 | 150435 / 370 | 150099 / 368 |
+
+Each result covers 603 updates; all canonical final states match. Full-tail
+total-work savings are about 0.27–0.32%, not a large step toward 50 FPS.
+Matched F1 HUD-phase and WHACKO repeat checks are required before acceptance;
+these single-run maxima alone are not an upper bound or proof of a robust win.
+Logs: `tmp/surface-fused-20260928-*.log`,
+`tmp/surface-fused-tail-20260928-*.log`; archived controls use the preceding
+surface-table experiment's exact executable. The limits-only patch and build
+are archived locally as `tmp/surface-fused-limits-20260928.*`.
+
+`verify-vehicle-properties` now compares 393216 complete runtime states,
+plus the returned jump request, against the separate original sequence.
+Coverage includes all property-byte seeds and surface bytes, signed ticks,
+oil RNG/latch/sign, signed velocity overflow, pit fuel/capacity/damage,
+collision-sampling gates, jump thresholds and model bytes. Its component
+references remain checked against the DOS executable. The drive-physics,
+DOS-damage and surface-effects suites pass too. Logs:
+`tmp/surface-fused-tail-expanded-oracle-20260928.log` and
+`tmp/surface-fused-tail-oracle-20260928.log`.
+
+Diagnostic shadow site 9 compares the complete write set directly: the car
+record, RNG, shared pit counter and returned jump-sound request. The reference
+helpers can operate on a detached car because none derives a driver index
+from its address or invokes callbacks. The two global values are restored
+before executing the fused routine. The ordinary whole-window shadow sites
+remain unchanged. Normal builds include neither this checker nor its storage;
+the all-sites mask is now 0x3fe, and `SHADOW_SITES=512` selects only this site.
+The first shadow build failed to link a libc `memcmp`; the checker was changed
+to an explicit byte comparison. That failed build is not counted as a pass.
+
+The corrected target suite passes 2412 surface comparisons each on BASIC,
+F1, CITY, WHACKO and the jump fixture, and 412 each on ice and zones: 12884
+comparisons, zero mismatches and race errors. All four benchmark final states
+match. The runner exits successfully, closes its emulators and restores a
+normal build; its symbol table contains no surface-shadow checker or counters.
+Log: `tmp/surface-fused-tail-shadow-fixed-run-20260928.log`, with individual
+`tmp/shadow-surface-fused-tail-fixed-20260928-*.log` files.
+
+### Matched phase checks and acceptance
+
+F1 initial HUD-clock fractions were verified by the existing native-initializer
+fixture, with no debugger writes or stops during the measured window:
+
+| Phase | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| 0 | 171726 / 416 | 171304 / 415 |
+| 1 | 171712 / 415 | 171287 / 415 |
+| 2 | 171752 / 416 | 171287 / 416 |
+| 3 | 171788 / 417 | 171307 / 417 |
+
+All final states match. The worst-phase envelope is unchanged at 417 lines;
+the total-work reduction is consistent. Logs:
+`tmp/surface-fused-phase-{control,candidate}-20260928-{0,1,2,3}.log`.
+
+WHACKO paired repeats are not consistent in their maxima:
+
+| Repeat | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| 1 | 150553 / 370 | 150091 / 386 |
+| 2 | 150573 / 372 | 150081 / 368 |
+
+All maxima are race update 685 and final states match. Do not discard the
+386-line observation, but do not describe it as a consistently reproduced
+regression either. The completed matched four-phase WHACKO sweep is:
+
+| Phase | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| 0 | 150567 / 371 | 150091 / 368 |
+| 1 | 150537 / 389 | 150051 / 383 |
+| 2 | 150525 / 387 | 150157 / 370 |
+| 3 | 150581 / 370 | 150100 / 369 |
+
+All final states match. Logs:
+`tmp/surface-fused-whacko-phase-{control,candidate}-20260928-{0,1,2,3}.log`.
+The control itself reaches 389 lines; the candidate reaches 383 in this
+sweep and 386 in the earlier repeat. These are sampled maxima, not bounds.
+Accepted for its consistent small total-work reduction, passing state
+comparisons and no worsening of the measured phase envelope. F1 still reaches
+417 lines: this does not close the 50 FPS goal. The experiments on surface
+tables, caches and fusion are closed; no further variations are scheduled.
+The precise cause of the timing variation is not established.
+Logs: `tmp/surface-fused-whacko-{control,candidate}-repeat-20260928.log`
+and `tmp/surface-fused-whacko-{control,candidate}-repeat2-20260928.log`.
+
+A source check also confirms that the framework already selects AGA FMODE=3
+for the 320x200 eight-plane playfield. No unused wider-fetch mode was found;
+this was read-only inspection, not a new DMA optimization or timing result.
+
 ## Unchanged surface-limit key cache rejected (2026-09-28)
 
 Tested skipping the original surface-limit calculation when its inputs

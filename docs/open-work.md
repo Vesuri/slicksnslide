@@ -1,230 +1,97 @@
 # Open work
 
 Updated 2026-09-28. Actionable open and deferred work only.
+Historical experiments, rejections and verification evidence are in
+[performance-profiling.md](performance-profiling.md).
 
-Publish/push only when explicitly requested. Scope: finish the performance
-handoff, resolving each proposed optimization with verified implementation
-or measured rejection, plus its verification debt. The 50 FPS goal remains
-open until target measurements meet it; closing experiments is not enough.
+## Goal and current measurements
 
-## Performance
+Finish the performance handoff with verified implementation or measured
+rejection of each proposal and resolve its verification debt. Closing
+experiments alone is not completion: faithful general gameplay, including
+particle-heavy frames, must take at most 20 ms / 312 PAL raster lines per
+update on a stock A1200 (68020, 2 MiB Chip RAM, no Fast RAM).
+Preserve behaviour, effects, permanent marks, audio and rendering order.
 
-Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
-(68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
-particle-heavy frames, with identical behaviour, effects, permanent marks,
-audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh animation-chain-gated-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 146826/346, F1 171753/417,
-CITY 143111/333, WHACKO 150565/371. Means are 15.2-18.3 ms; the
-worst updates in that run need 6-25% cuts. The latest matched F1 HUD-clock
-phase sweep still reaches 417 lines (26.7 ms, 25% cut needed), with matching
-final states across all four phases. These are
-sampled maxima, not exhaustive upper bounds for every gameplay situation.
-Particle-heavy frames remain expensive, but live count alone does not
-explain the maxima. The latest F1/WHACKO CPU captures are
-`tmp/pcprof-post-animation-{f1,whacko}-20260928`, including native car-pair
-and animation-chain integration, with exact companion ELFs and zero missed samples.
-Their sampler overhead is not part of
-the acceptance numbers above.
-F1 is also slow without points. Detailed inner profiling now requires
-`INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
-Method, tools and the cost model (Chip data access ~7
-cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
-`docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
-against a control of the parent commit (FINAL_STATE must be identical),
-Unicorn/host oracle for any native routine, `amiga/shadow_check.sh` for
-simulation sites, display audits for rendering changes
-(`SLICKS_LIVE_STATS=0 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 ./debug.sh ""
-diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
-(`make RETCHECK=1`, `diag_retention_check.gdb`) when drawing order or
-retention is touched.
+Latest accepted surface-tail standard benchmark, work lines per 603 updates /
+worst: BASIC 146354/347, F1 171283/415, CITY 142660/331, WHACKO 150099/368.
+The wider checks reach F1 417 and WHACKO 386 (including repeats), so the
+worst observed F1 update still needs about a 25% reduction. These are sampled
+maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
-Candidate fixes, roughly in order of expected value per effort:
+## Remaining performance work
 
-- **Resolve worst-update transitions, not just particle-count averages.**
-  Use the post-animation F1 and WHACKO CPU captures for further changes.
-  Keep WHACKO 685's latest regression in scope. Older archived captures
-  predate recent visibility/order/division work; do not present their stage
-  percentages as current. Recent small changes alter
-  which updates incur the largest work.
-  The paired update-613 capture establishes a different fuel-blink phase;
-  measure its cost separately rather than tuning cadence. Raster contention
-  remains an unproven additional explanation. Keep F1 551 and 613 in scope.
-  Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
-  as the pre-group baseline; refreshed post-group F1/WHACKO captures are
-  `tmp/pcprof-postgroups-{f1,whacko}-20260927`. Target BASIC updates 209/219,
-  CITY 146/506, F1 481/613 and WHACKO 685. Retain F1 507
-  (group-rebuild regression probe), CITY 700,
-  F1 551 and BASIC 409/F1 482/WHACKO 688 as regression probes.
-  Pre/post particle counts and dirty regions for all four are recorded in
-  the profiling evidence. Retirement and compaction can cause work despite
-  a low final live count. Narrow windows have few samples: use them to
-  locate groups, not to claim precise single-frame percentages.
-  Use uninterrupted timings and the CIA-B sampler; debugger stops are
-  only for correctness/region inspection. Keep these transitions in the
-  regression set when evaluating further changes.
+1. **Particle pipeline and memory traffic.** Examine substantial native
+   blocks spanning restoration, ordering, advancement and drawing. Reduce
+   repeated scans and Chip-RAM accesses; keep pointers/intermediates in
+   registers across boundaries. For unmoved-particle retention, establish
+   a bookkeeping cost below the saved restore/redraw work before integration.
+   Preserve underlays, permanent-mark baking, slot reuse and exact ordering.
+   Design constraints and screens are in
+   [point-retention-design.md](point-retention-design.md).
+   Do not repeat the measured slow C retention policies or compact-pool
+   integration unchanged.
 
-- **Remaining F1 sprite overhead.** Use the post-animation CPU profiles;
-  do not attribute removed animation general-renderer
-  fallbacks to the current build. Preserve the independent RETCHECK reference
-  pass, which disables the new animation entry. The hidden setup flag is a separate
-  possible fast rejection; preserve its original saved/retain/error semantics.
-  Read-only counts are in `docs/performance-profiling.md`: within-priority
-  point/sprite transitions never exceed one per update on F1/WHACKO.
-  Do not justify a unified traversal by frequent type alternation. A broader
-  register-contract design remains possible if it covers real validation
-  and fallback work, rather than merely relocating argument setup.
-  A register-only shared-cell particle scan replacing the C call is measured
-  effectively neutral (<0.04% on F1/CITY), archived rather than accepted.
-  Do not repeat that narrow boundary change; any native redesign must cover
-  more executed work or reduce the candidate scan itself.
-  Whole-list reuse is screened out as a worst-update fix: every current
-  worst update changes membership/priorities, and almost no >=100-actor update
-  is unchanged. Do not implement an unchanged-list cache on average eligibility
-  alone. Incremental chain maintenance is a separate possible design, requiring
-  allocation/retirement/priority writer coverage, the initial saved-actor
-  fallback and a measured break-even against the simple builder. It is not
-  yet justified; busy updates change 17-27 handles on average. The read-only
-  screen and evidence are in `docs/performance-profiling.md`.
-  Inspect conflict processing, final
-  keep/restore decisions, draw-packet validation and group rebuild/late
-  restoration at the worst updates. Preserve atomic group retention and
-  exact reverse restoration order; prove any removed check redundant.
-  Archived post-group profiles predate the geometry cache and must not be
-  presented as current stage costs. Keep the independent geometry-cache
-  audit enabled in RETCHECK when changing any source-field writer.
-  Focus further wrapper work on eliminating repeated sprite validation or
-  whole traversals, not merely moving argument setup across the call.
-  Do not repeat the shared-cell early-return micro-change in
-  `slicks_retention_touch`: matched repeats show more total work on F1/CITY.
-  Its full-state reference comparison remains in `verify-retention-groups`.
-  Preserve legacy traversal and sprite/overflow boundaries; any removed
-  checks need explicit invariant coverage in the native oracle.
+2. **F1 sprite overhead.** Reduce conflict processing, repeated validation,
+   group rebuilding and late restoration. Inspect complete hot paths, not
+   just argument setup. Preserve atomic group retention, reverse restoration
+   order, initial saved-actor fallback and sprite/overflow boundaries.
+   Prove any removed check redundant. Whole-list reuse is not a justified
+   worst-frame fix; incremental maintenance needs writer coverage and a
+   break-even measurement.
 
-- **Exact retention of unmoved particles (design needed, larger).**
-  Do not repeat the direct-cell C policy: after fixing reserved-slot
-  eligibility, its actual conflict processing costs more than the saved
-  redraws. Earlier direct-grid and sparse-hash timing runs had an erroneous
-  bypass and cannot measure active retention. Any further design must
-  remove whole scans/late-release traversals or establish a substantially
-  lower bookkeeping cost before another implementation. A fused native
-  register-oriented path is distinct from this measured C design.
-  Most
-  points stay on the same pixel for several updates (velocities are at
-  most 11/64 pixel per tick). Restoring and redrawing such a point is a
-  no-op when (a) its pixel, visibility and occlusion are unchanged, (b) no
-  actor drawn before it in the current order (lower priority, or earlier
-  in its own priority chain, plus shadows/cars/sprites below it) is
-  restored or drawn over that pixel, and (c) the background under it is not
-  rewritten (permanent-mark baking in the advance pass, which runs between
-  restore and draw). Actors drawn after it are harmless: they save and
-  restore its colour. A design mirroring sprite retention: keep a per-point
-  "kept" bit; before the restore pass, mark a coarse cell grid (e.g. 8x8)
-  with the minimum priority of every actor that will be restored or drawn
-  this update (car rectangles, non-kept sprites, moved/new points) and with
-  every baking pixel; a point is kept only if its cell's minimum priority is
-  above its own (or its cell is unmarked); kept points are skipped by both
-  chains but still advanced; baking onto a kept point's pixel must instead
-  update its saved_under (or cancel the keep). Priority-0 static marks
-  (long-lived off-road marks) are the easiest first case because only other
-  priority-0 points and baking can precede them. Verify with the RETCHECK
-  pattern (reference update without retention on a snapshot, compare
-  chunky and state every update) plus display audits. Only worthwhile if
-  the grid maintenance costs well under the ~250-350 cycles saved per kept
-  point. Use `tools/point_retention_screen.py` and its read-only capture
-  script to screen current expensive updates before choosing cell size.
-  Prefer sparse clearing/generation tags or an exact sparse pixel index;
-  include shadow bounds and baking conflicts. Require measured overhead
-  below the saved-point budget and adaptive bypass on low-yield updates.
-  Designs, counts and limitations are in `docs/point-retention-design.md`;
-  the offline screen is not a runtime proof. Any further attempt must reduce
-  bookkeeping and bypass-path overhead substantially; do not simply repeat
-  the archived sparse-hash prototype.
+3. **Coherent register-resident 68020 simulation blocks.** Use refreshed
+   profiles to select remaining car preparation, per-car tails, checkpoint,
+   layer and clock work. Avoid stacked arguments, repeated saves/restores,
+   large-offset loads and redundant byte accesses across helper boundaries.
+   Preserve all-car-motion-before-tails order and callback invalidation.
+   Reuse coordinates only with exact signed/wrapping semantics.
+   Surface-table/cache/fusion experiments are closed; do not spend further
+   iterations on that narrow family. Previous isolated assembly or C
+   experiments do not settle the value of a larger register-oriented design.
 
-- **Remaining C inside `slicks_race_step`.**
-  Do not repeat the rejected shared-frame preparation integration unchanged:
-  paired WHACKO repeats worsen its maximum by 10–14 lines, and the matched
-  F1 phase envelope does not improve. Its isolated assembly/oracles remain
-  available; integration and measurement history are archived separately.
-  Use the accepted post-animation CPU captures for new work, not the rejected
-  candidate's profile. Focus a different design on removing memory traffic
-  or repeated calculations in the per-car tail/surface/checkpoint work, not
-  merely moving its existing operations into another assembly symbol.
-  Do not repeat the precomputed surface-limit tables unchanged: both the
-  enlarged-property layout and separate power-of-two-stride layout increase
-  total work. The subsequent eight-byte unchanged-limit key cache also
-  measures neutral/slower and does not improve the F1 maximum; do not repeat
-  that narrow C shortcut. Evidence is in `docs/performance-profiling.md`.
-  A different next design can fuse the consecutive surface dispatches for
-  limits, oil spin and velocity damping, then evaluate a larger native
-  surface/pit/contact tail with one resident car/property base. Preserve
-  the existing limit -> oil/RNG -> velocity -> repair -> refuel -> jump ->
-  contact -> sampling order, signed ticks and per-quantum low-word/dword
-  rounding. Keep the existing standalone DOS-backed routines as references
-  and verify complete car/RNG/pit-counter/error results. This is a candidate,
-  not a measured saving; avoid further small caches without a cost argument.
-  Keep AI/weapon callbacks and all-car-motion-before-tails order unchanged.
-  Preserve the native car-pair loop and its site-8 diagnostic comparison
-  (`SHADOW_SITES=256`). Keep F1 phase 3/update 613 as a regression probe:
-  reduced total work did not improve the four-phase worst-update envelope.
-  Refresh and split the
-  samples with `tools/prof_summary.py --inlined slicks_race_step`:
-  per-car `prepare_car_motion`, `update_actor_layer`, `finish_car_update`,
-  `apply_throttle`, `display_time_centiseconds`,
-  checkpoint and clock code. Per the cost model, only rewrite code whose
-  executed volume can shrink (hoist per-update invariants out of the
-  per-car/per-tick loops, drop repeated large-offset loads, fuse the per-car
-  tail into one pass over the car record). After algorithmic candidates,
-  evaluate coherent hand-written assembly sections that keep car/state
-  pointers and intermediate values in registers across helper boundaries,
-  avoid stacked parameters and repeated saves/restores, and combine byte
-  accesses where valid. Small isolated assembly replacements retaining the
-  original C call structure do not settle the value of that larger design.
-  Investigate
-  repeated signed X/Y-to-pixel divisions across helper calls, caching only
-  if measured savings outweigh exact input-key checks. Verify via a shadow
-  site per replaced function.
-  The C-only shared-coordinate checkpoint/layer/lap block is measured
-  neutral/slightly slower and archived; do not repeat it unchanged.
-  Reuse coordinates as part of a broader register-resident native block,
-  preserving checkpoint word wrapping versus lap full-long bounds and
-  refreshing after callbacks that may mutate state.
-  Do not repeat the measured per-quantum reciprocal-table velocity division:
-  it increases work on all four tracks. Its isolated arithmetic proof and
-  expanded native integration coverage remain available, but production uses
-  DIVS. A different design needs a concrete reduction in lookup/instruction
-  overhead before another target experiment.
+4. **C2P/publication, secondary priority.** Only pursue a new design with
+   evidence of reduced total memory/instruction cost. The eight-pixel/hybrid
+   integration and area-aware merge variants must not be repeated unchanged.
+   Include platform publications and initial rectangles in area measurements.
+   Use the independent coverage oracles and exact pixel comparisons.
 
-- **Further C2P area reduction.**
-  An isolated eight-pixel native converter now exists as
-  `src/platform/amiga/c2p8_interleaved.s`, with `make verify-c2p8` covering
-  final-only byte stores, complete pixels, bounds, empty inputs and ABI.
-  The isolated hybrid `c2p8_16_interleaved.s` now uses eight-pixel edges
-  around sixteen-pixel interiors, with an unchanged-converter fast path
-  for already aligned rectangles. `make verify-c2p-hybrid` passes all
-  820 valid horizontal spans plus randomized, single-bit and empty cases.
-  Neither candidate is linked into gameplay. The complete eight-pixel
-  publication/hybrid integration is measured slower on every track and
-  reverted; do not repeat it unchanged. The isolated converters and finer
-  independent coverage oracle remain available. A different C2P design
-  must reduce split-call/byte-store overhead, not merely converted area.
-  The production converter handles
-  16-pixel columns. Lower priority than simulation/particle work: even the
-  full measured C2P phase is smaller than the excess budget on each current
-  worst update. Four current publication replays show little merge inflation;
-  do not repeat an area-aware merge experiment without new evidence. An
-  8-pixel-aligned converter reduces BASIC/CITY/WHACKO area, but the measured
-  hybrid integration does not reduce total work. Use
-  `diag_dirty_publications.gdb` and `tools/dirty_publications.py --policy strict`
-  on newly identified maxima or different phases to distinguish necessary
-  changed area from merge inflation before designing another policy.
-  Include initial rectangles and platform-side publications, not only
-  calls inside the race step. Keep update 481 as a regression probe.
-  Avoid another area-arithmetic merge policy without new evidence.
+5. **End-to-end completion proof.** Benchmark accepted changes on BASIC, F1,
+   CITY and WHACKO, including particle-heavy updates and HUD-clock phases.
+   Keep known transition regressions (especially F1 481/551/613 and WHACKO
+   685/688) in scope. Refresh CPU profiles after substantial changes; sparse
+   samples at a single update cannot establish precise cost percentages.
+   Continue optimization until measured worst updates meet 312 lines with
+   fidelity intact; do not redefine the target around means or easy cases.
+
+## Verification and working rules
+
+- Current profiling baseline is
+  `tmp/pcprof-post-animation-{f1,whacko}-20260928`; it predates the accepted
+  surface-tail change. Refresh before attributing samples to new binaries.
+  The profiling document records all earlier measurements and rejected work.
+- Compare `amiga/bench_tracks.sh` against an exact parent-build control;
+  FINAL_STATE must match. Use uninterrupted timing, not debugger-stopped runs.
+  Include HUD phases when timing variation could obscure a regression.
+- Native routines require independent Unicorn/host oracles. Simulation
+  changes also require `amiga/shadow_check.sh` at the relevant sites.
+  All-site mask is 0x3fe; surface tail is site 9 / SHADOW_SITES=512.
+- Rendering changes require F1/CITY/WHACKO display audits:
+  `SLICKS_LIVE_STATS=0 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 ./debug.sh "" diag_dirty_sprites.gdb`.
+  Drawing-order/retention changes additionally require RETCHECK and
+  `diag_retention_check.gdb`, with the independent geometry/legacy path.
+- Expensive diagnostics remain opt-in; time all normal-game work.
+  Force relevant object rebuilds when changing SHADOW/RETCHECK flags.
+- Never rebuild an ELF in use by an emulator. Debug runs are muted; keep
+  run.sh audible. Close every emulator session started for this work.
+- Commit each verified piece as Vesa Halttunen <vesuri@jormas.com>, with
+  hooks/signing disabled and no co-author trailer. Push only when asked.
+  Never commit original executables, dumps, traces, screenshots or other
+  byte-derived game material.
 
 ## Deferred
 
 - Manual joystick press/steer/release verification: deferred by the user.
-  Do not restart it without agreement.
+  Do not restart without agreement.
 - General-purpose translator expansion: exhaustive entry-point coverage,
   semantic IR/backend completion and unexercised DOS/runtime paths.

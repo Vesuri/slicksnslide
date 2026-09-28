@@ -131,6 +131,8 @@ static long absolute_long(long value);
  * leading hot working state (cars, counters, RNG); a site may only write
  * inside it, except derived retention geometry invalidation (saved separately
  * and independently audited by RETCHECK). Never enabled in normal builds. */
+/* Site 9 instead compares its complete small write set directly in
+ * shadow_surface_physics, including the returned jump-sound request. */
 #define SLICKS_SHADOW_WINDOW 57344U
 #define SLICKS_SHADOW_BLOCKS (SLICKS_SHADOW_WINDOW/1024U)
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLICKS_SHADOW_WINDOW &&
@@ -144,12 +146,12 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLIC
     sizeof(struct SlicksTrackNavigation)<=__builtin_offsetof(struct SlicksRaceRuntime,cars),
     "shadow window covers the native motion, emission and track-object write sets");
 unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
-volatile unsigned long slicks_shadow_calls[9],slicks_shadow_mismatches[9];
+volatile unsigned long slicks_shadow_calls[10],slicks_shadow_mismatches[10];
 volatile short slicks_shadow_steering_expected,slicks_shadow_steering_actual;
 /* Compile-time selection avoids debugger writes to initialized data and
  * removes unselected wrappers completely. All sites remain the default. */
 #ifndef SLICKS_SHADOW_SITES
-#define SLICKS_SHADOW_SITES 0x1fe
+#define SLICKS_SHADOW_SITES 0x3fe
 #endif
 /* Published into BSS by platform setup: this debugger does not reliably
  * relocate reads of initialized/constant data symbols. */
@@ -1319,7 +1321,7 @@ static void apply_oil_spin(struct SlicksRaceRuntime *race,
     car->oil_active=1;
 }
 
-static void apply_surface_velocity(struct SlicksRaceCar *car,
+static void __attribute__((unused)) apply_surface_velocity(struct SlicksRaceCar *car,
     const struct SlicksCarProperties *properties,unsigned short ticks)
 {
     /* Original 2335a..238eb repeats the low-dword Q15 multiply once per
@@ -1349,7 +1351,7 @@ static short surface_limit(unsigned char value,unsigned short factor,short divis
     return (short)((short)((unsigned short)value*factor)/divisor);
 }
 
-static void update_surface_limits(struct SlicksRaceCar *car,
+static void __attribute__((unused)) update_surface_limits(struct SlicksRaceCar *car,
     const struct SlicksCarProperties *properties,unsigned short ticks)
 {
     car->steering_scale=(short)(properties->property_6*10);
@@ -1378,6 +1380,116 @@ static void update_surface_limits(struct SlicksRaceCar *car,
     car->steering_scale=surface_limit((unsigned char)properties->surface[group][1],steer_factor,10);
     car->maximum_speed=(unsigned short)surface_limit((unsigned char)properties->surface[group][0],speed_factor,100);
 }
+
+static int repair_car_at_pit(struct SlicksRaceRuntime *,struct SlicksRaceCar *,unsigned short);
+static void refuel_car_at_pit(struct SlicksRaceCar *,unsigned short);
+static unsigned char apply_surface_jump(struct SlicksRaceRuntime *,struct SlicksRaceCar *);
+
+static unsigned char update_surface_physics(struct SlicksRaceRuntime *race,
+    struct SlicksRaceCar *car,unsigned short ticks)
+{
+    const struct SlicksCarProperties *properties=&race->properties[car->vehicle];
+    unsigned surface=car->effective_surface,group,steer_factor,speed_factor;
+    unsigned short base;
+    car->steering_scale=(short)(properties->property_6*10);
+    car->maximum_speed=properties->property_4;
+    /* One dispatch for the original limit -> oil -> velocity -> pit ->
+     * jump -> contact sequence. Its surface-specific branches are exclusive.
+     * Nonpositive ticks only suppress limits in the two original gated
+     * groups; oil still consumes its entry RNG and updates its latch. */
+    switch(surface) {
+    case 3: group=0; steer_factor=80; speed_factor=80; base=0x7dd4; break;
+    case 4: group=0; steer_factor=100; speed_factor=120; base=0x7dd4; break;
+    case 5: group=1; steer_factor=70; speed_factor=75; base=0x7ee9; break;
+    case 6:
+        car->steering_scale=surface_limit(properties->property_6,95,10);
+        car->maximum_speed=(unsigned short)surface_limit(properties->property_4,120,100);
+        base=0x7ee9;
+        goto damping;
+    case 7: case 8:
+        if((short)ticks<=0) return 0;
+        group=2; steer_factor=140; speed_factor=30; base=0x8118; break;
+    case 11: case 12:
+        if((short)ticks<=0) return 0;
+        group=3; steer_factor=60; speed_factor=65; base=0x7c31; break;
+    case 18:
+        if(!properties->collision_sound) return 0;
+        group=4; steer_factor=200; speed_factor=100; base=0x8000; break;
+    case 13: case 14: return apply_surface_jump(race,car);
+    case 27: apply_surface_contact(car); return 0;
+    case 30:
+        (void)repair_car_at_pit(race,car,ticks);
+        refuel_car_at_pit(car,ticks);
+        return 0;
+    default: return 0;
+    }
+    car->steering_scale=surface_limit((unsigned char)properties->surface[group][1],steer_factor,10);
+    car->maximum_speed=(unsigned short)surface_limit((unsigned char)properties->surface[group][0],speed_factor,100);
+    if(surface==18) apply_oil_spin(race,car,ticks);
+damping: ;
+    unsigned short factor=(unsigned short)(base-car->drive_bias);
+    for(short tick=0;tick<(short)ticks;++tick) {
+        car->velocity_x=multiply_q15_unsigned(car->velocity_x,factor);
+        car->velocity_y=multiply_q15_unsigned(car->velocity_y,factor);
+    }
+    return 0;
+}
+
+#if defined(__m68k__) && defined(SLICKS_SHADOW_CHECK)
+static unsigned char shadow_surface_physics(struct SlicksRaceRuntime *race,
+    struct SlicksRaceCar *car,unsigned short ticks)
+{
+    if(!(SLICKS_SHADOW_SITES&512) || !slicks_shadow_state)
+        return update_surface_physics(race,car,ticks);
+    /* Complete write set of this sequence: one car, RNG, shared pit counter
+     * and its returned sound request. No callbacks or car-index arithmetic
+     * occur in the reference helpers, so a detached car is equivalent. */
+    struct SurfaceSnapshot {
+        struct SlicksRaceCar car;
+        unsigned long random;
+        short pit;
+        unsigned char jump;
+    } expected,actual;
+    _Static_assert(sizeof expected<=sizeof slicks_shadow_native,"surface snapshot fits diagnostic capture");
+    __builtin_memset(&expected,0,sizeof expected);
+    __builtin_memset(&actual,0,sizeof actual);
+    __builtin_memcpy(&expected.car,car,sizeof *car);
+    actual.random=race->random_state;actual.pit=race->pit_repair_ticks;
+    const struct SlicksCarProperties *properties=&race->properties[car->vehicle];
+    update_surface_limits(&expected.car,properties,ticks);
+    apply_oil_spin(race,&expected.car,ticks);
+    apply_surface_velocity(&expected.car,properties,ticks);
+    (void)repair_car_at_pit(race,&expected.car,ticks);
+    refuel_car_at_pit(&expected.car,ticks);
+    expected.jump=apply_surface_jump(race,&expected.car);
+    apply_surface_contact(&expected.car);
+    expected.random=race->random_state;expected.pit=race->pit_repair_ticks;
+    race->random_state=actual.random;race->pit_repair_ticks=actual.pit;
+    actual.jump=update_surface_physics(race,car,ticks);
+    actual.random=race->random_state;actual.pit=race->pit_repair_ticks;
+    __builtin_memcpy(&actual.car,car,sizeof *car);
+    ++slicks_shadow_calls[9];
+    unsigned mismatch=0;
+    for(unsigned i=0;i<sizeof actual;++i)
+        mismatch|=((const unsigned char *)&actual)[i]^((const unsigned char *)&expected)[i];
+    if(mismatch) {
+        if(!slicks_shadow_mismatches[0]++) {
+            slicks_shadow_first_site=9;
+            slicks_shadow_first_block=(unsigned long)(car-race->cars);
+            slicks_shadow_first_frame=race->frame_count;
+            __builtin_memset(slicks_shadow_native,0,sizeof slicks_shadow_native);
+            __builtin_memset(slicks_shadow_reference,0,sizeof slicks_shadow_reference);
+            __builtin_memcpy(slicks_shadow_native,&actual,sizeof actual);
+            __builtin_memcpy(slicks_shadow_reference,&expected,sizeof expected);
+        }
+        ++slicks_shadow_mismatches[9];
+        __builtin_memcpy(car,&expected.car,sizeof *car);
+        race->random_state=expected.random;race->pit_repair_ticks=expected.pit;
+        return expected.jump;
+    }
+    return actual.jump;
+}
+#endif
 
 static void update_actor_layer(struct SlicksRaceRuntime *race,
                                struct SlicksRaceCar *car)
@@ -3030,13 +3142,11 @@ static void finish_car_update(struct SlicksRaceRuntime *race,
     update_actor_layer(race, car);
     advance_lap_after_checkpoint(race,car);
     slicks_race_resolve_car_collisions(race, car_index);
-    update_surface_limits(car,&race->properties[car->vehicle],timestep);
-    apply_oil_spin(race,car,timestep);
-    apply_surface_velocity(car,&race->properties[car->vehicle],timestep);
-    (void)repair_car_at_pit(race, car, timestep);
-    refuel_car_at_pit(car, timestep);
-    jump_sound = apply_surface_jump(race, car);
-    apply_surface_contact(car);
+#if defined(__m68k__) && defined(SLICKS_SHADOW_CHECK)
+    jump_sound=shadow_surface_physics(race,car,timestep);
+#else
+    jump_sound=update_surface_physics(race,car,timestep);
+#endif
     if (update_track_sampling(race, car) < 0)
         race->collision_error = 1;
     consume_car_damage(race, car_index);
