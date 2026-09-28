@@ -4,10 +4,46 @@
 ; surrounding fuel/control/steering arithmetic shares one register frame.
 	section .text,code
 	xdef slicks_prepare_car_motion
+	xdef slicks_prepare_all_car_motion
 	xref slicks_prepare_ai_controls
 	xref slicks_prepare_weapon_controls
-	xref slicks_integrate_car_motion
+	xref slicks_integrate_car_motion_regs
 	include "race_offsets.i"
+	ifnd SLICKS_PREPARE_INTEGRATOR_BASE
+SLICKS_PREPARE_INTEGRATOR_BASE equ 0
+	endif
+
+; These tiny blocks execute repeatedly per car. Inline them rather than
+; pushing return addresses into Chip RAM just to share a few instructions.
+PREPARE_ROLE macro
+	moveq #0,d0
+	tst.b RACE_PARTICIPATION_READY(a4)
+	beq.s .legacy_role\@
+	lea RACE_PARTICIPATION(a4),a0
+	move.b (a0,d6.w),d0
+	bra.s .role_done\@
+.legacy_role\@:
+	moveq #1,d0
+	tst.w d6
+	bne.s .role_done\@
+	tst.b RACE_HUMAN_CONTROL(a4)
+	beq.s .role_done\@
+	moveq #-1,d0
+.role_done\@:
+	endm
+PREPARE_NORMALIZE macro
+.negative\@:
+	tst.w d1
+	bpl.s .upper\@
+	addi.w #19200,d1
+	bra.s .negative\@
+.upper\@:
+	cmpi.w #19200,d1
+	blt.s .normalized\@
+	subi.w #19200,d1
+	bra.s .upper\@
+.normalized\@:
+	endm
 
 ; C ABI: race, unsigned car index, unsigned tick word. Return controls.
 ; Across C callbacks: a4 race, a5 car, d6 index, d7 ticks, d5 controls.
@@ -17,6 +53,13 @@ slicks_prepare_car_motion:
 	movea.l 48(sp),a4
 	move.l 52(sp),d6
 	move.l 56(sp),d7
+	bsr.w slicks_prepare_car_motion_regs
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
+; a4 race, d6 driver index, d7 tick word. Outer caller owns register saves;
+; only a4/sp survive. Return the driver's controls in d0.
+slicks_prepare_car_motion_regs:
 	andi.l #$ffff,d7
 	move.l d6,d0
 	mulu.w #CAR_SIZE,d0
@@ -35,7 +78,7 @@ slicks_prepare_car_motion:
 	beq.s .idle_done
 	ori.b #1,CAR_SERVICE_FLAGS(a5)
 .idle_done:
-	bsr.w .role
+	PREPARE_ROLE
 	tst.b d0
 	bpl.s .ai
 	moveq #0,d5
@@ -80,7 +123,7 @@ slicks_prepare_car_motion:
 	bne.s .gate_done
 	andi.b #$fc,RACE_CONTROLS(a4)
 .gate_done:
-	bsr.w .role
+	PREPARE_ROLE
 	moveq #0,d2
 	move.b CAR_POSITION_SCALE(a5),d2
 	tst.b d0
@@ -250,49 +293,54 @@ slicks_prepare_car_motion:
 	divs.w #70,d0
 	add.w d0,d1
 .heading:
-	bsr.s .normalize
+	PREPARE_NORMALIZE
 	move.w d1,CAR_HEADING(a5)
-	move.l d5,-(sp)
-	andi.l #3,(sp)
-	move.l d7,-(sp)
-	move.l a5,-(sp)
-	move.l a4,-(sp)
-	jsr slicks_integrate_car_motion
-	lea 16(sp),sp
+	; The integrator shares the outer register-save frame. Only the returned
+	; controls must survive its scratch registers; race/car bases survive.
+	move.w d5,-(sp)
+	move.l d7,d0
+	move.l d5,d1
+	andi.l #3,d1
+	ifd SLICKS_PREPARE_TEST_INTEGRATOR
+	jsr SLICKS_PREPARE_TEST_INTEGRATOR
+	else
+	jsr slicks_integrate_car_motion_regs+SLICKS_PREPARE_INTEGRATOR_BASE
+	endif
+	moveq #0,d5
+	move.w (sp)+,d5
 	move.l CAR_SPEED_FIXED(a5),d0
 	divs.l #100,d0
 	move.w d0,CAR_SPEED(a5)
 	move.w CAR_HEADING(a5),d1
-	bsr.s .normalize
+	PREPARE_NORMALIZE
 	move.w d1,CAR_HEADING(a5)
 	move.l d5,d0
+	rts
+
+; C ABI: race, unsigned ticks, unsigned char controls[4]. Preserve inactive
+; output bytes and complete every driver's motion before any per-car tail.
+; Locals: index, ticks, output pointer. One full register save for four cars.
+slicks_prepare_all_car_motion:
+	movem.l d2-d7/a2-a6,-(sp)
+	lea -12(sp),sp
+	movea.l 60(sp),a4
+	move.l 64(sp),4(sp)
+	move.l 68(sp),8(sp)
+	clr.l (sp)
+.car_loop:
+	move.l (sp),d6
+	PREPARE_ROLE
+	tst.b d0
+	beq.s .next_car
+	move.l 4(sp),d7
+	bsr.w slicks_prepare_car_motion_regs
+	movea.l 8(sp),a0
+	move.l (sp),d1
+	move.b d0,(a0,d1.w)
+.next_car:
+	addq.l #1,(sp)
+	cmpi.l #4,(sp)
+	bne.s .car_loop
+	lea 12(sp),sp
 	movem.l (sp)+,d2-d7/a2-a6
-	rts
-.normalize:
-	tst.w d1
-	bpl.s .upper
-	addi.w #19200,d1
-	bra.s .normalize
-.upper:
-	cmpi.w #19200,d1
-	blt.s .normalized
-	subi.w #19200,d1
-	bra.s .upper
-.normalized:
-	rts
-.role:
-	moveq #0,d0
-	tst.b RACE_PARTICIPATION_READY(a4)
-	beq.s .legacy_role
-	lea RACE_PARTICIPATION(a4),a0
-	move.b (a0,d6.w),d0
-	rts
-.legacy_role:
-	moveq #1,d0
-	tst.w d6
-	bne.s .role_done
-	tst.b RACE_HUMAN_CONTROL(a4)
-	beq.s .role_done
-	moveq #-1,d0
-.role_done:
 	rts

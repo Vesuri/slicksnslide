@@ -142,15 +142,15 @@ Candidate fixes, roughly in order of expected value per effort:
   the archived sparse-hash prototype.
 
 - **Remaining C inside `slicks_race_step`.**
-  Complete integration of the isolated `car_prepare.s` candidate: real
-  AI/weapon bridges and a register entry to the native integrator, removing
-  nested full-register saves and stacked arguments. The 4096-case packed
-  state/cache and callback-contract oracle passes, but uses synthetic callback
-  bodies and is not gameplay acceptance. Add an independent real-integration
-  oracle and cache-inclusive live shadow site, then benchmark against the
-  post-animation control before accepting it. Keep AI/weapon callbacks and all-car-motion-before-
-  tails order unchanged. Do not claim the whole C sample share as the saving
-  available from this subset; other expensive paths remain.
+  Do not repeat the rejected shared-frame preparation integration unchanged:
+  paired WHACKO repeats worsen its maximum by 10–14 lines, and the matched
+  F1 phase envelope does not improve. Its isolated assembly/oracles remain
+  available; integration and measurement history are archived separately.
+  Use the accepted post-animation CPU captures for new work, not the rejected
+  candidate's profile. Focus a different design on removing memory traffic
+  or repeated calculations in the per-car tail/surface/checkpoint work, not
+  merely moving its existing operations into another assembly symbol.
+  Keep AI/weapon callbacks and all-car-motion-before-tails order unchanged.
   Preserve the native car-pair loop and its site-8 diagnostic comparison
   (`SHADOW_SITES=256`). Keep F1 phase 3/update 613 as a regression probe:
   reduced total work did not improve the four-phase worst-update envelope.

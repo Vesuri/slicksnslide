@@ -93,8 +93,27 @@ int main(void)
         h.trace=&original;h.type=selected;
         struct SlicksWeaponFireOps ops={flash,sound,allocate,&native};
         short last_slot=-777;word(u,BP-0x3c,last_slot);
+        /* The preparation bridge skips coordinate construction only when
+         * the original transaction cannot enter its shot body. Prove that
+         * finish/cycle alone has the same state and leaves shot data alone. */
+        int no_shot=!slicks_weapon_can_fire(&control,selected,clock);
+        struct SlicksWeaponControl shortcut=control;
+        unsigned char shortcut_controls=controls;
+        signed char shortcut_selected=selected;
+        short inventory_before[13];memcpy(inventory_before,inventory,sizeof inventory);
+        struct SlicksWeaponProjectile pool_before[30];memcpy(pool_before,pool,sizeof pool);
+        unsigned long seed_before=seed;
+        if(no_shot)shortcut_selected=slicks_weapon_finish_request(&shortcut,
+            inventory,selected,rules.delay,&shortcut_controls);
         signed char out=slicks_weapon_fire(&control,inventory,selected,&controls,driver,clock,
             pool,x,y,roles,heading,t%2,dx,dy,&seed,&rules,&ops,&last_slot);
+        if(no_shot && (shortcut_selected!=out || shortcut_controls!=controls ||
+           memcmp(&shortcut,&control,sizeof control) ||
+           memcmp(inventory_before,inventory,sizeof inventory) ||
+           memcmp(pool_before,pool,sizeof pool) || seed!=seed_before ||
+           last_slot!=-777 || native.count)) {
+            fprintf(stderr,"No-shot shortcut mismatch trial=%u\n",t);return 1;
+        }
         ck(uc_emu_start(u,0x206a5,0x20c6f,0,100000));
         if(last_slot!=(short)rd(u,BP-0x3c) || original.count!=native.count || memcmp(original.events,native.events,original.count*sizeof(int)) ||
            out!=(signed char)rb(u,DS+0x2fac+driver) || control.request!=rb(u,DS+0x2fb0+driver) ||

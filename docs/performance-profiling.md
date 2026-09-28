@@ -3,6 +3,232 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Preparation integration rejected on worst-update measurements (2026-09-28)
+
+The final shared-frame candidate is rejected for the current worst-frame
+goal, despite a small improvement in total work. Matched archived-executable
+F1 phase tests all preserved final states and verified the requested initial
+clock remainder:
+
+| Phase | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| 0 | 171731 / 416 | 170930 / 417 |
+| 1 | 171772 / 416 | 171024 / 413 |
+| 2 | 171764 / 416 | 170995 / 414 |
+| 3 | 171721 / 416 | 170977 / 413 |
+
+The envelope is 416 versus 417, not an improvement. More decisively, two
+paired WHACKO repeats reproduce the heavy-update regression:
+
+| Repeat | Control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| 1 | 150571 / 370 | 149660 / 384 |
+| 2 | 150563 / 372 | 149660 / 382 |
+
+All WHACKO maxima are update 685; final states match. Logs:
+`tmp/car-prepare-phase-{control,all}-20260928-{0,1,2,3}.log` and
+`tmp/car-prepare-whacko-{control,all}-repeat-{1,2}-20260928.log`.
+This rejects this concrete integrated preparation design, not larger native
+sections or algorithmic changes in general. Average-work savings alone are
+insufficient evidence for the requested 20 ms worst-update target.
+
+The complete working integration, including the unrun edge-fixture script,
+is archived locally as `tmp/car-prepare-integration-rejected-20260928.patch`.
+Production C orchestration, bridges, build linkage and shadow scripts have
+been restored. The motion register entry is now opt-in for isolated tests
+only (`SLICKS_MOTION_REGISTER_ENTRY=1`); default assembly retains its original
+entry/exit sequence. The standalone preparation variants, complete-state
+oracles and no-shot transaction proof remain available. The latest four-loop
+variant and no-shot revision were not live-validated; no final weapon/BUMPS
+acceptance is claimed, and that verification is unnecessary for an unshipped,
+rejected candidate. Re-run those gates if reviving it.
+
+After restoration, all preparation oracles, the 24000-case motion oracle,
+24000-case ray oracle and original firing transaction oracle pass:
+`tmp/car-prepare-rejected-oracles-20260928.log`. The normal rebuild and restored
+four-track benchmark pass: work/worst 146833/347, 171693/417, 143144/333,
+150567/371, with all canonical final states. Logs:
+`tmp/car-prepare-restored-20260928-{0,1,2,3}.log` and
+`tmp/car-prepare-restored-build-20260928.log`. Normalized `.text` and `code`
+section dumps have the same SHA-256 as the archived control:
+`4a20a7922cfbf16dd60dbb3f31fda22fdce17c8705f6487bca83fb8fe00f1c55`.
+The restored production instruction bytes and addresses therefore match the
+accepted build. All owned emulator runs have finished. The 50 FPS goal is
+still unmet; this turn resolves an experiment, not the overall target.
+
+## Shared-frame four-car preparation candidate (2026-09-28)
+
+The working native loop owns one eleven-register save across all four
+preparations. Its per-car register entry preserves the race base and returns
+controls; the loop retains index, tick word and output pointer in a small
+local frame. Inactive output bytes are untouched, legacy human/AI fallback
+is retained, and all motion still precedes projectile updates and car tails.
+
+`verify-car-prepare-all` executes 4096 four-car sequences against scalar
+preparation and actual native/scalar integration: 13716 active preparations,
+2668 untouched inactive output bytes and 20 empty loops. Complete target-state,
+cache, output controls, callback order/arguments, write bounds, stack and
+register ABI checks pass. AI/weapon callbacks remain synthetic here. Both
+single-car suites and host drive-physics also pass, including 200000 steering
+cache cases and the fixture rejecting interleaved driver phases. Log:
+`tmp/car-prepare-all-oracle-20260928.log`.
+
+Site 9 now compares an entire four-car loop (one count per update, not four),
+with scalar integration on its reference side. It additionally compares the
+retention-geometry invalidation flag and all four returned control bytes,
+using diagnostic-only canaries for inactive entries. Earlier per-car live
+passes do not establish correctness of this new loop; its live checks remain
+pending.
+
+Normal 603-update results against the recorded pre-change control:
+
+| Track | Control work / worst | Shared-frame work / worst |
+| --- | ---: | ---: |
+| BASIC | 146837 / 349 | 145911 / 347 |
+| F1 | 171750 / 417 | 170990 / 413 |
+| CITY | 143107 / 332 | 142471 / 332 |
+| WHACKO | 150563 / 372 | 149679 / 384 |
+
+Canonical final states match. Logs: `tmp/car-prepare-all-20260928-{0,1,2,3}.log`.
+The total-work improvement is 0.44–0.63%, but WHACKO's worst update 685
+regresses 12 lines. Neither universal improvement nor the 312-line goal is
+established. Matched control/candidate F1 phase runs are underway using
+archived `tmp/car-prepare-{control,all}-20260928.{elf,exe}` and existing
+verified `tmp/hud-phase-{0,1,2,3}.gdb` scripts. Do not accept the integration
+on the lower total alone. Resolve worst-update behaviour, run final whole-loop
+shadows and weapon/BUMPS outcome checks, then commit or reject this variant.
+
+## Whole-car preparation integration under verification (2026-09-28)
+
+The working integration connects the real AI/weapon C bridges and the
+native preparation body. The motion integrator now exposes a register entry
+with a4/a5 preserved for race/car and d0.w/d1.b inputs for ticks/drive; the
+preparation caller preserves only its control word around that entry. The
+legacy C entry still preserves all required registers. Thus the native
+combined path avoids another eleven-register save/restore and four stacked
+integration arguments. No claimed performance result yet.
+
+The synthetic preparation oracle passes with deliberate clobbering of all
+newly scratch registers. A second 4096-case oracle executes actual native
+preparation plus native integration on clear maps and compares the complete
+256 KiB state/cache image against scalar preparation helpers and scalar
+motion. AI/weapons remain synthetic in this isolated test. For real motion,
+positive ticks and arithmetic operands are restricted to the host reference's
+exact target-width domain; the extreme synthetic cases and pre-existing
+integration oracle supply separate boundary coverage. Both the 24000-case
+motion oracle and 24000-case signed-word ray oracle pass after the entry
+refactor. Logs: `tmp/car-prepare-{registers,combined}-20260928.log`.
+Host drive-physics, original DOS steering/yaw, surface-effects and dirty
+tracking suites pass (`tmp/car-prepare-host-20260928.log`).
+
+Dedicated shadow site 9 compares real preparation (including scalar motion)
+against the combined native implementation. It independently saves/restores
+and compares all four steering-cache records outside the old 57344-byte
+state window, and checks returned controls. It runs separately from sites
+1..8 to avoid nested snapshots; the existing site suite retains scalar
+orchestration to exercise its inner boundaries. Diagnostic cache/control
+differences use block marker 2000. First build repairs: replace unavailable
+`memcmp` with an explicit diagnostic XOR comparison; use an absolute call
+relocation for the integration entry because elf2hunk rejects external PC16.
+Both isolated oracles were rerun after the relocation repair.
+
+The sequential muted live runner is `SHADOW_SITES=512 ./shadow_check.sh
+car-prepare-20260928 0 1 2 3`, with logs
+`tmp/shadow-car-prepare-20260928-{0,1,2,3}.log`. All four tracks pass 2412
+whole-car comparisons each (9648 total) with zero state/cache/control
+mismatches, no race error and canonical final states. Track collisions are
+25/42/7/5; F1 also exercises 27 animated-object probes. The runner exited
+successfully after restoring the normal build and closing its emulators.
+Weapon-firing and BUMPS outcome checks remain additional acceptance gates;
+the final special-state values in these four runs alone do not prove jump
+coverage. `amiga/diag_prepare_edges.gdb` combines those existing fixtures'
+outcome checks with site-9 parity, without runtime-state injection.
+
+Matched pre-change controls were taken from an archived executable verified
+identical to the accepted post-animation profile ELF, before candidate builds:
+
+| Track | Control work / worst |
+| --- | ---: |
+| BASIC | 146837 / 349 |
+| F1 | 171750 / 417 |
+| CITY | 143107 / 332 |
+| WHACKO | 150563 / 372 |
+
+All canonical final states match. Logs and executable pair:
+`tmp/car-prepare-control-20260928-*` and
+`tmp/car-prepare-control-20260928.{elf,exe}`. Candidate normal timings,
+phase checks and complete live validation remain pending.
+
+Initial normal candidate measurements subsequently completed, followed by a
+no-shot bridge revision:
+
+| Track | Control | Initial native preparation | No-shot bridge |
+| --- | ---: | ---: | ---: |
+| BASIC | 146837 / 349 | 146792 / 348 | 146647 / 346 |
+| F1 | 171750 / 417 | 171654 / 415 | 171599 / 413 |
+| CITY | 143107 / 332 | 143287 / 333 | 143072 / 333 |
+| WHACKO | 150563 / 372 | 150400 / 368 | 150294 / 368 |
+
+All final states match. Logs:
+`tmp/car-prepare-{candidate,no-shot}-20260928-{0,1,2,3}.log`.
+Total-work gains in the revised candidate are only 0.02–0.18%, not the
+substantial improvement needed for the goal. CITY's maximum regresses one
+line. This does not yet justify final acceptance or a broad claim about
+assembly effectiveness; further profiling, phase checks and live validation
+of the revision remain outstanding.
+
+Disassembly showed the remaining C weapon bridge had a 116-byte local frame
+plus six saved registers and built all four cars' coordinate/role arrays even
+when no shot could occur. The revision calls the unchanged firing body through
+a non-inlined rare-path wrapper only when `slicks_weapon_can_fire` is true.
+Otherwise it still executes exact request completion/cycling and brake-latch
+clearing. The main scalar reference is unchanged. The existing 8192-case
+original-DOS firing oracle now also checks this no-shot shortcut against the
+full transaction, including complete control, inventory, projectile, RNG,
+last-slot and callback state. It and the weapon-action oracles pass:
+`tmp/car-prepare-no-shot-oracle-20260928.log`. Earlier four-track shadow
+results precede this bridge revision; do not claim them as its live proof.
+
+Fresh no-shot-candidate F1 profile:
+`tmp/pcprof-car-prepare-no-shot-f1-20260928.{bin,log,elf}`, 9240 samples,
+zero missed and canonical final state. Explicit display wait has 1694 samples.
+Remaining C race-step code falls from 846 to 551 samples versus the
+post-animation capture, but native preparation itself accounts for 281
+samples (including its register-save boundary). Native motion is 445,
+AI bridge 159, AI steering 139, and C2P 424. Thus relocation of the old C
+preparation sample share into a native symbol is not itself a speedup;
+normal timings remain the arbiter. The profile includes sampler overhead
+and is not a replacement for the matched normal benchmark.
+
+The outer C race-step still owns a register-save frame, and the native
+preparation entry saves eleven registers once per car. Removing the nested
+integrator save did not remove the per-car save that the original integrator
+already required. A next refinement may amortize that boundary across all
+four motion preparations, while keeping all-car-motion-before-tail ordering,
+rather than treating this nearly neutral result as proof against larger
+register-resident sections. Phase and final acceptance work remain open.
+
+The next revision inlines the twice-per-car role lookup and heading
+normalization blocks instead of calling tiny local subroutines through Chip
+RAM stack return addresses. Both 4096-case preparation oracles pass again:
+`tmp/car-prepare-inline-oracle-20260928.log`. Normal four-track results are
+146379/348, 171346/413, 142846/332, 150023/369 (work/worst, track order),
+with unchanged canonical final states; logs
+`tmp/car-prepare-inline-20260928-{0,1,2,3}.log`. Total-work improvement versus
+the matched original control is 0.31%, 0.24%, 0.18%, 0.36%. Worst values still
+exceed 312. WHACKO's cadence sum is 193146 versus control 192888, so lower
+work does not establish a cadence improvement. All benchmark emulators
+exited. This revision still awaits live revalidation and phase sweeps.
+
+Next refine the caller boundary: a single outer register frame across the
+four preparations, with a register-contract per-car entry and exact inactive
+driver skipping. Preserve legacy role fallback and leave inactive output
+control bytes untouched. Extend the complete-image oracle to four-car
+sequences before changing normal orchestration. Dedicated site 9 currently
+compares per-car calls; a whole-loop entry also needs whole-loop verification,
+not just those existing per-car checks. Do not commit this integration as an
+accepted speedup until the final variant has passed its required gates.
+
 ## Isolated whole-car preparation candidate (2026-09-28)
 
 `src/game/car_prepare.s` implements the preparation sequence surrounding

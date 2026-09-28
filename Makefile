@@ -1607,6 +1607,23 @@ build/verify_car_prepare: tools/verify_car_prepare.c src/game/race_runtime.c src
 verify-car-prepare: build/car_prepare.bin build/verify_car_prepare
 	build/verify_car_prepare build/car_prepare.bin build/offsets/race_offsets.i
 
+build/car_prepare_motion.bin: tools/car_prepare_motion_test.s src/game/car_prepare.s src/game/car_motion.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
+
+build/verify_car_prepare_motion: tools/verify_car_prepare.c src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -DREAL_MOTION=1 -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-car-prepare-motion
+verify-car-prepare-motion: build/car_prepare_motion.bin build/verify_car_prepare_motion
+	build/verify_car_prepare_motion build/car_prepare_motion.bin build/offsets/race_offsets.i
+
+build/verify_car_prepare_all: tools/verify_car_prepare.c src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -DREAL_MOTION=1 -DALL_CARS=1 -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-car-prepare-all
+verify-car-prepare-all: build/car_prepare_motion.bin build/verify_car_prepare_all
+	build/verify_car_prepare_all build/car_prepare_motion.bin build/offsets/race_offsets.i
+
 build/car_integration.bin: tools/car_integration_test.s src/game/car_motion.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 

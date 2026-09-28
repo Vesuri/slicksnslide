@@ -2,10 +2,20 @@
 ; references only within one section, so share the compiler .text section.
 	section	.text,code
 	xdef	slicks_integrate_car_motion
+; The register-entry experiment is isolated-test-only. Default gameplay
+; retains the original entry/exit instruction sequence after timing rejection.
+	ifnd SLICKS_MOTION_REGISTER_ENTRY
+SLICKS_MOTION_REGISTER_ENTRY equ 0
+	endif
+	ifne SLICKS_MOTION_REGISTER_ENTRY
+	xdef	slicks_integrate_car_motion_regs
+	endif
 	xref	slicks_resolve_track_velocity
 	xref	slicks_car_direction_x
 	xref	slicks_car_direction_y
+	ifnd RACE_CARS
 	include	"race_offsets.i"
+	endif
 
 ; Exact signed C truncating division by 100/2000. The direct 68020 forms
 ; reduce instruction fetches versus the former reciprocal multiply sequence.
@@ -77,11 +87,28 @@ ARGS		equ	FRAME+44+4
 ; Rare blocked-ray responses call the C resolve_track_velocity().
 slicks_integrate_car_motion:
 	movem.l	d2-d7/a2-a6,-(sp)
+	ifne SLICKS_MOTION_REGISTER_ENTRY
+	movea.l	48(sp),a4
+	movea.l	52(sp),a5
+	move.l	56(sp),d0
+	move.l	60(sp),d1
+	bsr.w	slicks_integrate_car_motion_regs
+	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; Outer native preparation owns the register saves. a4 race/a5 car survive;
+; all other registers except sp may be clobbered. d0.w ticks, d1.b drive.
+slicks_integrate_car_motion_regs:
+	lea	-FRAME(sp),sp
+	move.w	d0,F_TIMESTEP(sp)
+	move.b	d1,F_ACTIVE(sp)
+	else
 	lea	-FRAME(sp),sp
 	movea.l	ARGS(sp),a4
 	movea.l	ARGS+4(sp),a5
 	move.w	ARGS+10(sp),F_TIMESTEP(sp)
 	move.b	ARGS+15(sp),F_ACTIVE(sp)
+	endif
 	clr.w	F_QUANTUM(sp)
 .quantum:
 	move.w	F_QUANTUM(sp),d0
@@ -350,7 +377,9 @@ slicks_integrate_car_motion:
 	rts
 .done:
 	lea	FRAME(sp),sp
+	ifeq SLICKS_MOTION_REGISTER_ENTRY
 	movem.l	(sp)+,d2-d7/a2-a6
+	endif
 	rts
 
 ; Pre-scaled copies of the shared signed direction vectors. Kept local so
