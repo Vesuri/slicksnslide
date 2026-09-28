@@ -3,6 +3,51 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Post-car-pair CPU profiles (2026-09-28)
+
+Fresh captures on 17ed4ac are
+`tmp/pcprof-post-pairs-{f1,whacko}-20260928.{bin,log,elf}`.
+F1 records 9383 samples, WHACKO 8026, with zero misses and canonical
+final states. Both profiling runs completed successfully. Their work sums
+192112/168442 include sampler overhead and are **not** replacement
+acceptance timings. Normal timing remains 172830/150951 for these tracks,
+with the matched F1 four-phase worst envelope still 429 lines.
+
+| Sample group | F1 | WHACKO |
+| --- | ---: | ---: |
+| Display-blank wait | 1770 | 1358 |
+| Remaining C race step, including inlined helpers | 835 | 835 |
+| Native motion integration | 514 | 461 |
+| Wheel-surface emission | 399 | 443 |
+| C2P | 422 | 458 |
+| Sprite-retention preparation | 307 | outside top 25 |
+| Draw-order construction | 286 | 227 |
+| Shared-particle advancement | 280 | 279 |
+| Native car pairs | 163 | 175 |
+| C draw-priority dispatcher | 204 | 106 |
+
+After excluding only display-blank wait samples, remaining C race-step
+work is approximately 11.0%/12.5%, and C2P 5.5%/6.9%. These are sampling
+estimates, not measured phase durations or predicted optimization gains.
+The `slicks_particle_address_end` symbol buckets much of the point drawing
+body; its 224/235 samples must not be interpreted as address calculation
+alone. The single-update windows for F1 613 and WHACKO 685 contain just
+26/24 samples, including waits, too few for precise stage percentages.
+
+Inlined race-step samples identify motion preparation (87/97), finish
+tails (62/45), actor-layer handling (44/42), throttle (40/47), steering
+cache handling (33/40) and other distributed work. No single small helper
+accounts for the remaining worst-update deficit.
+
+Source inspection identifies a broader assembly candidate: the ordered
+draw loop crosses C/assembly boundaries whenever actor type changes.
+Each sprite/point chain saves eleven registers and receives nine/ten
+stack arguments; these costs are outside or spread across the C dispatch
+samples. A unified register-contract traversal could amortize them without
+changing drawing order. Actual transition counts and end-to-end timing
+are required before claiming savings. Existing small ABI experiments do
+not resolve this larger design. Its next checks are in open-work.md.
+
 ## Native car-pair integration accepted after phase sweep (2026-09-28)
 
 All four tracks pass 2412 site-8 comparisons each (9648 total), zero

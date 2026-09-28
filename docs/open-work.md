@@ -22,9 +22,8 @@ final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1/WHACKO CPU captures are
-`tmp/pcprof-post-div100-{f1,whacko}-20260928`, with the accepted visibility,
-inverse-chain and division changes present, but before native car-pair
-integration. Refresh those captures before claiming current stage costs.
+`tmp/pcprof-post-pairs-{f1,whacko}-20260928`, including native car-pair
+integration, with exact companion ELFs and zero missed samples.
 Their sampler overhead is not part of
 the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
@@ -43,7 +42,7 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Use the post-div100 F1 and WHACKO CPU captures for further changes.
+  Use the post-pairs F1 and WHACKO CPU captures for further changes.
   Keep WHACKO 685's latest regression in scope. Older archived captures
   predate recent visibility/order/division work; do not present their stage
   percentages as current. Recent small changes alter
@@ -66,6 +65,20 @@ Candidate fixes, roughly in order of expected value per effort:
   regression set when evaluating further changes.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
+  First evaluate a unified native ordered draw traversal: the current C
+  `draw_trail_priority` dispatcher repeatedly switches between separately
+  saved sprite and point chains, stacking nine or ten arguments each time.
+  Keep invariant bases in one outer frame and use register-contract entries
+  for both chains. Count actual transitions before estimating savings;
+  dispatcher samples alone do not include all entry/exit overhead. Preserve
+  exact next-handle order, saved-under writes, packet-key validation,
+  retained sprites and dirty-list overflow. General actors and overflow
+  require explicit fallback boundaries, not silent omissions. Test mixed
+  alternating and contiguous chains, cache aliases and overflow against the
+  independent renderer before display/retention audits and target timing.
+  This is a broader native traversal change, not an unchanged C-ABI wrapper
+  around the same calls. Restoration can follow only after the drawing
+  experiment establishes its actual benefit.
   A register-only shared-cell particle scan replacing the C call is measured
   effectively neutral (<0.04% on F1/CITY), archived rather than accepted.
   Do not repeat that narrow boundary change; any native redesign must cover
