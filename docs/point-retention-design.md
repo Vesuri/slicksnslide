@@ -6,6 +6,14 @@ The broader moving-point retention proposal remains open.
 
 ## Rejected sparse moving-point prototype (2026-09-28)
 
+Later eligibility inspection found this archived prototype also rejects
+live kind-zero reserved car slots. Its timing below therefore does not
+establish the cost of active moving-point retention. The direct-cell
+successor corrects both early and late gates and adds reserved slots to
+the lifecycle fixture; see the corrected experiment in
+`performance-profiling.md`. The earlier rejection remains a rejection of
+that delivered implementation, not evidence against every working design.
+
 Implemented a generation-tagged, 512-entry sparse hash of 2x2 conflict
 cells. It predicts original signed-word point motion/lifetime, rejects old
 lower-writer conflicts before restoration, then late-releases retained

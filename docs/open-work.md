@@ -84,7 +84,15 @@ Candidate fixes, roughly in order of expected value per effort:
   Preserve legacy traversal and sprite/overflow boundaries; any removed
   checks need explicit invariant coverage in the native oracle.
 
-- **Exact retention of unmoved particles (design needed, larger).** Most
+- **Exact retention of unmoved particles (design needed, larger).**
+  Do not repeat the direct-cell C policy: after fixing reserved-slot
+  eligibility, its actual conflict processing costs more than the saved
+  redraws. Earlier direct-grid and sparse-hash timing runs had an erroneous
+  bypass and cannot measure active retention. Any further design must
+  remove whole scans/late-release traversals or establish a substantially
+  lower bookkeeping cost before another implementation. A fused native
+  register-oriented path is distinct from this measured C design.
+  Most
   points stay on the same pixel for several updates (velocities are at
   most 11/64 pixel per tick). Restoring and redrawing such a point is a
   no-op when (a) its pixel, visibility and occlusion are unchanged, (b) no
@@ -123,7 +131,13 @@ Candidate fixes, roughly in order of expected value per effort:
   checkpoint and clock code. Per the cost model, only rewrite code whose
   executed volume can shrink (hoist per-update invariants out of the
   per-car/per-tick loops, drop repeated large-offset loads, fuse the per-car
-  tail into one pass over the car record); do not transliterate. Investigate
+  tail into one pass over the car record). After algorithmic candidates,
+  evaluate coherent hand-written assembly sections that keep car/state
+  pointers and intermediate values in registers across helper boundaries,
+  avoid stacked parameters and repeated saves/restores, and combine byte
+  accesses where valid. Small isolated assembly replacements retaining the
+  original C call structure do not settle the value of that larger design.
+  Investigate
   repeated signed X/Y-to-pixel divisions across helper calls, caching only
   if measured savings outweigh exact input-key checks. Verify via a shadow
   site per replaced function.

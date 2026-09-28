@@ -3,6 +3,73 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Direct-cell point-retention eligibility correction (2026-09-28)
+
+The experimental direct 2x2 conflict grid occupies 58880 bytes and replaces
+the earlier sparse hash. Its first two four-track timing runs must not be
+interpreted as measurements of successful point retention: read-only captures
+show zero retained points in all 603 updates of BASIC and WHACKO. The second
+flag-load variant measured 149749/355, 175205/421, 145789/336 and 153536/395
+(work/worst, BASIC/F1/CITY/WHACKO). Matched parent totals were 148314, 174105,
+144701 and 152256. All final states match, but these candidate timings
+measure bypass overhead, not a working retention benefit.
+
+At BASIC update 209 the direct grid epoch is still zero. Inspection found
+four live reserved car slots with kind zero and no saved sprite. The
+unsupported-sprite gate incorrectly rejected these non-drawing slots;
+the late new-sprite gate made the same mistake. The normal sprite renderer
+explicitly ignores kind zero. Both experimental gates now ignore it too.
+The lifecycle fixture now includes four live kind-zero reserved slots;
+7200 full-surface/state comparisons pass with 387896 initial candidates,
+58757 emission cancellations and 326750 final retained points. This is
+host evidence only: target retention audits and useful timing gains are
+still required before accepting the experiment. No gameplay acceptance or
+conclusion against a tighter assembly retention design follows from these
+bypassed runs. Logs: `tmp/direct-point-{control,flags,stats,gate}-20260928*`.
+
+The corrected target policy is now exercised: BASIC retains 4074 points
+over 603 updates, with nonzero retention on 142 updates and a maximum of
+81. Updates 209 and 219 retain 44 and 53 points respectively. Update 409
+has no live points and retains none. This read-only interrupted diagnostic
+(`tmp/direct-point-live-stats-20260928.log`, `POINT_KEEP_OK`) establishes
+eligibility, not timing or full-frame fidelity. The emulator exited normally.
+
+### Corrected active-policy timing and rejection
+
+| Track | Parent work / worst | Active policy work / worst |
+| --- | ---: | ---: |
+| BASIC | 148314 / 355 | 169015 / 538 |
+| F1 | 174105 / 426 | 175064 / 419 |
+| CITY | 144701 / 337 | 145775 / 335 |
+| WHACKO | 152256 / 392 | 170738 / 592 |
+
+All four 603-update final states match (`tmp/direct-point-active-20260928-*`).
+BASIC and WHACKO now exercise retention; total work rises 13.96% and 12.14%.
+F1/CITY deliberately bypass on track-object count and still incur overhead.
+The largest updates worsen severely on the tracks that use the policy.
+Rejected and removed from production; the complete integration, policy and
+expanded lifecycle test are recoverable locally as
+`tmp/direct-point-retention-20260928.patch`,
+`tmp/direct-point-retention-20260928.inc` and
+`tmp/verify-direct-point-retention-20260928.c`. Native tests had passed with
+the retained flag, and the corrected reserved-slot lifecycle fixture passes,
+but no target RETCHECK/display-audit pass is claimed for this slower design.
+Final-state equality alone is not rendering fidelity evidence.
+
+The archived sparse-hash predecessor has the same reserved-slot gate, so
+its earlier timings cannot be used as evidence of active retention cost.
+This correction is recorded in `point-retention-design.md`. The new timing
+does establish that direct indexing alone does not make the multi-pass C
+policy profitable. It does not rule out a fused register-oriented native
+implementation that removes those traversals or their memory traffic.
+
+The restored production build succeeds. Native draw tests pass both particle
+layouts (4096 singles, 256 batches, 256 chains each); native restoration
+passes both layouts (4096 chains each). Host dirty-tracking/HUD/shadow and
+DOS-backed surface-effect suites pass. Logs:
+`tmp/direct-point-restored-{build,oracles}-20260928.log`.
+All Slicks test emulators exited. No push was performed.
+
 ## Exact velocity-division arithmetic prototype (2026-09-28)
 
 The normal integrator divides each signed, wrapped velocity product by
