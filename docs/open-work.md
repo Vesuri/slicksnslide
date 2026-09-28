@@ -22,9 +22,10 @@ sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1 CPU capture is
 `tmp/pcprof-inner-integrated-20260928` (before the small address change);
-the latest WHACKO capture,
-`tmp/pcprof-current-whacko-20260928`, predates removal of inner profiling
-checks. Their sampler overhead is not part of the acceptance numbers above.
+the refreshed WHACKO capture is
+`tmp/pcprof-whacko-current-20260928`, with inner profiling disabled and
+the accepted address change present. Their sampler overhead is not part of
+the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
 `INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
 Method, tools and the cost model (Chip data access ~7
@@ -41,8 +42,8 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Use the current F1 CPU capture and refresh WHACKO after the profiling
-  compile-out when choosing further CPU work; recent small changes alter
+  Use the current F1 and refreshed WHACKO CPU captures when choosing
+  further CPU work; recent small changes alter
   which updates incur the largest work.
   The paired update-613 capture establishes a different fuel-blink phase;
   measure its cost separately rather than tuning cadence. Raster contention

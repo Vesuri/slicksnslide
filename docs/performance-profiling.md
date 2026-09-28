@@ -3,6 +3,53 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Refreshed WHACKO profile after address optimization (2026-09-28)
+
+Normal game code d096904 (documentation HEAD a12fd17), inner profiling
+disabled. `tmp/pcprof-whacko-current-20260928.{bin,log,elf}` contains the
+matching trace and symbols: 603 updates, 8483 samples, zero missed samples,
+active-window frame tags, and the canonical WHACKO final state. The muted
+debug run exited and its emulator closed. Instrumented work is 174294 with
+peak 454; this is roughly 11.5% sampling overhead, NOT a replacement for
+the accepted uninstrumented 156342/406.
+
+`tools/particle_slope.py` estimates mean sampled lines/update as follows:
+
+| Function/group | Mean sampled lines |
+| --- | ---: |
+| Inlined race step | 35.5 |
+| Car integration | 20.9 |
+| Wheel emission | 19.9 |
+| Rectangle C2P | 19.2 |
+| Particle drawing | 14.8 |
+| Opaque sprite drawing | 13.8 |
+| Shared particle advancement | 12.5 |
+| Draw-order construction | 7.6 |
+
+Particle drawing and shared advancement each correlate with about 26
+additional sampled lines per 100 live points. These are correlations across
+the instrumented race, not isolated operation timings or guaranteed savings.
+The 16-update window surrounding WHACKO 685 (profile frames 580..595,
+race updates 677..692) has only 257 non-wait samples: 25 each in drawing and
+shared advancement, 20 in wheel emission, 14 in C2P, 11 in order construction
+and 8 in point restoration. Use these counts to choose groups, not precise
+single-update percentages.
+
+Shared advancement samples cluster around the full-record load/handle read,
+compaction and publication sequence. In the archived ELF, 109 of its 296
+samples land at 0x50796 (the state test following MOVEM/handle loads), and
+42 at 0x507c8 (index publication following the copy branch). Interrupt PCs
+are instruction boundaries: this does not mean TST itself consumes 37% of
+the routine. Investigate record traffic rather than optimizing that test.
+The routine currently loads 24 bytes per point, copies all 24 on compaction,
+and republishes slot index/state for every survivor. Eliminating writes
+requires proving mapping/state invariants or changing the representation;
+the current native oracle deliberately initializes arbitrary prior maps and
+requires correct publication. Do not weaken it silently to make a skipped
+store pass. A stable-slot alternative must preserve creation-order motion
+and baking, actor-order drawing, allocation semantics and independent
+state/render comparisons; its indexing overhead must also be measured.
+
 ## Rejected emission scan bound hoist (2026-09-28)
 
 Measured loading the unchanged high-water bound into A3 before the scalar
