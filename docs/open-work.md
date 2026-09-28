@@ -21,8 +21,10 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
 ## Remaining performance work
 
-Immediate focus (user-directed): item 3, larger register-oriented simulation
-blocks. Do not return to particle/C2P experiments before pursuing this work.
+Optimization is stopped at the user's request. No experiment is active;
+the production build is restored to the latest accepted implementation.
+The remaining items below are a backlog, not work currently being executed.
+The 50 FPS target remains unmet.
 
 1. **Particle pipeline and memory traffic.** Examine substantial native
    blocks spanning restoration, ordering, advancement and drawing. Reduce
@@ -57,17 +59,12 @@ blocks. Do not return to particle/C2P experiments before pursuing this work.
    Surface-table/cache/fusion experiments are closed; do not spend further
    iterations on that narrow family. Previous isolated assembly or C
    experiments do not settle the value of a larger register-oriented design.
-   Next: widen the native finishing pass instead of adding the isolated
-   clock/checkpoint/layer/lap-clock block as a separate C call. Use
-   `src/game/car_progress.s`'s tested register entry inside a shared frame.
-   Include actual measured-speed, special-state and AI-contact arithmetic,
-   then reduce save/restore traffic at wheel-emission and pair-collision
-   boundaries. Do not merely wrap the old helper chain. Keep emission,
+   Before another rewrite, quantify the selected block's cost and expected
+   savings, and explain the regressions recorded in the profiling document.
+   Do not repeat the rejected standalone or wider finishing integrations
+   unchanged. The tested isolated `src/game/car_progress.s` register entry
+   remains available but is not linked into gameplay. Keep emission,
    progress, collision, surface/damage/effects and final contact-latch order.
-   The isolated block's 4096-case oracle covers both C/register entries,
-   wrapping clocks, signed coordinates, layer/finish narrowing and mutating
-   cold callbacks; it is not linked into gameplay. Its standalone timing
-   screen is closed, not a reason to reject a broader native finishing pass.
    Integration still needs real flag/Arcade/finish side-effect comparisons,
    stateful lap-limit query order and external reward callback handling in
    the shadow harness. Screen performance before those expensive runs.

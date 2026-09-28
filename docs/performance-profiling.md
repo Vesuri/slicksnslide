@@ -1,7 +1,52 @@
 # Target-side profiling and native-replacement verification
 
-Measured evidence for the 2026-09-27 performance work. Current actionable
+Measured evidence for the performance work. Current actionable
 work stays in [open-work.md](open-work.md).
+
+## Wider native finishing pass rejected; optimization stopped (2026-09-28)
+
+The four-car finishing experiment shared a register-save frame across native
+measured-speed, progress, special-state and AI-contact arithmetic, with
+register entries for wheel emission and pair collisions. Surface/damage/effect
+handling remained one C transaction. This was not accepted: the initial
+performance screen regressed on every track.
+
+| Track | Accepted control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 142797 / 348 | 146019 / 351 |
+| F1 | 167647 / 410 | 170499 / 416 |
+| CITY | 138919 / 327 | 141774 / 332 |
+| WHACKO | 146639 / 369 | 149820 / 389 |
+
+603 updates per run; all FINAL_STATE values match. These are single-run
+screens, not exhaustive maxima. Logs are local-only
+`tmp/car-finish-screen-20260928-{0,1,2,3}.log`; the exact executable pairs are
+`tmp/car-finish-{control,candidate}-20260928.{elf,exe}`. The controls match the
+accepted bounded-actor-scan build. No phase sweep or expensive whole-finisher
+shadow/rendering validation followed the failed screen. The cause of the
+regression has not been profiled; it does not establish that larger native
+assembly blocks cannot help.
+
+Quick checks passed 4096 four-car finishing sequences (9665 active-car
+callbacks per stage), the 4096-case progress oracle, and the actual collision
+body through its register wrapper (12000 random, 3456 boundary and 4096
+extreme cases). The finishing callbacks were synthetic, so these checks do
+not prove real effect/finish fidelity. The collision test initially rejected
+the wrapper's extra four-byte return address; its wrapper-only stack allowance
+was corrected before the passing run. Logs are
+`tmp/car-finish-quick-oracles-20260928.log` and
+`tmp/car-finish-collision-oracle-20260928.log`.
+
+At the user's request, further optimization stopped. All uncommitted
+experiment source/build/test changes were removed, restoring source to
+`1f5fa00` (production gameplay unchanged from accepted `7eeeb1f`). The rejected
+source is recoverable locally in
+`tmp/car-finish-rejected-source-20260928.tar.gz`; it is not shipped or committed.
+The normal build was rebuilt successfully, including the original emission
+and collision entries. Its loadable code/data sections match the archived
+accepted control byte-for-byte. `amiga/run.sh` still launches this normal
+`amiga/out/SlicksDiag.exe` with audio enabled.
+The 50 FPS goal remains unmet. No Slicks test emulator was left running.
 
 ## Native car-progress block: standalone screen closed (2026-09-28)
 
