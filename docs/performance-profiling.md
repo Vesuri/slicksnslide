@@ -3,6 +3,34 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Inner profiling compile-out trial (2026-09-28)
+
+Trial only: make `profile_scope` return zero in native builds, retaining
+the host implementation and a `SLICKS_INNER_PROFILE` compile-time escape.
+This removes the dormant callback checks and lets the compiler optimize
+across their former call boundaries. The platform's outer timer and
+aggregation remain unchanged; no game work is excluded from timing.
+
+| Track | Accepted HUD build work / worst | Trial work / worst |
+| --- | ---: | ---: |
+| BASIC | 155611 / 366 | 153583 / 363 |
+| F1 | 181548 / 449 | 179393 / 434 |
+| CITY | 151287 / 348 | 149169 / 345 |
+| WHACKO | 158706 / 408 | 156604 / 407 |
+
+All 603-update final states match. Work falls 1.2-1.4% on all four tracks.
+Logs: `tmp/inner-profile-off-20260928-{0,1,2,3}.log`. These are initial
+ordinary timings, not acceptance: test the verified native HUD-clock
+fractions too, and preserve detailed profiling through explicit build
+controls. Build-mode switches must reliably invalidate affected objects;
+detailed benchmarks must not silently report missing callbacks as zeros.
+No new target display/reference audits have been run for this trial.
+
+The local patch is `tmp/inner-profile-off-20260928.patch`. Production is
+restored to the accepted HUD implementation pending proper build controls;
+the trial is neither rejected nor accepted yet. All trial benchmark
+emulators exited normally. Do not count this gain in accepted-build totals.
+
 ## Direct HUD-bar dirty bounds (2026-09-28)
 
 The bounded status painter now publishes one rectangle per changed car cell

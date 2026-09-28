@@ -43,7 +43,12 @@ Candidate fixes, roughly in order of expected value per effort:
   instrumented variant, and make build-mode changes invalidate the affected
   objects. Outer timing must still measure all normal game work; the CIA
   sampler must remain usable. Compare matching four-track controls and
-  fuel-blink phases before accepting; savings are not yet established.
+  fuel-blink phases before accepting. The local
+  `tmp/inner-profile-off-20260928.patch` trial improves all four ordinary
+  runs by 1.2-1.4%, with matching final states (work/worst: BASIC
+  153583/363, F1 179393/434, CITY 149169/345, WHACKO 156604/407).
+  Production is restored pending build controls, phase checks and target
+  verification. This is the next implementation task, not an accepted gain.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the refreshed current F1/WHACKO CPU captures to choose further CPU
