@@ -1,5 +1,42 @@
 # Development release audit
 
+## 2026-09-28 — default 4 KiB stack verification
+
+The unchanged stripped release executable was launched directly, bypassing
+Play's conservative `Stack 16384`. No Stack command was used. Read-only GDB
+checks at main entry confirmed `tc_SPUpper - tc_SPLower == 4096` in every run.
+Configuration: PAL A1200, 2 MiB Chip, no Fast RAM; debug audio muted.
+
+Passed paths and local-only evidence directories (`tmp/standalone-release-*`):
+
+- Normal title/startup: `f8z8wiak`.
+- Options edit, close, reopen and entry into racing: `yn4541t_`.
+- Championship menu save and normal system-restoring exit: `49dsjbiw`.
+- Fresh-process championship reload/resume, advancing the race and normal
+  exit: `l90qfbku`. Saved/restored points, cash, inventory and vehicle dumps
+  also compare byte-for-byte.
+- Help-menu navigation, history, close/reopen and system-restoring exit:
+  `xzeu7a54`.
+- F1 racing through 600 updates with the full-frame dirty-sprite audit:
+  `er198zfr` (`NATURALO1Q`, `diag_dirty_sprites.gdb`).
+
+The executable SHA256 is
+`fc6b9d7db5ee6253ce716778a6d9d04815b7ed107c51dc7cdcdd1a4637e60b24`,
+identical to `build/release/Slicks`. No game rebuild or code change was needed.
+This verifies the listed workflows, not an exhaustive maximum-stack bound.
+An attempted debugger-written watermark failed its immediate write/readback
+check and was discarded; it is not evidence of a game stack overflow or a
+valid high-water measurement. A repeated save fixture with an already existing
+test save and an incorrect help launch mode were also discarded and rerun
+with the correct clean fixture/mode.
+
+Repeat using `tools/test_standalone_release.py PRIVATE_INSTALL --default-stack`;
+add `--args OPTIONS --checks amiga/diag_options.gdb
+--marker OPTIONS_ENTRY_EDIT_RETURN_REOPEN_RACE_OK` for the options path.
+Use a disposable installation: scripted checks really write saves/records.
+The harness isolates debugger dumps and closes its own emulator on success
+and failure. The existing package/launchers are unchanged by this verification.
+
 ## 2026-09-28 — installer release 0.1
 
 The distribution is now `dist/Slicks-0.1.lha`, not the historical developer ZIP
