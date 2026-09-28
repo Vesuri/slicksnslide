@@ -41,6 +41,21 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
+- **Integrate and measure compact particle records.** The isolated 20-byte
+  shared advancement prototype passes the DOS-backed canonical-state oracle;
+  it is not linked into gameplay and has no measured speed gain yet. Next,
+  prove the constructors' word-coordinate boundary against the DOS emitter,
+  then migrate consumers together: native/C emission, legacy/shared advance,
+  point restore/draw, actor ordering, sprite-retention point reads and their
+  independent oracles. Keep creation-order compaction/baking and handle-order
+  drawing unchanged. Derive offsets from the target layout; do not silently
+  replace full comparisons with hashes or discard represented bytes. Preserve
+  the 24-byte canonical test records and explicitly project the redundant
+  coordinate high words. Benchmark only after consumer tests pass; acceptance
+  still requires four-track native/reference shadows, display audits and
+  RETCHECK. Discard the representation change if its net measured benefit
+  does not justify the extra integration complexity.
+
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing
   further CPU work; recent small changes alter
@@ -105,8 +120,7 @@ Candidate fixes, roughly in order of expected value per effort:
   Designs, counts and limitations are in `docs/point-retention-design.md`;
   the offline screen is not a runtime proof. Any further attempt must reduce
   bookkeeping and bypass-path overhead substantially; do not simply repeat
-  the archived sparse-hash prototype. Lower priority than measuring C2P
-  rectangle union costs now.
+  the archived sparse-hash prototype.
 
 - **Remaining C inside `slicks_race_step`.** Refresh and split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:

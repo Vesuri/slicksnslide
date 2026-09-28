@@ -9,6 +9,17 @@
 static void be16(unsigned char *p,unsigned n){p[0]=n>>8;p[1]=n;}
 static void be32(unsigned char *p,uint32_t n){be16(p,n>>16);be16(p+2,n);}
 static unsigned get16(const unsigned char *p){return p[0]*256U+p[1];}
+/* Canonical test records remain 24 bytes. Project only their redundant
+ * coordinate high words out; every represented byte and guard is compared. */
+static void compact_records(unsigned char *to,const unsigned char *from)
+{
+    for(unsigned i=0;i<256;++i) {
+        memcpy(to+20*i,from+24*i+2,2);
+        memcpy(to+20*i+2,from+24*i+6,2);
+        memcpy(to+20*i+4,from+24*i+8,16);
+    }
+    memcpy(to+20*256,from+24*256,32);
+}
 static uint64_t dos_stop;
 /* Explicit fragment stops remain reliable when a reused Unicorn engine has
  * already translated the neighbouring block for a different stop address. */
@@ -42,7 +53,7 @@ static void original_step(uc_engine *u,unsigned char *p,unsigned page)
 
 int main(int argc,char **argv)
 {
-    if(argc!=3)return 2;
+    if(argc!=3 && argc!=4)return 2;
     static unsigned char runtime[300000],code[4096];
     FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t size=fread(runtime,1,sizeof runtime,f);fclose(f);
@@ -138,6 +149,14 @@ int main(int argc,char **argv)
     }
     /* Shared actor pool: the same DOS-derived point results, plus the handle,
      * trail-index and slot-state bookkeeping previously done by C loops. */
+    for(unsigned compact=0;compact<(argc==4?2U:1U);++compact) {
+    if(compact) {
+        f=fopen(argv[3],"rb");if(!f)return 2;
+        size=fread(code,1,sizeof code,f);int error=ferror(f);fclose(f);
+        if(error || size<4 || size==sizeof code)return 2;
+        check(uc_mem_write(native,0x10000,code,size));
+        check(uc_ctl_remove_cache(native,0x10000,0x18000));
+    }
     uint32_t shared_entry=0x10000+((uint32_t)code[size-4]<<24)+((uint32_t)code[size-3]<<16)+
         ((uint32_t)code[size-2]<<8)+code[size-1];
     for(unsigned trial=0;trial<800;++trial) {
@@ -187,7 +206,13 @@ int main(int argc,char **argv)
         unsigned char stack[40],dc[2];
         const unsigned args[]={0x18000,0x20000,count,0x52000,0x53000,0x54000,0x60000,0x61000,0x30000,page};
         for(unsigned i=0;i<10;++i)be32(stack+4*i,args[i]);
-        check(uc_mem_write(native,0x20000,initial,sizeof initial));
+        unsigned char packed_initial[20*256+32],packed_expected[20*256+32];
+        if(compact) {
+            compact_records(packed_initial,initial);
+            compact_records(packed_expected,expected);
+        }
+        unsigned record_bytes=compact?sizeof packed_initial:sizeof initial;
+        check(uc_mem_write(native,0x20000,compact?packed_initial:initial,record_bytes));
         check(uc_mem_write(native,0x52000,handles,sizeof handles));
         check(uc_mem_write(native,0x53000,index_bytes,sizeof index_bytes));
         check(uc_mem_write(native,0x54000,states,sizeof states));
@@ -198,13 +223,14 @@ int main(int argc,char **argv)
         for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i){uint32_t v=0x13570000+i;check(uc_reg_write(native,preserved[i],&v));}
         check(uc_emu_start(native,shared_entry,0x18000,0,200000));
         check(uc_reg_read(native,UC_M68K_REG_D0,&result));
-        check(uc_mem_read(native,0x20000,actual,sizeof actual));
+        check(uc_mem_read(native,0x20000,actual,record_bytes));
         check(uc_mem_read(native,0x30000,got_pixels,sizeof got_pixels));
         check(uc_mem_read(native,0x52000,got_handles,sizeof got_handles));
         check(uc_mem_read(native,0x53000,got_index_bytes,sizeof got_index_bytes));
         check(uc_mem_read(native,0x54000,got_states,sizeof got_states));
         check(uc_mem_read(native,0x60000,got_dirty,sizeof got_dirty));check(uc_mem_read(native,0x61000,dc,2));
-        if((result&65535)!=out || memcmp(actual,expected,sizeof actual) ||
+        const unsigned char *want_records=compact?packed_expected:expected;
+        if((result&65535)!=out || memcmp(actual,want_records,record_bytes) ||
            memcmp(pixels,got_pixels,sizeof pixels) || memcmp(want_handles,got_handles,sizeof handles) ||
            memcmp(want_index,got_index_bytes,sizeof index_bytes) || memcmp(want_states,got_states,sizeof states) ||
            memcmp(dirty,got_dirty,sizeof dirty) || get16(dc)!=dirty_count) {
@@ -212,12 +238,14 @@ int main(int argc,char **argv)
                 trial,result&65535,out,get16(dc),dirty_count,memcmp(pixels,got_pixels,sizeof pixels),
                 memcmp(want_handles,got_handles,sizeof handles),memcmp(want_index,got_index_bytes,sizeof index_bytes),
                 memcmp(want_states,got_states,sizeof states),memcmp(dirty,got_dirty,sizeof dirty));
-            for(unsigned i=0;i<sizeof actual;++i)if(actual[i]!=expected[i]){fprintf(stderr,"particle byte %u actual=%u expected=%u\n",i,actual[i],expected[i]);break;}
+            for(unsigned i=0;i<record_bytes;++i)if(actual[i]!=want_records[i]){fprintf(stderr,"compact=%u particle byte %u actual=%u expected=%u\n",compact,i,actual[i],want_records[i]);break;}
             return 1;
         }
         for(unsigned i=0;i<sizeof preserved/sizeof *preserved;++i){check(uc_reg_read(native,preserved[i],&result));if(result!=0x13570000+i)return 1;}
         check(uc_reg_read(native,UC_M68K_REG_A7,&sp));if(sp!=0x90004)return 1;
         check(uc_reg_read(native,UC_M68K_REG_PC,&result));if(result!=0x18000)return 1;
+    }
+    if(compact)puts("Compact 20-byte trial: 800 DOS-backed shared batches match canonical projected records, mappings, pixels, dirty bytes and ABI");
     }
     puts("Native particle update: 1028 legacy/shared batches match DOS lifetime/motion, retirement bookkeeping, compaction, permanent pixels, dirty saturation and ABI");
     puts("Native shared-pool particle update: 800 batches also match handle compaction, trail indices, slot states and untouched dead records");

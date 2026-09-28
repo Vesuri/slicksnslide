@@ -3,6 +3,43 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated compact-particle advance prototype (2026-09-28)
+
+`src/game/particle_compact_trial.s` implements the shared-pool advancement
+pass for a 20-byte record: signed word x/y, signed word velocities, old pixel
+words, and the unchanged eight metadata bytes. This is a staged experiment,
+**not linked by amiga/Makefile and not a measured gameplay optimization**.
+Normal gameplay still uses the accepted 24-byte representation. The intended
+benefit is fewer record reads and compaction writes, not omitted effects,
+different allocation order or less simulation.
+
+`make verify-particle-compact-trial` keeps all existing legacy/shared tests,
+then repeats the 800 shared-pool batches with the compact routine. Expected
+motion/lifetime comes from the actual original DOS fragments. Test records
+remain in the old canonical 24-byte format: an explicit independent encoder
+removes only the redundant coordinate high words. Every represented record
+byte (including dead slots and trailing guards), handle/index/state byte,
+chunky pixel and dirty-list byte is compared. Return, stack and preserved
+register checks are unchanged. The CPU translation cache is invalidated when
+loading the second native implementation into the same test address.
+
+This proves shared advancement for signed-word input coordinates, not every
+producer or consumer in the current port. In particular, the C constructor
+currently assigns a long `x*64` before the first advance; its DOS boundary
+must be audited before narrowing the production fields. Drawing tests that
+currently supply arbitrary long positions also need an explicit domain
+decision, not silent weakening. Legacy buckets, constructors, renderer,
+retention and actor-chain indexing have NOT been migrated.
+
+Pass: `tmp/compact-particle-oracle-20260928.log`. Four local-only mutation
+builds all compile and are rejected by the compact test (exit 1): wrong Y
+addition at case 1, wrong source stride at case 2, wrong index publication
+at case 6, and wrong retirement flag mask at case 203. Logs:
+`tmp/compact-mutation-{y,stride,mapping,flags}-20260928.log`. None modifies
+the production executable. No target timing, shadow or display-audit claim
+is made at this stage. Subsequent migration and acceptance work remains in
+`docs/open-work.md`.
+
 ## Rejected within-call car pixel-coordinate reuse (2026-09-28)
 
 Tested carrying each physics quantum's final x/100 and y/100 into the next
