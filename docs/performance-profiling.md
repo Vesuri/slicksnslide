@@ -3,6 +3,30 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## DOS constructor word-coordinate boundary (2026-09-28)
+
+Extended the original-executable oracle to execute the real setter at
+actor-segment 2ef2 and first movement at 394f for 131072 cases. Each axis
+individually covers every 16-bit input word on both page slots; odd
+permutations also cover every velocity word. This is not all Cartesian
+combinations of coordinates and velocities. The tests verify far return,
+stack, constructor coordinates, wrapped first movement, signed pixel
+rounding, and untouched adjacent slots.
+
+The original setter's 2f0a..2f24 instructions shift AX by six and store
+AX directly into the actor x/y words. Narrowing occurs at construction,
+not just during first advancement. The new test confirms this across
+the full word domain, including inputs outside normal screen coordinates.
+An initial fixture omitted DS:16be capacity, so the setter correctly returned
+without writing the slot; adding the real three-slot pool setup fixed the
+fixture. No original instructions or expectations were changed to hide it.
+
+`make verify-dos-particle-expiry` passes the expanded suite:
+`tmp/compact-coordinate-boundary-complete-20260928.log`. Initial failed
+fixture logs are `tmp/compact-coordinate-boundary{,-debug}-20260928.log`.
+This establishes the compact record's coordinate domain, but does not yet
+migrate or verify the port's C/native emission write sets or all consumers.
+
 ## Isolated compact-particle advance prototype (2026-09-28)
 
 `src/game/particle_compact_trial.s` implements the shared-pool advancement

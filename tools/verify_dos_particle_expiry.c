@@ -187,6 +187,62 @@ static void verify_point_creation(const unsigned char *segment)
     printf("DOS point creation: %u real constructor/allocator/update cases passed; all colours, both burst variants/layers, full pool, balanced far returns; 1024 first-movement/page-coordinate cases (pixels not tested)\n",cases);
 }
 
+static void coordinate_stop(uc_engine *uc,uint64_t address,uint32_t size,void *opaque)
+{
+    (void)address;(void)size;(void)opaque;check(uc_emu_stop(uc));
+}
+
+static void verify_point_coordinate_words(const unsigned char *segment)
+{
+    uc_engine *uc;uc_hook hook;
+    check(uc_open(UC_ARCH_X86,UC_MODE_16,&uc));
+    check(uc_mem_map(uc,0,0x100000,UC_PROT_ALL));
+    check(uc_mem_write(uc,0x10000,segment,0x10000));
+    check(uc_hook_add(uc,&hook,UC_HOOK_CODE,coordinate_stop,0,0x139d2,0x139d2));
+    word(uc,0x216ce,0);word(uc,0x216d0,0x3000);
+    word(uc,0x216be,3);word(uc,0x216c0,3);
+    unsigned char before[192],after[192];memset(before,0xa5,sizeof before);
+    memset(before+64,0,64);before[64+0x3a]=1;before[64+0x1a]=1;
+    for(unsigned x=0;x<65536;++x) for(unsigned page=0;page<2;++page) {
+        /* Odd multipliers enumerate every word on both axes and velocities. */
+        unsigned y=(x*40503U+79U)&65535U;
+        unsigned vx=(x*73U+0x8000U)&65535U,vy=(x*151U+0x7fffU)&65535U;
+        unsigned args[13]={1,x,y,vx,vy,0,0,0,0,3,0,1,3};
+        uint16_t cs=0x1000,ds=0x2000,ss=0x4000,sp=0x800,bp=0x900,ip;
+        check(uc_reg_write(uc,UC_X86_REG_CS,&cs));check(uc_reg_write(uc,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(uc,UC_X86_REG_SS,&ss));check(uc_reg_write(uc,UC_X86_REG_SP,&sp));
+        check(uc_reg_write(uc,UC_X86_REG_BP,&bp));
+        check(uc_mem_write(uc,0x30000,before,sizeof before));
+        word(uc,0x40800,0);word(uc,0x40802,0x7000);
+        for(unsigned i=0;i<13;++i)word(uc,0x40804+2*i,args[i]);
+        check(uc_emu_start(uc,0x12ef2,0x70000,0,1000));
+        check(uc_reg_read(uc,UC_X86_REG_CS,&cs));check(uc_reg_read(uc,UC_X86_REG_IP,&ip));
+        check(uc_reg_read(uc,UC_X86_REG_SP,&sp));
+        if(cs!=0x7000 || ip || sp!=0x804 ||
+           readword(uc,0x30040)!=((x<<6)&65535U) ||
+           readword(uc,0x30042)!=((y<<6)&65535U)) {
+            fprintf(stderr,"Coordinate constructor mismatch x=%u y=%u page=%u cs:ip=%x:%x sp=%x actual=%u,%u\n",x,y,page,cs,ip,sp,readword(uc,0x30040),readword(uc,0x30042));exit(1);
+        }
+        cs=0x1000;check(uc_reg_write(uc,UC_X86_REG_CS,&cs));
+        word(uc,0x408fe,1);unsigned char page_byte=(unsigned char)page;
+        check(uc_mem_write(uc,0x216c6,&page_byte,1));
+        check(uc_emu_start(uc,0x1394f,0x139d2,0,1000));
+        check(uc_reg_read(uc,UC_X86_REG_IP,&ip));check(uc_reg_read(uc,UC_X86_REG_SP,&sp));
+        int xx=(int16_t)((x<<6)+vx),yy=(int16_t)((y<<6)+vy);
+        int px=xx<0?-((63-xx)/64):xx/64,py=yy<0?-((63-yy)/64):yy/64;
+        check(uc_mem_read(uc,0x30000,after,sizeof after));
+        if(ip!=0x39d2 || sp!=0x804 || readword(uc,0x30040)!=(uint16_t)xx ||
+           readword(uc,0x30042)!=(uint16_t)yy ||
+           readword(uc,0x30044+2*page)!=(uint16_t)px ||
+           readword(uc,0x30048+2*page)!=(uint16_t)py ||
+           memcmp(before,after,64) || memcmp(before+128,after+128,64)) {
+            fprintf(stderr,"Coordinate first-move mismatch x=%u y=%u page=%u\n",x,y,page);exit(1);
+        }
+    }
+    check(uc_close(uc));
+    puts("DOS coordinate boundary: 131072 real constructor/first-move cases; all input words on both axes, both pages, wrapped velocities, arithmetic pixel rounding and adjacent-slot guards pass");
+}
+
 static void active_draw_stop(uc_engine *uc,uint64_t address,uint32_t size,void *opaque)
 {
     (void)size;(void)opaque;
@@ -382,6 +438,7 @@ int main(int argc, char **argv)
     verify_active_draw(runtime + site - 0x3918);
     verify_allocation(runtime + site - 0x3918);
     verify_point_creation(runtime + site - 0x3918);
+    verify_point_coordinate_words(runtime + site - 0x3918);
     verify_shadow_sequence(runtime + site - 0x3918);
     return 0;
 }
