@@ -30,6 +30,18 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 Implementation and completed verification evidence are separate in
 [registration-support.md](registration-support.md).
 
+## Menu loading and presentation
+
+- Implement disk-free ordinary menu navigation using the startup-resident
+  inventory in [menu-resident-assets.md](menu-resident-assets.md). Reuse existing
+  resident assets, cache catalogues/keymap state, and budget shared modal storage
+  on 2 MiB Chip RAM. Remove unnecessary platform end/begin transitions; preserve
+  explicit save/load failure handling and on-demand track/exit presentations.
+  The inventory is complete; the cache and lifecycle changes are not implemented.
+- Restore original title status indicators/counts and conditional menu layout.
+  Replace the port-specific CAR/TRACK footer with the original presentation,
+  verifying against DOS rather than treating the current title as faithful.
+
 ## Remaining performance work
 
 Optimization is stopped at the user's request. No experiment is active;
