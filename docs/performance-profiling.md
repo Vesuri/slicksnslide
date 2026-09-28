@@ -3,6 +3,51 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Unchanged particle coordinates revisited (2026-09-28)
+
+The prior coordinate-store shortcut was rejected before the visibility-map
+and chain-loop changes, when its F1 peak rose 433->457. Re-evaluate on
+563b5b8 with fresh controls and matched native HUD-clock phases, rather
+than extrapolating that old code-layout result. The existing equal-position
+branch skips only the two redundant old-coordinate stores. Saving the new
+underlay, painting, flags, and dirty publication remain unchanged; no point
+retention or simulation change is introduced.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 148733 / 352 | 148339 / 353 |
+| F1 | 174519 / 430 | 174139 / 426 |
+| CITY | 144919 / 339 | 144695 / 337 |
+| WHACKO | 152696 / 394 | 152285 / 393 |
+
+Logs: `tmp/particle-oldxy-{control,candidate}-20260928-*`. All final states
+match. Total work drops 0.15-0.27%; BASIC's maximum grows one line.
+
+| F1 clock phase | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| 0 | 174516 / 430 | 174111 / 428 |
+| 1 | 174528 / 424 | 174202 / 429 |
+| 2 | 174509 / 430 | 174117 / 417 |
+| 3 | 174542 / 424 | 174108 / 417 |
+
+Logs: `tmp/oldxy-{control,candidate}-phase-20260928-*`; native initial
+remainders 0/819200/1638400/2457600 are checked. All final states match.
+The phase-wide maximum drops only one line (430->429), while phase 1
+regresses five. Keep this caveat: these results support a small throughput
+gain, not universal deadline improvement or a solution to the 312-line goal.
+
+Both production and isolated compact-layout native draw suites pass 4096
+single, 256 batch and 256 chain cases each, including seeded previous-frame
+restoration and exact pixel, metadata, dirty-list, overflow and ABI checks.
+Their bounds and visibility exhaustive tests also pass. Host dirty-tracking
+and surface-effects suites pass; those host tests do not execute this native
+shortcut. All three target display audits pass 600 updates with live statistics
+off: `tmp/particle-oldxy-audit-20260928-{1,2,3}.log`. F1/CITY/WHACKO
+report 32/18/5 actors and 2076/1480/1854 marks. All owned emulators closed.
+Retain the small work reduction on this layout with the phase caveats above.
+Normal-run over-budget counts are 36/190/11/65; the performance goal remains
+unmet. This does not retroactively invalidate the older measured rejection.
+
 ## Whole-list actor-order reuse screen (2026-09-28)
 
 Read-only captures of the normal c4f4223 binary inspect completed forward

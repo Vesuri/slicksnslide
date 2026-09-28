@@ -13,12 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh order-base-candidate-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 148721/352, F1 174506/429,
-CITY 144928/335, WHACKO 152703/394. Means are 15.4-18.6 ms; the
-worst updates in that run need 7-27% cuts. The latest F1 HUD-clock
-phase sweep, before the inverse-link addressing change, reaches 430 lines
-(27.6 ms, 27% cut needed), with matching
+(`amiga/bench_tracks.sh particle-oldxy-candidate-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 148339/353, F1 174139/426,
+CITY 144695/337, WHACKO 152285/393. Means are 15.4-18.5 ms; the
+worst updates in that run need 7-27% cuts. The latest matched F1 HUD-clock
+phase sweep reaches 429 lines (27.5 ms, 27% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not

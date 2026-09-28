@@ -98,7 +98,7 @@ slicks_particle_address_end equ *
 	cmp.w PD_OLD_X(a0),d0
 	bne.s .moved
 	cmp.w PD_OLD_Y(a0),d1
-	beq.s .paint
+	beq.s .save_under
 .moved:
 	bsr.s .queue_old
 .queue_new:
@@ -109,6 +109,9 @@ slicks_particle_address_end equ *
 .paint:
 	move.w d0,PD_OLD_X(a0)
 	move.w d1,PD_OLD_Y(a0)
+.save_under:
+; A restored point already at this pixel retains the same coordinates.
+; Still save/repaint the pixel: earlier actors may have changed its underlay.
 	move.b (a1,d2.l),PD_SAVED(a0)
 	move.b PD_COLOUR(a0),(a1,d2.l)
 	move.b #1,PD_FLAGS(a0)
