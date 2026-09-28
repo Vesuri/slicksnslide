@@ -148,6 +148,11 @@ Candidate fixes, roughly in order of expected value per effort:
   repeated signed X/Y-to-pixel divisions across helper calls, caching only
   if measured savings outweigh exact input-key checks. Verify via a shadow
   site per replaced function.
+  The C-only shared-coordinate checkpoint/layer/lap block is measured
+  neutral/slightly slower and archived; do not repeat it unchanged.
+  Reuse coordinates as part of a broader register-resident native block,
+  preserving checkpoint word wrapping versus lap full-long bounds and
+  refreshing after callbacks that may mutate state.
   Do not repeat the measured per-quantum reciprocal-table velocity division:
   it increases work on all four tracks. Its isolated arithmetic proof and
   expanded native integration coverage remain available, but production uses

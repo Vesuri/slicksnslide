@@ -3,6 +3,44 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Shared C checkpoint/layer/lap coordinates: no useful gain (2026-09-28)
+
+Tested dividing each car's fixed X/Y once after wheel emission and passing
+the full signed quotients through three consecutive stages: checkpoint,
+actor-layer selection, and lap completion. Checkpoint flag activation does
+not write car coordinates; lap callbacks occur only after those reads.
+Preserved each consumer's distinct conversion: checkpoint wraps quotient+1
+to unsigned word, layer selection checks signed words, lap material checks
+the full signed quotient. No cached coordinate survives the lap callback.
+Existing individual wrappers remained for oracle fixtures.
+
+| Track | Production work / worst | Shared C coordinates work / worst |
+| --- | ---: | ---: |
+| BASIC | 148314 / 355 | 148389 / 350 |
+| F1 | 174164 / 427 | 174240 / 419 |
+| CITY | 144706 / 336 | 144723 / 335 |
+| WHACKO | 152256 / 392 | 152317 / 393 |
+
+All 603-update final states match; total work increases slightly on every
+track (under 0.06%). Lower sampled maxima on some tracks do not demonstrate
+a phase-independent improvement. Candidate logs:
+`tmp/shared-coordinates-20260928-*`; controls use unchanged production
+from `touch-restored-20260928` (F1/CITY) and `direct-point-control-20260928`
+(BASIC/WHACKO). Rejected as an unhelpful C restructuring; full integration
+is archived locally in `tmp/shared-coordinates-20260928.patch`.
+
+Host physics, surface and finish/lap suites pass, including 655360 DOS
+route-AI cases and 6912 DOS fuel-service requests
+(`tmp/shared-coordinates-host-20260928.log`). No target shadow/display
+audit completion is claimed for this rejected candidate. This measures
+the C implementation, not a register-resident native block retaining
+coordinates across the same three stages; compiler spilling versus
+already-eliminated arithmetic has not been separately quantified.
+
+Restored production rebuild and physics/surface/lap suites pass again:
+`tmp/shared-coordinates-restored-{build,tests}-20260928.log`. All owned
+emulators exited; no push was performed.
+
 ## Register-only shared particle conflicts: neutral (2026-09-28)
 
 Replaced the `.point_shared` C callback with a native entry loop, keeping
