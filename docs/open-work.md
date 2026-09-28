@@ -127,10 +127,11 @@ Candidate fixes, roughly in order of expected value per effort:
   repeated signed X/Y-to-pixel divisions across helper calls, caching only
   if measured savings outweigh exact input-key checks. Verify via a shadow
   site per replaced function.
-  An isolated exact reciprocal for the native velocity divisions passes
-  `make verify-velocity-division`; next measure an integrator candidate with
-  original DIVS fallback for unsupported coefficients and divisor 32768.
-  It is not in gameplay yet and has no demonstrated speed benefit.
+  Do not repeat the measured per-quantum reciprocal-table velocity division:
+  it increases work on all four tracks. Its isolated arithmetic proof and
+  expanded native integration coverage remain available, but production uses
+  DIVS. A different design needs a concrete reduction in lookup/instruction
+  overhead before another target experiment.
 
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Lower priority than simulation/particle work: even the

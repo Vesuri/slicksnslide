@@ -38,6 +38,7 @@ int main(int argc,char **argv){
     const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
     if(CAR_SIZE+32>512)return 2;
+    unsigned divisors_seen[113]={0},fallback_seen=0;
     for(unsigned t=0;t<24000;++t){
         unsigned char image[512],expected[512],got[512],stack[20],meta[4];
         for(unsigned i=0;i<512;++i)image[i]=rnd();
@@ -55,10 +56,16 @@ int main(int argc,char **argv){
         car.heading=rnd()%19200;car.damage[0]=rnd()%1000;
         car.drive_bias=rnd()%2001;car.special_drive_state=t%3==0?0:t%3==1?1:-1;
         car.drive_coefficients[0]=80+rnd()%41;car.drive_coefficients[3]=80+rnd()%41;
-        car.drive_coefficients[1]=(int)(rnd()%111)-40;
+        car.drive_coefficients[1]=(int)((t/3)%113)-40;
+        if(t>=12000 && t%17==0)car.drive_coefficients[1]=(t&1)?-1000:1000;
         car.position_scale=1+rnd()%255;car.touching_solid=rnd()%2;car.actor_contact=rnd()%2;
         car.actor_layer=rnd()%2;car.collision_sampling=t&1;
         unsigned ticks=t%8==7?65535:t%7,active=t%4;
+        if(!car.special_drive_state && (short)ticks>0) {
+            int coefficient=car.drive_coefficients[1];
+            if(coefficient>=-40 && coefficient<=72)++divisors_seen[coefficient+40];
+            else ++fallback_seen;
+        }
         race.collision_error=0;race.track_collision_count=42;race.boundary_level=5;
 #define SERIALIZE(buf) do { \
     unsigned char *p=(buf)+16; \
@@ -91,5 +98,7 @@ int main(int argc,char **argv){
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=values[i])return 1;}
     }
-    uc_close(u);puts("Car integration: 24000 no-wall normal/coast/special, signed ticks, sampling, signed-long position edges, clamps, full-car canaries, completed returns and ABI cases pass");return 0;
+    for(unsigned i=0;i<113;++i)if(!divisors_seen[i]){fprintf(stderr,"Uncovered divisor %u\n",32728+i);return 1;}
+    if(!fallback_seen)return 1;
+    uc_close(u);puts("Car integration: 24000 no-wall cases; all 113 velocity divisors and out-of-range coefficients; normal/coast/special, signed ticks, sampling, signed-long position edges, clamps, full-car canaries, returns and ABI pass");return 0;
 }

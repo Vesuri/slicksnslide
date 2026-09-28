@@ -24,9 +24,40 @@ recover the correct high half. No rounding approximation is involved.
 112 divisors, including INT32_MIN/MAX neighborhoods, exact multiples and
 neighbors, near-zero values, randomized full-width inputs and stack/callee
 save ABI. The actual shared assembly macro is tested, not a host substitute.
-Gameplay integration, arbitrary-coefficient fallback, and target timing
-remain pending. Setup/lookup and register pressure may erase any benefit;
-do not treat arithmetic correctness as a performance result.
+The gameplay integration was subsequently measured and rejected below.
+The isolated arithmetic probe remains available; it is not production code.
+
+## Rejected velocity reciprocal integration (2026-09-28)
+
+Integrated the exact macro for both velocity components, with a 113-entry
+multiplier/shift table selected once per normal physics quantum. Divisor
+32768 and out-of-range coefficients retain the original DIVS path. Force
+division, signed wrapped input multiplication, motion and collision order
+remain unchanged. This is a specific table/dispatch design, not proof that
+all possible reciprocal implementations are slower.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 148334 / 355 | 149631 / 351 |
+| F1 | 174139 / 426 | 175506 / 421 |
+| CITY | 144637 / 336 | 146102 / 336 |
+| WHACKO | 152236 / 392 | 153560 / 394 |
+
+Logs: `tmp/velocity-recip-{control,candidate}-20260928-*`. All final states
+match, but total work increases 0.79-1.01% on every track. The smaller
+BASIC/F1 sampled maxima do not compensate for the overall regression or
+establish a phase-independent improvement. Rejected; native DIVS production
+code and the normal executable were restored. Local integration archive:
+`tmp/velocity-recip-integration-20260928.patch`.
+
+The candidate passed 24000 native integration and 24000 blocked/clear ray
+oracle cases. Expanded integration coverage now explicitly requires all
+113 coefficient-derived divisors plus unsupported coefficients, alongside
+normal/coasting/special states, signed ticks, limits, full car state and ABI.
+That stronger test also passes on restored production. The isolated 917504
+input arithmetic test passes again. No in-game motion-shadow or display-audit
+completion is claimed for this rejected slower candidate. All owned timing
+emulators exited; no push was performed.
 
 ## Unchanged particle coordinates revisited (2026-09-28)
 
