@@ -57,6 +57,7 @@ commands
     quit 1
   end
   printf "SLICKS_DIRTY RANGES=%u ROWS=%u TOTAL_CALLS=%u TOTAL_ROWS=%u\n", g_slicks_diag_dirty_ranges, g_slicks_diag_dirty_rows, g_slicks_diag_dirty_c2p_calls, g_slicks_diag_dirty_c2p_rows
+  printf "INNER_PROFILE_ENABLED=%u (inner breakdowns require make INNER_PROFILE=1)\n",slicks_race_inner_profile_enabled
   printf "SLICKS_PROFILE STEP=%u AUDIO=%u C2P=%u DIAG=%u TOTAL=%u\n", g_slicks_diag_profile_step_vblanks, g_slicks_diag_profile_audio_vblanks, g_slicks_diag_profile_c2p_vblanks, g_slicks_diag_profile_diag_vblanks, g_slicks_diag_profile_total_vblanks
   printf "SLICKS_PROFILE_LINES STEP=%u AUDIO=%u C2P=%u DIAG=%u TOTAL=%u\n", g_slicks_diag_profile_step_lines, g_slicks_diag_profile_audio_lines, g_slicks_diag_profile_c2p_lines, g_slicks_diag_profile_diag_lines, g_slicks_diag_profile_total_lines
   printf "SLICKS_RACE_PHASES RESTORE=%u ADVANCE=%u UPDATE=%u HUD=%u DRAW=%u\n", g_slicks_diag_profile_restore_lines, g_slicks_diag_profile_advance_lines, g_slicks_diag_profile_update_lines, g_slicks_diag_profile_hud_lines, g_slicks_diag_profile_draw_lines

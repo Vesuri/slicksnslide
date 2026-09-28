@@ -5,6 +5,10 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 TRACK="${1:?track 0..3}"; LABEL="${2:?label}"
+# Sample normal gameplay by default, even after a detailed profiling build.
+# INNER_PROFILE=1 is an explicit instrumented control, never implicit state.
+make INNER_PROFILE="${INNER_PROFILE:-0}" -q 2>/dev/null ||
+  make INNER_PROFILE="${INNER_PROFILE:-0}" >/dev/null 2>&1 || exit 1
 RUN="$PWD/.run/pcprof-$LABEL"
 rm -f ../tmp/pc-samples-latest.bin
 FSUAE_RUN="$RUN" DEBUG_PORT="${DEBUG_PORT:-2394}" SLICKS_GAMEPLAY_BENCHMARK="$TRACK" \

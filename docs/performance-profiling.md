@@ -3,6 +3,90 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Inner profiling build controls (2026-09-28)
+
+Native `make` defaults to `INNER_PROFILE=0`: the race loop contains no
+inner phase callback checks. `make INNER_PROFILE=1` restores them. Host
+builds retain callbacks. Outer work timing remains available in both modes;
+all normal gameplay work stays inside the measured intervals.
+
+`bench_tracks.sh` selects mode 1 for detailed benchmark levels 1..7 and
+mode 0 for outer-only level 0 or PC sampling level 8. An explicit
+`INNER_PROFILE=1 ./bench_tracks.sh LABEL 0` measures the compiled-in control
+without executing inner callbacks. A detailed request with mode 0 is
+rejected. `pc_profile.sh` also builds mode 0 by default rather than silently
+sampling a previously instrumented build; an explicit environment override
+can select mode 1. Never run either builder while another session uses its
+ELF. Direct legacy gameplay/lap diagnostics need `make INNER_PROFILE=1` for
+inner stage breakdowns; they print whether those are available.
+
+`slicks_race_inner_profile_enabled` is published at race start. The
+benchmark checks this actual running-build value and rejects detailed
+results without callbacks, even if launched directly through `debug.sh`.
+The deliberately mismatched run fails as expected in
+`tmp/inner-invalid-runtime-20260928.log`; the script-level rejection is
+`tmp/inner-invalid-request-20260928.log`. The enabled detailed F1 run
+(`tmp/inner-profile-detail-20260928-1.log`) reports enabled=1, nonzero stage
+totals, 603 updates and the canonical final state. Its instrumented timings
+are not normal-build acceptance numbers.
+
+Mode stamps are published only after successful compilation. Missing stamps
+force the object rebuild independently of filesystem timestamp resolution;
+the opposite stamp is removed on success. This avoids the same-second
+switch-back bug found in the first stamp implementation. The final test
+sequence rebuilds 1->0->1->0, verifies each unchanged object is up to date,
+and injects a failing compiler during a 1->0 switch: the old object hash
+and mode-1 stamp remain unchanged, mode 0 stays absent, and the subsequent
+real switch succeeds (`tmp/inner-final-mode-tests-20260928.log`).
+
+Matched integrated builds (603 updates per track; all canonical states
+match) retain identical outer timing and aggregation:
+
+| Track | Compiled-in checks: work / worst | Compiled-out checks: work / worst |
+| --- | ---: | ---: |
+| BASIC | 155557 / 367 | 153391 / 363 |
+| F1 | 181550 / 449 | 179169 / 435 |
+| CITY | 151300 / 348 | 148964 / 345 |
+| WHACKO | 158723 / 411 | 156334 / 407 |
+
+Logs: `tmp/inner-{control,off}-integrated-20260928-{0,1,2,3}.log`.
+Native-initialized F1 blink phases, with actual remainder/build-mode
+readbacks and matching final states:
+
+| Phase | Compiled-in checks: work / worst | Compiled-out checks: work / worst |
+| --- | ---: | ---: |
+| 0 | 181544 / 449 | 179168 / 435 |
+| 1 | 181605 / 448 | 179242 / 440 |
+| 2 | 181508 / 427 | 179221 / 433 |
+| 3 | 181530 / 445 | 179183 / 432 |
+
+Logs: `tmp/inner-{control,off}-phase-20260928-{0,1,2,3}.log`.
+Total work improves in every phase, and the sampled maximum across phases
+falls 449->440. Phase 2's peak regresses six lines; the periodic work still
+lands on different updates as execution gets faster. Do not present the
+ordinary run's 435 as an upper bound. Host status-cache, dirty-tracking and
+surface-effects suites pass (`tmp/inner-profile-host-20260928.log`). Target
+display audits pass 600 updates each: F1 32 actors/2076 marks, CITY 18/1480,
+WHACKO 5/1854 (`tmp/inner-profile-audit-20260928-{1,2,3}.log`). No rendering
+order, retention policy or simulation algorithm is changed in this patch.
+
+The PC sampler also works with inner callbacks disabled: F1 completes 603
+updates with canonical state, 9842 samples and zero missed samples. Its
+matching trace/ELF are `tmp/pcprof-inner-integrated-20260928.{bin,elf}`.
+Instrumented work 199129 and peak 493 are NOT acceptance timings; the
+sampler adds roughly 11% over the corresponding uninstrumented work.
+The updated profile still shows car integration, wheel emission, sprite
+retention, point drawing/advancement and C2P as substantial consumers.
+
+`bash amiga/verify_profile_modes.sh` repeats the failure-recovery and rapid
+switch-back checks and leaves mode 0 built. Close sessions using the ELF
+first. This changes only the inner profiling mode; other diagnostic flags
+such as RETCHECK/SHADOW still require their documented forced rebuilds.
+The repeatable script passes (`tmp/inner-profile-build-regression-20260928.log`),
+including its expected compiler failure. The final mode-0 ELF is byte-for-byte
+identical to the archived sampler/audit build. Accepted; all owned emulator
+sessions are closed. The 312-line goal is still unmet.
+
 ## Inner profiling compile-out trial (2026-09-28)
 
 Trial only: make `profile_scope` return zero in native builds, retaining
@@ -26,10 +110,10 @@ controls. Build-mode switches must reliably invalidate affected objects;
 detailed benchmarks must not silently report missing callbacks as zeros.
 No new target display/reference audits have been run for this trial.
 
-The local patch is `tmp/inner-profile-off-20260928.patch`. Production is
-restored to the accepted HUD implementation pending proper build controls;
-the trial is neither rejected nor accepted yet. All trial benchmark
-emulators exited normally. Do not count this gain in accepted-build totals.
+The initial local patch is `tmp/inner-profile-off-20260928.patch`. Production
+was restored after that trial pending proper build controls. The integrated
+implementation and newer acceptance measurements above supersede the trial;
+do not substitute these initial numbers for the integrated-build results.
 
 ## Direct HUD-bar dirty bounds (2026-09-28)
 

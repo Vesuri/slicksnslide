@@ -13,16 +13,19 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh hud-bar-final-native-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 155611/366, F1 181548/449,
-CITY 151287/348, WHACKO 158706/408. Means are 16.1-19.3 ms; the
-worst updates in that run need 10-31% cuts. The verified F1 HUD-clock
-phase sweep also reaches 449 lines with this implementation. These are
+(`amiga/bench_tracks.sh inner-off-integrated-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 153391/363, F1 179169/435,
+CITY 148964/345, WHACKO 156334/407. Means are 15.8-19.1 ms; the
+worst updates in that run need 10-28% cuts. The verified F1 HUD-clock
+phase sweep reaches 440 lines (29% cut still needed). These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
-explain the maxima. Current CPU captures are
-`tmp/pcprof-current-{f1,whacko}-20260928`; their sampler overhead is not part
-of the acceptance numbers above. F1 is also slow without points.
+explain the maxima. The current F1 CPU capture is
+`tmp/pcprof-inner-integrated-20260928`; the latest WHACKO capture,
+`tmp/pcprof-current-whacko-20260928`, predates removal of inner profiling
+checks. Their sampler overhead is not part of the acceptance numbers above.
+F1 is also slow without points. Detailed inner profiling now requires
+`INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
 Method, tools and the cost model (Chip data access ~7
 cycles, cached instruction ~2.5, uncached code fetched from Chip) are in
 `docs/performance-profiling.md`. Every change: `amiga/bench_tracks.sh`
@@ -36,23 +39,10 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Compile inner phase profiling out of normal builds.** Measure removing
-  the dormant `profile_scope` checks and callbacks in the normal native
-  race loop, retaining an explicit detailed-profiling build. Keep host
-  diagnostic tests intact, ensure detailed benchmark modes select the
-  instrumented variant, and make build-mode changes invalidate the affected
-  objects. Outer timing must still measure all normal game work; the CIA
-  sampler must remain usable. Compare matching four-track controls and
-  fuel-blink phases before accepting. The local
-  `tmp/inner-profile-off-20260928.patch` trial improves all four ordinary
-  runs by 1.2-1.4%, with matching final states (work/worst: BASIC
-  153583/363, F1 179393/434, CITY 149169/345, WHACKO 156604/407).
-  Production is restored pending build controls, phase checks and target
-  verification. This is the next implementation task, not an accepted gain.
-
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Use the refreshed current F1/WHACKO CPU captures to choose further CPU
-  work; recent small changes alter which updates incur the largest work.
+  Use the current F1 CPU capture and refresh WHACKO after the profiling
+  compile-out when choosing further CPU work; recent small changes alter
+  which updates incur the largest work.
   The paired update-613 capture establishes a different fuel-blink phase;
   measure its cost separately rather than tuning cadence. Raster contention
   remains an unproven additional explanation. Keep F1 551 and 613 in scope.

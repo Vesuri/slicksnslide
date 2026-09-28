@@ -14,10 +14,24 @@
 #include "animated_boundary.h"
 #include "track_material_sample.h"
 
+#if defined(__m68k__) && !defined(SLICKS_INNER_PROFILE)
+#define SLICKS_HAVE_INNER_PROFILE 0
+#else
+#define SLICKS_HAVE_INNER_PROFILE 1
+#endif
+/* Published at race start so diagnostics verify the actual running build. */
+volatile unsigned char slicks_race_inner_profile_enabled;
+
 static inline int profile_scope(const struct SlicksRaceRuntime *race,unsigned scope)
 {
+#if SLICKS_HAVE_INNER_PROFILE
     return race->profile_marker && race->frame_count+1==race->profile_frame &&
         (!race->profile_scope || race->profile_scope==scope);
+#else
+    (void)race;
+    (void)scope;
+    return 0;
+#endif
 }
 
 #if defined(__m68k__)
@@ -3937,6 +3951,7 @@ int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
 int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
                       unsigned char *chunky)
 {
+    slicks_race_inner_profile_enabled=SLICKS_HAVE_INNER_PROFILE;
     unsigned short car;
     unsigned short direction;
     if (!race || !logical || !chunky || !race->navigation.zone_count ||

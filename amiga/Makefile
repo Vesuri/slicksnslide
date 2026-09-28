@@ -8,6 +8,12 @@ SDKDIR   = $(abspath $(dir $(shell which $(CC)))../m68k-amiga-elf/sys-include)
 SUPPORT  = $(abspath $(dir $(shell which $(CC)))../../support)
 REPO     = ..
 GAMEPLAY_CFLAGS ?= -O3
+INNER_PROFILE ?= 0
+ifneq ($(INNER_PROFILE),0)
+ifneq ($(INNER_PROFILE),1)
+$(error INNER_PROFILE must be 0 or 1)
+endif
+endif
 
 CCFLAGS  = -g -MP -MMD -m68020 -msoft-float -O2 -nostdlib \
 	-fomit-frame-pointer -fno-tree-loop-distribution \
@@ -31,6 +37,9 @@ ifeq ($(RETCHECK),1)
 CCFLAGS += -DSLICKS_RETENTION_CHECK
 endif
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
+ifeq ($(INNER_PROFILE),1)
+CCFLAGS += -DSLICKS_INNER_PROFILE
+endif
 
 OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/framework_runtime.o \
 	obj/framework_amiga_hardware.o obj/framework_bitmap.o \
@@ -65,6 +74,15 @@ OBJECTS += obj/point_restore.o
 .DELETE_ON_ERROR:
 
 all: $(OUT).exe
+
+# A missing mode stamp must force compilation even with equal one-second
+# timestamps (older make/macOS). Publish the stamp only after compilation
+# succeeds, so a failed switch cannot certify an object from the old mode.
+ifeq ($(wildcard obj/inner-profile-$(INNER_PROFILE).stamp),)
+INNER_PROFILE_FORCE = force-inner-profile
+.PHONY: force-inner-profile
+force-inner-profile:
+endif
 
 obj/point_restore.o: $(REPO)/src/game/point_restore.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
@@ -144,11 +162,14 @@ obj/track_scene.o: $(REPO)/src/game/track_scene.c \
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/race_runtime.o: $(REPO)/src/game/race_runtime.c Makefile \
+		$(INNER_PROFILE_FORCE) \
 		$(REPO)/src/game/sprite_retention.inc \
 		$(REPO)/src/game/race_runtime.h \
 		$(REPO)/src/ui/font_resource.h \
 		$(REPO)/src/game/track_scene.h | obj
 	$(CC) $(CCFLAGS) $(GAMEPLAY_CFLAGS) -c -o $@ $<
+	rm -f obj/inner-profile-0.stamp obj/inner-profile-1.stamp
+	touch obj/inner-profile-$(INNER_PROFILE).stamp
 
 obj/particle_runtime.o: $(REPO)/src/game/particle_runtime.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<

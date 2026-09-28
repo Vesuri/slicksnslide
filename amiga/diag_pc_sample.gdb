@@ -3,6 +3,7 @@
 break slicks_diag_gameplay_ready
 commands
   silent
+  printf "INNER_PROFILE_ENABLED=%u\n",slicks_race_inner_profile_enabled
   if g_slicks_diag_race_error || !g_slicks_diag_bench_frames || g_slicks_audio_vbi_spills || g_slicks_diag_audio_blank_spills
     printf "BENCHMARK_INVALID error=%u frames=%lu spills=%lu\n",g_slicks_diag_race_error,g_slicks_diag_bench_frames,g_slicks_audio_vbi_spills
     quit 1
