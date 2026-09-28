@@ -22,8 +22,13 @@ Logs: `tmp/direct-div-both-20260928-*` and
 `tmp/redundant-speed-20260928-*`. All four 603-update final states match.
 Total work falls 0.12-0.16%; over-budget counts are 61/211/33/77, versus
 62/212/37/80. WHACKO's maximum increases three lines: this is a small
-redundancy removal, not an across-the-board latency improvement. The earlier
-four-phase F1 maximum belongs to the parent, not this changed code layout.
+redundancy removal, not an across-the-board latency improvement. The refreshed
+F1 phase sweep gives work totals 177567/177625/177620/177655 and maxima
+430/437/430/441 lines for phases 0/1/2/3. Native remainder readbacks are
+0/819200/1638400/2457600 and final states match across all four 603-update
+runs. Logs: `tmp/redundant-speed-phase-20260928-{0,1,2,3}.log`.
+The worst observed phase is 441 lines, up from the parent's 437 despite the
+lower total work. Do not claim improved worst-case latency from this cleanup.
 
 Host physics and original-DOS damage/throttle suites pass. The composed DOS
 trajectory suite passes all nine numbered scenarios and BRIDGES/BUMPS,

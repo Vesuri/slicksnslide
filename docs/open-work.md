@@ -16,10 +16,9 @@ audio and rendering order. Latest benchmark
 (`amiga/bench_tracks.sh redundant-speed-20260928`, outer-only work lines
 per 603 updates / worst update): BASIC 152436/364, F1 177562/428,
 CITY 147694/343, WHACKO 155424/409. Means are 15.7-18.9 ms; the
-worst updates in that run need 9-27% cuts. The parent F1 HUD-clock
-phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
-final states across all four phases. Refresh that sweep after the redundant
-speed calculation removal before claiming a new phase-wide maximum. These are
+worst updates in that run need 9-27% cuts. The refreshed F1 HUD-clock
+phase sweep reaches 441 lines (28.3 ms, 29% cut needed), with matching
+final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1 CPU capture is
@@ -42,11 +41,6 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
-
-- **Refresh F1 HUD-phase coverage after redundant speed removal.** Run the
-  four native initial clock phases with `diag_benchmark_hud_phase.gdb`,
-  checking remainder readbacks and final states. Retain the worst phase in
-  the acceptance figures, not just the default-phase result.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing
