@@ -1,0 +1,67 @@
+Slicks'n'Slide - native Amiga port 0.1
+===================================
+
+Download this installer package and the original shareware Slix151.zip:
+https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip
+
+Unpack this LHA to disk, open its drawer and double-click Install. Select the
+original ZIP when asked; leave it compressed. The self-contained helper checks
+the supported publisher ZIP before extracting the two data files and 195 tracks.
+It never installs the DOS executable, DOSBox, configuration or a registration key.
+No host computer, external UnZip utility or PC emulator is needed to install/play.
+
+Requirements
+------------
+Standalone: PAL A1200, 68020, AGA, 2 MiB Chip RAM, AmigaOS 3.x and SetPatch.
+Installer 43+ is needed for the installation script; IconX launches Play from
+Workbench. These are Amiga system tools, not included in this archive.
+Close other applications on a 2 MiB machine. Allow about 1 MB free RAM for the
+extraction helper, at least 2 MB temporary DISK space and 3 MB destination space.
+Do not choose RAM: or T: as scratch on a memory-constrained Amiga.
+
+The optional WHDLoad icon requires WHDLoad 17+ and extra Fast RAM. The slave
+reserves 2 MiB Chip plus 1 MiB expansion memory and 512 KiB Kickstart space;
+the host OS, WHDLoad and PRELOAD need additional memory. Tested with 2 MiB Chip
+and 4 MiB Fast RAM, including PRELOAD. Standalone does not require WHDLoad.
+Supply your legally obtained Kickstart 3.1 image and matching RTB in
+Devs:Kickstarts (or WHDCOMMON:): kick40063.A600, kick40068.A1200 or
+kick40068.A4000, each accompanied by its .RTB file. Nothing is downloaded or
+redistributed by this installer. WHDLoad/RTB information: https://www.whdload.de/
+
+Playing
+-------
+Double-click Play for standalone, or SlicksWHDLoad if you chose that option.
+From a Shell: CD to the installed Slicks drawer, then Execute Play.
+The installed data/ drawer holds the native executable, original data, tracks,
+configuration, driver profiles, saved championships and optional SLICKS.REK.
+Both launch methods share these files. Keep the drawer writable.
+
+Menu controls: arrows, Enter, Escape; F1 for help. Configure drivers and controls
+in the original native menus. Exit through the menu to save pending changes.
+WHDLoad F10 quits immediately and cannot perform deferred game saves.
+Amiga Help replaces PC Scroll Lock for shop screenshots.
+
+Registration
+------------
+Support the original author by registering. Place your own valid SLICKS.REK in
+the installed data/ drawer. Shareware restrictions/reminders remain without it;
+valid registration enables the original registered functionality. Invalid keys
+are rejected. This package contains no key or bypass. Updating the port keeps
+keys and saves. Choose Keep when asked about existing data to preserve modified
+tracks/records; Reinstall replaces the 195 supplied tracks and both data files.
+Failed extraction does not replace installed files. If publication/copying
+fails due to disk space, retain the staging drawer and rerun the installer.
+
+Status and credits
+------------------
+This is a development release, not a 50 FPS guarantee. The display is PAL 50 Hz
+but heavy gameplay updates still exceed 20 ms. Manual hardware-joystick testing
+and exhaustive original-game compatibility are not complete.
+Original game: Timo Kauppinen. Amiga port: Vesa Halttunen (Vesuri).
+WHDLoad kick31/kickfs framework: WHDLoad SDK (public domain).
+ZIP DEFLATE decoding: Mark Adler's puff 2.3, zlib licence; see puff-license.txt
+in the installer drawer.
+Installer/icon conventions follow the Vette and Rescue on Fractalus projects.
+Further third-party acknowledgements are in the installer drawer's CREDITS.txt.
+No game data, registration keys, ROMs, RTBs, OS tools or WHDLoad binary are shipped.
+Source and detailed validation: https://github.com/Vesuri/slicks

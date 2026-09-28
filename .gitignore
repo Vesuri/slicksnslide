@@ -26,6 +26,7 @@ work/
 
 # Generated translator/build output.
 build/
+dist/
 src/gen/
 amiga/obj/
 amiga/out/

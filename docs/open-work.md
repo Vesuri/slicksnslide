@@ -3,6 +3,8 @@
 Updated 2026-09-28. Actionable open and deferred work only.
 Historical experiments, rejections and verification evidence are in
 [performance-profiling.md](performance-profiling.md).
+Installer/packaging evidence is in [release-verification.md](release-verification.md),
+with usage in [install-original-data.md](install-original-data.md).
 
 ## Goal and current measurements
 

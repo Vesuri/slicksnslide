@@ -1,0 +1,69 @@
+; Slicks native + optional WHDLoad installation, Installer V43+.
+(set @app-name "Slicks")
+(if (< @installer-version (* 43 65536))
+  (abort "This installation requires Amiga Installer 43 or newer."))
+(welcome)
+(set #source (pathonly @icon))
+(set @execute-dir #source)
+(set #whd
+  (askbool
+    (prompt "Install the optional WHDLoad launch icon as well as standalone Play?")
+    (help "Standalone Play needs AmigaOS 3.x, AGA and SetPatch. WHDLoad also needs WHDLoad 17+, a supported Kickstart 3.1 image/RTB and additional Fast RAM. Both use the same data and saves.")
+    (choices "Yes" "No") (default 0)))
+(if #whd
+  (if (<> 0 (run "cd SYS:\nWhich WHDLoad >NIL:"))
+    (abort "Install WHDLoad 17 or newer in the command path, or choose standalone installation.")))
+(set #parent
+  (askdir
+    (prompt "Where should Slicks be installed? A Slicks drawer will be created here.")
+    (help "Choose a hard disk with at least 3 MB free. Existing settings, records and registration keys are preserved.")
+    (default @default-dest)))
+(set #dest (tackon #parent "Slicks"))
+(set #data (tackon #dest "data"))
+(set #install-data 1)
+(if (and (exists (tackon #data "SLICKS.000")) (exists (tackon #data "SLICKS.DAT")))
+  (set #install-data
+    (askbool
+      (prompt "Reinstall original data and tracks, or keep the existing data?")
+      (help "Keep preserves modified tracks and their records. Reinstall replaces the 195 supplied tracks and both data files, but never configuration, profiles, championships or your key.")
+      (choices "Reinstall" "Keep") (default 0))))
+(if #install-data
+  (
+    (set #archive
+      (askfile (prompt "Select the downloaded Slix151.zip (leave it compressed).")
+        (help "Download Slix151.zip from https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip . No external UnZip program is required.")
+        (default "Slix151.zip")))
+    (set #temp
+      (askdir (prompt "Select a hard-disk temporary drawer with at least 2 MB free.")
+        (help "Use a disk drawer on a 2 MB Amiga. The helper needs about 1 MB RAM; staging on RAM: or T: can exhaust memory.")
+        (default #parent)))
+    (if (= @pretend 0)
+      ((set #attempt 0)
+       (set #stage (tackon #temp (".slicks-data-%ld" #attempt)))
+       (while (exists #stage)
+         ((set #attempt (+ #attempt 1))
+          (set #stage (tackon #temp (".slicks-data-%ld" #attempt)))))
+       (working "Checking the original ZIP and extracting data. Please wait.")
+       (set #result (run ("\"%s\" \"%s\" \"%s\"" (tackon #source "SlicksInstallData") #archive #stage)))
+       (if (<> #result 0)
+         (abort "Data extraction failed. Existing installation files have not been replaced. Check the ZIP, available RAM and disk space; see the helper error message."))
+       (makedir #dest (infos) (help @makedir-help))
+       (makedir #data (help @makedir-help))
+       (copyfiles (source #stage) (dest #data) (all) (help @copyfiles-help))
+       (delete #stage (all) (optional "force"))))))
+(makedir #dest (infos) (help @makedir-help))
+(makedir #data (help @makedir-help))
+(complete 80)
+(copyfiles (source (tackon #source "Slicks")) (dest #data) (help @copyfiles-help))
+(copyfiles (source (tackon #source "Play")) (dest #dest) (help @copyfiles-help))
+(copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Play.info") (help @copyfiles-help))
+(tooltype (dest (tackon #dest "Play")) (setdefaulttool "C:IconX") (setstack 16384) (noposition))
+(if #whd
+  ((copyfiles (source (tackon #source "Slicks.slave")) (dest #dest) (help @copyfiles-help))
+   (copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "SlicksWHDLoad.info") (help @copyfiles-help))
+   (tooltype (dest (tackon #dest "SlicksWHDLoad")) (setdefaulttool "WHDLoad")
+     (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "") (setstack 16384) (noposition))))
+(copyfiles (source (tackon #source "ReadMe")) (dest #dest) (infos) (help @copyfiles-help))
+(set @default-dest #dest)
+(complete 100)
+(exit)

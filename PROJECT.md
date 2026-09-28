@@ -21,6 +21,11 @@ identified registration gap is covered by [keyfile support](docs/registration-su
 Performance work is stopped at the user's request: sustained 20 ms updates on
 a stock A1200 have not been achieved.
 
+End-user installation now has an [Amiga installer package](docs/install-original-data.md)
+for the publisher's original Slix151.zip, with standalone and optional
+[WHDLoad](docs/whdload.md) launchers. Validation evidence is kept separately in
+[release-verification.md](docs/release-verification.md).
+
 See [setup evidence](docs/player-setup-completion.md) and
 [audio evidence](docs/audio-channel-plan.md), and
 [championship evidence](docs/championship-save-resume.md), plus current

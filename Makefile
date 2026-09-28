@@ -1465,10 +1465,17 @@ amiga-run: amiga
 amiga-debug: amiga
 	cd amiga && . ./env.sh && ./debug.sh
 
-RELEASE_ARCHIVE ?= build/release/slicks-$(shell git rev-parse --short HEAD).zip
-.PHONY: release-package
-release-package: amiga
-	$(PYTHON) tools/package_release.py $(RELEASE_ARCHIVE)
+RELEASE_DIR ?= dist
+.PHONY: release-package dist install-data-helper
+install-data-helper:
+	$(MAKE) -C tools/install-data
+release-package dist: amiga
+	. amiga/env.sh && $(MAKE) -C tools/install-data amiga
+	$(MAKE) -C whdload
+	mkdir -p build/release
+	. amiga/env.sh && elf2hunk amiga/out/SlicksDiag.elf build/release/Slicks -s
+	$(PYTHON) tools/package_release.py build/release/Slicks $(RELEASE_DIR)
+	$(PYTHON) tools/check_release.py $(RELEASE_DIR)/Slicks-$(shell cat VERSION).lha
 
 amiga-check: amiga
 	cd amiga && . ./env.sh && ./diag_run.sh
