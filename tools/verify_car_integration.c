@@ -38,11 +38,18 @@ int main(int argc,char **argv){
     const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
     if(CAR_SIZE+32>512)return 2;
-    for(unsigned t=0;t<12000;++t){
+    for(unsigned t=0;t<24000;++t){
         unsigned char image[512],expected[512],got[512],stack[20],meta[4];
         for(unsigned i=0;i<512;++i)image[i]=rnd();
         struct SlicksRaceCar car={0};
         car.x=300+rnd()%31401;car.y=300+rnd()%17601;
+        /* Reused pixel coordinates must be repaired by clamping even for
+         * noncanonical initial positions; include both signed-long edges. */
+        static const int edges[]={-2147483647-1,-101,-1,0,299,300,301,
+            17899,17900,17901,31699,31700,31701,2147483647};
+        if(t>=12000 && t%13==0) {
+            car.x=edges[(t/13)%14];car.y=edges[(t/13+5)%14];
+        }
         car.speed_fixed=(int)(rnd()%23001)-3000;
         car.velocity_x=(int)(rnd()%12001)-6000;car.velocity_y=(int)(rnd()%12001)-6000;
         car.heading=rnd()%19200;car.damage[0]=rnd()%1000;
@@ -73,8 +80,10 @@ int main(int argc,char **argv){
         be32(stack,STOP);be32(stack+4,RACE);be32(stack+8,CAR+16);be32(stack+12,ticks);be32(stack+16,active);
         ck(uc_mem_write(u,STACK,stack,20));unsigned sp=STACK;ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         unsigned values[11];for(unsigned i=0;i<11;++i){values[i]=0xa5000000u+i*0x10101u+t;ck(uc_reg_write(u,regs[i],values+i));}
-        uc_err e=uc_emu_start(u,CODE,STOP,0,100000);
+        uc_err e=uc_emu_start(u,CODE,STOP,0,2000000);
         if(e){unsigned pc;uc_reg_read(u,UC_M68K_REG_PC,&pc);fprintf(stderr,"case %u pc=%x ",t,pc);ck(e);}
+        unsigned pc;ck(uc_reg_read(u,UC_M68K_REG_PC,&pc));
+        if(pc!=STOP){fprintf(stderr,"Case %u did not return: pc=%x (instruction limit)\n",t,pc);return 1;}
         ck(uc_mem_read(u,CAR,got,512));
         if(memcmp(got,expected,512)){for(unsigned i=0;i<512;++i)if(got[i]!=expected[i]){fprintf(stderr,"Case %u byte %u got %u expected %u\n",t,i,got[i],expected[i]);break;}return 1;}
         ck(uc_mem_read(u,RACE+RACE_COLLISION_ERROR,meta,1));if(meta[0]!=race.collision_error)return 1;
@@ -82,5 +91,5 @@ int main(int argc,char **argv){
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=values[i])return 1;}
     }
-    uc_close(u);puts("Car integration: 12000 no-wall normal/coast/special, signed ticks, sampling, clamps, full-car canaries and ABI cases pass");return 0;
+    uc_close(u);puts("Car integration: 24000 no-wall normal/coast/special, signed ticks, sampling, signed-long position edges, clamps, full-car canaries, completed returns and ABI cases pass");return 0;
 }

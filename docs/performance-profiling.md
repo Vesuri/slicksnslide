@@ -3,6 +3,50 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected within-call car pixel-coordinate reuse (2026-09-28)
+
+Tested carrying each physics quantum's final x/100 and y/100 into the next
+quantum, replacing the next pair of reciprocal divisions. The trial kept
+the exact initial divisions, recomputed after a blocked-ray response and
+repaired cached values at all four position clamps. It added four bytes of
+coordinate storage plus stack-frame alignment. Simulation order and the
+original collision-output/loop-counter alias were unchanged.
+
+| Track | Parent work / worst | Initial trial | End-tested loop revision |
+| --- | ---: | ---: | ---: |
+| BASIC | 153390 / 365 | 153461 / 363 | 153193 / 362 |
+| F1 | 178463 / 432 | 178598 / 439 | 178330 / 440 |
+| CITY | 148559 / 344 | 148668 / 345 | 148401 / 344 |
+| WHACKO | 156342 / 406 | 156449 / 408 | 156180 / 408 |
+
+Each run has 603 updates and matching final states. Parent game code is
+d096904. Logs: `tmp/car-coordinate-{reuse,loop}-20260928-{0,1,2,3}.log`.
+The revision tested the loop at its end and copied coordinates only when
+another quantum would run. Its total savings are only 0.07-0.13%; F1 and
+WHACKO peaks do not improve. No trial phase sweep was run; F1's 440 equals
+the parent's already-known phase maximum. Rejected and production restored;
+archive `tmp/car-coordinate-reuse-20260928.patch` includes the final trial.
+Do not repeat the earlier per-call force-invariant stack cache either: its
+similarly small measured result is recorded under car force-vector experiments.
+
+Native integration and ray oracles pass the trial. Extended position tests
+initially stopped case 9633 at the old 100000-instruction budget while its
+long ray was still executing. Raising the limit to 2000000 and requiring
+PC to reach the return sentinel made the full comparison pass; no native
+algorithm change was needed to resolve that harness failure. The retained
+oracle now preserves the original 12000 vectors and adds 12000 more,
+including clamp-adjacent and signed-long-extreme initial positions. It checks
+complete car bytes, surrounding canaries, metadata, completed return, stack
+and callee-saved registers. It remains a **non-blocking integration** oracle;
+the separate 24000-case ray oracle covers blocked probes, not the full C
+collision-response path. No target shadow/display pass is claimed for this
+rejected optimization.
+
+Logs: `tmp/car-coordinate-reuse-{oracle,edge-oracle,edge-complete}-20260928.log`,
+`tmp/car-coordinate-loop-{oracle,expanded-oracle}-20260928.log`, and the
+restored accepted-code check `tmp/car-coordinate-restored-oracle-20260928.log`.
+The normal executable was restored; all owned benchmark sessions exited.
+
 ## Current worst-update dirty-publication replay (2026-09-28)
 
 On accepted game code d096904, read-only debugger captures include initial
