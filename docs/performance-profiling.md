@@ -3,6 +3,53 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Current worst-update dirty-publication replay (2026-09-28)
+
+On accepted game code d096904, read-only debugger captures include initial
+rectangles, all native dirty publications through presentation, final lists,
+sparse counts and HUD-clock snapshots. All four replays reproduce the final
+lists exactly under strict-overlap merging. Logs are local-only:
+`tmp/dirty-current-{0-219,1-551,2-146,3-685}-20260928.log`. The muted sessions
+exited. These interrupted runs are geometry evidence, NOT timing runs;
+debugger stops affect the HUD's vblank-derived phase.
+
+| Track/update | Raw union | 16-pixel aligned union | Actual rectangles | Hypothetical 8-pixel rectangles |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC 219 | 281 | 624 | 624 | 464 |
+| F1 551 | 270 | 576 | 624 | 608 |
+| CITY 146 | 250 | 448 | 448 | 344 |
+| WHACKO 685 | 355 | 880 | 880 | 648 |
+
+Units are pixels. Initial lists were empty. Captures contain 10/9/9/14
+publications, respectively. Only F1 incurs merge inflation here (48 pixels);
+no capacity fallback occurs. The 8-pixel column is an offline strict-overlap
+replay with the same publication order, not a converter implementation or
+measured speedup. It saves little on this F1 capture because the unions
+still span the same car group. The existing replay tool now prints this
+explicitly labelled hypothesis and tests its clipping/alignment boundaries.
+Reproduce with `tools/dirty_publications.py --self-test --policy strict LOG`.
+
+The *uninterrupted* accepted benchmark separately records C2P-phase duration
+at each maximum-work update. Inspection of the snapshot assignment confirms
+these durations belong to that update, not independent per-stage maxima:
+
+| Track | Worst work | C2P phase | Other work, by subtraction |
+| --- | ---: | ---: | ---: |
+| BASIC | 365 | 29 | 336 |
+| F1 | 432 | 27 | 405 |
+| CITY | 344 | 23 | 321 |
+| WHACKO | 406 | 32 | 374 |
+
+Units are PAL raster lines; source logs are
+`tmp/retention-address-revisit-20260928-{0,1,2,3}.log`. The C2P interval includes
+sparse pruning, sparse conversion and rectangle conversion, not just the
+butterfly transpose. Holding other work fixed, removing that entire interval
+would still miss 312 on every track. This is budget arithmetic, not a
+prediction of a real zero-C2P build (scheduling/contention could change).
+Prioritize simulation/particle work; another rectangle-merge policy is not
+supported by these particular captures. An 8-pixel converter remains a
+possible secondary experiment, not a completed or rejected implementation.
+
 ## Rejected precomputed vehicle surface limits (2026-09-28)
 
 Built an 800-byte derived table outside the authoritative simulation window:

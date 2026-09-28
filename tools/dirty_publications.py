@@ -6,12 +6,13 @@ from collections import Counter
 from pathlib import Path
 
 
-def clipped(r):
+def clipped(r, alignment=16):
+    assert alignment in (8, 16)
     l, t, r, b = r
     l, t, r, b = max(0, l), max(0, t), min(320, r), min(200, b)
     if l >= r or t >= b:
         return None
-    return l & ~15, t, (r + 15) & ~15, b
+    return l & -alignment, t, (r + alignment - 1) & -alignment, b
 
 
 def union(a, b):
@@ -69,6 +70,8 @@ def main():
         assert rows == [(0, 0, 80, 10)]
         assert clipped((-2, -1, 17, 3)) == (0, 0, 32, 3)
         assert clipped((320, 0, 340, 1)) is None
+        assert clipped((9, 2, 17, 3), 8) == (8, 2, 24, 3)
+        assert clipped((313, 199, 330, 210), 8) == (312, 199, 320, 200)
         separate = [(0, 0, 16, 4)]
         publish(separate, (16, 2, 32, 4), 16, strict=True)
         assert len(separate) == 2
@@ -111,6 +114,17 @@ def main():
     for _, request in requests:
         publish(strict, clipped(request), args.limit, strict=True)
     print(f'STRICT_OVERLAP converted={sum(map(area, strict))} rows={strict}')
+    # Hypothesis only: preserve initial regions, whose original paint bounds
+    # are unavailable. No measured speedup or eight-pixel converter implied.
+    eight = initial.copy()
+    aligned_eight = initial.copy()
+    for _, request in requests:
+        r = clipped(request, 8)
+        if r:
+            aligned_eight.append(r)
+        publish(eight, r, args.limit, strict=True)
+    print(f'EIGHT_PIXEL_HYPOTHESIS aligned_union={len(pixels(aligned_eight))} '
+          f'converted={sum(map(area, eight))} rows={eight}')
 
 
 if __name__ == '__main__':

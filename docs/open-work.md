@@ -51,7 +51,7 @@ Candidate fixes, roughly in order of expected value per effort:
   Use the correctly indexed CPU profiles in `tmp/pcprof-indexed-{0,f1,2,3}-20260927`
   as the pre-group baseline; refreshed post-group F1/WHACKO captures are
   `tmp/pcprof-postgroups-{f1,whacko}-20260927`. Target BASIC updates 209/219,
-  CITY 506, F1 481/613 and WHACKO 685. Retain F1 507
+  CITY 146/506, F1 481/613 and WHACKO 685. Retain F1 507
   (group-rebuild regression probe), CITY 700,
   F1 551 and BASIC 409/F1 482/WHACKO 688 as regression probes.
   Pre/post particle counts and dirty regions for all four are recorded in
@@ -121,11 +121,15 @@ Candidate fixes, roughly in order of expected value per effort:
   site per replaced function.
 
 - **Further C2P area reduction.** The rectangle converter now handles
-  16-pixel columns. Investigate how often old and new car rectangles
-  merge into excessive areas, especially at the worst-update transitions;
-  measure alternative merge policies without losing dirty coverage. Use
+  16-pixel columns. Lower priority than simulation/particle work: even the
+  full measured C2P phase is smaller than the excess budget on each current
+  worst update. Four current publication replays show little merge inflation;
+  do not repeat an area-aware merge experiment without new evidence. An
+  8-pixel-aligned converter may reduce BASIC/CITY/WHACKO area, but has little
+  benefit on the captured F1 551 group; it needs an actual native converter,
+  complete dirty-coverage tests and target measurements before acceptance. Use
   `diag_dirty_publications.gdb` and `tools/dirty_publications.py --policy strict`
-  on the remaining maxima (especially F1 551) to distinguish necessary
+  on newly identified maxima or different phases to distinguish necessary
   changed area from merge inflation before designing another policy.
   Include initial rectangles and platform-side publications, not only
   calls inside the race step. Keep update 481 as a regression probe.
