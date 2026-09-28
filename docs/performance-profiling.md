@@ -3,6 +3,60 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Native car-progress block: standalone screen closed (2026-09-28)
+
+`car_progress.s` implements actual clock advancement, checkpoint geometry,
+layer selection and lap-clock recording, sharing full signed coordinates
+between stages. The ordinary path calls none of the old C arithmetic helpers.
+Only uncommon checkpoint flag/limit and post-lap sound/ranking/reward side
+effects remain C bridges. Coordinate division is repeated after the first
+bridge, preserving callback invalidation. Independent scalar helpers remain
+unchanged. An initial layout error treated the inline track maps as pointers;
+it was fixed to use LEA and inline-array oracle images before any live run.
+
+The quick native oracle passes 4096 full 256-KiB target-state comparisons,
+including 2461 checkpoint callbacks and 430 lap callbacks. It uses scalar
+advance_car_clock, advance_checkpoint, update_actor_layer and record_lap_clock
+for expected arithmetic. Cold callbacks deliberately mutate coordinates,
+layer/special state and clock data and clobber volatile registers. Native
+callback-entry state/order/arguments, return sentinel, stack and callee-saved
+registers are checked. The side effects themselves are synthetic, not a
+substitute for real flag/Arcade/reward validation. Signed-long coordinate
+extremes, word narrowing, wrapping counters, low-word clock clamping and
+finished entrants are included.
+
+After that smoke pass, the actual side-effect bridges were integrated and
+screened on all four normal tracks before expensive live shadow validation:
+
+| Track | Accepted control work / worst | Standalone block work / worst |
+| --- | ---: | ---: |
+| BASIC | 142797 / 348 | 142756 / 348 |
+| F1 | 167647 / 410 | 167169 / 414 |
+| CITY | 138919 / 327 | 138350 / 326 |
+| WHACKO | 146639 / 369 | 146527 / 368 |
+
+603 updates per run; all final states match. Controls are the accepted
+bounded-scan standard runs `tmp/sprite-bound-screen-20260928-*`; the exact
+control executable pair is `tmp/car-progress-control-20260928.{elf,exe}`.
+Candidate logs: `tmp/car-progress-screen-20260928-{0,1,2,3}.log`, archived
+candidate executable pair: `tmp/car-progress-candidate-20260928.{elf,exe}`.
+Savings are only 0.03%, 0.29%, 0.41% and 0.08%; F1's sampled maximum is
+worse (also one line above the control's known 413 phase envelope). This
+standalone integration is not accepted. No expensive live shadows or display
+audits were run; no real finish-side-effect equivalence is claimed. Widening
+the native finishing pass is the next design, not further tiny variants here.
+
+The integration patch and exact measured assembly remain local:
+`tmp/car-progress-standalone-integration-20260928.patch` and
+`tmp/car-progress-standalone-20260928.s`. Production integration is restored;
+every loadable ELF section matches the accepted control byte-for-byte. All
+owned emulators closed (an unrelated Downwell session was left untouched).
+The reusable isolated source now exposes a direct register entry whose caller
+owns the save frame. The updated oracle passes 4096 cases split between C
+and register entry points: `tmp/car-progress-register-oracle-20260928.log`.
+This final entry refactor has not been timed in gameplay. The source, layout
+assertion and independent test remain available for the larger pass.
+
 ## Post-bound CPU profiles and simulation focus (2026-09-28)
 
 Fresh profiles from accepted 7eeeb1f complete on F1 and WHACKO, 603 updates

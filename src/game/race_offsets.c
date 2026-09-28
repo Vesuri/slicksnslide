@@ -2,6 +2,9 @@
  * equate, so native routines use the compiler's own structure layout. */
 #include "race_runtime.h"
 
+_Static_assert(sizeof(struct SlicksTrackCheckpoint)==6,
+    "native progress checkpoint stride");
+
 #define OFFSET(name, type, member) __asm__ volatile( \
     "\n@@" #name " equ %c0" :: "i"(__builtin_offsetof(type, member)))
 #define VALUE(name, value) __asm__ volatile( \
@@ -230,6 +233,21 @@ void slicks_race_offsets(void)
     OFFSET(CAR_FUEL, struct SlicksRaceCar, fuel);
     OFFSET(CAR_SPEED, struct SlicksRaceCar, speed);
     OFFSET(CAR_FINISHED, struct SlicksRaceCar, finished);
+    OFFSET(RACE_CHECKPOINTS, struct SlicksRaceRuntime, navigation.checkpoints);
+    OFFSET(RACE_CHECKPOINT_COUNT, struct SlicksRaceRuntime, navigation.checkpoint_count);
+    OFFSET(CAR_ELAPSED_UNITS, struct SlicksRaceCar, elapsed_time_units);
+    OFFSET(CAR_CURRENT_LAP_UNITS, struct SlicksRaceCar, current_lap_time_units);
+    OFFSET(CAR_LAST_LAP_UNITS, struct SlicksRaceCar, last_lap_time_units);
+    OFFSET(CAR_BEST_LAP_UNITS, struct SlicksRaceCar, best_lap_time_units);
+    OFFSET(CAR_ELAPSED_CENTISECONDS, struct SlicksRaceCar, elapsed_centiseconds);
+    OFFSET(CAR_CURRENT_LAP_CENTISECONDS, struct SlicksRaceCar, current_lap_centiseconds);
+    OFFSET(CAR_LAST_LAP_CENTISECONDS, struct SlicksRaceCar, last_lap_centiseconds);
+    OFFSET(CAR_BEST_LAP_CENTISECONDS, struct SlicksRaceCar, best_lap_centiseconds);
+    OFFSET(CAR_CHECKPOINT, struct SlicksRaceCar, checkpoint);
+    OFFSET(CAR_LAP, struct SlicksRaceCar, lap);
+    OFFSET(CAR_SELECTED_SURFACE, struct SlicksRaceCar, selected_surface);
+    OFFSET(CAR_EFFECTIVE_SURFACE, struct SlicksRaceCar, effective_surface);
+    OFFSET(CAR_OIL_ACTIVE, struct SlicksRaceCar, oil_active);
     OFFSET(CAR_AI_CONTROL_LATCH, struct SlicksRaceCar, ai_control_latch);
     OFFSET(CAR_MAXIMUM_SPEED, struct SlicksRaceCar, maximum_speed);
     OFFSET(CAR_STEERING_SCALE, struct SlicksRaceCar, steering_scale);

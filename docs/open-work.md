@@ -57,16 +57,20 @@ blocks. Do not return to particle/C2P experiments before pursuing this work.
    Surface-table/cache/fusion experiments are closed; do not spend further
    iterations on that narrow family. Previous isolated assembly or C
    experiments do not settle the value of a larger register-oriented design.
-   Current isolated candidate: `src/game/car_progress.s` directly implements
-   the contiguous clock/checkpoint/layer/lap-clock sequence, with one saved
-   register frame and coordinate reuse. Rare checkpoint and finish side
-   effects remain C bridges, with coordinates reloaded after checkpoint
-   callbacks. It assembles but is not linked into gameplay or verified yet.
-   Next: independent raw-target-state/ABI oracle using the scalar clock,
-   checkpoint and layer helpers, signed/unsigned narrowing boundaries,
-   wrapping counters, low-word display clamping, finished entrants and
-   deliberately mutating callbacks. Then real bridge integration and quick
-   timing before live shadows. Preserve stateful lap-limit query order.
+   Next: widen the native finishing pass instead of adding the isolated
+   clock/checkpoint/layer/lap-clock block as a separate C call. Use
+   `src/game/car_progress.s`'s tested register entry inside a shared frame.
+   Include actual measured-speed, special-state and AI-contact arithmetic,
+   then reduce save/restore traffic at wheel-emission and pair-collision
+   boundaries. Do not merely wrap the old helper chain. Keep emission,
+   progress, collision, surface/damage/effects and final contact-latch order.
+   The isolated block's 4096-case oracle covers both C/register entries,
+   wrapping clocks, signed coordinates, layer/finish narrowing and mutating
+   cold callbacks; it is not linked into gameplay. Its standalone timing
+   screen is closed, not a reason to reject a broader native finishing pass.
+   Integration still needs real flag/Arcade/finish side-effect comparisons,
+   stateful lap-limit query order and external reward callback handling in
+   the shadow harness. Screen performance before those expensive runs.
 
 4. **C2P/publication, secondary priority.** Only pursue a new design with
    evidence of reduced total memory/instruction cost. The eight-pixel/hybrid

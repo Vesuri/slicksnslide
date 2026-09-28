@@ -1268,6 +1268,16 @@ build/verify_actor_advance: tools/verify_actor_advance.c src/game/race_runtime.c
 verify-actor-advance: build/actor_advance.bin build/verify_actor_advance build/offsets/race_offsets.i
 	build/verify_actor_advance build/actor_advance.bin build/offsets/race_offsets.i
 
+build/car_progress.bin: tools/car_progress_test.s src/game/car_progress.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/verify_car_progress: tools/verify_car_progress.c src/game/race_runtime.c src/game/race_runtime.h src/game/signed_division.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-car-progress
+verify-car-progress: build/car_progress.bin build/verify_car_progress build/offsets/race_offsets.i
+	build/verify_car_progress build/car_progress.bin build/offsets/race_offsets.i
+
 build/emission_scan.bin: tools/emission_scan_test.s src/game/car_emission.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
