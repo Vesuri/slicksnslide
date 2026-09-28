@@ -1,12 +1,13 @@
 /* Native pair loop versus the existing DOS-backed scalar resolver.
- * Inputs here keep signed arithmetic within range; wrap extremes need a
- * separate explicit-width oracle before production acceptance. */
+ * Normal/boundary cases use the scalar resolver; extreme arithmetic uses
+ * a separate explicit-width, uncached oracle. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include "../src/game/race_runtime.c"
 #include <unicorn/unicorn.h>
+#include "car_collision_fixed32.h"
 static void ck(uc_err e){if(e){fprintf(stderr,"%s\n",uc_strerror(e));exit(2);}}
 static unsigned off(const char *path,const char *name){
     FILE *f=fopen(path,"r");char line[256];if(!f)exit(2);
@@ -38,7 +39,8 @@ int main(int argc,char **argv){
     const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
     unsigned impulses=0,disabled=0,inactive=0,boundary_hits=0,boundary_misses=0;
     const unsigned boundary_cases=4*3*4*3*2*4*3;
-    for(unsigned t=0;t<12000+boundary_cases;++t){
+    unsigned wrap_impulses=0,wrap_cases=4096;
+    for(unsigned t=0;t<12000+boundary_cases+wrap_cases;++t){
         memset(&race,0,sizeof race);memset(image,0xa5,sizeof image);
         race.participation_ready=t%5!=0;race.car_collisions_disabled=t%17==0;
         race.collision_count=19;race.collision_impact=rnd()%500;
@@ -53,9 +55,17 @@ int main(int argc,char **argv){
             c->collision_impact=rnd()%100;c->pending_damage_impact=rnd()%100;
         }
         if(t%11==0)for(unsigned i=0;i<4;++i){race.cars[i].x=10000;race.cars[i].y=8000;race.cars[i].velocity_x=race.cars[i].velocity_y=0;race.cars[i].actor_layer=0;race.participation[i]=1;}
+        if(t==0){
+            /* First impulse reverses the probe: only recomputation can
+             * discover the later opponent while suppressing a second hit. */
+            current=3;race.car_collisions_disabled=0;race.participation_ready=1;
+            for(unsigned i=0;i<4;++i){memset(&race.cars[i],0,sizeof race.cars[i]);race.participation[i]=i==2?0:1;race.cars[i].x=race.cars[i].y=1000;}
+            race.properties[0].collision_radius=2;race.properties[0].collision_weight=18;
+            race.cars[3].velocity_x=1000;race.cars[0].x=1100;race.cars[0].velocity_x=-1000;race.cars[1].x=900;
+        }
         int boundary_hit=-1,boundary_latch=0,boundary_disabled=0;
         unsigned boundary_other=0;
-        if(t>=12000){
+        if(t>=12000 && t<12000+boundary_cases){
             unsigned q=t-12000;current=q%4;q/=4;
             unsigned other=q%3;q/=3;if(other>=current)++other;
             unsigned edge=q%4;q/=4;int distance=(int)(q%3)-1;q/=3;
@@ -75,6 +85,22 @@ int main(int argc,char **argv){
             else b->y+=(edge==2?-1:1)*(100+distance);
             boundary_hit=gate==0 && distance<=0;boundary_latch=latch;boundary_disabled=gate==3;boundary_other=other;
         }
+        if(t>=12000+boundary_cases){
+            static const int32_t velocities[]={INT32_MIN,INT32_MAX,0,1,-1,1073741824,-1073741824,300000001,-300000001,2147483000,-2147483000};
+            race.car_collisions_disabled=0;race.participation_ready=1;
+            for(unsigned i=0;i<4;++i){
+                struct SlicksRaceCar *c=&race.cars[i];race.participation[i]=1;c->actor_layer=0;c->touching_car=0;
+                c->velocity_x=velocities[(t+i)%11];c->velocity_y=velocities[(t/11+i*3)%11];
+                c->x=(t&1)?pair_s32((uint32_t)rnd()<<8):10000;c->y=(t&1)?pair_s32((uint32_t)rnd()<<8):8000;
+            }
+            struct SlicksRaceCar *a=&race.cars[current];
+            int32_t den=pair_add(pair_div(pair_add(pair_abs((int32_t)a->velocity_x),pair_abs((int32_t)a->velocity_y)),2),1);
+            /* Exclude undefined DIVS inputs, not successful wrapped results. */
+            if(den==0 || den==-1){a->velocity_y=0;den=pair_add(pair_div(pair_abs((int32_t)a->velocity_x),2),1);}
+            unsigned other=(current+1)%4;
+            race.cars[other].x=pair_add((int32_t)a->x,pair_div(pair_mul((int32_t)a->velocity_x,10),den));
+            race.cars[other].y=pair_add((int32_t)a->y,pair_div(pair_mul((int32_t)a->velocity_y,10),den));
+        }
 #define PACK(buf) do { \
     (buf)[RACE_PAIR_DISABLED]=race.car_collisions_disabled;(buf)[RACE_PARTICIPATION_READY]=race.participation_ready; \
     b32((buf)+RACE_PAIR_COUNT,race.collision_count);b32((buf)+RACE_PAIR_IMPACT,race.collision_impact); \
@@ -87,7 +113,17 @@ int main(int argc,char **argv){
 }while(0)
         PACK(image);memcpy(expected,image,N);ck(uc_mem_write(u,RACE,image,N));
         disabled+=race.car_collisions_disabled;inactive+=!driver_role(&race,current);
-        slicks_race_resolve_car_collisions(&race,(unsigned short)current);impulses+=race.collision_count-19;PACK(expected);
+        if(t>=12000+boundary_cases){fixed_pair_reference(&race,current);wrap_impulses+=race.collision_count-19;}
+        else {
+            struct SlicksRaceCar before[4];memcpy(before,race.cars,sizeof before);
+            unsigned long before_count=race.collision_count,before_impact=race.collision_impact;
+            slicks_race_resolve_car_collisions(&race,(unsigned short)current);PACK(expected);
+            memcpy(race.cars,before,sizeof before);race.collision_count=before_count;race.collision_impact=before_impact;
+            fixed_pair_reference(&race,current);memcpy(got,image,N);PACK(got);
+            if(memcmp(got,expected,N)){fprintf(stderr,"Fixed-width/scalar disagreement case=%u\n",t);return 1;}
+        }
+        impulses+=race.collision_count-19;PACK(expected);
+        if(t==0 && (race.collision_count!=20 || race.cars[3].collision_partner!=1 || !race.cars[1].touching_car))return 1;
         if(boundary_hit>=0){
             unsigned expected_touch=boundary_disabled?(unsigned)boundary_latch:(unsigned)boundary_hit;
             unsigned expected_count=19+(boundary_hit && !boundary_latch);
@@ -105,6 +141,7 @@ int main(int argc,char **argv){
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned k=0;k<11;++k){unsigned v;ck(uc_reg_read(u,regs[k],&v));if(v!=values[k])return 1;}
     }
-    if(!impulses||!disabled||!inactive||!boundary_hits||!boundary_misses)return 1;
-    ck(uc_close(u));printf("Native car pairs: 12000 random + %u boundary full-image/ABI cases, %u impulses, %u disabled and %u inactive; boundary hits=%u misses=%u pass\n",boundary_cases,impulses,disabled,inactive,boundary_hits,boundary_misses);return 0;
+    if(!impulses||!disabled||!inactive||!boundary_hits||!boundary_misses||!wrap_impulses)return 1;
+    printf("Fixed-width car pairs: %u extreme cases, %u impulses, wrapped products/sums/bounds and uncached probes pass\n",wrap_cases,wrap_impulses);
+    ck(uc_close(u));printf("Native car pairs: 12000 random/targeted + %u boundary + %u extreme full-image/ABI cases, %u impulses, %u disabled and %u inactive; boundary hits=%u misses=%u pass\n",boundary_cases,wrap_cases,impulses,disabled,inactive,boundary_hits,boundary_misses);return 0;
 }
