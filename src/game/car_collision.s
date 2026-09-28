@@ -1,4 +1,4 @@
-; Isolated native candidate, not yet linked into gameplay.
+; Native whole-loop car-pair resolver; diagnostic reference is shadow site 8.
 ; C ABI: slicks_resolve_car_pairs(race, current unsigned short).
 ; One save frame covers all four opponents; no helper calls or stacked
 ; parameters inside the loop. Positions are never separated.

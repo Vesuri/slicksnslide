@@ -3,6 +3,106 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Native car-pair integration accepted after phase sweep (2026-09-28)
+
+All four tracks pass 2412 site-8 comparisons each (9648 total), zero
+state mismatches/race errors and canonical final states. The runner exits
+zero, closes its emulators and restores the normal build. The isolated
+19552-case oracle and existing collision fixtures remain separate evidence.
+
+F1 HUD phase comparisons against the same pre-integration gameplay code:
+
+| Phase | Control work / worst | Native pairs work / worst |
+| --- | ---: | ---: |
+| 0 | 174111 / 428 | 172840 / 426 |
+| 1 | 174202 / 429 | 172866 / 415 |
+| 2 | 174117 / 417 | 172856 / 415 |
+| 3 | 174108 / 417 | 172854 / 429 |
+
+Logs: `tmp/oldxy-candidate-phase-20260928-*` and
+`tmp/car-pairs-phase-20260928-*`. All four phase remainders are verified
+before timing; every final state matches. Total work decreases in every
+phase, but phase 3's maximum regresses by 12 lines, at update 613 instead
+of 551. The four-phase envelope is unchanged at 429, not the first ordinary
+run's 416. This is a verified general-work saving, not an F1 worst-frame
+breakthrough or proof of universal improvement. Keep that regression probe.
+
+Accepted for its repeatable total-work decrease, bounded observed envelope
+and state verification. No rendering order, effects or audio policy changed.
+The 50 FPS goal remains open: 429 lines still needs a 27% reduction to 312.
+Current native wrapper/source and default diagnostic site mask include site
+8; expensive dual execution remains absent from the normal build.
+
+Final normal rebuild and both native/scalar collision suites pass again:
+`tmp/car-pairs-final-{build,tests}-20260928.log`. All owned benchmark and
+shadow sessions are closed. Unrelated emulator sessions were left alone.
+No push was performed.
+
+## Native car-pair wrapping oracle and initial live checks (2026-09-28)
+
+Added an independent explicit-width reference with no cached probe. It
+models each low-dword add/subtract/multiply and signed truncating division,
+including INT32_MIN absolute-value wrapping, velocity products, deltas,
+impact maxima and signed boundary arithmetic. Undefined DIVS inputs
+(zero denominator or INT32_MIN/-1) are excluded explicitly. This oracle
+does not independently execute DOS and is not claimed to do so.
+
+All 4096 extreme fixtures pass, each exercising an impulse. The explicit-
+width reference additionally agrees with the existing C resolver on all
+12000 ordinary/targeted and 3456 boundary cases. A targeted native fixture
+reverses the projected probe after the first impulse and requires detecting
+the later opponent without applying a second impulse. All 19552 native
+full-image/ABI comparisons pass: 6609 impulses, 1569 disabled cases and
+2863 inactive current drivers; boundary hits/misses remain 576/2880.
+Log: `tmp/native-car-pairs-wrap-20260928.log`.
+
+Live comparison site 8 passes 2412 calls each on BASIC and F1, with zero
+state mismatches and zero race errors. Final benchmark states match the
+uninterrupted runs. Logs: `tmp/shadow-car-pairs-20260928-{0,1}.log`.
+The same runner is continuing CITY/WHACKO; those results and HUD phase
+verification are not yet claimed. Integration is still uncommitted.
+
+The completed runner subsequently passes CITY and WHACKO too: 2412 calls
+each, zero state mismatches/race errors, canonical final states. All four
+tracks total 9648 compared calls. `shadow_check.sh` exits zero, closes its
+emulators and rebuilds the normal executable. Completed logs:
+`tmp/shadow-car-pairs-20260928-{0,1,2,3}.log`. The four-phase normal-build F1
+sweep is now running; no phase results or final integration acceptance are
+claimed yet.
+
+## Native car-pair boundary coverage and preliminary integration (2026-09-28)
+
+Extended the packed oracle with 3456 deterministic combinations: each
+current/opponent pair, all four contact edges, one unit inside/exactly on/
+one unit outside, both contact-latch states, normal/inactive partner/other
+layer/disabled gates, and zero/positive/negative projected velocities.
+Independent hit/count/partner assertions additionally check the scalar
+reference rather than merely trusting native/reference equality. All
+15456 cases pass: 2512 impulses, 1570 disabled calls, 2863 inactive currents,
+576 boundary hits and 2880 boundary misses. Log:
+`tmp/native-car-pairs-boundaries-20260928.log`.
+
+The uncommitted target integration adds shadow site 8 and a public wrapper
+retaining the scalar C reference for host tests and diagnostic dual execution.
+Selected-site checking and the default mask include the new site; a selected
+site with zero calls is a failure. The snapshot window covers all car-pair
+writes. Normal builds contain only the native call, not diagnostic copies.
+
+| Track | Production control work / worst | Native pairs work / worst |
+| --- | ---: | ---: |
+| BASIC | 148314 / 355 | 147023 / 347 |
+| F1 | 174164 / 427 | 172830 / 416 |
+| CITY | 144706 / 336 | 143524 / 333 |
+| WHACKO | 152256 / 392 | 150951 / 374 |
+
+603 updates; all final states match. Candidate logs:
+`tmp/native-car-pairs-20260928-*`; unchanged-code controls:
+`tmp/direct-point-control-20260928-*` (BASIC/WHACKO),
+`tmp/touch-restored-20260928-*` (F1/CITY). Total work falls about 0.77-0.87%.
+These are preliminary sampled results, not a universal worst-frame bound
+or acceptance: live shadow runs and explicit wrapped-arithmetic coverage
+remain required. The 312-line goal is not met by this change alone.
+
 ## Whole native car-pair candidate: initial oracle (2026-09-28)
 
 Added an isolated `car_collision.s` implementation of the complete original

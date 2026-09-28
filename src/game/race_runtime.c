@@ -144,12 +144,12 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,collision_error)<SLIC
     sizeof(struct SlicksTrackNavigation)<=__builtin_offsetof(struct SlicksRaceRuntime,cars),
     "shadow window covers the native motion, emission and track-object write sets");
 unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
-volatile unsigned long slicks_shadow_calls[8],slicks_shadow_mismatches[8];
+volatile unsigned long slicks_shadow_calls[9],slicks_shadow_mismatches[9];
 volatile short slicks_shadow_steering_expected,slicks_shadow_steering_actual;
 /* Compile-time selection avoids debugger writes to initialized data and
  * removes unselected wrappers completely. All sites remain the default. */
 #ifndef SLICKS_SHADOW_SITES
-#define SLICKS_SHADOW_SITES 0xfe
+#define SLICKS_SHADOW_SITES 0x1fe
 #endif
 /* Published into BSS by platform setup: this debugger does not reliably
  * relocate reads of initialized/constant data symbols. */
@@ -3107,7 +3107,7 @@ static void emit_sound_event(struct SlicksRaceRuntime *race,
     event->priority = priority;
 }
 
-void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
+static __attribute__((unused)) void resolve_car_pairs_reference(struct SlicksRaceRuntime *race,
                                         unsigned short current)
 {
     if(race->car_collisions_disabled || !driver_role(race,current)) return;
@@ -3191,6 +3191,18 @@ void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
     }
     if (!hit)
         a->touching_car = 0;
+}
+
+void slicks_race_resolve_car_collisions(struct SlicksRaceRuntime *race,
+                                        unsigned short current)
+{
+#if defined(__m68k__)
+    extern void slicks_resolve_car_pairs(struct SlicksRaceRuntime *,unsigned short);
+    SLICKS_SHADOW_CALL(8,resolve_car_pairs_reference(race,current),
+        slicks_resolve_car_pairs(race,current));
+#else
+    resolve_car_pairs_reference(race,current);
+#endif
 }
 
 static void draw_hud_background(struct SlicksRaceRuntime *race,

@@ -13,17 +13,19 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh particle-oldxy-candidate-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 148339/353, F1 174139/426,
-CITY 144695/337, WHACKO 152285/393. Means are 15.4-18.5 ms; the
-worst updates in that run need 7-27% cuts. The latest matched F1 HUD-clock
-phase sweep reaches 429 lines (27.5 ms, 27% cut needed), with matching
+(`amiga/bench_tracks.sh native-car-pairs-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 147023/347, F1 172830/416,
+CITY 143524/333, WHACKO 150951/374. Means are 15.3-18.4 ms; the
+worst updates in that run need 6-25% cuts. The latest matched F1 HUD-clock
+phase sweep still reaches 429 lines (27.5 ms, 27% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1/WHACKO CPU captures are
 `tmp/pcprof-post-div100-{f1,whacko}-20260928`, with the accepted visibility,
-inverse-chain and division changes present. Their sampler overhead is not part of
+inverse-chain and division changes present, but before native car-pair
+integration. Refresh those captures before claiming current stage costs.
+Their sampler overhead is not part of
 the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
 `INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
@@ -132,14 +134,9 @@ Candidate fixes, roughly in order of expected value per effort:
   the archived sparse-hash prototype.
 
 - **Remaining C inside `slicks_race_step`.**
-  A larger register-resident candidate now exists in `car_collision.s`:
-  the complete four-opponent pair loop, one save frame and no helper calls.
-  It is isolated, not linked into gameplay. `verify-native-car-collision`
-  compares 12000 packed-state/ABI cases with the existing resolver and
-  guards writes outside the race/save frame. Before target acceptance,
-  extend explicit boundary/wrap coverage, add a live reference comparison,
-  benchmark all tracks and retain the independent DOS collision fixtures.
-  No speed gain is established by the isolated oracle.
+  Preserve the native car-pair loop and its site-8 diagnostic comparison
+  (`SHADOW_SITES=256`). Keep F1 phase 3/update 613 as a regression probe:
+  reduced total work did not improve the four-phase worst-update envelope.
   Refresh and split the
   samples with `tools/prof_summary.py --inlined slicks_race_step`:
   per-car `prepare_car_motion`, `update_actor_layer`, `finish_car_update`,

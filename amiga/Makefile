@@ -35,7 +35,7 @@ ASFLAGS  = -mcpu=68020 -g --register-prefix-optional -I"$(SDKDIR)"
 VASMFLAGS = -m68020 -Felf -quiet -x -no-opt -nowarn=62 -I"$(SDKDIR)" -Iobj
 # SHADOW=1: diagnostic dual execution of native replacements (never release).
 ifeq ($(SHADOW),1)
-SHADOW_SITES ?= 0xfe
+SHADOW_SITES ?= 0x1fe
 CCFLAGS += -DSLICKS_SHADOW_CHECK -DSLICKS_SHADOW_SITES=$(SHADOW_SITES)
 endif
 # RETCHECK=1: compare every racing update with a non-retention reference.
@@ -77,6 +77,7 @@ OBJECTS += obj/hud_restore.o
 OBJECTS += obj/c2p16_interleaved.o
 OBJECTS += obj/actor_order.o
 OBJECTS += obj/point_restore.o
+OBJECTS += obj/car_collision.o
 
 .PHONY: all clean verify-runtime
 # Never leave a truncated executable that looks up to date after elf2hunk fails.
@@ -100,6 +101,9 @@ force-div100-check:
 endif
 
 obj/point_restore.o: $(REPO)/src/game/point_restore.s obj/race_offsets.i | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/car_collision.o: $(REPO)/src/game/car_collision.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/actor_order.o: $(REPO)/src/game/actor_order.s obj/race_offsets.i | obj
