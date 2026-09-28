@@ -3,6 +3,40 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected complete compact-particle integration (2026-09-28)
+
+Integrated the 20-byte representation behind a build switch across the C
+structure/constructors, generated enclosing offsets, native emission,
+legacy/shared advance, draw/restore chains, actor ordering and retention.
+The combined native advancement binary passes the same 1028 legacy and
+800 shared DOS-backed cases as the isolated variants. Compact C host
+surface-effects and retention-group suites also pass. The whole target
+build succeeds with compiler-checked 20-byte layout and regenerated offsets.
+
+| Track | Fresh normal work / 603 | Compact work / 603 | Worst normal -> compact |
+| --- | ---: | ---: | --- |
+| BASIC | 153387 | 152849 | 365 -> 360 |
+| F1 | 178466 | 178468 | 432 -> 438 |
+| CITY | 148557 | 148853 | 344 -> 344 |
+| WHACKO | 156323 | 156083 | 408 -> 406 |
+
+Logs: `tmp/compact-{control,integrated}-20260928-{0,1,2,3}.log`.
+All eight final states match the established controls. The aggregate saving
+is only 480 of 636733 work lines (0.075%). F1's maximum is within its known
+HUD-phase envelope, so this does not establish an intrinsic six-line
+regression; it also does not demonstrate a worst-update improvement.
+The difficult frames remain far outside 312 lines. The integration was
+therefore rejected and reverted rather than carrying a representation change
+for negligible net performance benefit. Normal gameplay remains 24-byte.
+
+The opt-in isolated consumer tests remain as verified evidence. The complete
+integration patch is local-only at `tmp/compact-integration-20260928.patch`.
+No full target shadow, display or RETCHECK acceptance claim is made for the
+rejected layout; those expensive gates were not run after the benchmark
+failed to justify it. There is no outstanding acceptance debt for production
+from this reverted experiment. Further work should eliminate whole passes
+or redundant operations, rather than retrying this same record narrowing.
+
 ## Compact legacy advancement (2026-09-28)
 
 `make verify-particle-compact-trial` now runs all 1028 legacy/bucket cases

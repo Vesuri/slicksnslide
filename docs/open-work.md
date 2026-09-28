@@ -41,33 +41,6 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Integrate and measure compact particle records.** The isolated 20-byte
-  shared advancement prototype passes the DOS-backed canonical-state oracle;
-  compact single/batch/chain drawing also passes the complete existing pixel,
-  metadata and dirty-list comparisons. Production drawing remains byte-identical.
-  Compact restoration passes all 4096 canonical-reference chain tests and
-  deliberate stride/saved-byte mutations; it too remains opt-in for tests.
-  Compact actor ordering passes 12000 mixed-pool canonical-reference tests
-  with identical chains; production ordering remains byte-identical.
-  Retention's compact coordinate/priority reads and stride pass exhaustive
-  word-domain native tests; full retention decisions still need target checks.
-  Native emission's complete allocation/initialization subroutine passes
-  8192 full-state cases in both layouts; whole wheel emission and C producers
-  still need integration/shadow verification.
-  Compact legacy advancement also passes all 1028 original-DOS cases,
-  including complete records, priority buckets and permanent-pixel writes.
-  it is not linked into gameplay and has no measured speed gain yet. Next,
-  migrate consumers together: native/C emission, legacy/shared advance,
-  point restore/draw, actor ordering, sprite-retention point reads and their
-  independent oracles. Keep creation-order compaction/baking and handle-order
-  drawing unchanged. Derive offsets from the target layout; do not silently
-  replace full comparisons with hashes or discard represented bytes. Preserve
-  the 24-byte canonical test records and explicitly project the redundant
-  coordinate high words. Benchmark only after consumer tests pass; acceptance
-  still requires four-track native/reference shadows, display audits and
-  RETCHECK. Discard the representation change if its net measured benefit
-  does not justify the extra integration complexity.
-
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing
   further CPU work; recent small changes alter
