@@ -48,6 +48,10 @@ slicks_build_draw_order:
     lea RACE_TRAIL_PARTICLES+AO_PARTICLE_PRIORITY(a0),a3
     lea RACE_ACTORS(a0),a4
     lea RACE_ACTOR_ORDER_NEXT(a0),a6
+; All race-based setup is complete. Keep the inverse-link base in the
+; caller-clobbered argument register so the hot indexed stores use the
+; brief addressing form rather than full-extension displacements.
+    lea RACE_ACTOR_ORDER_PREVIOUS(a0),a0
     moveq #0,d3
     moveq #0,d2
     move.w SLOTS_HIGH_WATER(a1),d2
@@ -81,10 +85,10 @@ slicks_build_draw_order:
     move.b d0,(a6,d2.w)
     tst.w d0
     beq.s .first
-    move.b d2,RACE_ACTOR_ORDER_PREVIOUS(a0,d0.w)
+    move.b d2,(a0,d0.w)
     bra.s .linked
 .first:
-    move.b d2,RACE_ACTOR_ORDER_TAIL(a0,d1.w)
+    move.b d2,RACE_ACTOR_ORDER_TAIL-RACE_ACTOR_ORDER_PREVIOUS(a0,d1.w)
 .linked:
     move.b d2,(a5,d1.w)
 .next:
@@ -98,11 +102,11 @@ slicks_build_draw_order:
     moveq #0,d1
     move.b (a5,d0.w),d1
     beq.s .empty
-    clr.b RACE_ACTOR_ORDER_PREVIOUS(a0,d1.w)
+    clr.b (a0,d1.w)
 .empty:
     dbra d0,.terminate
-    move.b d3,RACE_ACTOR_ORDER_MAX(a0)
-    move.b #1,RACE_ACTOR_ORDER_READY(a0)
+    move.b d3,RACE_ACTOR_ORDER_MAX-RACE_ACTOR_ORDER_PREVIOUS(a0)
+    move.b #1,RACE_ACTOR_ORDER_READY-RACE_ACTOR_ORDER_PREVIOUS(a0)
     movem.l (sp)+,d2-d3/a2-a6
     rts
 .sprite:

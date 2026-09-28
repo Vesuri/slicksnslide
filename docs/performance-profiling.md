@@ -3,6 +3,61 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Post-division CPU captures (2026-09-28)
+
+Current captures: `tmp/pcprof-post-div100-{f1,whacko}-20260928`, each
+with its matching archived ELF. F1 collected 9446 samples, WHACKO 8197,
+with zero missed samples and canonical final states. Instrumented work totals
+194039/170409 include roughly 11% sampler overhead and are not acceptance
+timings. Display-blank waiting accounts for 1800/1463 samples.
+
+Across the full windows, car integration has 488/508 samples, wheel-surface
+emission 420/467, C2P 419/443, actor-order construction 309/224 and shared
+particle advancement 269/281. Inlined race-step code has 820/803 samples;
+motion preparation is its largest individual named component (113/104).
+No single function explains the remaining deadline excess.
+
+Filtering instrumented F1 work >=400 lines gives 1122 samples, including
+348 waiting; WHACKO >=360 gives 897, including 286 waiting. In these
+sets wheel emission has 55/49 samples, shared advancement 48/46, the
+particle-address-end symbol's draw body 43/45, actor-order construction
+32/26 and C2P 32/31. WHACKO measured-window indices 580..596 (race
+677..693, containing update 685) likewise emphasize particle work rather
+than C2P. These small samples locate candidate groups, not precise
+single-update percentages. Filters use instrumented work, not thresholds
+directly comparable to normal-build measurements.
+
+## Actor-order inverse-link addressing (2026-09-28)
+
+Rebase the otherwise-unused race argument register after setup to the
+previous-link array. Previous links then use zero-displacement indexed
+accesses and tails use -128, both brief addressing forms instead of the
+full-extension form. No membership cache, check removal or ordering change.
+
+Fresh parent/candidate logs are `tmp/order-base-{control,candidate}-20260928-*`.
+Work per 603 updates and worst update, in raster lines:
+
+| Track | Parent | Candidate |
+| --- | ---: | ---: |
+| BASIC | 148885 / 353 | 148721 / 352 |
+| F1 | 174746 / 430 | 174506 / 429 |
+| CITY | 145114 / 337 | 144928 / 335 |
+| WHACKO | 152836 / 395 | 152703 / 394 |
+
+All final states match; total work drops only 0.09-0.14%. Over-budget counts
+are 37/194/16/68: CITY's count increases from 14 even though its total and
+maximum fall. This is a small aggregate improvement, not a solution to
+deadline misses or proof that every update improves. Both native ordering
+layouts pass 12000 independent cases each, including 412321 linked handles
+per layout, exact forward/inverse traversal, untouched memory and ABI.
+All three full-frame display audits pass 600 updates with live statistics
+disabled: `tmp/order-base-audit-20260928-{1,2,3}.log`. F1/CITY/WHACKO
+report 32/18/5 actors and 2076/1480/1854 marks. The first launch attempt
+exited before gameplay; the successful sequence loaded `amiga/env.sh`.
+All owned audit emulators closed. The change affects addressing only, not
+ordering or retention decisions; the independent complete-image native
+oracle covers the resulting lists. No new simulation replacement is involved.
+
 ## Direct C coordinate/speed division (2026-09-28)
 
 Use the compiled-and-tested signed `DIVS.L #100` helper for 36 coordinate

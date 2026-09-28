@@ -13,19 +13,18 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh c-div100-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 148898/353, F1 174741/430,
-CITY 145116/337, WHACKO 152837/395. Means are 15.4-18.6 ms; the
-worst updates in that run need 7-27% cuts. The refreshed F1 HUD-clock
-phase sweep reaches 430 lines (27.6 ms, 27% cut needed), with matching
+(`amiga/bench_tracks.sh order-base-candidate-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 148721/352, F1 174506/429,
+CITY 144928/335, WHACKO 152703/394. Means are 15.4-18.6 ms; the
+worst updates in that run need 7-27% cuts. The latest F1 HUD-clock
+phase sweep, before the inverse-link addressing change, reaches 430 lines
+(27.6 ms, 27% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
-explain the maxima. The latest F1 CPU capture is
-`tmp/pcprof-sprite-address-f1-20260928` (before the particle-address simplification);
-the refreshed WHACKO capture is
-`tmp/pcprof-whacko-current-20260928`, with inner profiling disabled and
-the accepted address change present. Their sampler overhead is not part of
+explain the maxima. The latest F1/WHACKO CPU captures are
+`tmp/pcprof-post-div100-{f1,whacko}-20260928`, with the accepted visibility,
+inverse-chain and division changes present. Their sampler overhead is not part of
 the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
 `INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
@@ -43,10 +42,10 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Refresh F1 and WHACKO CPU captures on the current build before selecting
-  further instruction-level changes. Keep WHACKO 685's latest regression in
-  scope. The archived captures predate recent visibility/order/division work;
-  do not present their stage percentages as current. Recent small changes alter
+  Use the post-div100 F1 and WHACKO CPU captures for further changes.
+  Keep WHACKO 685's latest regression in scope. Older archived captures
+  predate recent visibility/order/division work; do not present their stage
+  percentages as current. Recent small changes alter
   which updates incur the largest work.
   The paired update-613 capture establishes a different fuel-blink phase;
   measure its cost separately rather than tuning cadence. Raster contention
@@ -66,6 +65,12 @@ Candidate fixes, roughly in order of expected value per effort:
   regression set when evaluating further changes.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
+  Measure how often actor membership and priorities remain unchanged between
+  draws before attempting order-cache reuse. Forward chains now survive
+  restoration, but the initial saved-actor fallback overwrites them. Reuse
+  must account for allocation, retirement, point/sprite replacement, priority
+  changes and the fallback; particle index compaction alone does not change
+  handle ordering. Avoid a full validation scan that costs as much as rebuilding.
   Inspect conflict processing, final
   keep/restore decisions, draw-packet validation and group rebuild/late
   restoration at the worst updates. Preserve atomic group retention and
