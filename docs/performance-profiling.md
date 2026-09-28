@@ -3,6 +3,49 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Direct HUD-bar dirty bounds (2026-09-28)
+
+The bounded status painter now publishes one rectangle per changed car cell
+instead of enqueuing each changed pixel. It still compares and writes exactly
+the same chunky pixels, touches only invalidated rows, and preserves the
+original clock, colours and weapon-icon ordering. It reserves four rectangle
+slots before batching; near-full rectangle lists retain the original sparse
+path and its overflow handling. No additional pixel shadow is used.
+
+An earlier queue-then-replace variant was rejected: it paid the sparse-list
+cost before replacing the entries. Work/worst was BASIC 156152/367,
+F1 182309/457, CITY 152012/353, WHACKO 159475/415. Logs:
+`tmp/hud-bar-batch-20260928-*`. The direct publication variant avoids that
+intermediate work. Matched ordinary controls include the same native phase
+fixture code in both binaries:
+
+| Track | Control work / worst | Direct bounds work / worst | Over 312 lines |
+| --- | ---: | ---: | ---: |
+| BASIC | 155527 / 364 | 155611 / 366 | 71/603 |
+| F1 | 181780 / 459 | 181548 / 449 | 227/603 |
+| CITY | 151411 / 354 | 151287 / 348 | 48/603 |
+| WHACKO | 159003 / 420 | 158706 / 408 | 92/603 |
+
+All canonical final states match. BASIC slightly regresses; this is a
+targeted periodic-HUD improvement, not a substantial general CPU saving.
+The four-phase F1 comparison below also improves every phase's total work.
+Logs: `tmp/hud-bar-{control,final}-native-20260928-{0,1,2,3}.log`.
+
+The host suite adds 840 independent dirty-coverage cases spanning sparse
+counts 0/452/453/500/512, rectangle counts 0/12/13/16, 0..20 changed pixels
+and both prior HUD flags. All 64000 pixels are checked, together with
+preservation of prior dirty entries. The forced-cold status-cache suite,
+dirty-tracking suite and original-DOS HUD comparisons pass, including 768
+full-screen transitions (`tmp/hud-bar-final-host-20260928.log`). Target
+display audits pass 600 updates each: F1 32 actors/2076 marks, CITY 18/1480,
+WHACKO 5/1854 (`tmp/hud-bar-audit-20260928-{1,2,3}.log`). Full target
+reference checks pass on all four tracks: 603 racing surface-hash/particle
+comparisons and 700 forced-cold HUD comparisons per track, zero mismatches.
+Geometry comparisons also pass (575 F1, 603 CITY); all canonical states
+match (`tmp/hud-bar-retcheck-20260928-{0,1,2,3}.log`). Accepted with the
+small BASIC regression disclosed above. All owned audit emulators exited;
+the normal build is restored before committing.
+
 ## Verified HUD-clock phase fixture (2026-09-28)
 
 `SLICKS_HUD_PHASE=0..3` with an outer-only gameplay benchmark adds a native
@@ -29,8 +72,8 @@ F1, 603 updates per phase, identical canonical final states throughout:
 Both builds include the same native launch option. Logs:
 `tmp/hud-{parent,direct}-native-phase-20260928-{0,1,2,3}.log`.
 The candidate reduces total work at every phase and the worst sampled peak
-from 460 to 449. This supports further verification, not acceptance yet:
-full target display/reference audits are pending. Four fractions are a
+from 460 to 449. The target display/reference audits are recorded above.
+Four fractions are a
 regression set, not exhaustive proof of all possible phase/contention
 combinations. The earlier single-run parent maximum 433 must not be used
 as a universal F1 bound.

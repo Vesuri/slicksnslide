@@ -11,18 +11,58 @@ static unsigned seed=421;
 static unsigned random_word(void) { seed=seed*1664525U+1013904223U;return seed>>8; }
 static void require(int ok,const char *what,unsigned step)
 { if(!ok){fprintf(stderr,"HUD cache step %u: %s\n",step,what);exit(1);} }
-static int covered(unsigned x,unsigned y)
+static int covered(const struct SlicksRaceRuntime *r,unsigned x,unsigned y)
 {
-    for(unsigned i=0;i<race.dirty_row_count;++i){
-        const struct SlicksDirtyRows *r=&race.dirty_rows[i];
-        if(x>=(unsigned)r->left && x<(unsigned)r->right && y>=(unsigned)r->top && y<(unsigned)r->bottom)return 1;
+    for(unsigned i=0;i<r->dirty_row_count;++i){
+        const struct SlicksDirtyRows *rect=&r->dirty_rows[i];
+        if(x>=(unsigned)rect->left && x<(unsigned)rect->right && y>=(unsigned)rect->top && y<(unsigned)rect->bottom)return 1;
     }
-    for(unsigned i=0;i<race.dirty_pixel_count;++i)
-        if(race.dirty_pixels[i].x==x && race.dirty_pixels[i].y==y)return 1;
+    for(unsigned i=0;i<r->dirty_pixel_count;++i)
+        if(r->dirty_pixels[i].x==x && r->dirty_pixels[i].y==y)return 1;
     return 0;
+}
+static void verify_bar_batch_boundaries(void)
+{
+    static struct SlicksRaceRuntime q;
+    static unsigned char pixels[64000];
+    const unsigned sparse[]={0,452,453,500,512},rects[]={0,12,13,16};
+    unsigned checks=0;
+    for(unsigned s=0;s<5;++s)for(unsigned r=0;r<4;++r)
+    for(unsigned change=0;change<=20;++change)for(unsigned old_hud=0;old_hud<2;++old_hud){
+        memset(&q,0,sizeof q);memset(pixels,31,sizeof pixels);
+        q.chunky=pixels;q.chunky_authoritative=1;q.participation_ready=1;
+        q.participation[0]=1;q.fuel_option=1;q.cars[0].fuel_capacity=100;
+        q.status_colours[0]=31;q.status_colours[1]=51;
+        require(!slicks_race_draw_status(&q,0,0),"batch initial paint",checks);
+        slicks_race_clear_dirty_rows(&q);
+        q.dirty_pixel_count=(unsigned short)sparse[s];q.dirty_pixel_hud=(unsigned char)old_hud;
+        for(unsigned i=0;i<sparse[s];++i)q.dirty_pixels[i]=(struct SlicksDirtyPixel){20,195,0};
+        q.dirty_row_count=(unsigned char)rects[r];
+        for(unsigned i=0;i<rects[r];++i)q.dirty_rows[i]=(struct SlicksDirtyRows){0,(unsigned short)(i*2),16,(unsigned short)(i*2+1)};
+        q.cars[0].fuel=change*5;
+        require(!slicks_race_draw_status(&q,0,0),"batch draw",checks);
+        unsigned batch=rects[r]<=12 && change>0;
+        unsigned want_count=batch?sparse[s]:sparse[s]+change;
+        if(want_count>512)want_count=512;
+        require(q.dirty_pixel_count==want_count,"batch sparse threshold",checks);
+        if(batch){
+            require(q.dirty_row_count==rects[r]+1,"batch rectangle reservation",checks);
+            require(q.dirty_pixel_hud==old_hud,"batch preserves earlier HUD flag",checks);
+        }
+        for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x){
+            unsigned char want=y==188 && x>=106 && x<106+change?51:31;
+            require(pixels[y*320+x]==want,"batch exact pixels",checks);
+            if(want==51)require(covered(&q,x,y),"batch changed-pixel coverage",checks);
+        }
+        if(sparse[s])require(covered(&q,20,195),"batch preserves previous sparse pixels",checks);
+        for(unsigned i=0;i<rects[r];++i)require(covered(&q,0,i*2),"batch preserves previous rectangles",checks);
+        ++checks;
+    }
+    printf("HUD batching: %u threshold/capacity/flag cases preserve exact pixels and dirty coverage\n",checks);
 }
 int main(void)
 {
+    verify_bar_batch_boundaries();
     race.chunky=actual;race.chunky_authoritative=1;race.participation_ready=1;
     race.fuel_option=1;race.damage_scale=1;race.hud_background_ready=1;
     race.status_colours[0]=31;race.status_colours[1]=51;race.status_colours[2]=61;
@@ -122,7 +162,7 @@ int main(void)
             !memcmp(race.dirty_pixels,reference.dirty_pixels,race.dirty_pixel_count*sizeof race.dirty_pixels[0]),
             "dirty sequence differs from full repaint",step);
         for(unsigned at=0;at<64000;++at)if(actual[at]!=before[at])
-            require(covered(at%320,at/320),"changed pixel missing dirty coverage",step);
+            require(covered(&race,at%320,at/320),"changed pixel missing dirty coverage",step);
     }
     printf("HUD cache: 24 isolated row damages, %u successful transitions, %u matched failures; full pixels and exact dirty sequences/coverage match forced-cold repaint\n",checks,errors);
     return 0;

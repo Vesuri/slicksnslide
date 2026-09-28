@@ -3451,21 +3451,33 @@ int slicks_race_draw_status(struct SlicksRaceRuntime *race,
                     if(p->x>=left && p->x<left+20)paint|=1U<<(car*3+p->y-187);
                 }
             }
+        /* At most one extra rectangle per car. Reserve room for all four;
+         * otherwise retain the existing sparse/overflow publication path. */
+        unsigned batch_bars=race->dirty_row_count<=SLICKS_DIRTY_ROW_MAX-4;
         if(paint)for(unsigned car=0;car<4;++car) if(counts[car]) {
             const struct SlicksStatusRect *base=&rectangles[car][0];
+            short changed_top=190,changed_bottom=187;
             for(int y=187;y<190;++y) {
                 if(!(paint&(1U<<(car*3+y-187))))continue;
                 int end=next.ends[car][y-187];
                 unsigned char foreground=next.colours[car][y-187];
                 unsigned char *row=race->chunky+mult320[y];
+                unsigned row_changed=0;
                 for(int x=base->left;x<base->right;++x) {
                     unsigned char colour=x<end?foreground:race->status_colours[0];
                     if(row[x]!=colour) {
                         write_pixel(logical,race->chunky,x,y,colour);
-                        mark_dirty_pixel(race,x,y);
+                        if(batch_bars)row_changed=1;
+                        else mark_dirty_pixel(race,x,y);
                     }
                 }
+                if(row_changed) {
+                    if(changed_top>y)changed_top=(short)y;
+                    changed_bottom=(short)(y+1);
+                }
             }
+            if(changed_top<changed_bottom)
+                mark_dirty_rect(race,base->left,changed_top,base->right,changed_bottom);
         }
         if(paint || !same) { race->status_bar_cache=next;race->status_bar_cache.valid=1; }
         for(unsigned car=0;car<4;++car)if(weapon_draw[car])draw_weapon_icon(race,logical,&weapons[car]);

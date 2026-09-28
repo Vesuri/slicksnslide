@@ -13,13 +13,14 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh empty-restore-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 155903/364, F1 182215/433,
-CITY 151791/352, WHACKO 159453/416. Means are 16.1-19.4 ms; the
-worst updates need 11-28% cuts. Particle-heavy frames remain expensive,
-The additional verified F1 HUD-clock phase sweep reaches 460 lines on the
-control, so its general worst-case gap is larger than that single run.
-but live count alone does not explain the maxima. Current CPU captures are
+(`amiga/bench_tracks.sh hud-bar-final-native-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 155611/366, F1 181548/449,
+CITY 151287/348, WHACKO 158706/408. Means are 16.1-19.3 ms; the
+worst updates in that run need 10-31% cuts. The verified F1 HUD-clock
+phase sweep also reaches 449 lines with this implementation. These are
+sampled maxima, not exhaustive upper bounds for every gameplay situation.
+Particle-heavy frames remain expensive, but live count alone does not
+explain the maxima. Current CPU captures are
 `tmp/pcprof-current-{f1,whacko}-20260928`; their sampler overhead is not part
 of the acceptance numbers above. F1 is also slow without points.
 Method, tools and the cost model (Chip data access ~7
@@ -35,20 +36,14 @@ retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
 
-- **Batch changed HUD bar pixels for C2P.** At F1 update 613, the faster
-  address trial crosses the fuel-blink clock phase while the control does
-  not; three empty-fuel bars repaint using individual sparse pixel updates.
-  Preserve the BIOS-rate blink clock. For sufficiently many changed pixels
-  in one bounded 20x3 car cell, publish one rectangle instead of its sparse
-  entries. Reserve list capacity, retain sparse updates for small changes
-  and near-full lists, and preserve all pixel/dirty coverage semantics.
-  Verify forced-cold status, DOS HUD, display audits and reference runs.
-  The direct-bounds candidate in `tmp/hud-bar-direct-20260928.patch` passes
-  host/DOS checks and improves all four verified F1 phases (worst 460->449).
-  Finish target display/reference audits and ordinary four-track timing
-  before accepting. The native `SLICKS_HUD_PHASE` fixture asserts actual
-  initialization; the earlier debugger-write phase runs are invalid.
-  Revisit parked address arithmetic after reducing this periodic workload.
+- **Compile inner phase profiling out of normal builds.** Measure removing
+  the dormant `profile_scope` checks and callbacks in the normal native
+  race loop, retaining an explicit detailed-profiling build. Keep host
+  diagnostic tests intact, ensure detailed benchmark modes select the
+  instrumented variant, and make build-mode changes invalidate the affected
+  objects. Outer timing must still measure all normal game work; the CIA
+  sampler must remain usable. Compare matching four-track controls and
+  fuel-blink phases before accepting; savings are not yet established.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the refreshed current F1/WHACKO CPU captures to choose further CPU
