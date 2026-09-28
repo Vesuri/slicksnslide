@@ -74,14 +74,6 @@ Candidate fixes, roughly in order of expected value per effort:
   Preserve legacy traversal and sprite/overflow boundaries; any removed
   checks need explicit invariant coverage in the native oracle.
 
-- **Particle emission scan bound.** Measure loading the unchanged
-  high-water bound into a scratch register before the native slot scan,
-  instead of reading it from Chip RAM on each iteration. Preserve first-free
-  selection, capacity handling and register contracts. Use the existing
-  100000-pool `verify-emission-scan` oracle with the real setup included in
-  its entry, then matched four-track timings. This is not the rejected
-  four-byte scanning algorithm; avoid any extra bitmap or reordered slots.
-
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at
   most 11/64 pixel per tick). Restoring and redrawing such a point is a

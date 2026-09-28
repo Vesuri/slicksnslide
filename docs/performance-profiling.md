@@ -3,6 +3,38 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected emission scan bound hoist (2026-09-28)
+
+Measured loading the unchanged high-water bound into A3 before the scalar
+native allocation scan, avoiding a Chip RAM bound read on every iteration.
+Parent is d096904. All four 603-update final states match.
+
+| Track | Parent work / worst | Trial work / worst |
+| --- | ---: | ---: |
+| BASIC | 153390 / 365 | 153217 / 363 |
+| F1 | 178463 / 432 | 178376 / 440 |
+| CITY | 148559 / 344 | 148418 / 343 |
+| WHACKO | 156342 / 406 | 156201 / 408 |
+
+Logs: `tmp/emission-bound-20260928-{0,1,2,3}.log`. Total savings are only
+0.05-0.11%, without useful peak improvement on F1/WHACKO. F1's 440 is
+within the parent's verified phase envelope; no trial phase sweep was run,
+so this is not evidence of an intrinsic eight-line regression. Rejected for
+marginal benefit; production was restored. The local patch is archived as
+`tmp/emission-bound-20260928.patch`.
+
+The 100000-pool native scan oracle, DOS-backed wheel geometry and surface
+effects suites pass (`tmp/emission-bound-oracles-20260928.log`). The scan
+oracle stops before allocation and does not verify the modified extension
+load. No full emission shadow or display-audit pass is claimed for this
+rejected trial. Restored production builds and passes the native scan oracle
+(`tmp/emission-bound-restored-oracle-20260928.log`).
+
+Read-only scheduling inspection also rules out removing a redundant gameplay
+vblank wait: the main loop already skips that wait while in-game. The remaining
+display-blank wait protects audio register writes and C2P; relaxing it would
+require proving their deadlines and would not remove the actual CPU work.
+
 ## Inner profiling build controls (2026-09-28)
 
 Native `make` defaults to `INNER_PROFILE=0`: the race loop contains no
