@@ -1,4 +1,5 @@
 #include "race_runtime.h"
+#include "signed_division.h"
 #include "../ui/race_hud.h"
 #include "../graphics/row_offsets.h"
 #include "../ui/hud_background.h"
@@ -21,6 +22,12 @@
 #endif
 /* Published at race start so diagnostics verify the actual running build. */
 volatile unsigned char slicks_race_inner_profile_enabled;
+
+#if defined(__m68k__) && defined(SLICKS_DIV100_CHECK)
+volatile unsigned long slicks_div100_checks,slicks_div100_mismatches;
+volatile long slicks_div100_first_input,slicks_div100_first_actual,
+              slicks_div100_first_expected;
+#endif
 
 static inline int profile_scope(const struct SlicksRaceRuntime *race,unsigned scope)
 {
@@ -643,8 +650,8 @@ static void draw_shadows(struct SlicksRaceRuntime *race, unsigned char *logical)
         unsigned short at = 0;
         if (car->special_drive_state > 500) {
             /* 2000:3ebf: no displacement of the main car; only this actor. */
-            shadow->x = (short)(car->x / 100) - 3;
-            shadow->y = (short)(car->y / 100) - 3 + car->special_drive_state / 500;
+            shadow->x = (short)(slicks_div100(car->x)) - 3;
+            shadow->y = (short)(slicks_div100(car->y)) - 3 + car->special_drive_state / 500;
             shadow->state = 3;
             shadow->lifetime = 3;
         }
@@ -990,8 +997,8 @@ static void ai_watchdog(struct SlicksRaceCar *car, unsigned short ticks)
 {
     /* f0d8..f162. Sprite-origin comparison is equivalent after subtracting
      * the common three-pixel origin offset. All timers are signed words. */
-    if (car->x / 100 != car->ai_last_x / 100 ||
-        car->y / 100 != car->ai_last_y / 100) {
+    if (slicks_div100(car->x) != slicks_div100(car->ai_last_x) ||
+        slicks_div100(car->y) != slicks_div100(car->ai_last_y)) {
         car->ai_last_x = car->x;
         car->ai_last_y = car->y;
         car->ai_stuck_ticks = 150;
@@ -1051,8 +1058,8 @@ static void select_ai_alternate(struct SlicksRaceRuntime *race,
     for (index = 1; index < race->navigation.alternate_count; ++index) {
         const struct SlicksTrackPoint *point = &race->navigation.alternate[index];
         short candidate = (short)(
-            absolute_long((long)point->x - car->x / 100L - 4L) +
-            absolute_long((long)point->y - car->y / 100L - 4L));
+            absolute_long((long)point->x - slicks_div100(car->x) - 4L) +
+            absolute_long((long)point->y - slicks_div100(car->y) - 4L));
         if (candidate < distance) {
             distance = candidate;
             best = index;
@@ -1081,8 +1088,8 @@ static void ai_contact_transition(struct SlicksRaceCar *car)
 static void ai_alternate_progress(struct SlicksRaceCar *car, unsigned short ticks)
 {
     /* f679..f706 ordinary (non-service) alternate destination. */
-    unsigned short x = (unsigned short)(car->x / 100L - 3L);
-    unsigned short y = (unsigned short)(car->y / 100L - 3L);
+    unsigned short x = (unsigned short)(slicks_div100(car->x) - 3L);
+    unsigned short y = (unsigned short)(slicks_div100(car->y) - 3L);
     if (x >= (unsigned short)(car->ai_target_x - 4) &&
         x <= (unsigned short)(car->ai_target_x + 4) &&
         y >= (unsigned short)(car->ai_target_y - 4) &&
@@ -1104,8 +1111,8 @@ static unsigned char ai_service_approach(struct SlicksRaceCar *car,
     /* f504..f5e5 passes each wrapped word subtraction to a long abs
      * helper with a ZERO high word, then compares the signed low-word sum.
      * Do not replace this with Manhattan distance between signed points. */
-    unsigned short dx = (unsigned short)(car->x / 100L - 3L - car->ai_target_x);
-    unsigned short dy = (unsigned short)(car->y / 100L - 3L - car->ai_target_y);
+    unsigned short dx = (unsigned short)(slicks_div100(car->x) - 3L - car->ai_target_x);
+    unsigned short dy = (unsigned short)(slicks_div100(car->y) - 3L - car->ai_target_y);
     short distance = (short)(dx + dy);
     if (distance < 10)
         car->ai_service_state = 2;
@@ -1140,9 +1147,9 @@ static unsigned char ai_steering(struct SlicksRaceRuntime *race,
     const struct SlicksTrackZone *zone =
         &race->navigation.zones[car->waypoint];
     long dx = (car->ai_state == 1 ? (long)car->ai_target_x : zone->x[2]) -
-              (car->x / 100L - 3L);
+              (slicks_div100(car->x) - 3L);
     long dy = (car->ai_state == 1 ? (long)car->ai_target_y : zone->y[2]) -
-              (car->y / 100L - 3L);
+              (slicks_div100(car->y) - 3L);
     unsigned char target_direction = dos_vector_direction(dx, dy);
     /* e31b..e34a quantizes heading BEFORE subtracting the target sector.
      * Preserve the original +4 convention until wrapping: normalizing both
@@ -1270,13 +1277,13 @@ static int update_track_sampling(struct SlicksRaceRuntime *race,
     if (!car->collision_sampling) {
         int blocked;
         car->collision_sampling = 1;
-        blocked = car_track_sample(race, car, (short)(car->x / 100L),
-                                    (short)(car->y / 100L));
+        blocked = car_track_sample(race, car, (short)(slicks_div100(car->x)),
+                                    (short)(slicks_div100(car->y)));
         if (blocked < 0) return -1;
         if (blocked) car->collision_sampling = 0;
     }
-    car->collision_safe_x = (short)(car->x / 100L);
-    car->collision_safe_y = (unsigned char)(car->y / 100L);
+    car->collision_safe_x = (short)(slicks_div100(car->x));
+    car->collision_safe_y = (unsigned char)(slicks_div100(car->y));
     return 0;
 }
 
@@ -1375,7 +1382,7 @@ static void update_surface_limits(struct SlicksRaceCar *car,
 static void update_actor_layer(struct SlicksRaceRuntime *race,
                                struct SlicksRaceCar *car)
 {
-    short x = (short)(car->x / 100L), y = (short)(car->y / 100L);
+    short x = (short)(slicks_div100(car->x)), y = (short)(slicks_div100(car->y));
     unsigned long at;
     unsigned char material, selected;
     if (x < 0 || x >= 320 || y < 0 || y >= 190)
@@ -1611,8 +1618,8 @@ static int ai_inside_zone(const struct SlicksRaceCar *car,
 {
     /* f1fb..f277 compares DS:53b6/53be (sprite origin), not the centre.
      * The four conditional jumps are unsigned and include both edges. */
-    unsigned short x = (unsigned short)(car->x / 100L - 3L);
-    unsigned short y = (unsigned short)(car->y / 100L - 3L);
+    unsigned short x = (unsigned short)(slicks_div100(car->x) - 3L);
+    unsigned short y = (unsigned short)(slicks_div100(car->y) - 3L);
     return x >= zone->x[0] && x <= zone->x[1] &&
            y >= zone->y[0] && y <= zone->y[1];
 }
@@ -1682,8 +1689,8 @@ static void advance_checkpoint(struct SlicksRaceRuntime *race,
     if (car->checkpoint < race->navigation.checkpoint_count) {
         const struct SlicksTrackCheckpoint *point =
             &race->navigation.checkpoints[car->checkpoint];
-        unsigned short x = (unsigned short)(car->x / 100L + 1L);
-        unsigned short y = (unsigned short)(car->y / 100L + 1L);
+        unsigned short x = (unsigned short)(slicks_div100(car->x) + 1L);
+        unsigned short y = (unsigned short)(slicks_div100(car->y) + 1L);
         if (x >= point->x[0] && x <= point->x[1] &&
             y >= point->y[0] && y <= point->y[1])
         {
@@ -1741,9 +1748,9 @@ static void advance_lap_after_checkpoint(struct SlicksRaceRuntime *race,
      * 2981 reads mode one into 5380; 29ab reads mode zero into 5384. */
     if (car->checkpoint >= race->navigation.checkpoint_count &&
         (car->selected_surface == 17 ||
-         (car->x / 100L >= 0 && car->x / 100L < 320 &&
-          car->y / 100L >= 0 && car->y / 100L < 190 &&
-          race->material_map[mult320[car->y / 100L] + car->x / 100L] == 17))) {
+         (slicks_div100(car->x) >= 0 && slicks_div100(car->x) < 320 &&
+          slicks_div100(car->y) >= 0 && slicks_div100(car->y) < 190 &&
+          race->material_map[mult320[slicks_div100(car->y)] + slicks_div100(car->x)] == 17))) {
             car->checkpoint = 0;
             record_lap_clock(car);
             unsigned short lap_limit=race_lap_limit(race);
@@ -2590,7 +2597,7 @@ static void emit_damage_smoke(struct SlicksRaceRuntime *race,
     short vy=(short)(random_scaled(race,15)-7);
     short vx=(short)(random_scaled(race,15)-7);
     unsigned before=race->trail_particle_count;
-    add_trail_component(race,(short)(car->x/100),(short)(car->y/100),
+    add_trail_component(race,(short)(slicks_div100(car->x)),(short)(slicks_div100(car->y)),
         race->damage_smoke_colour,7,vx,vy,30);
     if(shared_actor_pool(race)) race->track_actor_scratch=
         race->trail_particle_count>before?race->weapons.trail_handle[before]:0;
@@ -2610,7 +2617,7 @@ static void emit_contact_particles(struct SlicksRaceRuntime *race,
     car->collision_partner = 0;
     /* Emitting a point does not change its car. Preserve signed truncation,
      * but perform these four invariant divisions once for the whole burst. */
-    const short origin_x=(short)(car->x/100L),origin_y=(short)(car->y/100L);
+    const short origin_x=(short)(slicks_div100(car->x)),origin_y=(short)(slicks_div100(car->y));
     const short base_vx=(short)((signed int)car->velocity_x/divisor);
     const short base_vy=(short)((signed int)car->velocity_y/divisor);
     /* 23b0f..23c94: RNG order is colour, Y jitter, then X jitter.
@@ -2872,7 +2879,7 @@ static void apply_throttle(struct SlicksRaceCar *car, unsigned short ticks)
     car->fuel -= (unsigned int)(signed int)(short)(ticks * 2U);
     car->speed_fixed = (signed int)((unsigned int)car->speed_fixed +
         (unsigned int)(signed int)(short)(ticks * 160U));
-    if (car->speed_fixed / 100L > car->maximum_speed)
+    if (slicks_div100(car->speed_fixed) > car->maximum_speed)
         car->speed_fixed = (short)((long)car->maximum_speed * 100L);
     if ((car->service_flags & 1) && car->speed_fixed > 3000)
         car->speed_fixed = 3000;
@@ -2985,7 +2992,7 @@ static unsigned char prepare_car_motion(struct SlicksRaceRuntime *race,
         car->heading -= SLICKS_HEADING_FULL;
 
     integrate_car_motion(race, car, timestep, active_drive);
-    car->speed = (short)(car->speed_fixed / 100L);
+    car->speed = (short)(slicks_div100(car->speed_fixed));
     while (car->heading < 0)
         car->heading += SLICKS_HEADING_FULL;
     while (car->heading >= SLICKS_HEADING_FULL)

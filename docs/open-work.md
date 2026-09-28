@@ -13,11 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh reverse-links-heads-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 150177/356, F1 175661/434,
-CITY 146059/341, WHACKO 153928/382. Means are 15.5-18.7 ms; the
-worst updates in that run need 9-28% cuts. The refreshed F1 HUD-clock
-phase sweep reaches 436 lines (27.9 ms, 28% cut needed), with matching
+(`amiga/bench_tracks.sh c-div100-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 148898/353, F1 174741/430,
+CITY 145116/337, WHACKO 152837/395. Means are 15.4-18.6 ms; the
+worst updates in that run need 7-27% cuts. The refreshed F1 HUD-clock
+phase sweep reaches 430 lines (27.6 ms, 27% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
@@ -43,8 +43,10 @@ retention is touched.
 Candidate fixes, roughly in order of expected value per effort:
 
 - **Resolve worst-update transitions, not just particle-count averages.**
-  Use the current F1 and refreshed WHACKO CPU captures when choosing
-  further CPU work; recent small changes alter
+  Refresh F1 and WHACKO CPU captures on the current build before selecting
+  further instruction-level changes. Keep WHACKO 685's latest regression in
+  scope. The archived captures predate recent visibility/order/division work;
+  do not present their stage percentages as current. Recent small changes alter
   which updates incur the largest work.
   The paired update-613 capture establishes a different fuel-blink phase;
   measure its cost separately rather than tuning cadence. Raster contention
@@ -119,13 +121,6 @@ Candidate fixes, roughly in order of expected value per effort:
   repeated signed X/Y-to-pixel divisions across helper calls, caching only
   if measured savings outweigh exact input-key checks. Verify via a shadow
   site per replaced function.
-  Separately test direct signed 68020 division for remaining C `/100`
-  coordinate/speed conversions: the integrator already uses it, but the
-  surrounding C still emits full-width reciprocal multiply, shift and sign
-  correction sequences. Preserve truncation toward zero over the full signed
-  32-bit domain; verify actual compiled instructions at boundaries and with
-  randomized values before comparing target timings. Do not conflate this
-  lowering experiment with the rejected cross-helper coordinate cache.
 
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Lower priority than simulation/particle work: even the

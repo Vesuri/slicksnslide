@@ -3,6 +3,56 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Direct C coordinate/speed division (2026-09-28)
+
+Use the compiled-and-tested signed `DIVS.L #100` helper for 36 coordinate
+and speed expressions in the runtime. Inputs and results remain signed longs;
+there is no coordinate cache, narrowing or change to truncation toward zero.
+Scalar car drawing, wheel emission and integration references retain ordinary
+C division so they remain independent. Host builds also retain plain C.
+
+| Track | Fresh control work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 150222 / 358 | 148898 / 353 |
+| F1 | 175672 / 433 | 174741 / 430 |
+| CITY | 146062 / 342 | 145116 / 337 |
+| WHACKO | 153923 / 382 | 152837 / 395 |
+
+Logs: `tmp/c-div100-control-20260928-*` and `tmp/c-div100-20260928-*`.
+All 603-update final states match. Total work falls 0.53-0.88%, but the
+WHACKO maximum grows thirteen lines and its over-budget count rises 69->71.
+Candidate over-budget counts are 37/197/14/71. Do not present this as an
+across-the-board latency improvement.
+
+`make verify-signed-div100` tests the actual production header compiled for
+68020, plus independent compiler C division, on 262144 signed inputs each.
+It checks near-zero and integer-limit boundaries, randomized full-domain
+values, return/stack/callee-save ABI. Host physics, DOS damage and all eleven
+7200-update DOS trajectory scenarios pass, as do dirty tracking and surface
+effects; these host tests use the plain-C fallback, not the native instruction.
+
+The opt-in target `DIV100CHECK=1` build compares every actual helper call
+against a separate C expression. All four tracks pass with counts
+36377/34967/35566/35916 (142826 total), zero mismatches and matching final
+states: `tmp/c-div100-check-20260928-{0,1,2,3}.log`.
+Mode stamps force recompilation when switching the check on or off; normal
+gameplay contains none of the counter/comparison work. Test targets explicitly
+depend on the helper header. All three display audits pass 600 updates with
+live statistics off: `tmp/c-div100-audit-20260928-{1,2,3}.log`. The normal
+build has been restored; its mode stamp and symbol table confirm the division
+and retention counters are absent. This toolchain lacks `m68k-amiga-elf-nm`,
+so symbol inspection uses the available `objdump -t`. Dry-run checks also
+reject invalid modes and verify that enabling the check schedules a recompile,
+while the restored mode-zero object is up to date.
+
+The four F1 phases pass with totals 174725/174693/174769/174752 and maxima
+430/429/423/424 lines. Clock remainders are 0/819200/1638400/2457600 and
+all final states match: `tmp/c-div100-phase-20260928-{0,1,2,3}.log`.
+Every phase total improves against the parent, and the phase-wide maximum
+falls from 436 to 430. Retain the work reduction and stronger arithmetic
+checks, keeping WHACKO 685 as an explicit regression target. No claim that
+every deadline improves or that the 312-line goal is achieved.
+
 ## Bidirectional actor chains (2026-09-28)
 
 Build 200 previous links and 128 tail heads alongside the forward draw

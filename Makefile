@@ -180,7 +180,7 @@ build/sgfx_plot_plane.bin: src/graphics/sgfx_plot_plane.s
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/verify_car_collision: tools/verify_car_collision.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/race_runtime.c src/game/track_scene.c -o $@
@@ -189,7 +189,7 @@ verify-car-collision: build/verify_car_collision
 	build/verify_car_collision
 
 build/verify_drive_physics: tools/verify_drive_physics.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/track_scene.c -o $@
@@ -199,7 +199,7 @@ verify-drive-physics: build/verify_drive_physics
 
 .PHONY: verify-dos-steering
 build/verify_dos_steering: tools/verify_dos_steering.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c \
@@ -209,7 +209,7 @@ verify-dos-steering: build/verify_dos_steering
 	build/verify_dos_steering disasm/runtime.bin
 
 .PHONY: verify-dos-ai
-build/verify_dos_ai: tools/verify_dos_ai.c src/game/race_runtime.c \
+build/verify_dos_ai: tools/verify_dos_ai.c src/game/race_runtime.c src/game/signed_division.h \
         src/game/race_runtime.h src/game/track_scene.h src/game/track_scene.c \
         src/ui/service_options.h
 	@mkdir -p build
@@ -235,7 +235,7 @@ verify-projectile-map: build/verify_projectile_map
 	./build/verify_projectile_map
 
 build/verify_track_actor_motion build/verify_surface_effects build/verify_dos_damage build/verify_drive_trajectory build/verify_offroad_pool build/verify_weapon_actors_native build/verify_track_actor_render_native: src/game/track_material_sample.h
-build/verify_weapon_simulation: tools/verify_weapon_simulation.c src/game/race_runtime.c src/game/weapon_simulation.inc src/game/weapon_actors.inc src/game/weapon_runtime.h src/game/track_scene.c | build
+build/verify_weapon_simulation: tools/verify_weapon_simulation.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_simulation.inc src/game/weapon_actors.inc src/game/weapon_runtime.h src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-simulation: build/verify_weapon_simulation
 	./build/verify_weapon_simulation
@@ -465,24 +465,24 @@ build/verify_track_actor_assets: tools/verify_track_actor_assets.c tools/verify_
 verify-track-actor-assets: build/verify_track_actor_assets
 	build/verify_track_actor_assets
 .PHONY: verify-track-actors
-build/verify_track_actor_motion: tools/verify_track_actor_motion.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/track_actor_motion.inc src/game/track_scene.c | build
+build/verify_track_actor_motion: tools/verify_track_actor_motion.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/signed_division.h src/game/track_actor_motion.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-build/verify_track_actor_render: tools/verify_track_actor_render.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+build/verify_track_actor_render: tools/verify_track_actor_render.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-build/verify_offroad_pool: tools/verify_offroad_pool.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+build/verify_offroad_pool: tools/verify_offroad_pool.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-build/verify_track_actor_setup: tools/verify_track_actor_setup.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+build/verify_track_actor_setup: tools/verify_track_actor_setup.c tools/verify_dos_damage.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-track-actors: verify-track-actor-assets build/verify_track_actor_motion build/verify_track_actor_render build/verify_offroad_pool build/verify_track_actor_setup
 	build/verify_track_actor_motion
 	build/verify_track_actor_render
 	build/verify_offroad_pool
 	build/verify_track_actor_setup
-build/verify_weapon_actors: tools/verify_weapon_actors.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc | build
+build/verify_weapon_actors: tools/verify_weapon_actors.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-build/verify_weapon_actors_native: tools/verify_weapon_actors.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc | build
+build/verify_weapon_actors_native: tools/verify_weapon_actors.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -DSLICKS_NATIVE_SPRITE_TEST -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-build/verify_track_actor_render_native: tools/verify_track_actor_render.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+build/verify_track_actor_render_native: tools/verify_track_actor_render.c tools/native_sprite_oracle.h tools/verify_menu_icon.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/track_scene.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -DSLICKS_NATIVE_SPRITE_TEST -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-weapon-actors: build/verify_weapon_actors build/verify_weapon_actors_native build/verify_track_actor_render_native build/car_draw.bin build/sprite_opaque.bin
 	build/verify_weapon_actors
@@ -665,14 +665,14 @@ build/verify_palette_remap: tools/verify_palette_remap.c src/ui/profile_editor_d
 verify-palette-remap: build/verify_palette_remap build/font_string_test.bin build/hud_icon_test.bin
 	build/verify_palette_remap
 
-build/verify_font_resource: tools/verify_font_resource.c src/ui/font_resource.h tools/host_archive.h src/game/race_runtime.c src/game/race_runtime.h | build
+build/verify_font_resource: tools/verify_font_resource.c src/ui/font_resource.h tools/host_archive.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-font-resource: build/verify_font_resource
 	build/verify_font_resource
 
 .PHONY: verify-wheel-geometry
-build/verify_wheel_geometry: tools/verify_wheel_geometry.c src/game/wheel_geometry.h src/game/race_runtime.c src/game/race_runtime.h tools/host_archive.h | build
+build/verify_wheel_geometry: tools/verify_wheel_geometry.c src/game/wheel_geometry.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h tools/host_archive.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-wheel-geometry: build/verify_wheel_geometry
@@ -684,7 +684,7 @@ build/verify_car_collision build/verify_dos_ai build/verify_dos_damage \
 build/verify_dos_steering build/verify_dos_points build/verify_actor_layers: src/game/wheel_geometry.h
 
 .PHONY: verify-vehicle-properties
-build/verify_vehicle_properties: tools/verify_vehicle_properties.c src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c src/game/driver_input.h tools/host_archive.h | build
+build/verify_vehicle_properties: tools/verify_vehicle_properties.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.c src/game/driver_input.h tools/host_archive.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-vehicle-properties: build/verify_vehicle_properties
@@ -732,7 +732,7 @@ verify-list-renderer: build/verify_list_renderer
 .PHONY: verify-track-records-pixels
 .PHONY: verify-track-info
 .PHONY: verify-arcade-setup
-build/verify_arcade_setup: tools/verify_arcade_setup.c src/game/arcade_setup.h src/game/race_runtime.c src/game/race_runtime.h | build
+build/verify_arcade_setup: tools/verify_arcade_setup.c src/game/arcade_setup.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-arcade-setup: build/verify_arcade_setup
@@ -777,7 +777,7 @@ build/verify_post_race_records: tools/verify_post_race_records.c src/game/post_r
 verify-post-race-records: build/verify_post_race_records
 	build/verify_post_race_records
 
-build/verify_race_completion: tools/verify_race_completion.c src/game/race_runtime.c src/game/race_runtime.h src/game/arcade_setup.h src/game/finish_rank.h src/game/setup_session.h src/game/race_rewards.h | build
+build/verify_race_completion: tools/verify_race_completion.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/arcade_setup.h src/game/finish_rank.h src/game/setup_session.h src/game/race_rewards.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-race-completion: build/verify_race_completion
@@ -791,7 +791,7 @@ verify-arcade-hud: build/verify_arcade_hud
 	build/verify_arcade_hud
 
 .PHONY: verify-race-lap-limit
-build/verify_race_lap_limit: tools/verify_race_lap_limit.c src/game/race_runtime.c src/game/race_runtime.h src/game/race_timing.h src/game/arcade_setup.h src/game/finish_rank.h src/game/track_scene.c src/gen/setup_defaults.h | build
+build/verify_race_lap_limit: tools/verify_race_lap_limit.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/race_timing.h src/game/arcade_setup.h src/game/finish_rank.h src/game/track_scene.c src/gen/setup_defaults.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 verify-race-lap-limit: build/verify_race_lap_limit
@@ -883,7 +883,7 @@ build/verify_profile_actions: tools/verify_profile_actions.c src/ui/profile_acti
 verify-profile-actions: build/verify_profile_actions
 	build/verify_profile_actions
 
-build/verify_dos_hud: tools/verify_dos_hud.c src/ui/race_hud.h src/game/race_runtime.c src/game/race_runtime.h src/ui/hud_background.h src/graphics/row_offsets.h src/game/track_records.h
+build/verify_dos_hud: tools/verify_dos_hud.c src/ui/race_hud.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/ui/hud_background.h src/graphics/row_offsets.h src/game/track_records.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 build/verify_dos_hud: src/game/weapon_state.h
@@ -935,7 +935,7 @@ verify-font-glyph: build/verify_font_glyph build/sui_font_glyph.bin build/sui_fo
 	build/verify_font_glyph build/sui_font_glyph.bin build/sui_font_measure.bin build/font_string_test.bin iso.@f
 
 build/verify_dos_damage: tools/verify_dos_damage.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h tools/host_archive.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h tools/host_archive.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip \
 		-I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
@@ -945,7 +945,7 @@ verify-dos-damage: build/verify_dos_damage
 
 .PHONY: verify-animated-boundary
 build/verify_animated_boundary: tools/verify_animated_boundary.c tools/verify_dos_damage.c \
-		src/game/animated_boundary.h src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c
+		src/game/animated_boundary.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.c
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip \
 		-I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
@@ -954,7 +954,7 @@ verify-animated-boundary: build/verify_animated_boundary
 
 .PHONY: verify-drive-trajectory
 build/verify_drive_trajectory: tools/verify_drive_trajectory.c tools/verify_dos_damage.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c tools/host_archive.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.c tools/host_archive.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip \
 		-I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
@@ -964,7 +964,7 @@ verify-drive-trajectory: build/verify_drive_trajectory
 	build/verify_drive_trajectory 4 ref/TRACKS/BUMPS.SS
 
 build/verify_surface_effects: tools/verify_surface_effects.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/track_scene.c -o $@
@@ -974,7 +974,7 @@ verify-surface-effects: build/verify_surface_effects
 
 .PHONY: verify-dirty-tracking verify-planar-writes
 build/verify_dirty_tracking: tools/verify_dirty_tracking.c \
-		src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/track_scene.c -o $@
@@ -994,7 +994,7 @@ verify-planar-writes:
 
 .PHONY: verify-dos-particle-expiry
 .PHONY: verify-dos-points
-build/verify_dos_points: tools/verify_dos_points.c src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c src/game/track_scene.h | build
+build/verify_dos_points: tools/verify_dos_points.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.c src/game/track_scene.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip -I/opt/homebrew/opt/unicorn/include $< \
 		src/game/track_scene.c -L/opt/homebrew/opt/unicorn/lib -lunicorn -o $@
@@ -1010,7 +1010,7 @@ build/verify_dos_particle_expiry: tools/verify_dos_particle_expiry.c | build
 verify-dos-particle-expiry: build/verify_dos_particle_expiry
 	build/verify_dos_particle_expiry disasm/runtime.bin
 
-build/verify_actor_layers: tools/verify_actor_layers.c src/game/race_runtime.c src/game/track_scene.c \
+build/verify_actor_layers: tools/verify_actor_layers.c src/game/race_runtime.c src/game/signed_division.h src/game/track_scene.c \
         src/game/race_runtime.h src/game/track_scene.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/track_scene.c -o $@
@@ -1206,7 +1206,7 @@ build/particle_compact_draw.bin: tools/particle_compact_draw_test.s src/game/par
 verify-particle-compact-draw: build/particle_compact_draw.bin build/verify_particle_draw
 	build/verify_particle_draw build/particle_compact_draw.bin compact
 
-build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
+build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/signed_division.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-particle-draw
@@ -1241,7 +1241,7 @@ build/dirty_rect.bin: src/game/dirty_rect.s build/offsets/race_offsets.i | build
 	printf '\tinclude "src/game/dirty_rect.s"\n' > build/offsets/dirty_rect_test.s
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ build/offsets/dirty_rect_test.s
 
-build/verify_dirty_rect: tools/verify_dirty_rect.c src/game/race_runtime.c src/game/race_runtime.h | build
+build/verify_dirty_rect: tools/verify_dirty_rect.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-dirty-rect
@@ -1251,7 +1251,7 @@ verify-dirty-rect: build/dirty_rect.bin build/verify_dirty_rect build/offsets/ra
 build/dirty_prune.bin: src/game/dirty_prune.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
 
-build/verify_dirty_prune: tools/verify_dirty_prune.c src/game/race_runtime.c src/game/race_runtime.h | build
+build/verify_dirty_prune: tools/verify_dirty_prune.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-dirty-prune
@@ -1261,7 +1261,7 @@ verify-dirty-prune: build/dirty_prune.bin build/verify_dirty_prune build/offsets
 build/actor_advance.bin: tools/actor_advance_test.s src/game/track_motion.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
-build/verify_actor_advance: tools/verify_actor_advance.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/actor_slots.h src/game/race_runtime.h | build
+build/verify_actor_advance: tools/verify_actor_advance.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/actor_slots.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-actor-advance
@@ -1305,25 +1305,25 @@ build/verify_car_probe: tools/verify_car_probe.c | build
 verify-car-probe: build/car_probe.bin build/verify_car_probe
 	build/verify_car_probe build/car_probe.bin
 
-build/verify_car_draw: tools/verify_car_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
+build/verify_car_draw: tools/verify_car_draw.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/signed_division.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-draw
-build/verify_car_render_cache: tools/verify_car_render_cache.c tools/verify_surface_effects.c tools/native_sprite_oracle.h src/game/race_runtime.c src/game/race_runtime.h | build
+build/verify_car_render_cache: tools/verify_car_render_cache.c tools/verify_surface_effects.c tools/native_sprite_oracle.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-render-cache
 verify-car-render-cache: build/car_draw.bin build/sprite_opaque.bin build/verify_car_render_cache
 	build/verify_car_render_cache
 
-build/verify_sprite_restore_chain: tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/race_runtime.h src/game/weapon_actors.inc | build
+build/verify_sprite_restore_chain: tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-sprite-restore-chain
 verify-sprite-restore-chain: build/sprite_opaque.bin build/verify_sprite_restore_chain
 	build/verify_sprite_restore_chain
 
-build/verify_sprite_draw_chain: tools/verify_sprite_draw_chain.c tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/race_runtime.h src/game/weapon_actors.inc | build
+build/verify_sprite_draw_chain: tools/verify_sprite_draw_chain.c tools/verify_sprite_restore_chain.c tools/verify_surface_effects.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-sprite-draw-chain
@@ -1522,6 +1522,16 @@ verify-c2p16: build/c2p16_test.bin build/verify_c2p16
 build/actor_order.bin: src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
 
+build/signed_div100.bin: tools/signed_div100_test.c tools/signed_div100_test.ld src/game/signed_division.h | build
+	$(M68K_CC) -m68020 -msoft-float -O3 -ffunction-sections -fomit-frame-pointer -nostdlib -Wl,--oformat=binary,-T,tools/signed_div100_test.ld $< -o $@
+
+build/verify_signed_div100: tools/verify_signed_div100.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-signed-div100
+verify-signed-div100: build/signed_div100.bin build/verify_signed_div100
+	build/verify_signed_div100 build/signed_div100.bin
+
 build/actor_compact_order.bin: tools/actor_compact_order_test.s src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
@@ -1529,7 +1539,7 @@ build/actor_compact_order.bin: tools/actor_compact_order_test.s src/game/actor_o
 verify-actor-compact-order: build/actor_compact_order.bin build/verify_actor_order
 	build/verify_actor_order build/actor_compact_order.bin build/offsets/race_offsets.i compact
 
-build/verify_actor_order: tools/verify_actor_order.c src/game/race_runtime.c src/game/race_runtime.h src/game/weapon_runtime.h | build
+build/verify_actor_order: tools/verify_actor_order.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/weapon_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-actor-order
@@ -1539,7 +1549,7 @@ verify-actor-order: build/actor_order.bin build/verify_actor_order
 build/car_integration.bin: tools/car_integration_test.s src/game/car_motion.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
-build/verify_car_integration: tools/verify_car_integration.c src/game/race_runtime.c src/game/race_runtime.h src/game/track_material_sample.h | build
+build/verify_car_integration: tools/verify_car_integration.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_material_sample.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-integration
@@ -1573,7 +1583,7 @@ build/verify_pc_sampler: tools/verify_pc_sampler.c | build
 verify-pc-sampler: build/pc_sampler_test.bin build/verify_pc_sampler
 	build/verify_pc_sampler build/pc_sampler_test.bin
 
-build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_runtime.c src/game/race_runtime.h src/game/sprite_retention.inc src/game/weapon_actors.inc | build
+build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/sprite_retention.inc src/game/weapon_actors.inc | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 .PHONY: verify-retention-groups
@@ -1609,7 +1619,7 @@ verify-retention-address: build/retention_address.bin build/verify_retention_add
 verify-retention-groups: build/verify_retention_groups
 	build/verify_retention_groups
 
-build/verify_status_cache: tools/verify_status_cache.c src/game/race_runtime.c src/game/race_runtime.h src/ui/race_hud.h | build
+build/verify_status_cache: tools/verify_status_cache.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/ui/race_hud.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 .PHONY: verify-status-cache
