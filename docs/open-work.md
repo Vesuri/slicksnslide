@@ -31,6 +31,11 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
    [point-retention-design.md](point-retention-design.md).
    Do not repeat the measured slow C retention policies or compact-pool
    integration unchanged.
+   Next concrete implementation: a shared ordered restoration entry for
+   points and sprites, retaining race/chain state across the existing private
+   sprite renderer and a native point loop. Cover validation and fallback
+   resumption, not just replace a C call with another wrapper. Use mixed-chain
+   oracle cases and RETCHECK before accepting target performance results.
 
 2. **F1 sprite overhead.** Reduce conflict processing, repeated validation,
    group rebuilding and late restoration. Inspect complete hot paths, not
@@ -67,8 +72,8 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 ## Verification and working rules
 
 - Current profiling baseline is
-  `tmp/pcprof-post-animation-{f1,whacko}-20260928`; it predates the accepted
-  surface-tail change. Refresh before attributing samples to new binaries.
+  `tmp/pcprof-post-surface-{f1,whacko}-20260928`, captured from 10f12e1
+  with exact companion ELFs and zero missed samples.
   The profiling document records all earlier measurements and rejected work.
 - Compare `amiga/bench_tracks.sh` against an exact parent-build control;
   FINAL_STATE must match. Use uninterrupted timing, not debugger-stopped runs.

@@ -3,6 +3,49 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Post-surface profiles and next native boundary (2026-09-28)
+
+Fresh sequential muted captures from committed 10f12e1:
+`tmp/pcprof-post-surface-{f1,whacko}-20260928.{bin,log,elf}`.
+Both cover 603 updates with canonical final states and zero missed samples.
+F1 has 9203 samples (1670 display-wait); WHACKO has 8004 (1361 wait).
+Sampler work is included in these runs, so their timings are not acceptance
+benchmarks. Counts below are samples, not raster lines or exact costs.
+
+| Symbol / region | F1 | WHACKO |
+| --- | ---: | ---: |
+| Remaining race-step C | 817 | 780 |
+| Native car integration | 498 | 496 |
+| Wheel emission | 408 | 441 |
+| C2P | 415 | 451 |
+| Sprite retention preparation | 316 | outside top 24 |
+| Draw-order construction | 307 | 240 |
+| Weapon actor advancement | 307 | 193 |
+| Shared particle advancement | 267 | 285 |
+| Sprite draw chain | 244 | 182 |
+| Particle paint body (address_end symbol) | 237 | 234 |
+| General draw-priority wrapper | 167 | 108 |
+| General restore-priority wrapper | 149 | outside top 24 |
+| Point restore chain | 125 | 128 |
+
+The new surface dispatch accounts for only 41 of F1's race-step samples.
+This supports closing that family of experiments, not expanding it.
+The next concrete native boundary to evaluate is the ordered actor renderer:
+currently C dispatches each priority between independent sprite and point
+chains, pushes up to ten arguments, and each chain saves its registers again.
+Source locations are draw_trail_priority/restore_trail_priority in
+race_runtime.c, particle_draw.s, point_restore.s and track_sprite_fast.s.
+The opportunity is shared race-base setup, chain traversal, validation and
+fallback handling under one register contract, not frequent type alternation
+(previous counts already ruled that out). Start with reverse restoration,
+whose private sprite routine preserves d5-d7/a3-a6; preserve the exact chain
+and stop before unsupported sprites, then resume after the existing general
+renderer. Keep independent reference traversal for RETCHECK. Extend isolated
+tests to mixed point/sprite chains, retained sprites, clipping, empty/saved
+states and fallback resumption before production integration. A candidate
+must beat the parent in whole-frame/phase tests; wrapper sample counts are
+an opportunity estimate, not a promised saving or enough alone for 50 FPS.
+
 ## Fused surface-tail candidate and verification (2026-09-28)
 
 The candidate replaces the consecutive limit/oil/damping/pit/jump/contact
