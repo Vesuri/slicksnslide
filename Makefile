@@ -646,7 +646,7 @@ build/verify_driver_device: tools/verify_driver_device.c tools/verify_options_me
 verify-driver-device: build/verify_driver_device
 	build/verify_driver_device
 
-build/verify_amiga_key_scan: tools/verify_amiga_key_scan.c src/platform/amiga/amiga_key_scan.h src/ui/controllers_dialog.h src/game/driver_input.h src/gen/setup_defaults.h | build
+build/verify_amiga_key_scan: tools/verify_amiga_key_scan.c src/platform/amiga/amiga_key_scan.h src/ui/controllers_dialog.h src/ui/track_menu.h src/ui/list_dialog.h src/game/driver_input.h src/gen/setup_defaults.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 
 verify-amiga-key-scan: build/verify_amiga_key_scan

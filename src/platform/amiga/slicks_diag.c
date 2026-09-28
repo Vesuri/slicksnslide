@@ -930,7 +930,7 @@ again:
         while(slicks_amiga_platform_poll_key(p,&raw)) {
             (void)slicks_amiga_menu_character(m,(unsigned char)raw);
             if(!(raw&128)) slicks_list_dialog_key(&m->picker->renderer.state,
-                (unsigned char)amiga_raw_to_dos_scan(raw));
+                (unsigned char)amiga_raw_to_menu_scan(raw));
             if(m->picker->renderer.state.done) break;
         }
         if(m->picker->renderer.state.done) break;
@@ -1758,7 +1758,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             if(raw&128) continue;
             /* Classic keyboards have no Scroll Lock. Help is the shop-only
              * capture shortcut; F1 retains the original help viewer. */
-            unsigned char scan=raw==0x5f?70:(unsigned char)amiga_raw_to_dos_scan(raw);
+            unsigned char scan=raw==0x5f?70:(unsigned char)amiga_raw_to_menu_scan(raw);
             if(m->help_warning) {
                 if(slicks_amiga_help_warning_close(m)) goto done;
                 present_menu_surface(platform,m);
@@ -3164,7 +3164,8 @@ static int run_race_pause(struct SlicksAmigaPlatform *platform,struct SlicksAmig
                     if(slicks_amiga_controllers_capture_prompt(m,slicks_original_controller_prompt)) goto done;
                 } else if(slicks_amiga_controllers_draw(m,configuration,&labels)) goto done;
             } else if(m->race_menu->speed_active) {
-                if(slicks_amiga_race_speed_key(m,configuration,scan)) goto done;
+                if(slicks_amiga_race_speed_key(m,configuration,
+                    (unsigned char)amiga_raw_to_menu_scan(raw))) goto done;
                 if(m->race_menu->speed.done) {
                     unsigned short argument;
                     if(slicks_amiga_race_speed_close(m,configuration,&argument)) goto done;
@@ -4388,7 +4389,7 @@ int main(void)
                     if(g_slicks_track_menu->track_lists) {
                         slicks_amiga_platform_end(&platform);
                         if(track_lists_key(&platform,(short)track_count,track_names,character,
-                            (unsigned char)amiga_raw_to_dos_scan(code),picker_clock.ticks)) goto cleanup;
+                            (unsigned char)amiga_raw_to_menu_scan(code),picker_clock.ticks)) goto cleanup;
                         present_menu_surface(&platform,g_slicks_track_menu);
                         if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                         slicks_diag_track_lists_ready();
@@ -4404,7 +4405,7 @@ int main(void)
                     }
                     struct SlicksTrackMenu *state=&g_slicks_track_state;
                     g_slicks_track_action=(unsigned short)slicks_track_menu_key(state,(short)track_count,
-                        (unsigned char)amiga_raw_to_dos_scan(code));
+                        (unsigned char)amiga_raw_to_menu_scan(code));
                     switch(g_slicks_track_action) {
                     case SLICKS_TRACK_MENU_TOGGLE:
                         if(state->cursor>=0 && slicks_track_playlist_toggle(&g_slicks_track_playlist,state->cursor,
@@ -4525,7 +4526,7 @@ int main(void)
                         continue;
                     }
                     g_slicks_options_action=(unsigned short)slicks_options_menu_key(&g_slicks_options_state,
-                        &configuration,slicks_original_option_specs,(unsigned char)amiga_raw_to_dos_scan(code));
+                        &configuration,slicks_original_option_specs,(unsigned char)amiga_raw_to_menu_scan(code));
                     setup_dirty|=g_slicks_options_state.dirty;
                     slicks_amiga_audio_set_volume(&audio,configuration.options[1],configuration.options[2]);
                     if(g_slicks_options_state.done) {
@@ -4623,7 +4624,7 @@ int main(void)
                         player_menu_state.redraw=1;
                     } else if(g_slicks_player_menu->picker) {
                         slicks_list_dialog_key(&g_slicks_player_menu->picker->renderer.state,
-                            (unsigned char)amiga_raw_to_dos_scan(code));
+                            (unsigned char)amiga_raw_to_menu_scan(code));
                         if(!g_slicks_player_menu->picker->renderer.state.done) {
                             if(slicks_amiga_profile_picker_draw(g_slicks_player_menu,picker_clock.ticks)) goto cleanup;
                             present_player_menu(&platform); slicks_diag_profile_picker_ready();
@@ -4722,7 +4723,7 @@ int main(void)
                 if (service_menu_open) {
                     unsigned short change = slicks_service_menu_key(
                         &service_selection, &configuration.options[9], &configuration.options[10],
-                        amiga_raw_to_dos_scan(code));
+                        amiga_raw_to_menu_scan(code));
                     if (change == 2) {
                         service_menu_open = 0;
                         make_title_surface(logical, title_frame, source_palette);

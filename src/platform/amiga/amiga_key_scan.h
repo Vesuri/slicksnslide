@@ -23,15 +23,26 @@ static inline unsigned short amiga_raw_to_dos_scan(unsigned short raw)
     return scan[raw&127];
 }
 
+/* Menu-only aliases, by physical position: keypad 9/3 and the two keys
+ * immediately right of P ([/]). Keep text entry and saved driving bindings
+ * on the unmodified keymap/physical scan paths above. Caller handles release. */
+static inline unsigned short amiga_raw_to_menu_scan(unsigned short raw)
+{
+    unsigned key=raw&127;
+    if(key==0x1a) return 0x49;
+    if(key==0x1b) return 0x51;
+    return amiga_raw_to_dos_scan(raw);
+}
+
 struct SlicksAmigaHelpKey { unsigned char ascii,scan; };
-/* Help has no numeric entry. Use keypad 9/3 as PageUp/PageDown on the
- * classic keyboard, which lacks dedicated page keys. Do not apply this
- * policy to names or controller bindings. Other characters stay keymapped. */
+/* Page aliases take precedence over their printable keymap characters in
+ * Help, which has no text entry. Other characters stay keymapped. */
 static inline struct SlicksAmigaHelpKey slicks_amiga_help_key(unsigned char raw,unsigned char character)
 {
     struct SlicksAmigaHelpKey key={0,0};
     if(raw&128) return key;
-    if(raw==0x3f || raw==0x1f) key.scan=(unsigned char)amiga_raw_to_dos_scan(raw);
+    if(raw==0x3f || raw==0x1f || raw==0x1a || raw==0x1b)
+        key.scan=(unsigned char)amiga_raw_to_menu_scan(raw);
     else if(character) key.ascii=character;
     else if(raw<0x60) key.scan=(unsigned char)amiga_raw_to_dos_scan(raw);
     return key;

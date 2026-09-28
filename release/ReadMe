@@ -38,6 +38,8 @@ Both launch methods share these files. Keep the drawer writable.
 
 Menu controls: arrows, Enter, Escape; F1 for help. Configure drivers and controls
 in the original native menus. Exit through the menu to save pending changes.
+Page Up/Down in menus and help: keypad 9/3, or the two keys immediately right
+of P ([ and ] on a US keyboard). Text entry and driving bindings are unchanged.
 WHDLoad F10 quits immediately and cannot perform deferred game saves.
 Amiga Help replaces PC Scroll Lock for shop screenshots.
 
