@@ -10,6 +10,20 @@
 	xref	slicks_retention_cars
 	xref	slicks_retention_late
 	include	"race_offsets.i"
+	ifnd SLICKS_PARTICLE_WORD_COORDINATES
+SLICKS_PARTICLE_WORD_COORDINATES equ 0
+	endif
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+RP_SIZE equ 20
+RP_PRIORITY equ 15
+RP_X equ 0
+RP_Y equ 2
+	else
+RP_SIZE equ PARTICLE_SIZE
+RP_PRIORITY equ PARTICLE_PRIORITY
+RP_X equ PARTICLE_X
+RP_Y equ PARTICLE_Y
+	endif
 	ifgt ((ACTOR_CAPACITY-1)*ACTOR_SIZE-32767)
 	fail "Retention actor offsets must fit a signed word"
 	endif
@@ -216,17 +230,29 @@ slicks_prepare_sprite_retention:
 	subq.w	#1,d7
 	bmi.w	.cars
 .point:
-	move.b	PARTICLE_PRIORITY(a0),d4	; only lower-priority points matter
+	move.b	RP_PRIORITY(a0),d4	; only lower-priority points matter
 	cmp.b	RET_MAX_PRIORITY(a5),d4
 	bcc.s	.point_next
-	move.l	PARTICLE_Y(a0),d1	; the drawn row/column words
+.point_y:
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	move.w	RP_Y(a0),d1
+	asr.w	#6,d1
+	else
+	move.l	RP_Y(a0),d1	; the drawn row/column words
 	asr.l	#6,d1
+	endif
 	cmpi.w	#184,d1
 	bcc.s	.point_next
 	tst.b	(a1,d1.w)
 	beq.s	.point_next
-	move.l	PARTICLE_X(a0),d0
+.point_x:
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	move.w	RP_X(a0),d0
+	asr.w	#6,d0
+	else
+	move.l	RP_X(a0),d0
 	asr.l	#6,d0
+	endif
 	cmpi.w	#320,d0
 	bcc.s	.point_next
 	move.w	d1,d2
@@ -259,7 +285,7 @@ slicks_prepare_sprite_retention:
 	bge.s	.point_next
 	bset	#1,ENTRY_FLAGS(a3)
 .point_next:
-	lea	PARTICLE_SIZE(a0),a0
+	lea	RP_SIZE(a0),a0
 	dbf	d7,.point
 	bra.s	.cars
 .point_shared:

@@ -3,6 +3,25 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated retention particle readers (2026-09-28)
+
+The native retention pass now has opt-in compact coordinate, priority and
+stride reads. `make verify-retention-particle verify-retention-address`
+passes. The new test executes the actual two coordinate load/shift pairs,
+priority load and pointer increment, covering all 65536 signed coordinate
+words on both axes (odd permutation for Y), every priority and 256 pool
+offsets in each layout. Expected rounding uses explicit floor division,
+not the native shift. It checks the entire record/guards and all general
+registers, including the intentionally unchanged high words of compact
+coordinate reads. Existing all-handle sprite address tests also pass.
+
+This isolated instruction test is deliberately not a full retention oracle:
+row/cell filtering, shared-cell helper calls and keep/restore decisions still
+require target RETCHECK after layout integration. The default production
+instruction bytes match fresh parent assembly, excluding test-only trailers
+(`tmp/retention-particle-parent-20260928.*`). Gameplay still uses long
+coordinates; no performance improvement is claimed from these tests.
+
 ## Isolated compact-particle actor ordering (2026-09-28)
 
 `make verify-actor-order verify-actor-compact-order` passes 12000 pools

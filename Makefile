@@ -1566,6 +1566,20 @@ build/retention_address.bin: tools/retention_address_test.s src/game/sprite_rete
 build/verify_retention_address: tools/verify_retention_address.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
+build/retention_particle.bin: tools/retention_particle_test.s src/game/sprite_retention.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/retention_compact_particle.bin: tools/retention_particle_test.s src/game/sprite_retention.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -DSLICKS_PARTICLE_WORD_COORDINATES=1 -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/verify_retention_particle: tools/verify_retention_particle.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-retention-particle
+verify-retention-particle: build/retention_particle.bin build/retention_compact_particle.bin build/verify_retention_particle
+	build/verify_retention_particle build/retention_particle.bin 24
+	build/verify_retention_particle build/retention_compact_particle.bin 20
+
 .PHONY: verify-retention-address
 verify-retention-address: build/retention_address.bin build/verify_retention_address
 	build/verify_retention_address build/retention_address.bin build/offsets/race_offsets.i
