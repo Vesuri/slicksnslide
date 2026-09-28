@@ -23,9 +23,9 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
 ## Registration verification
 
-- Exercise the interactive Y/F1 ordering-help branch on exit. The optional
-  external order-form image needs a visual check if matching original data
-  becomes available; it is absent from the supplied archive.
+- The optional external `webf_ord.bmp` order-form image needs a visual check
+  if matching original data becomes available; it is absent from the supplied
+  archive. Do not substitute another image and call this check complete.
 
 Implementation and completed verification evidence are separate in
 [registration-support.md](registration-support.md).

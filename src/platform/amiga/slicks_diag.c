@@ -2861,7 +2861,10 @@ static int result_wait(struct SlicksAmigaPlatform *platform,unsigned limit,unsig
 }
 
 volatile unsigned short g_slicks_registration_screen;
+/* Explicit REGCHECKY/F input fixtures; never set by a normal launch. */
+static unsigned char registration_help_test;
 __attribute__((noinline)) void slicks_diag_registration_screen_ready(void) { __asm__ volatile("" ::: "memory"); }
+__attribute__((noinline)) void slicks_diag_registration_help_closed(void) { __asm__ volatile("" ::: "memory"); }
 static void registration_delay(struct SlicksAmigaPlatform *p,unsigned milliseconds)
 {
     unsigned long start=p->vblank_count;
@@ -2878,6 +2881,10 @@ static short registration_wait(struct SlicksAmigaPlatform *p)
      * accepting a new one, matching the original keyboard-state poll. */
     while(slicks_amiga_platform_poll_key(p,&raw))
         if(raw<0xe0) held=(raw&128)?0:(unsigned short)(raw+1);
+    if(registration_help_test && (g_slicks_registration_screen==2 || g_slicks_registration_screen==3)) {
+        unsigned char key=registration_help_test==1?0x15:0x50; /* Amiga Y/F1 */
+        championship_test_keys(p,&key,1);
+    }
     while(!g_slicks_diag_force_exit) {
         while(slicks_amiga_platform_poll_key(p,&raw)) {
             if(raw&128) { if((raw&127)+1==held) held=0; continue; }
@@ -2900,7 +2907,11 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     if(slicks_resource_archive_open(&a,"SLICKS.000")) goto done;
     m=slicks_amiga_help_surface_create(&a,chunky,palette);
     if(!m) goto done;
-    if(open_help(p,m,(const unsigned char *)"")) goto done;
+    if(open_help(p,m,slicks_registration_help_topic)) goto done;
+    if(registration_help_test) {
+        static const unsigned char keys[]={0x4d,0xcd,0x4c,0xcc,0x45,0xc5};
+        championship_test_keys(p,keys,sizeof keys);
+    }
     while(!g_slicks_diag_force_exit) {
         unsigned short raw;slicks_amiga_platform_wait_vblank(p);
         while(slicks_amiga_platform_poll_key(p,&raw)) {
@@ -2915,8 +2926,11 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
         }
     }
 done:
-    slicks_amiga_platform_end(p);slicks_amiga_player_menu_destroy(m);
-    slicks_resource_archive_close(&a);return result;
+    slicks_amiga_platform_end(p);
+    if(m && m->help && slicks_amiga_help_close(m)) result=-1;
+    slicks_amiga_player_menu_destroy(m);
+    slicks_resource_archive_close(&a);
+    slicks_diag_registration_help_closed();return result;
 }
 /* Original registration-dependent presentation. Real archive BMPs and fonts,
  * never captured frames. kind 0=expired trial, 1=exit, 2=optional order form. */
@@ -2964,7 +2978,7 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     } else if(kind==1 && !registration.name[0]) registration_delay(p,300);
     short key=registration_wait(p);
     if(key<0) goto done;
-    if(kind==1 && (key==21 || key==59)) {
+    if(kind==1 && slicks_registration_help_requested(key)) {
         if(registration_exit_help(p,chunky,palette)) goto done;
         for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,p->views[i].bitmap,0,200);
         if(slicks_amiga_platform_set_view(p,0,palette) || slicks_amiga_platform_begin(p,0)) goto done;
@@ -3338,8 +3352,9 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    if(argc==8 && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
+        if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic clock fraction, never a normal-game override.

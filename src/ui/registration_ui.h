@@ -1,5 +1,9 @@
 #ifndef SLICKS_REGISTRATION_UI_H
 #define SLICKS_REGISTRATION_UI_H
+
+static const unsigned char slicks_registration_help_topic[]="reg";
+static inline int slicks_registration_help_requested(short scan)
+{ return scan==21 || scan==59; }
 #include "palette_remap.h"
 /* Original 1987:c72f..c758: unsigned 16-bit calendar arithmetic, not a
  * Gregorian day interval. Preserve the original 40-unit trial comparison. */

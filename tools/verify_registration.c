@@ -26,6 +26,16 @@ static void code(uc_engine *u,uint64_t a,uint32_t n,void *p)
 {
     (void)n;(void)p;
     if(mode) {
+        if(mode==4 && (a==0x26595 || a==0x2659a)) {
+            branch=a==0x26595;ended=1;ck(uc_emu_stop(u));return;
+        }
+        if(mode==5 && a==0x327dc) {
+            unsigned char args[4],topic[4];
+            ck(uc_mem_read(u,16*reg(u,UC_X86_REG_SS)+reg(u,UC_X86_REG_SP)+4,args,4));
+            ck(uc_mem_read(u,16*(args[2]|args[3]<<8)+(args[0]|args[1]<<8),topic,4));
+            if(memcmp(topic,slicks_registration_help_topic,4)) exit(1);
+            ended=1;ck(uc_emu_stop(u));return;
+        }
         if((mode==1 && (a==0x25fcb || a==0x2611e)) || (mode==2 && a==0x2647d) ||
            (mode==3 && a==0x25d5d)) {
             branch=a==0x25fcb;ended=1;ck(uc_emu_stop(u));
@@ -107,6 +117,16 @@ int main(int argc,char **argv)
         if(!ended || name[0]!=slicks_registration_uppercase((unsigned char)c) || name[1]) return 1;
     }
     puts("Original name case conversion: all 256 byte values match");
+    for(unsigned scan=0;scan<65536;++scan) {
+        set(u,UC_X86_REG_CS,0x1987);set(u,UC_X86_REG_DI,scan);
+        mode=4;ended=0;ck(uc_emu_start(u,0x2658b,0x70000,0,20));
+        if(!ended || branch!=(unsigned)slicks_registration_help_requested((short)scan)) return 1;
+    }
+    set(u,UC_X86_REG_CS,0x266c);set(u,UC_X86_REG_DS,0x3cbf);
+    set(u,UC_X86_REG_SS,0x8000);set(u,UC_X86_REG_SP,0xe000);
+    mode=5;ended=0;ck(uc_emu_start(u,0x2a096,0x70000,0,20));
+    if(!ended)return 1;
+    puts("Original exit help: all 65536 key values and actual topic argument match");
     ck(uc_close(u));
     return 0;
 }

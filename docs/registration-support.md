@@ -77,8 +77,54 @@ after several title updates.
   paths and require full system restoration (`0x1f`). Invalid-file fixture
   checks rejection before display takeover.
 
-The optional order-form image and interactive exit-help key sequence have not
-had a separate end-to-end visual run. This is not a claim of exhaustive testing
-of every malformed filesystem condition or every original registration key.
+The optional order-form image remains unavailable for a visual check. The
+interactive exit-help key sequence is verified below. This is not a claim of
+exhaustive testing of every malformed filesystem condition or every original key.
 Performance optimization remains stopped; this feature does not establish
 the outstanding 50 FPS target.
+
+## Exit-help verification and corrections — 2026-09-28
+
+Executing the original key gate at physical `2658b` proves that exactly DOS
+scan codes 21 (Y) and 59 (F1) open exit help. All 65,536 values now have an
+independent original-code comparison in `verify-registration`. Executing the
+original wrapper at `2a096` captures the actual help-call argument at `327dc`:
+DS:1436 contains `reg`, not the empty topic previously used by the port.
+The port now passes that exact topic. The supplied HELP.TXT resolves it to
+chapter 353/page 0 (contents, including the full-version link); the empty
+topic instead resolves to 9589. `verify-help-index` confirms these original
+lookup results. No replacement order text or invented registration flow is used.
+
+The exit-help cleanup also now calls the viewer's close operation before
+freeing it. This restores the underlying exit-screen pixels; previously the
+help pixels remained for the final fade. Four native A1200 cases pass with
+2 MiB Chip, no Fast RAM, and the confirmed default 4 KiB task stack:
+
+- Keyless Y: `tmp/standalone-release-dkr1v7n9`.
+- Keyless F1: `tmp/standalone-release-kw5bzu60`.
+- Valid private key, Y: `tmp/standalone-release-5shx3je8`.
+- Valid private key, F1: `tmp/standalone-release-ztaa50fh`.
+
+All four reach chapter 353/page 0 through ordinary Amiga raw-key input,
+navigate down/up, close with Escape, and restore system state (`0x1f`).
+The before/after 64,000-byte exit-screen dumps compare identically in every
+case. The keyless help image was rendered from its native dump and visually
+inspected. No title/owner/key dumps were captured. The tests are muted and
+close their owned emulator sessions. `REGCHECKY` and `REGCHECKF` are explicit
+diagnostic input fixtures only; normal launches never populate their key queue.
+
+Existing independent help suites also pass: 98 page comparisons, 16 viewer
+entry/close comparisons, 1,166 pixel/font comparisons, 816 navigation cases,
+and 3,024 refresh/call-order cases. Registration loader/date/pixel suites pass.
+
+Reproduce with a disposable installed data directory and
+`tools/test_standalone_release.py PRIVATE_INSTALL --default-stack --args REGCHECKY
+--checks amiga/diag_registration_help.gdb --marker REGISTRATION_EXIT_HELP_RESTORE_OK`
+(repeat with `REGCHECKF`, with and without a legitimate local key). Compare
+the resulting `.run/registration-help/before.chunky` and `after.chunky` dumps.
+The debugger fixture also asserts that keyless exit attempts the optional
+image and safely skips its absence, while registered exit never requests it.
+It intentionally expects the original supplied data, without `webf_ord.bmp`.
+The final fixture including these optional-image assertions passed all four
+cases again in `tmp/standalone-release-{lzx01xz8,4mccf3zq,hirhxwgi,4b0rtf3g}`
+(same order as above); all four exit-screen comparisons also pass.
