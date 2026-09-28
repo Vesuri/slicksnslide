@@ -41,7 +41,7 @@ int main(int argc,char **argv)
     const unsigned addresses[]={0x20000,0x30000,0x40000,0x50000,0x60000,0x70000,0x80000};
     const int preserved[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,
         UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
-    for(unsigned trial=0;trial<2048;++trial) {
+    for(unsigned trial=0;trial<4096;++trial) {
         memset(&race,0,sizeof race);race.chunky=pixels;
         for(unsigned i=0;i<64000;++i) {
             pixels[i]=before[i]=(unsigned char)(i*31+trial);
@@ -57,6 +57,19 @@ int main(int argc,char **argv)
         p.saved_valid=trial&3;p.colour=trial;p.saved_under=trial>>1;
         p.occlusion_limit=(trial&4)?15:0;
         p.lifetime=7;p.priority=3;p.permanent=1;p.state=5;
+        if(trial>=2048) {
+            /* Seed a real previous draw through the scalar path, restore
+             * it, then test unchanged and moved pixels on the next draw. */
+            p.saved_valid=0;
+            draw_trail_point(&race,&p);
+            if(p.saved_valid&1) {
+                pixels[p.old_y*320+p.old_x]=p.saved_under;
+                p.saved_valid=2;
+            }
+            if(trial&32)p.x+=64;
+            if(trial&64)p.y-=64;
+        }
+        memset(race.dirty_pixels,0,sizeof race.dirty_pixels);
         race.dirty_pixel_count=trial%4==0?510:trial%4==1?511:trial%4==2?512:0;
         unsigned count=race.dirty_pixel_count;
         unsigned char original[24],expected[24],got[24],count_bytes[2],stack[32];
@@ -170,6 +183,6 @@ int main(int argc,char **argv)
             if(v!=0x55667700+i)fail("batch preserved register");
         }
     }
-    uc_close(u);printf("68020 point draw (%u-byte records): 2048 single + 256 ordered-batch + 256 actor-chain full-frame, metadata, dirty-list, overflow and ABI cases pass\n",particle_stride);
+    uc_close(u);printf("68020 point draw (%u-byte records): 4096 single (including seeded previous-frame draws) + 256 ordered-batch + 256 actor-chain full-frame, metadata, dirty-list, overflow and ABI cases pass\n",particle_stride);
     return 0;
 }

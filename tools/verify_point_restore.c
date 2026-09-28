@@ -41,7 +41,7 @@ int main(int argc,char **argv){
             be16(image+INDEX+h*2,(unsigned)index);
         }
         for(unsigned i=0;i<256;++i){unsigned char *p=image+PART+i*24;
-            p[20]=rnd()%4;
+            p[20]=rnd()%8;
             if(p[20]&1){
                 unsigned x=t%4?rnd()%320:0,y=t%4?rnd()%200:199;
                 if(t%7==0){x=319;y=199;}

@@ -3,6 +3,49 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Rejected unchanged-pixel visibility cache (2026-09-28)
+
+Tested caching successful particle visibility in saved-valid bit 2. On a
+restored, unmoved point, native drawing skipped terrain lookup and the
+redundant old-position tests; restoration and painting still happened. The
+scalar comparison always recomputed visibility. Creation/hiding/retirement
+cleared the cache; restore preserved it. Terrain maps are constructed before
+the race, initialization clears all particle records, and production
+occlusion-limit writes address newly emitted points only.
+
+Both record-layout drawing tests passed 4096 single cases plus 256 batches
+and 256 chains. Added second-frame cases seed their previous state through
+the scalar renderer; 25 inputs were eligible and memory-read hooks verified
+14 non-overflow cases actually avoided terrain reads. Full pixels, records
+and dirty lists still matched. Restore and DOS-backed advance tests passed
+with saved flags expanded to 0..7, including expiry clearing and compaction.
+An initial second-frame fixture retained its seeded dirty entry while the
+native fixture began with a zero dirty list; resetting both consistently
+fixed the test setup, not renderer expectations.
+
+| Track | Fresh parent work / 603 | Cache work / 603 | Worst parent -> cache |
+| --- | ---: | ---: | --- |
+| BASIC | 153387 | 156380 | 365 -> 374 |
+| F1 | 178466 | 181043 | 432 -> 455 |
+| CITY | 148557 | 150346 | 344 -> 356 |
+| WHACKO | 156323 | 158810 | 408 -> 416 |
+
+Parent controls are `tmp/compact-control-20260928-{0,1,2,3}.log`, with
+unchanged production game code. Candidate logs are
+`tmp/point-visibility-cache-20260928-{0,1,2,3}.log`; final states all match.
+Every total and maximum regresses (totals by 1.2-2.0%). Reject and revert.
+No target shadow/display/RETCHECK acceptance is claimed for this slower
+candidate. Local archived patch: `tmp/point-visibility-cache-20260928.patch`.
+
+Earlier read-only point screens show 109/40/45/131 potential lookup skips
+on BASIC 209/F1 481/CITY 700/WHACKO 685. All visible points in those captures
+had nonzero occlusion limits. Those older snapshots are not timing or current
+hit-rate measurements, but they rule out assuming the design has no eligible
+points. The net checks/flag-maintenance cost, not a demonstrated lack of
+eligibility, defeats this implementation. Do not repeat the same policy.
+Retained only the independent seeded previous-frame drawing cases and wider
+saved-flag input coverage; normal production flag semantics remain unchanged.
+
 ## Rejected complete compact-particle integration (2026-09-28)
 
 Integrated the 20-byte representation behind a build switch across the C

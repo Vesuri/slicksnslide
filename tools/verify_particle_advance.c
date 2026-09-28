@@ -101,7 +101,7 @@ int main(int argc,char **argv)
             be16(p+12,(i*3)%320);be16(p+14,(i*7)%200);
             p[16]=i;p[17]=(i+trial)%6;p[18]=111+i;
             const unsigned priorities[]={0,3,5,6,127,255};p[19]=priorities[i%6];
-            p[20]=(i+trial)%4;p[21]=(i+trial)%2;p[22]=15;
+            p[20]=(i+trial)%8;p[21]=(i+trial)%2;p[22]=15;
             p[23]=i%11==0?(p[21]?-6:-2):(p[21]?5:1);
         }
         memcpy(expected,initial,sizeof initial);
@@ -191,7 +191,7 @@ int main(int argc,char **argv)
             be16(p+8,i*311+0x8000+trial);be16(p+10,0x7fff-i*173);
             be16(p+12,(i*3+trial)%320);be16(p+14,(i*7)%200);
             p[16]=i;p[17]=(i+trial)%6;p[18]=111+i;p[19]=(i*5)%7;
-            p[20]=(i+trial)%4;p[21]=(i+trial/3)%2;p[22]=(i*9)%31;
+            p[20]=(i+trial)%8;p[21]=(i+trial/3)%2;p[22]=(i*9)%31;
             p[23]=(i+trial)%9==0?(p[21]?-6:-2):(p[21]?5:1);
             handles[i]=(unsigned char)(1+(i*73+trial)%199);
         }
