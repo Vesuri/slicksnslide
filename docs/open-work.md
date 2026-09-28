@@ -64,6 +64,10 @@ Candidate fixes, roughly in order of expected value per effort:
   regression set when evaluating further changes.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
+  A register-only shared-cell particle scan replacing the C call is measured
+  effectively neutral (<0.04% on F1/CITY), archived rather than accepted.
+  Do not repeat that narrow boundary change; any native redesign must cover
+  more executed work or reduce the candidate scan itself.
   Whole-list reuse is screened out as a worst-update fix: every current
   worst update changes membership/priorities, and almost no >=100-actor update
   is unchanged. Do not implement an unchanged-list cache on average eligibility

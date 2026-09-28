@@ -3,6 +3,46 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Register-only shared particle conflicts: neutral (2026-09-28)
+
+Replaced the `.point_shared` C callback with a native entry loop, keeping
+point coordinates, priority and the outer walker in registers. It removes
+four saved outer registers, five stacked arguments and the generic clipping/
+grid lookup from each shared-cell point. Entries already marked conflicting
+are skipped. Existing point clipping establishes that the one-pixel input
+intersects exactly one shared cell; signed half-open entry bounds and strict
+priority tests preserve the original predicate.
+
+Both 24- and 20-byte particle-layout oracles pass 4096 independent complete
+retention-state/register comparisons, in addition to all 65536 coordinate
+words on both axes and existing stride checks. The expanded test initially
+ran past its backward continuation: Unicorn's previously translated blocks
+needed cache invalidation after installing the stop hook. With an explicit
+hook and cache invalidation the expected continuation PC is checked too.
+No target display/RETCHECK pass is claimed for this neutral experiment.
+
+| Track | Unchanged production work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 148314 / 355 | 148335 / 353 |
+| F1 | 174164 / 427 | 174101 / 428 |
+| CITY | 144706 / 336 | 144671 / 336 |
+| WHACKO | 152256 / 392 | 152264 / 392 |
+
+603 updates; all final states match. Controls: latest F1/CITY
+`tmp/touch-restored-20260928-*`, BASIC/WHACKO
+`tmp/direct-point-control-20260928-*`, all with the same production gameplay
+code. Candidate logs: `tmp/shared-native-20260928-*`. Total changes under
+0.04% do not establish a useful gain; F1's sampled maximum is one line worse.
+Archived rather than accepted, with production restored. Complete candidate
+and its expanded native oracle: `tmp/shared-native-retention-20260928.patch`.
+This does not rule out broader register-resident assembly paths: this shared
+cell boundary simply did not account for enough measured work.
+
+The normal build, both native particle readers, retention address oracle
+and complete host conflict/group suite pass after restoration; logs
+`tmp/shared-native-restored-{build,tests}-20260928.log`. All Slicks-owned
+emulators exited. Unrelated emulator sessions were left untouched.
+
 ## Rejected shared-cell early exit (2026-09-28)
 
 `slicks_retention_touch` scans every candidate against the full input
