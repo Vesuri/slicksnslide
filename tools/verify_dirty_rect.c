@@ -29,18 +29,18 @@ static short coordinate(void)
     return (short)(next()%321);
 }
 
-/* Independent coverage oracle: one bit per aligned 16-pixel column,
+/* Independent coverage oracle: one bit per aligned 8-pixel column,
  * not the C/native merge algorithm. Overlap and duplicate conversion are
  * permitted, but every requested pixel must remain covered. */
-static void coverage(uint32_t rows[200],int left,int top,int right,int bottom)
+static void coverage(uint64_t rows[200],int left,int top,int right,int bottom)
 {
     if(left<0)left=0;
     if(top<0)top=0;
     if(right>320)right=320;
     if(bottom>200)bottom=200;
     if(left>=right || top>=bottom)return;
-    unsigned first=(unsigned)left/16,last=((unsigned)right+15)/16;
-    uint32_t mask=((1U<<last)-1U)^((1U<<first)-1U);
+    unsigned first=(unsigned)left/8,last=((unsigned)right+7)/8;
+    uint64_t mask=((UINT64_C(1)<<last)-1)^((UINT64_C(1)<<first)-1);
     for(int y=top;y<bottom;++y)rows[y]|=mask;
 }
 
@@ -76,7 +76,7 @@ int main(int argc,char **argv)
             race.dirty_row_count=1;
             race.dirty_rows[0]=(struct SlicksDirtyRows){0,0,16,4};
         }
-        uint32_t required[200]={0};
+        uint64_t required[200]={0};
         for(unsigned i=0;i<race.dirty_row_count;++i){
             const struct SlicksDirtyRows *r=&race.dirty_rows[i];
             coverage(required,r->left,r->top,r->right,r->bottom);
@@ -132,7 +132,7 @@ int main(int argc,char **argv)
                 for(unsigned k=0;k<4;++k) if(got[i*8+k*2]*256U+got[i*8+k*2+1]!=v[k]) {
                     fprintf(stderr,"row mismatch call=%lu entry=%u field=%u\n",calls,i,k); return 1; }
             }
-            uint32_t actual[200]={0};
+            uint64_t actual[200]={0};
             for(unsigned i=0;i<count;++i){
                 unsigned v[4];for(unsigned k=0;k<4;++k)v[k]=got[i*8+k*2]*256U+got[i*8+k*2+1];
                 if(v[0]>=v[2] || v[1]>=v[3] || v[2]>320 || v[3]>200 || ((v[0]|v[2])&15)){

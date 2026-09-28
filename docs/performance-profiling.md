@@ -3,6 +3,45 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Eight-pixel dirty/hybrid target integration rejected (2026-09-28)
+
+Connected the verified hybrid converter to the actual chunky-rectangle
+publication path and changed both C and native dirty alignment from 16
+to 8 pixels. Merge, clipping, overflow and sparse-pixel policies stayed
+unchanged. Expanded the independent dirty-coverage oracle to forty 8-pixel
+columns in 64-bit masks, retaining complete native/C list comparisons.
+The candidate passes 240000 native calls, including 18085 merges and
+722 full-list fallbacks. Host dirty/HUD/shadow/particle coverage and all
+hybrid pixel/store/ABI tests pass (`tmp/c2p8-integration-host-20260928.log`).
+
+| Track | Production work / worst | Eight-pixel hybrid work / worst |
+| --- | ---: | ---: |
+| BASIC | 148314 / 355 | 149119 / 358 |
+| F1 | 174164 / 427 | 175192 / 441 |
+| CITY | 144706 / 336 | 145681 / 340 |
+| WHACKO | 152256 / 392 | 153285 / 399 |
+
+All 603-update final states match. Candidate:
+`tmp/c2p8-hybrid-20260928-*`; unchanged-code controls:
+`tmp/direct-point-control-20260928-*` for BASIC/WHACKO and
+`tmp/touch-restored-20260928-*` for F1/CITY. Total work increases roughly
+0.54-0.68% on all tracks and all sampled maxima worsen. Reduced area does
+not repay this implementation's split-call/conversion costs; their separate
+contributions have not been measured. Rejected and production restored.
+Local complete integration archive: `tmp/c2p8-hybrid-integration-20260928.patch`.
+No target display audit pass is claimed for the rejected candidate.
+
+The isolated converters remain verified tools, not production code. Keep
+the independent eight-pixel coverage resolution even with production's
+sixteen-pixel alignment assertion, so coverage defects cannot hide inside
+the old coarser mask. No effects, simulation steps or display fidelity were
+traded for the attempted optimization.
+
+The restored production build passes native dirty-list/coverage checks,
+host dirty tracking and all three C2P suites again; logs
+`tmp/c2p8-restored-{build,tests}-20260928.log`. Slicks-owned timing sessions
+closed normally; unrelated project emulators were left untouched.
+
 ## Isolated hybrid C2P verification (2026-09-28)
 
 Added `c2p8_16_interleaved.s`: an optional leading eight-pixel strip,

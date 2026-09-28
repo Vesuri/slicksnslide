@@ -167,18 +167,18 @@ Candidate fixes, roughly in order of expected value per effort:
   around sixteen-pixel interiors, with an unchanged-converter fast path
   for already aligned rectangles. `make verify-c2p-hybrid` passes all
   820 valid horizontal spans plus randomized, single-bit and empty cases.
-  Neither candidate is linked into gameplay. Next: change publication
-  alignment, extend dirty-coverage verification to eight pixels, and benchmark
-  before accepting any publication-alignment change. Byte stores still
-  consume Chip accesses, so narrower area alone does not establish a gain.
+  Neither candidate is linked into gameplay. The complete eight-pixel
+  publication/hybrid integration is measured slower on every track and
+  reverted; do not repeat it unchanged. The isolated converters and finer
+  independent coverage oracle remain available. A different C2P design
+  must reduce split-call/byte-store overhead, not merely converted area.
   The production converter handles
   16-pixel columns. Lower priority than simulation/particle work: even the
   full measured C2P phase is smaller than the excess budget on each current
   worst update. Four current publication replays show little merge inflation;
   do not repeat an area-aware merge experiment without new evidence. An
-  8-pixel-aligned converter may reduce BASIC/CITY/WHACKO area, but has little
-  benefit on the captured F1 551 group; it needs an actual native converter,
-  complete dirty-coverage tests and target measurements before acceptance. Use
+  8-pixel-aligned converter reduces BASIC/CITY/WHACKO area, but the measured
+  hybrid integration does not reduce total work. Use
   `diag_dirty_publications.gdb` and `tools/dirty_publications.py --policy strict`
   on newly identified maxima or different phases to distinguish necessary
   changed area from merge inflation before designing another policy.
