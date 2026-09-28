@@ -51,6 +51,9 @@ Candidate fixes, roughly in order of expected value per effort:
   with identical chains; production ordering remains byte-identical.
   Retention's compact coordinate/priority reads and stride pass exhaustive
   word-domain native tests; full retention decisions still need target checks.
+  Native emission's complete allocation/initialization subroutine passes
+  8192 full-state cases in both layouts; whole wheel emission and C producers
+  still need integration/shadow verification.
   it is not linked into gameplay and has no measured speed gain yet. Next,
   migrate consumers together: native/C emission, legacy/shared advance,
   point restore/draw, actor ordering, sprite-retention point reads and their

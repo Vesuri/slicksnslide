@@ -6,6 +6,26 @@
 	xref	slicks_actor_allocate_native
 	xref	slicks_race_disable_particles
 	include	"race_offsets.i"
+	ifnd SLICKS_PARTICLE_WORD_COORDINATES
+SLICKS_PARTICLE_WORD_COORDINATES equ 0
+	endif
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+EP_SIZE equ 20
+EP_LIFETIME equ 13
+EP_X equ 0
+EP_Y equ 2
+EP_VELOCITY_X equ 4
+EP_COLOUR equ 14
+EP_SAVED_VALID equ 16
+	else
+EP_SIZE equ PARTICLE_SIZE
+EP_LIFETIME equ PARTICLE_LIFETIME
+EP_X equ PARTICLE_X
+EP_Y equ PARTICLE_Y
+EP_VELOCITY_X equ PARTICLE_VELOCITY_X
+EP_COLOUR equ PARTICLE_COLOUR
+EP_SAVED_VALID equ PARTICLE_SAVED_VALID
+	endif
 
 ; Stack frame; leaf subroutines address it with SUB added for their return.
 EF_BASEX	equ	0		; (short)(car->x/100) - 3
@@ -307,8 +327,8 @@ slicks_emit_wheel_surface:
 	move.w	EF_BEFORE(sp),d1
 	cmp.w	RACE_TRAIL_PARTICLE_COUNT(a4),d1
 	bcc.s	.dust
-	mulu.w	#PARTICLE_SIZE,d1
-	lea	RACE_TRAIL_PARTICLES+PARTICLE_LIFETIME(a4),a0
+	mulu.w	#EP_SIZE,d1
+	lea	RACE_TRAIL_PARTICLES+EP_LIFETIME(a4),a0
 	move.b	d0,(a0,d1.l)
 .dust:
 	cmpa.l	#250,a6
@@ -477,20 +497,30 @@ slicks_emit_wheel_surface:
 	clr.b	ACTOR_KIND(a0)
 	clr.b	ACTOR_SAVED(a0)
 	addq.w	#1,RACE_TRAIL_PARTICLE_COUNT(a4)
-	mulu.w	#PARTICLE_SIZE,d6
+	mulu.w	#EP_SIZE,d6
 	lea	RACE_TRAIL_PARTICLES(a4),a3
 	adda.l	d6,a3
 	move.w	d4,d0
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	asl.w	#6,d0
+	move.w	d0,EP_X(a3)
+	else
 	ext.l	d0
 	asl.l	#6,d0
-	move.l	d0,PARTICLE_X(a3)
+	move.l	d0,EP_X(a3)
+	endif
 	move.w	d5,d0
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	asl.w	#6,d0
+	move.w	d0,EP_Y(a3)
+	else
 	ext.l	d0
 	asl.l	#6,d0
-	move.l	d0,PARTICLE_Y(a3)
-	move.l	d2,PARTICLE_VELOCITY_X(a3)
-	move.b	d3,PARTICLE_LIFETIME(a3)
-	move.w	d1,PARTICLE_COLOUR(a3)
+	move.l	d0,EP_Y(a3)
+	endif
+	move.l	d2,EP_VELOCITY_X(a3)
+	move.b	d3,EP_LIFETIME(a3)
+	move.w	d1,EP_COLOUR(a3)
 	moveq	#1,d0			; saved 0, transient, occlusion, state 1
 	tst.b	d1
 	bne.s	.add_state
@@ -499,7 +529,7 @@ slicks_emit_wheel_surface:
 	move.l	#$00010005,d0		; permanent road mark, DOS state 5
 .add_state:
 	or.w	EF_OCC+SUB(sp),d0
-	move.l	d0,PARTICLE_SAVED_VALID(a3)
+	move.l	d0,EP_SAVED_VALID(a3)
 	addq.l	#1,RACE_SKIDMARK_COUNT(a4)
 .add_ret:
 	rts

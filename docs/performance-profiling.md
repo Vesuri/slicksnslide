@@ -3,6 +3,32 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated compact native particle creation (2026-09-28)
+
+`make verify-emission-add verify-emission-scan` passes both creation layouts
+and the existing 100000 scan-only cases. The new test enters the actual
+`.add` subroutine and runs through allocation, handle/index publication,
+sprite invalidation, record initialization and the mark counter. Cursor-zero
+cases execute the actual native allocator too. Each layout passes 8192 pools
+(7268 allocations, 924 rejections), comparing all 64 KiB of surrounding state,
+unused compact-pool guards, preserved input registers, return PC and stack.
+Cases include disabled particles, full particle pools, zero slot capacity,
+occupied/signed/free slot states, batch and ordinary allocation, permanent
+marks, occlusion bytes, word-domain positions and arbitrary velocities.
+
+The independent expectation uses the existing host slot allocator and
+explicit canonical 24-byte creation writes, projected to 20 bytes only after
+construction. DOS word wrapping itself was established by the separate
+original-executable constructor oracle. This does not replace a full native
+wheel-emission shadow comparison (RNG, wheel geometry and post-creation
+lifetime adjustments are outside this isolated subroutine test).
+
+A wrong fixed-point shift is rejected at trial 1, byte 5464. Local evidence
+sources/binaries are `tmp/emission-add-{parent,mutant}-20260928.*`.
+Fresh assembly of the default variant is byte-identical to its parent.
+Production and C constructors have not switched representation yet; there
+is no target performance claim from this step.
+
 ## Isolated retention particle readers (2026-09-28)
 
 The native retention pass now has opt-in compact coordinate, priority and

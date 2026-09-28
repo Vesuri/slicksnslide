@@ -1268,6 +1268,20 @@ verify-actor-advance: build/actor_advance.bin build/verify_actor_advance build/o
 build/emission_scan.bin: tools/emission_scan_test.s src/game/car_emission.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
+build/emission_add.bin: tools/emission_add_test.s src/game/car_emission.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/emission_compact_add.bin: tools/emission_add_test.s src/game/car_emission.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -DSLICKS_PARTICLE_WORD_COORDINATES=1 -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/verify_emission_add: tools/verify_emission_add.c src/game/actor_slots.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-emission-add
+verify-emission-add: build/emission_add.bin build/emission_compact_add.bin build/actor_allocate.bin build/verify_emission_add
+	build/verify_emission_add build/emission_add.bin build/offsets/race_offsets.i build/actor_allocate.bin 24
+	build/verify_emission_add build/emission_compact_add.bin build/offsets/race_offsets.i build/actor_allocate.bin 20
+
 build/verify_emission_scan: tools/verify_emission_scan.c src/game/actor_slots.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
