@@ -1505,6 +1505,13 @@ verify-c2p16: build/c2p16_test.bin build/verify_c2p16
 build/actor_order.bin: src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
 
+build/actor_compact_order.bin: tools/actor_compact_order_test.s src/game/actor_order.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+.PHONY: verify-actor-compact-order
+verify-actor-compact-order: build/actor_compact_order.bin build/verify_actor_order
+	build/verify_actor_order build/actor_compact_order.bin build/offsets/race_offsets.i compact
+
 build/verify_actor_order: tools/verify_actor_order.c src/game/race_runtime.c src/game/race_runtime.h src/game/weapon_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 

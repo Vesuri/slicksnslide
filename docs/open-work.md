@@ -47,6 +47,8 @@ Candidate fixes, roughly in order of expected value per effort:
   metadata and dirty-list comparisons. Production drawing remains byte-identical.
   Compact restoration passes all 4096 canonical-reference chain tests and
   deliberate stride/saved-byte mutations; it too remains opt-in for tests.
+  Compact actor ordering passes 12000 mixed-pool canonical-reference tests
+  with identical chains; production ordering remains byte-identical.
   it is not linked into gameplay and has no measured speed gain yet. Next,
   migrate consumers together: native/C emission, legacy/shared advance,
   point restore/draw, actor ordering, sprite-retention point reads and their

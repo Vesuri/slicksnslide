@@ -3,6 +3,23 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated compact-particle actor ordering (2026-09-28)
+
+`make verify-actor-order verify-actor-compact-order` passes 12000 pools
+for each layout, with 413394 linked handles. The existing independent C
+ordering reference, priorities, signed slot states, sprite boundaries and
+equal-priority ordering are unchanged. Both full images are explicitly
+projected from canonical 24-byte particle records after reference execution;
+the unused pool tail is guarded and the whole 64 KiB image compared. Return
+PC, stack and preserved registers are checked. Ordering reads priority only,
+so current coordinate high words are irrelevant to this comparison.
+
+The compact native path uses index*20 and priority offset 15. The normal
+path still derives its layout from generated offsets and assembles identically
+to the parent source with the same offsets (fresh comparison in
+`tmp/actor-order-parent-20260928.*`). This is another isolated consumer gate,
+not gameplay integration or measured performance improvement.
+
 ## Isolated compact-particle restoration (2026-09-28)
 
 `make verify-point-restore verify-point-compact-restore` passes both layouts:

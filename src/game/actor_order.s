@@ -1,6 +1,16 @@
     include "race_offsets.i"
     section code,code
     xdef slicks_build_draw_order
+    ifnd SLICKS_PARTICLE_WORD_COORDINATES
+SLICKS_PARTICLE_WORD_COORDINATES equ 0
+    endif
+    ifne SLICKS_PARTICLE_WORD_COORDINATES
+AO_PARTICLE_SIZE equ 20
+AO_PARTICLE_PRIORITY equ 15
+    else
+AO_PARTICLE_SIZE equ PARTICLE_SIZE
+AO_PARTICLE_PRIORITY equ PARTICLE_PRIORITY
+    endif
 ; C ABI: race. Only the forward draw chains; initial reverse construction
 ; remains the independent C path. Scan descending handles and prepend so
 ; equal-priority actors draw in ascending original handle order.
@@ -14,7 +24,7 @@ slicks_build_draw_order:
     ifne ((RACE_ACTOR_ORDER_HEAD&3)-1)
     fail "Update actor-order clear prefix for changed head alignment"
     endif
-    ifne (PARTICLE_SIZE-24)
+    ifne (AO_PARTICLE_SIZE-24)*(AO_PARTICLE_SIZE-20)
     fail "Update particle index scaling for changed record size"
     endif
     move.b d0,(a5)+
@@ -28,7 +38,7 @@ slicks_build_draw_order:
     clr.b RACE_ACTOR_ORDER_DRAWN(a0)
     lea RACE_WEAPON_SLOTS(a0),a1
     lea RACE_TRAIL_INDEX(a0),a2
-    lea RACE_TRAIL_PARTICLES+PARTICLE_PRIORITY(a0),a3
+    lea RACE_TRAIL_PARTICLES+AO_PARTICLE_PRIORITY(a0),a3
     lea RACE_ACTORS(a0),a4
     lea RACE_ACTOR_ORDER_NEXT(a0),a6
     moveq #0,d3
@@ -42,10 +52,17 @@ slicks_build_draw_order:
     move.w (a2,d2.w*2),d0
     bmi.s .sprite
     move.w d0,d1
+    ifeq (AO_PARTICLE_SIZE-20)
+    lsl.w #2,d1
+    add.w d1,d0
+    moveq #0,d1
+    move.b (a3,d0.w*4),d1
+    else
     add.w d1,d1
     add.w d1,d0
     moveq #0,d1
     move.b (a3,d0.w*8),d1
+    endif
 .priority:
     bmi.s .next
     cmp.b d3,d1

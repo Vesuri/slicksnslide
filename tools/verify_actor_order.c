@@ -15,7 +15,9 @@ static unsigned rnd(void){seed=seed*1664525u+1013904223u;return seed>>8;}
 static void be16(unsigned char *p,unsigned x){p[0]=x>>8;p[1]=x;}
 static void be32(unsigned char *p,unsigned x){p[0]=x>>24;p[1]=x>>16;p[2]=x>>8;p[3]=x;}
 int main(int argc,char **argv){
-    if(argc!=3)return 2;
+    if(argc!=3 && argc!=4)return 2;
+    int compact=argc==4;
+    if(compact && strcmp(argv[3],"compact"))return 2;
     unsigned char code[4096];FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t n=fread(code,1,sizeof code,f);fclose(f);if(!n || n==sizeof code)return 2;
 #define O(name) unsigned name=off(argv[2],#name)
@@ -64,13 +66,30 @@ int main(int argc,char **argv){
         expected[RACE_ACTOR_ORDER_MAX]=race.actor_order_max;
         expected[RACE_ACTOR_ORDER_READY]=1;expected[RACE_ACTOR_ORDER_DRAWN]=0;
         for(unsigned p=0;p<128;++p)for(unsigned h=race.actor_order_head[p];h;h=race.actor_order_next[h])++linked;
+        /* Reference chains above remain independent of compact addressing. */
+        if(compact){
+            if(PARTICLE_SIZE!=24 || PARTICLE_PRIORITY!=19)return 2;
+            unsigned char canonical[256*24];
+            unsigned char *buffers[]={image,expected};
+            for(unsigned b=0;b<2;++b){
+                unsigned char *pool=buffers[b]+RACE_TRAIL_PARTICLES;
+                memcpy(canonical,pool,sizeof canonical);
+                for(unsigned i=0;i<256;++i){
+                    memcpy(pool+i*20,canonical+i*24+2,2);
+                    memcpy(pool+i*20+2,canonical+i*24+6,2);
+                    memcpy(pool+i*20+4,canonical+i*24+8,16);
+                }
+                memset(pool+256*20,0xcc,256*4);
+            }
+        }
         ck(uc_mem_write(u,RACE,image,N));be32(stack,STOP);be32(stack+4,RACE);
         ck(uc_mem_write(u,STACK,stack,8));unsigned sp=STACK;ck(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         unsigned values[11];for(unsigned i=0;i<11;++i){values[i]=0xa5000000u+i*0x10101u+t;ck(uc_reg_write(u,regs[i],values+i));}
         ck(uc_emu_start(u,CODE,STOP,0,100000));ck(uc_mem_read(u,RACE,got,N));
+        unsigned pc;ck(uc_reg_read(u,UC_M68K_REG_PC,&pc));if(pc!=STOP)return 1;
         if(memcmp(got,expected,N)){for(unsigned i=0;i<N;++i)if(got[i]!=expected[i]){fprintf(stderr,"Case %u byte %u got %u expected %u\n",t,i,got[i],expected[i]);break;}return 1;}
         ck(uc_reg_read(u,UC_M68K_REG_A7,&sp));if(sp!=STACK+4)return 1;
         for(unsigned i=0;i<11;++i){unsigned v;ck(uc_reg_read(u,regs[i],&v));if(v!=values[i])return 1;}
     }
-    uc_close(u);printf("Actor order: 12000 mixed/empty/full pools, %u linked handles; all priorities, signed states, stable chains, untouched bytes and ABI pass\n",linked);return 0;
+    uc_close(u);printf("Actor order (%u-byte records): 12000 mixed/empty/full pools, %u linked handles; all priorities, signed states, stable chains, untouched bytes and ABI pass\n",compact?20:PARTICLE_SIZE,linked);return 0;
 }
