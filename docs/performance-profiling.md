@@ -3,6 +3,44 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Whole-list actor-order reuse screen (2026-09-28)
+
+Read-only captures of the normal c4f4223 binary inspect completed forward
+and inverse chains on updates 98..700, using
+`amiga/diag_order_reuse_screen.gdb`. No game state is written and no build
+mode is changed. Debugger stops invalidate timings. All four captures have
+603 records, canonical final states and matching inverse chains; owned muted
+emulators closed. Local evidence: `tmp/order-screen-20260928-{0,1,2,3}.{bin,log}`.
+
+`tools/order_reuse_screen.py` compares semantic membership and priority,
+ignoring unreachable stale link bytes. It rejects duplicate/cyclic/invalid
+handles, unstable equal-priority order, wrong inverse lists or maximum
+priority, truncated data and non-consecutive updates. Its five synthetic
+tests cover these errors, empty/full pools, changed priorities/membership,
+stale unused bytes, complete windows and hand-counted transition statistics.
+
+| Track | Unchanged / 602 transitions | Reusable linked-handle visits | Unchanged / busy transitions | Mean changed handles when busy |
+| --- | ---: | ---: | ---: | ---: |
+| BASIC | 143 | 8.10% | 2 / 110 | 21.03 |
+| F1 | 266 | 27.04% | 0 / 147 | 22.56 |
+| CITY | 237 | 23.26% | 0 / 47 | 26.91 |
+| WHACKO | 202 | 9.97% | 0 / 91 | 16.68 |
+
+Busy means at least 100 linked actors, not particle count alone. None of
+the current worst probes can skip a whole rebuild: BASIC 219 changes
+14 handles of 157, F1 551 changes 19 of 162, F1 613 changes 2 of 121,
+CITY 146 changes 42 of 113, WHACKO 685 changes 17 of 163. A changed
+handle means membership or priority changed, not every link rewritten as
+a consequence of inserting/removing it.
+
+Reject simple unchanged-list caching as the next worst-update optimization.
+It could improve some light updates, but adds invalidation machinery without
+removing a rebuild at any current maximum. This is an eligibility screen,
+not a measured runtime prototype, and does not establish the break-even of
+incremental list maintenance. Incremental updates would require sorted
+insertion/removal and complete writer coverage, including the initial
+saved-actor fallback; their lookup/maintenance overhead is still unmeasured.
+
 ## Post-division CPU captures (2026-09-28)
 
 Current captures: `tmp/pcprof-post-div100-{f1,whacko}-20260928`, each

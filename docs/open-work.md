@@ -65,12 +65,14 @@ Candidate fixes, roughly in order of expected value per effort:
   regression set when evaluating further changes.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
-  Measure how often actor membership and priorities remain unchanged between
-  draws before attempting order-cache reuse. Forward chains now survive
-  restoration, but the initial saved-actor fallback overwrites them. Reuse
-  must account for allocation, retirement, point/sprite replacement, priority
-  changes and the fallback; particle index compaction alone does not change
-  handle ordering. Avoid a full validation scan that costs as much as rebuilding.
+  Whole-list reuse is screened out as a worst-update fix: every current
+  worst update changes membership/priorities, and almost no >=100-actor update
+  is unchanged. Do not implement an unchanged-list cache on average eligibility
+  alone. Incremental chain maintenance is a separate possible design, requiring
+  allocation/retirement/priority writer coverage, the initial saved-actor
+  fallback and a measured break-even against the simple builder. It is not
+  yet justified; busy updates change 17-27 handles on average. The read-only
+  screen and evidence are in `docs/performance-profiling.md`.
   Inspect conflict processing, final
   keep/restore decisions, draw-packet validation and group rebuild/late
   restoration at the worst updates. Preserve atomic group retention and
