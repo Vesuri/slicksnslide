@@ -43,6 +43,8 @@ Candidate fixes, roughly in order of expected value per effort:
 
 - **Integrate and measure compact particle records.** The isolated 20-byte
   shared advancement prototype passes the DOS-backed canonical-state oracle;
+  compact single/batch/chain drawing also passes the complete existing pixel,
+  metadata and dirty-list comparisons. Production drawing remains byte-identical.
   it is not linked into gameplay and has no measured speed gain yet. Next,
   migrate consumers together: native/C emission, legacy/shared advance,
   point restore/draw, actor ordering, sprite-retention point reads and their

@@ -10,16 +10,25 @@
 static void ck(uc_err e) { if(e) { fprintf(stderr,"Unicorn: %s\n",uc_strerror(e));exit(1); } }
 static void be16(unsigned char *p,unsigned n) { p[0]=n>>8;p[1]=n; }
 static void be32(unsigned char *p,uint32_t n) { be16(p,n>>16);be16(p+2,n); }
+static unsigned particle_stride=24;
 static void packed(unsigned char p[24],const struct SlicksTrailParticle *s)
 {
     be32(p,s->x);be32(p+4,s->y);be16(p+8,s->velocity_x);be16(p+10,s->velocity_y);
     be16(p+12,s->old_x);be16(p+14,s->old_y);
     p[16]=s->saved_under;p[17]=s->lifetime;p[18]=s->colour;p[19]=s->priority;
     p[20]=s->saved_valid;p[21]=s->permanent;p[22]=s->occlusion_limit;p[23]=s->state;
+    if(particle_stride==20) {
+        if((long)(short)s->x!=s->x || (long)(short)s->y!=s->y)
+            fail("compact drawing input outside signed-word domain");
+        unsigned char canonical[24];memcpy(canonical,p,24);
+        memcpy(p,canonical+2,2);memcpy(p+2,canonical+6,2);
+        memcpy(p+4,canonical+8,16);memset(p+20,0xcc,4);
+    }
 }
 int main(int argc,char **argv)
 {
-    if(argc!=2)return 2;
+    if(argc!=2 && argc!=3)return 2;
+    if(argc==3) { if(strcmp(argv[2],"compact"))return 2;particle_stride=20; }
     unsigned char code[4096];FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t size=fread(code,1,sizeof code,f);fclose(f);
     uc_engine *u;ck(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&u));
@@ -91,6 +100,7 @@ int main(int argc,char **argv)
         unsigned limit=trial<256 || (trial&32)?32:trial%33;
         struct SlicksTrailParticle points[256];
         unsigned char packed_points[256*24],got_points[256*24],order[64],stack[44],count_bytes[2];
+        memset(packed_points,0xcc,sizeof packed_points);
         memset(&race,0,sizeof race);race.chunky=pixels;
         memset(pixels,40,sizeof pixels);memset(dirty,0,sizeof dirty);
         memset(race.material_map,1,sizeof race.material_map);
@@ -106,7 +116,7 @@ int main(int argc,char **argv)
             if(i%3==0) { points[i].old_x=(short)(points[i].x>>6);points[i].old_y=(short)(points[i].y>>6); }
             else if(i%3==2) { points[i].old_x=(short)(300+i);points[i].old_y=(short)(180+(i&31)); }
             points[i].saved_valid=(unsigned char)((trial+i)&3);
-            packed(packed_points+i*24,&points[i]);
+            packed(packed_points+i*particle_stride,&points[i]);
         }
         /* Exercise every pool offset, including slot 255, in both walkers. */
         for(unsigned i=0;i<32;++i)be16(order+i*2,(trial+31-i)&255);
@@ -143,7 +153,7 @@ int main(int argc,char **argv)
             draw_trail_point(&race,&points[(trial+31-processed)&255]);
         unsigned expected_result=trial<256?processed:processed==32?0:1+(processed*73)%199;
         if(result!=expected_result)fail("batch/chain point processed prefix");
-        for(unsigned i=0;i<256;++i)packed(packed_points+i*24,&points[i]);
+        for(unsigned i=0;i<256;++i)packed(packed_points+i*particle_stride,&points[i]);
         for(unsigned i=0;i<race.dirty_pixel_count;++i) {
             be16(dirty+i*4,race.dirty_pixels[i].x);dirty[i*4+2]=race.dirty_pixels[i].y;
         }
@@ -160,6 +170,6 @@ int main(int argc,char **argv)
             if(v!=0x55667700+i)fail("batch preserved register");
         }
     }
-    uc_close(u);puts("68020 point draw: 2048 single + 256 ordered-batch + 256 actor-chain full-frame, metadata, dirty-list, overflow and ABI cases pass");
+    uc_close(u);printf("68020 point draw (%u-byte records): 2048 single + 256 ordered-batch + 256 actor-chain full-frame, metadata, dirty-list, overflow and ABI cases pass\n",particle_stride);
     return 0;
 }

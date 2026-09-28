@@ -3,6 +3,21 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated compact-particle drawing (2026-09-28)
+
+The point renderer now has an opt-in 20-byte layout for isolated tests;
+gameplay continues using 24-byte records. Both variants pass 2048 single,
+256 ordered-batch and 256 actor-chain cases, including all 256 pool offsets,
+sprite boundaries, overflow, full pixels, metadata, dirty lists and ABI.
+The compact encoder explicitly rejects coordinates outside the signed-word
+domain and retains guard bytes; no existing case is removed. The default
+raw drawing binary remains byte-identical (SHA-256
+`af9f3ec15d0c37bdab61a1b5afb32bdbd91df9f39cadb5a153da62d6005b3f64`).
+
+Verification: `make verify-particle-draw verify-particle-compact-draw`,
+`tmp/compact-particle-draw-20260928.log`. This is consumer verification,
+not target integration or a measured speed gain.
+
 ## DOS constructor word-coordinate boundary (2026-09-28)
 
 Extended the original-executable oracle to execute the real setter at

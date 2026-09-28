@@ -1199,6 +1199,13 @@ verify-sprite-opacity: build/sprite_opaque.bin build/verify_sprite_opacity
 build/particle_draw.bin: tools/particle_draw_test.s src/game/particle_draw.s | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -o $@ $<
 
+build/particle_compact_draw.bin: tools/particle_compact_draw_test.s src/game/particle_draw.s | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -I. -o $@ $<
+
+.PHONY: verify-particle-compact-draw
+verify-particle-compact-draw: build/particle_compact_draw.bin build/verify_particle_draw
+	build/verify_particle_draw build/particle_compact_draw.bin compact
+
 build/verify_particle_draw: tools/verify_particle_draw.c tools/verify_surface_effects.c src/game/race_runtime.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
