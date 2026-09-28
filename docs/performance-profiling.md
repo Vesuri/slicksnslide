@@ -3,6 +3,24 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Compact legacy advancement (2026-09-28)
+
+`make verify-particle-compact-trial` now runs all 1028 legacy/bucket cases
+again with compact records, as well as the existing normal legacy and both
+800-case shared variants. All pass. Expected motion and lifetime still come
+from the original DOS instructions; full canonical records are projected
+only after computing expected in-place source updates and compaction. Every
+represented record byte, guard, bucket, count, dirty-list byte and chunky
+pixel is compared, along with return PC, stack and preserved registers.
+The verifier flushes translated native code when changing variants.
+
+The compact legacy path uses word additions and five-longword copies;
+production's default path remains byte-identical to fresh parent assembly
+(`tmp/particle-runtime-parent-20260928.*`). The compact flag in this file
+currently selects only the legacy entry; the separately verified shared
+prototype still needs connecting when the complete game layout is enabled.
+No measured gameplay gain is claimed.
+
 ## Isolated compact native particle creation (2026-09-28)
 
 `make verify-emission-add verify-emission-scan` passes both creation layouts

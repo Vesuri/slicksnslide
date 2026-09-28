@@ -1224,9 +1224,12 @@ verify-particle-advance: unpack build/particle_advance.bin build/verify_particle
 build/particle_compact_trial.bin: tools/particle_compact_trial_test.s src/game/particle_compact_trial.s | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -I. -o $@ $<
 
+build/particle_compact_legacy.bin: tools/particle_advance_test.s src/game/particle_runtime.s | build
+	$(VASM) -quiet -m68020 -DSLICKS_PARTICLE_WORD_COORDINATES=1 -Fbin -o $@ $<
+
 .PHONY: verify-particle-compact-trial
-verify-particle-compact-trial: unpack build/particle_advance.bin build/particle_compact_trial.bin build/verify_particle_advance
-	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin build/particle_compact_trial.bin
+verify-particle-compact-trial: unpack build/particle_advance.bin build/particle_compact_trial.bin build/particle_compact_legacy.bin build/verify_particle_advance
+	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin build/particle_compact_trial.bin build/particle_compact_legacy.bin
 
 # Target structure offsets from the 68020 compiler for native-routine tests.
 build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h | build

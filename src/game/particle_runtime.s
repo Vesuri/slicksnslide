@@ -1,6 +1,32 @@
 	section	code,code
 	xdef	slicks_advance_particles
 	xref	mult320
+	ifnd SLICKS_PARTICLE_WORD_COORDINATES
+SLICKS_PARTICLE_WORD_COORDINATES equ 0
+	endif
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+PA_SIZE equ 20
+PA_OLD_X equ 8
+PA_OLD_Y equ 10
+PA_OLD_Y_LOW equ 11
+PA_LIFE equ 13
+PA_COLOUR equ 14
+PA_PRIORITY equ 15
+PA_FLAGS equ 16
+PA_PERMANENT equ 17
+PA_STATE equ 19
+	else
+PA_SIZE equ 24
+PA_OLD_X equ 12
+PA_OLD_Y equ 14
+PA_OLD_Y_LOW equ 15
+PA_LIFE equ 17
+PA_COLOUR equ 18
+PA_PRIORITY equ 19
+PA_FLAGS equ 20
+PA_PERMANENT equ 21
+PA_STATE equ 23
+	endif
 
 ; C ABI:
 ; unsigned short slicks_advance_particles(particles, count, indices, counts,
@@ -29,16 +55,22 @@ slicks_advance_particles:
 	beq.w	.done
 	subq.w	#1,d7
 .particle:
-	tst.b	23(a0)			; -2/-6 release in this pass's retirement
+	tst.b	PA_STATE(a0)			; -2/-6 release in this pass's retirement
 	bmi.w	.next_source
-	tst.b	17(a0)			; DOS zero lifetime is unlimited
+	tst.b	PA_LIFE(a0)			; DOS zero lifetime is unlimited
 	beq.s	.motion
-	subq.b	#1,17(a0)
+	subq.b	#1,PA_LIFE(a0)
 	bne.s	.motion
 	tst.l	76(sp)			; DOS page zero defers expiry
 	bne.w	.retire
-	move.b	#1,17(a0)
+	move.b	#1,PA_LIFE(a0)
 .motion:
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	move.w	4(a0),d0
+	add.w	d0,(a0)
+	move.w	6(a0),d0
+	add.w	d0,2(a0)
+	else
 	move.w	8(a0),d0
 	add.w	2(a0),d0		; DOS ADD word, then signed storage
 	ext.l	d0
@@ -47,20 +79,26 @@ slicks_advance_particles:
 	add.w	6(a0),d0
 	ext.l	d0
 	move.l	d0,4(a0)
+	endif
 .survives:
 	cmp.w	d6,d5
 	beq.s	.no_copy
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	movem.l	(a0),d0-d4
+	movem.l	d0-d4,(a6)
+	else
 	movem.l	(a0),d0-d4/a5
 	movem.l	d0-d4/a5,(a6)
+	endif
 .no_copy:
 	cmpa.w	#0,a2
 	bne.w	.legacy_buckets
 .keep_entry:
 	addq.w	#1,d5
-	adda.w	#24,a6
+	adda.w	#PA_SIZE,a6
 .next_source:
 	addq.w	#1,d6
-	adda.w	#24,a0
+	adda.w	#PA_SIZE,a0
 	dbf	d7,.particle
 .done:
 	move.w	d5,d0
@@ -70,43 +108,48 @@ slicks_advance_particles:
 ; Cold retirement and legacy buckets live outside the shared-pool motion
 ; loop so its instruction fetches do not evict each other from the I-cache.
 .retire:
-	move.b	#-2,23(a0)		; state 1 -> -1 -> -2 on expiry pass
-	tst.b	21(a0)
+	move.b	#-2,PA_STATE(a0)		; state 1 -> -1 -> -2 on expiry pass
+	tst.b	PA_PERMANENT(a0)
 	beq.s	.retire_pixel
-	move.b	#-6,23(a0)		; state 5 -> -5 -> -6
+	move.b	#-6,PA_STATE(a0)		; state 5 -> -5 -> -6
 .retire_pixel:
-	btst	#1,20(a0)
+	btst	#1,PA_FLAGS(a0)
 	beq.s	.retain_retired
-	tst.b	21(a0)			; permanent DOS state-5 mark
+	tst.b	PA_PERMANENT(a0)			; permanent DOS state-5 mark
 	beq.s	.queue_expiry
 	moveq	#0,d0
-	move.w	14(a0),d0
+	move.w	PA_OLD_Y(a0),d0
 	lea	mult320,a5
 	move.l	(a5,d0.w*4),d0
 	moveq	#0,d1
-	move.w	12(a0),d1
+	move.w	PA_OLD_X(a0),d1
 	add.l	d1,d0
 	movea.l	72(sp),a5		; authoritative chunky surface
-	move.b	18(a0),0(a5,d0.l)
+	move.b	PA_COLOUR(a0),0(a5,d0.l)
 .queue_expiry:
 	moveq	#0,d0
 	move.w	(a4),d0
 	cmpi.w	#512,d0
 	bcc.s	.retain_retired
-	move.w	12(a0),0(a3,d0.l*4)
-	move.b	15(a0),2(a3,d0.l*4)
+	move.w	PA_OLD_X(a0),0(a3,d0.l*4)
+	move.b	PA_OLD_Y_LOW(a0),2(a3,d0.l*4)
 	clr.b	3(a3,d0.l*4)
 	addq.w	#1,(a4)
 .retain_retired:
-	clr.b	20(a0)			; no next-frame restore/draw for dead point
+	clr.b	PA_FLAGS(a0)			; no next-frame restore/draw for dead point
 	cmp.w	d6,d5
 	beq.w	.keep_entry
+	ifne SLICKS_PARTICLE_WORD_COORDINATES
+	movem.l	(a0),d0-d4
+	movem.l	d0-d4,(a6)
+	else
 	movem.l	(a0),d0-d4/a5
 	movem.l	d0-d4/a5,(a6)
+	endif
 	bra.w	.keep_entry
 .legacy_buckets:
 	moveq	#0,d4
-	move.b	19(a6),d0
+	move.b	PA_PRIORITY(a6),d0
 	beq.s	.bucket_ready
 	moveq	#1,d4
 	cmpi.b	#3,d0

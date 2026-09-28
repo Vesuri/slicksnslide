@@ -54,6 +54,8 @@ Candidate fixes, roughly in order of expected value per effort:
   Native emission's complete allocation/initialization subroutine passes
   8192 full-state cases in both layouts; whole wheel emission and C producers
   still need integration/shadow verification.
+  Compact legacy advancement also passes all 1028 original-DOS cases,
+  including complete records, priority buckets and permanent-pixel writes.
   it is not linked into gameplay and has no measured speed gain yet. Next,
   migrate consumers together: native/C emission, legacy/shared advance,
   point restore/draw, actor ordering, sprite-retention point reads and their
