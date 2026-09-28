@@ -150,6 +150,13 @@ Candidate fixes, roughly in order of expected value per effort:
   candidate's profile. Focus a different design on removing memory traffic
   or repeated calculations in the per-car tail/surface/checkpoint work, not
   merely moving its existing operations into another assembly symbol.
+  Do not repeat the precomputed surface-limit tables unchanged: both the
+  enlarged-property layout and separate power-of-two-stride layout increase
+  total work. Investigate skipping unchanged limit updates instead, only if
+  the validity check costs less than the original default-surface path.
+  Cover initial 1000/100 values, race restart, vehicle/property reloads and
+  signed-tick gates; steering/speed fields must not become stale. Evidence
+  for the rejected tables is in `docs/performance-profiling.md`.
   Keep AI/weapon callbacks and all-car-motion-before-tails order unchanged.
   Preserve the native car-pair loop and its site-8 diagnostic comparison
   (`SHADOW_SITES=256`). Keep F1 phase 3/update 613 as a regression probe:

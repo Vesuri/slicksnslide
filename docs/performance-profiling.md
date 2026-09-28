@@ -3,6 +3,61 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Precomputed surface-limit tables rejected (2026-09-28)
+
+Tested replacing per-car surface steering/speed arithmetic with limits derived
+at `.omi` load time. The original signed low-word multiply/divide remains
+the table builder. Signed nonpositive ticks select the default entry on
+surfaces 7/8/11/12; the collision-sound gate on surface 18 is baked into the
+entry. Production property writers are confined to the loader. No simulation
+or drawing work was skipped.
+
+Two layouts were measured against the archived e739411 executable. The first
+adds 19 four-byte entries to each vehicle property record (760 bytes total).
+Generated code exposes additional shift/add instructions for the enlarged
+146-byte record stride. The second leaves all original fields and offsets
+unchanged and appends a separate 10x32 table (1280 bytes) to the race runtime;
+its 128-byte vehicle stride produces a single shift. This removes that
+specific indexing penalty, but still does not reduce total gameplay work.
+
+| Track | Control work / worst | Inline table work / worst | Separate table work / worst |
+| --- | ---: | ---: | ---: |
+| BASIC | 146824 / 351 | 147424 / 354 | 146955 / 354 |
+| F1 | 171743 / 416 | 172201 / 418 | 172116 / 418 |
+| CITY | 143107 / 334 | 143859 / 334 | 143549 / 335 |
+| WHACKO | 150563 / 372 | 151042 / 370 | 150634 / 369 |
+
+Each row covers 603 updates. All final mark counts and four-car positions
+match. Inline total work is 0.27–0.53% higher; separate-table work is
+0.05–0.31% higher. Small changes in individual maxima are not universal
+bounds or evidence of a repeatable win. Neither design improves the requested
+worst-update envelope, so both are rejected. These runs do not rule out
+avoiding the update entirely when its inputs are unchanged.
+
+Both candidates pass `verify-vehicle-properties` and `verify-drive-physics`.
+The former executes 32768 surface dispatch cases against the DOS original,
+including byte-value sweeps, signed product wrapping and tick gates. An
+expanded candidate-only check tests 5130 loader/reloader configurations,
+each over all 256 surface bytes and six signed-tick boundaries, comparing
+the complete car record to the DOS-backed arithmetic reference. This also
+checks cache rebuilding and untouched neighboring car fields. It is a host
+check, not a native live-shadow or display audit. Those further gates were
+not run after timing rejection, and no acceptance is claimed for either
+candidate.
+
+Local evidence: `tmp/surface-limits-{control,candidate,separate}-20260928-*.log`,
+`tmp/surface-limits-{oracle,expanded-oracle,separate-oracle}-20260928.log`.
+The complete source/test experiments and exact executable pairs are archived
+locally as `tmp/surface-limits-{inline-table,separate}-20260928.patch` and
+the corresponding `.elf`/`.exe` files. Production and test sources are
+restored to e739411; only this evidence and the actionable-list update remain.
+The restored target build succeeds (`tmp/surface-limits-restored-build-20260928.log`).
+Normalized objdump `.text` and `code` section contents compare byte-for-byte
+with the archived accepted control; both yield SHA-256
+`e3b79c6a1943827cb612ef7550d7bcff883467fe43d75d0a14e3e85b1069cff8`
+with the filename/file-format header removed. All owned emulator sessions
+finished before rebuilding the output ELF.
+
 ## Preparation integration rejected on worst-update measurements (2026-09-28)
 
 The final shared-frame candidate is rejected for the current worst-frame
