@@ -13,9 +13,9 @@ particle-heavy frames, must take at most 20 ms / 312 PAL raster lines per
 update on a stock A1200 (68020, 2 MiB Chip RAM, no Fast RAM).
 Preserve behaviour, effects, permanent marks, audio and rendering order.
 
-Latest accepted lazy-AI benchmark, work lines per 603 updates /
-worst: BASIC 145800/350, F1 170663/414, CITY 142006/332, WHACKO 149009/368.
-The phase checks reach F1 418 and WHACKO 386, so the
+Latest accepted native-conflict benchmark, work lines per 603 updates /
+worst: BASIC 145524/349, F1 169758/417, CITY 141037/330, WHACKO 148783/385.
+The phase checks reach F1 417 and WHACKO 386, so the
 worst observed F1 update still needs about a 25% reduction. These are sampled
 maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
@@ -44,6 +44,23 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
    Prove any removed check redundant. Whole-list reuse is not a justified
    worst-frame fix; incremental maintenance needs writer coverage and a
    break-even measurement.
+   Next algorithmic screen: give generic actor advancement a conservative
+   non-point high-water bound, initialized after all start-of-race allocations
+   and raised by every sprite allocation/configuration path. Do not shrink it
+   during a race initially; stale high values only cost scans. Leave the
+   independent reference scanning the full shared high-water bound. Check
+   intro/notice/reserved slots, flag activation, weapon explosions, point
+   reuse and all native/C producers before using it. Existing profiles put
+   substantial samples in the skip/next loop, not just actor motion itself.
+   The byte after weapons.ready/bullet_colour/impact_colour is native
+   alignment padding (ready offset 21740, actors 21756); a bound <=200 should
+   fit there without shifting existing fields. Verify generated offsets.
+   Zero can conservatively mean full shared-pool scan for legacy/test states.
+   Producer search: later sprite creation uses allocate_weapon_actor;
+   native/C track configuration reuses initialization-time track handles.
+   Prefer allocation-only bound maintenance if this invariant is proved;
+   avoid adding a redundant check to every track-object update. Direct
+   allocation in race_runtime.c is the point path and must not raise it.
 
 3. **Coherent register-resident 68020 simulation blocks.** Use refreshed
    profiles to select remaining car preparation, per-car tails, checkpoint,

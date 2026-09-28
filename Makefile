@@ -1685,6 +1685,18 @@ build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_run
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 .PHONY: verify-retention-groups
+.PHONY: verify-retention-touch
+build/retention_touch.bin: tools/retention_touch_test.s src/game/retention_touch.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+build/verify_retention_touch: tools/verify_retention_touch.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-retention-touch: build/retention_touch.bin build/verify_retention_touch
+	build/verify_retention_touch build/retention_touch.bin build/offsets/race_offsets.i
+	@for mutation in 0 1 2 3 4 5; do \
+	  status=0; build/verify_retention_touch build/retention_touch.bin build/offsets/race_offsets.i $$mutation || status=$$?; \
+	  test $$status -eq 1 || { echo "Mutation $$mutation was not rejected by the oracle"; exit 1; }; \
+	done
+	@echo "Retention touch oracle rejects six injected instruction bugs"
 .PHONY: verify-retention-snapshot
 build/verify_retention_snapshot: tools/verify_retention_snapshot.c src/platform/amiga/retention_snapshot.h src/game/race_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@

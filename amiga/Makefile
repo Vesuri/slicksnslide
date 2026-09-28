@@ -78,6 +78,7 @@ OBJECTS += obj/hud_restore.o
 OBJECTS += obj/c2p16_interleaved.o
 OBJECTS += obj/actor_order.o
 OBJECTS += obj/point_restore.o
+OBJECTS += obj/retention_touch.o
 OBJECTS += obj/car_collision.o
 
 .PHONY: all clean verify-runtime
@@ -102,6 +103,9 @@ force-div100-check:
 endif
 
 obj/point_restore.o: $(REPO)/src/game/point_restore.s obj/race_offsets.i | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/retention_touch.o: $(REPO)/src/game/retention_touch.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/car_collision.o: $(REPO)/src/game/car_collision.s obj/race_offsets.i | obj

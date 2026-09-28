@@ -3,6 +3,82 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Native rectangle conflict walk (2026-09-28, accepted)
+
+The complete slicks_retention_touch routine is replaced by a 270-byte native
+implementation, not just the earlier shared-point callback experiment. It
+replaces a 398-byte compiled C function (the parent ELF's symbol size).
+The smaller code footprint is not itself a cycle or speedup measurement. It
+keeps clipped bounds and the priority threshold in registers while walking
+grid cells/entries. A shared cell checks every candidate against the entire
+input rectangle; after that scan, no later cell can add a conflict. Already
+conflicting entries need no further tests. The host original remains the
+reference; no rectangle, group, priority or drawing-order semantics change.
+
+Independent raw target-layout oracle: 4096 randomized original per-cell
+comparisons, all counts 0..100, arbitrary valid grid entries, empty/reversed
+rectangles, signed clipping extremes, byte priorities, prior conflict bits,
+whole-state guards and callee-saved register/stack checks. Passed log:
+`tmp/retention-touch-native-smoke-20260928.log`.
+The strengthened oracle also rejects six injected instruction bugs in its
+private code image: missing strict-priority increment, wrong conflict bit,
+inclusive right-edge overlap, bottom clipping, grid stride and candidate
+flag selection. Log: `tmp/retention-touch-native-mutations-20260928.log`.
+Host original traversal/group checks pass 10000 full-state cases and 1024
+group permutations, including the geometry invalidation audit:
+`tmp/retention-touch-native-groups-20260928.log`. These host checks preserve
+the independent C reference; they do not substitute for native execution.
+
+Performance screen before expensive validation, 603 updates / work / worst:
+F1 169769/416 versus parent 170663/414; CITY 141037/330 versus 142006/332.
+Canonical final states match. Aggregate reductions are 0.52% and 0.68%,
+enough to proceed, not an acceptance or worst-frame improvement claim.
+Logs: `tmp/retention-touch-native-screen-20260928-{1,2}.log`.
+Archive: `tmp/retention-touch-native-candidate-20260928.{elf,exe}`.
+Host group checks and F1/CITY full-frame RETCHECK are now running; these
+tracks exercise sprite retention. Remaining normal timing/display checks
+and acceptance are pending. The runner restores a normal build on exit.
+F1 full-frame RETCHECK passes 603 racing updates, 575 geometry-cache audits,
+700 status-cache checks, zero pixel/particle/immutable-map mismatches and
+canonical final state (`tmp/retention-touch-native-retcheck-20260928-1.log`).
+CITY also passes 603 racing updates and geometry-cache audits, 700
+status-cache checks, zero mismatches and canonical final state
+(`tmp/retention-touch-native-retcheck-20260928-2.log`). The suite exits
+successfully, closes its emulators and restores the normal build. The three
+normal display audits and final normal/phase timing runs are now in progress
+using the immutable candidate archive.
+The F1 normal-build display audit also passes 600 updates
+(`tmp/retention-touch-audit-20260928-1.log`). CITY also passes 600 updates
+(`tmp/retention-touch-audit-20260928-2.log`). WHACKO passes 600 updates too
+(`tmp/retention-touch-audit-20260928-3.log`), completing all three display
+audits. The final timing sweep is now running. CITY's longer wall time
+included host oversleep messages; it is not target performance evidence.
+
+Final normal/phase results (603 updates per run):
+
+| Track / HUD phase | Parent work / worst | Native work / worst |
+| --- | ---: | ---: |
+| BASIC | 145800 / 350 | 145524 / 349 |
+| CITY | 142006 / 332 | 141037 / 330 |
+| F1 / 0 | 170663 / 414 | 169758 / 417 |
+| F1 / 1 | 170674 / 415 | 169824 / 414 |
+| F1 / 2 | 170619 / 415 | 169821 / 413 |
+| F1 / 3 | 170659 / 418 | 169772 / 414 |
+| WHACKO / 0 | 149009 / 368 | 148783 / 385 |
+| WHACKO / 1 | 149003 / 372 | 148795 / 385 |
+| WHACKO / 2 | 149077 / 370 | 148820 / 371 |
+| WHACKO / 3 | 149042 / 386 | 148829 / 386 |
+
+Every final state matches. An additional unphased WHACKO run gives
+148782/384. Logs: `tmp/retention-touch-final-20260928-{0,3}.log` and
+`tmp/retention-touch-phase-20260928-{1,3}-{0,1,2,3}.log`.
+Accepted for consistent aggregate reduction, complete native oracle coverage,
+full-frame checks on both retention-heavy tracks and all three display
+audits. The F1 sampled envelope is 417 versus 418; WHACKO remains 386.
+Individual phase maxima remain mixed, so this is not a general worst-frame
+speedup claim. It does not meet 312 lines. The runner exits successfully and
+closes all its emulators; the normal build is restored. No push performed.
+
 ## Lazy AI velocity direction (2026-09-28, accepted)
 
 In ai_steering, a wrapped heading difference within [-1,1] always selects

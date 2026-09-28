@@ -232,6 +232,7 @@ void slicks_retention_rebuild(struct SlicksRaceRuntime *race,unsigned count)
 /* Mark candidates touched by a lower actor's half-open rectangle; a point
  * passes its priority, cars and other always-lower actors pass -1. */
 void slicks_retention_touch(int left,int top,int right,int bottom,int priority);
+#if !defined(__m68k__)
 void slicks_retention_touch(int left,int top,int right,int bottom,int priority)
 {
     struct SlicksRetentionState *s=&slicks_retention;
@@ -252,6 +253,7 @@ void slicks_retention_touch(int left,int top,int right,int bottom,int priority)
             }
         }
 }
+#endif
 
 /* Cars: last drawn rectangles and a conservative square around each new
  * centre (half-extent at least the larger sprite dimension). */
