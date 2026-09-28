@@ -1532,6 +1532,16 @@ build/verify_signed_div100: tools/verify_signed_div100.c | build
 verify-signed-div100: build/signed_div100.bin build/verify_signed_div100
 	build/verify_signed_div100 build/signed_div100.bin
 
+build/velocity_division.bin: tools/velocity_division_test.s src/game/velocity_division.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -I. -o $@ $<
+
+build/verify_velocity_division: tools/verify_velocity_division.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-velocity-division
+verify-velocity-division: build/velocity_division.bin build/verify_velocity_division
+	build/verify_velocity_division build/velocity_division.bin
+
 build/actor_compact_order.bin: tools/actor_compact_order_test.s src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 

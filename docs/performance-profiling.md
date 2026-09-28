@@ -3,6 +3,31 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Exact velocity-division arithmetic prototype (2026-09-28)
+
+The normal integrator divides each signed, wrapped velocity product by
+32768 plus a vehicle coefficient. Valid interpolated coefficients range
+from -40 to 72. An isolated reciprocal-multiply prototype covers every
+integer divisor in that interval except the exact power of two 32768,
+which needs a separate path. It is not yet connected to gameplay.
+
+For d>0 choose M=ceil(2^(32+s)/d), with M<2^32 and a shift satisfying
+ceil(2^31/d)*(M*d-2^(32+s))<M. The host oracle additionally enumerates
+both ends of every quotient interval for magnitudes 0..2^31, proving the
+positive quotient everywhere by monotonicity. M*d is strictly above the
+scale for these non-power-of-two divisors, so negative inputs use the
+arithmetic high product/shift plus one to truncate toward zero. Multipliers
+whose high bit is set use signed multiply plus the original dividend to
+recover the correct high half. No rounding approximation is involved.
+
+`make verify-velocity-division` passes 917504 native signed inputs over
+112 divisors, including INT32_MIN/MAX neighborhoods, exact multiples and
+neighbors, near-zero values, randomized full-width inputs and stack/callee
+save ABI. The actual shared assembly macro is tested, not a host substitute.
+Gameplay integration, arbitrary-coefficient fallback, and target timing
+remain pending. Setup/lookup and register pressure may erase any benefit;
+do not treat arithmetic correctness as a performance result.
+
 ## Unchanged particle coordinates revisited (2026-09-28)
 
 The prior coordinate-store shortcut was rejected before the visibility-map
