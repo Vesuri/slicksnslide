@@ -3,6 +3,97 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Non-point actor scan bound (2026-09-28, accepted)
+
+The generic actor updater formerly scanned every shared slot, including
+point-only tails. A byte-sized exclusive upper bound is set after all initial
+allocations (including intro/notice and reserved slots), then only raised by
+allocate_weapon_actor. Track configuration reuses initial handles; point
+allocation does not raise it. It never shrinks mid-race. Zero falls back to
+the full shared scan, and native code takes the smaller of a nonzero bound
+and the shared high-water value. The independent reference remains a full
+scan. Native field offset 21743 occupies old counter-alignment padding;
+comparison of generated offsets finds no other changes.
+
+Quick verification passes 8192 bounded/fallback pools plus 14 isolated
+geometry cases against the full-scan reference, comparing complete raw target
+state and ABI. Producer checks cover 160 combinations of track count,
+participation and weapons: point-only tails, sprite/point reuse, maximum
+handle 199, failed allocation, zero fallback and race reinitialization.
+Log: `tmp/sprite-bound-smoke-20260928.log`. Four-track normal performance
+screen is running before expensive validation, against e0a869c (the archived
+`tmp/retention-touch-native-candidate-20260928` executable pair).
+The screen completes with canonical final states:
+
+| Track | Parent work / worst | Bounded work / worst |
+| --- | ---: | ---: |
+| BASIC | 145524 / 349 | 142797 / 348 |
+| F1 | 169758 / 417 | 167647 / 410 |
+| CITY | 141037 / 330 | 138919 / 327 |
+| WHACKO | 148783 / 385 | 146639 / 369 |
+
+These are 603-update screens, not final phase envelopes. Total reductions
+are 1.87%, 1.24%, 1.50% and 1.44%. Logs:
+`tmp/sprite-bound-screen-20260928-{0,1,2,3}.log`.
+The candidate is archived as `tmp/sprite-bound-candidate-20260928.{elf,exe}`.
+Actor-only shadow comparisons are now being run on the four normal tracks
+and weapon cases 1,6,8; reports include bound and allocation counters so
+late-creation coverage can be checked rather than assumed. Normal-build
+restoration follows the suite. No acceptance or completion claim yet.
+BASIC and F1 pass 700 actor comparisons each, zero mismatches/race errors,
+and canonical final states. Their final shared/sprite bounds are 198/12
+and 200/42, respectively; F1 also exercises 27 moving-object probes.
+Logs: `tmp/shadow-sprite-bound-20260928-{0,1}.log`.
+Expanded producer checks pass 320 lifecycles, testing both loaded and
+unloaded track actors across all five track-object kinds. The native pool
+oracle still passes: `tmp/sprite-bound-producers-20260928.log`.
+CITY and WHACKO also pass 700 actor comparisons each with zero mismatches,
+zero race errors and canonical final states. Shared/sprite bounds finish at
+165/28 and 200/15. Logs: `tmp/shadow-sprite-bound-20260928-{2,3}.log`.
+The three weapon scenarios remain running/pending in the same suite.
+Weapon case 1 passes 3600 actor comparisons with zero mismatches/race errors:
+5 shots, final shared/sprite bounds 144/37. The weapon fixture's benchmark
+frame counter is zero because it is not a benchmark run; its 3600 shadow
+calls establish actual execution coverage. Log:
+`tmp/shadow-sprite-bound-20260928-SLICKS_WEAPON_CASE_1.log`.
+Cases 6 and 8 also pass 3600 actor comparisons each with zero mismatches
+and race errors. Case 6 creates one shot and two explosions, ending with
+shared/sprite bounds 155/129; case 8 creates one shot and one explosion,
+ending at 151/35. Logs:
+`tmp/shadow-sprite-bound-20260928-SLICKS_WEAPON_CASE_{6,8}.log`.
+The suite exits successfully and restores the normal build. All four track
+and three weapon scenarios therefore pass the independent full-scan actor
+reference. The normal archived candidate is now undergoing F1/WHACKO
+HUD-phase timing confirmation. No renderer, restore order or pixel-writing
+path changes in this candidate; its applicable fidelity gates are full
+actor-state equivalence, producer coverage and geometry invalidation,
+not another unrelated rendering-family audit.
+
+Final HUD-phase confirmation (603 updates each):
+
+| Track / phase | Parent work / worst | Bounded work / worst |
+| --- | ---: | ---: |
+| F1 / 0 | 169758 / 417 | 167671 / 409 |
+| F1 / 1 | 169824 / 414 | 167594 / 408 |
+| F1 / 2 | 169821 / 413 | 167648 / 411 |
+| F1 / 3 | 169772 / 414 | 167630 / 413 |
+| WHACKO / 0 | 148783 / 385 | 146604 / 367 |
+| WHACKO / 1 | 148795 / 385 | 146572 / 384 |
+| WHACKO / 2 | 148820 / 371 | 146536 / 383 |
+| WHACKO / 3 | 148829 / 386 | 146640 / 381 |
+
+All final states match. Logs:
+`tmp/sprite-bound-phase-final-20260928-{1,3}-{0,1,2,3}.log`.
+The F1 sampled envelope falls from 417 to 413, WHACKO from 386 to 384;
+individual phase maxima remain mixed (WHACKO phase 2 regresses). Consistent
+aggregate gains, complete independent actor-state checks and covered late
+allocations justify acceptance, not a claim of meeting the 312-line goal.
+All test emulators are closed. The restored normal ELF has identical
+loadable section contents and disassembly to the archived timed candidate;
+the converted executable files differ only in six symbol-name padding bytes
+(after the NUL terminators for collect_conversion_statistics and
+animated_track_sprite_publish_regs), not game code/data. No push performed.
+
 ## Native rectangle conflict walk (2026-09-28, accepted)
 
 The complete slicks_retention_touch routine is replaced by a 270-byte native

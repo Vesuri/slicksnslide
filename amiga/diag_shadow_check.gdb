@@ -21,6 +21,7 @@ commands
   printf "SHADOW_SITES=0x%lx\n",slicks_shadow_sites
   if $race
     printf "TRACK_HITS probes=%u collisions=%lu special=%d,%d,%d,%d\n",$probes,$race->track_collision_count,$race->cars[0].special_drive_state,$race->cars[1].special_drive_state,$race->cars[2].special_drive_state,$race->cars[3].special_drive_state
+    printf "SHADOW_ACTOR_BOUND shared=%u sprite=%u shots=%lu explosions=%lu\n",$race->weapons.slots.high_water,$race->weapons.sprite_high_water,$race->weapons.shots,$race->weapons.explosions
   end
   printf "SHADOW calls=%lu,%lu,%lu,%lu,%lu,%lu,%lu mismatches=%lu first_site=%lu block=%lu frame=%lu state=0x%x\n",slicks_shadow_calls[1],slicks_shadow_calls[2],slicks_shadow_calls[3],slicks_shadow_calls[4],slicks_shadow_calls[5],slicks_shadow_calls[6],slicks_shadow_calls[7],slicks_shadow_mismatches[0],slicks_shadow_first_site,slicks_shadow_first_block,slicks_shadow_first_frame,slicks_shadow_state
   printf "RACE_ERROR=%u frames=%lu\n",g_slicks_diag_race_error,g_slicks_diag_bench_frames

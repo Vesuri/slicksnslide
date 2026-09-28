@@ -346,6 +346,13 @@ slicks_advance_weapon_actors:
 	movea.l	36(sp),a0
 	moveq	#0,d7
 	move.w	RACE_WEAPON_SLOTS+SLOTS_HIGH_WATER(a0),d7
+	moveq	#0,d0
+	move.b	RACE_SPRITE_HIGH_WATER(a0),d0
+	beq.s	.advance_bound
+	cmp.w	d0,d7
+	bls.s	.advance_bound
+	move.w	d0,d7
+.advance_bound:
 	subq.w	#2,d7			; handles 1..high_water-1
 	bmi.w	.advanced
 	move.b	RACE_ACTOR_PAGE(a0),d6

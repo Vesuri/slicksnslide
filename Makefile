@@ -1232,7 +1232,7 @@ verify-particle-compact-trial: unpack build/particle_advance.bin build/particle_
 	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin build/particle_compact_trial.bin build/particle_compact_legacy.bin
 
 # Target structure offsets from the 68020 compiler for native-routine tests.
-build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h | build
+build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h src/game/weapon_runtime.h | build
 	mkdir -p build/offsets
 	$(M68K_CC) -m68020 -O2 -S -o build/offsets/race_offsets.s $<
 	sed -n 's/^@@//p' build/offsets/race_offsets.s > $@
@@ -1261,7 +1261,7 @@ verify-dirty-prune: build/dirty_prune.bin build/verify_dirty_prune build/offsets
 build/actor_advance.bin: tools/actor_advance_test.s src/game/track_motion.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 
-build/verify_actor_advance: tools/verify_actor_advance.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/actor_slots.h src/game/race_runtime.h | build
+build/verify_actor_advance: tools/verify_actor_advance.c src/game/race_runtime.c src/game/signed_division.h src/game/weapon_actors.inc src/game/actor_slots.h src/game/race_runtime.h src/game/weapon_runtime.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-actor-advance

@@ -270,6 +270,8 @@ static short allocate_weapon_actor(struct SlicksRaceRuntime *race,int asset,
     a->kind=asset<0?2:1;a->asset=asset<0?0:(unsigned char)asset;
     a->motion.frames=(unsigned char)frames;a->colour=colour;
     race->weapons.trail_index[h]=-1;
+    if(race->weapons.sprite_high_water && h>=race->weapons.sprite_high_water)
+        race->weapons.sprite_high_water=(unsigned char)(h+1);
     return h;
 }
 
@@ -322,6 +324,7 @@ static void initialize_weapon_actors(struct SlicksRaceRuntime *race)
     race->actor_order_drawn=0;
     __builtin_memset(race->track_stationary_ready,0,sizeof race->track_stationary_ready);
     struct SlicksWeaponRuntime *w=&race->weapons;
+    w->sprite_high_water=0;
     slicks_actor_slots_init(&w->slots);
     for(unsigned h=0;h<SLICKS_ACTOR_CAPACITY;++h) {
         w->trail_index[h]=-1;w->actors[h]=(struct SlicksWeaponActor){0};
@@ -356,6 +359,10 @@ static void initialize_weapon_actors(struct SlicksRaceRuntime *race)
         if(h) w->slots.state[h]=-3;
     }
     w->shots=w->hits=w->explosions=0;
+    /* Includes inert/reserved slots and intro/notice lifetime-only actors.
+     * Track configuration always reuses these handles. Later sprite creation
+     * goes through allocate_weapon_actor; point allocation never raises it. */
+    w->sprite_high_water=(unsigned char)w->slots.high_water;
 }
 
 int slicks_race_add_weapon_asset(struct SlicksRaceRuntime *race,

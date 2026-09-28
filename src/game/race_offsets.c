@@ -35,6 +35,7 @@ void slicks_race_offsets(void)
     OFFSET(RACE_SOUND_EVENT_COUNT, struct SlicksRaceRuntime, sound_event_count);
     OFFSET(RACE_SOUND_EVENT_TOTALS, struct SlicksRaceRuntime, sound_event_totals);
     OFFSET(RACE_WEAPON_SLOTS, struct SlicksRaceRuntime, weapons.slots);
+    OFFSET(RACE_SPRITE_HIGH_WATER, struct SlicksRaceRuntime, weapons.sprite_high_water);
     OFFSET(RACE_TRAIL_HANDLE, struct SlicksRaceRuntime, weapons.trail_handle);
     OFFSET(RACE_TRAIL_INDEX, struct SlicksRaceRuntime, weapons.trail_index);
     OFFSET(RACE_ACTORS, struct SlicksRaceRuntime, weapons.actors);

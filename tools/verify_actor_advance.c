@@ -19,9 +19,50 @@ static void w(unsigned char *p,unsigned v) {p[0]=v>>8;p[1]=v;}
 static void l(unsigned char *p,unsigned v) {w(p,v>>16);w(p+2,v);}
 static unsigned seed=127;
 static unsigned rnd(void) {seed=seed*1664525u+1013904223u;return seed>>8;}
+static void bound_check(int ok,const char *why)
+{if(!ok){fprintf(stderr,"Sprite bound producer: %s\n",why);exit(1);}}
+static void verify_bound_producers(void)
+{
+    static struct SlicksRaceRuntime r;
+    const unsigned counts[]={0,5,18,32,100};
+    for(unsigned n=0;n<5;++n)for(unsigned mask=0;mask<16;++mask)
+    for(unsigned weapons=0;weapons<2;++weapons)for(unsigned tracks=0;tracks<2;++tracks){
+        memset(&r,0,sizeof r);r.navigation.actor_count=counts[n];
+        r.participation_ready=1;r.weapons_enabled=weapons;r.weapons.ready=1;
+        r.track_actors_ready=tracks;
+        for(unsigned i=0;i<counts[n];++i)r.navigation.actors[i].kind=i%5;
+        unsigned active=0;
+        for(unsigned d=0;d<4;++d){r.participation[d]=(mask&(1U<<d))?(d&1?-1:1):0;active+=r.participation[d]!=0;}
+        initialize_weapon_actors(&r);
+        unsigned initial=1+4+counts[n]+1+weapons+active;
+        bound_check(r.weapons.sprite_high_water==initial && r.weapons.slots.high_water==initial,"initial slots, intro/notice and participation");
+        for(unsigned i=0;i<9;++i)add_trail_component(&r,20+i,30,7,0,0,0,3);
+        bound_check(r.trail_particle_count==9 && r.weapons.sprite_high_water==initial,"point allocations must not raise bound");
+        short h=allocate_weapon_actor(&r,-1,1,12);
+        bound_check(h==(short)(initial+9) && r.weapons.sprite_high_water==h+1,"sprite after point-only tail raises bound");
+        configure_weapon_actor(&r,h,30,40,1,2,3,4,0);
+        unsigned raised=r.weapons.sprite_high_water;
+        r.weapons.slots.state[h]=0;
+        add_trail_component(&r,30,40,7,0,0,0,3);
+        bound_check(r.weapons.sprite_high_water==raised,"sprite slot reused by point preserves conservative bound");
+        r.weapons.slots.state[h]=0;
+        bound_check(allocate_weapon_actor(&r,2,4,1)==h && r.weapons.sprite_high_water==raised,"sprite reuse below bound");
+        memset(r.weapons.slots.state,1,sizeof r.weapons.slots.state);
+        r.weapons.slots.high_water=SLICKS_ACTOR_CAPACITY;
+        bound_check(!allocate_weapon_actor(&r,2,4,1) && r.weapons.sprite_high_water==raised,"failed allocation leaves bound alone");
+        r.weapons.slots.state[199]=0;
+        bound_check(allocate_weapon_actor(&r,2,4,1)==199 && r.weapons.sprite_high_water==200,"highest handle fits byte bound");
+        r.weapons.sprite_high_water=0;r.weapons.slots.state[199]=0;
+        bound_check(allocate_weapon_actor(&r,2,4,1)==199 && !r.weapons.sprite_high_water,"legacy zero retains full-scan fallback");
+        initialize_weapon_actors(&r);
+        bound_check(r.weapons.sprite_high_water==initial,"race reinitialization resets stale bound");
+    }
+    puts("Sprite scan bound: 320 producer lifecycles pass, including loaded/unloaded track actors, point/sprite reuse, failure, capacity and reinitialization");
+}
 int main(int argc,char **argv)
 {
     if(argc!=3)return 2;
+    verify_bound_producers();
     unsigned char code[8192];FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t n=fread(code,1,sizeof code,f);fclose(f);if(n<4||n==sizeof code)return 2;
     unsigned entry=(unsigned)code[n-4]<<24|code[n-3]<<16|code[n-2]<<8|code[n-1];
@@ -32,6 +73,7 @@ int main(int argc,char **argv)
         "ACTOR_MOTION_FRAME","ACTOR_MOTION_PERIOD","ACTOR_MOTION_FRAMES"};
     unsigned o[18];for(unsigned i=0;i<18;++i)o[i]=off(argv[2],keys[i]);
     unsigned dirty_offset=off(argv[2],"RET_GEOMETRY_DIRTY");
+    unsigned bound_offset=off(argv[2],"RACE_SPRITE_HIGH_WATER");
     enum {CODE=0x10000,RACE=0x100000,STACK=0x80000,STOP=0x9000,IMAGE=65536};
     static unsigned char before[IMAGE],expected[IMAGE],got[IMAGE];
     static struct SlicksRaceRuntime r;
@@ -46,6 +88,9 @@ int main(int argc,char **argv)
         memset(before,0xa7,sizeof before);
         r.weapons.slots.high_water=trial>=8192 || trial%17==0?2:1+trial%200;
         r.actor_page=trial>=8192?1:trial%4;
+        unsigned bound=trial>=8192?2:trial%4==0?0:trial%4==1?255:
+            1+rnd()%r.weapons.slots.high_water;
+        before[bound_offset]=(unsigned char)bound;
         w(before+o[0]+o[1],r.weapons.slots.high_water);before[o[6]]=r.actor_page;
         for(unsigned h=0;h<200;++h) {
             struct SlicksWeaponActor *a=&r.weapons.actors[h];
@@ -89,6 +134,13 @@ int main(int argc,char **argv)
                 case 12:a->motion.frame=3;a->motion.age=2;a->motion.period=1;break;
                 case 13:a->motion.period=1;break;
                 }
+            }
+            if(bound && h>=bound && h<r.weapons.slots.high_water){
+                /* Producers guarantee no relevant non-point actor above the
+                 * bound. Exercise all three reasons the full reference skips. */
+                if(h%3==0)r.weapons.trail_index[h]=h;
+                else if(h%3==1)r.weapons.slots.state[h]=0;
+                else {a->kind=0;a->motion.lifetime=0;}
             }
             unsigned char *p=before+o[3]+h*o[4];
             for(unsigned k=0;k<8;++k)w(p+o[7+k],(unsigned short)*fields[k]);
@@ -138,6 +190,6 @@ int main(int argc,char **argv)
             return 1;
         }
     }
-    uc_close(u);puts("Native actor advance: 8192 pools plus 14 isolated geometry cases; inert/near-inert, signed overflow, expiry, animation, required geometry invalidations, canaries and ABI match reference");
+    uc_close(u);puts("Native actor advance: 8192 bounded/fallback pools plus 14 isolated geometry cases; inert/near-inert, signed overflow, expiry, animation, required geometry invalidations, canaries and ABI match full-scan reference");
     return 0;
 }
