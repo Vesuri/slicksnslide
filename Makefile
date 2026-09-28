@@ -1597,6 +1597,16 @@ build/verify_actor_order: tools/verify_actor_order.c src/game/race_runtime.c src
 verify-actor-order: build/actor_order.bin build/verify_actor_order
 	build/verify_actor_order build/actor_order.bin build/offsets/race_offsets.i
 
+build/car_prepare.bin: tools/car_prepare_test.s src/game/car_prepare.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
+
+build/verify_car_prepare: tools/verify_car_prepare.c src/game/race_runtime.c src/game/race_runtime.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-car-prepare
+verify-car-prepare: build/car_prepare.bin build/verify_car_prepare
+	build/verify_car_prepare build/car_prepare.bin build/offsets/race_offsets.i
+
 build/car_integration.bin: tools/car_integration_test.s src/game/car_motion.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
 

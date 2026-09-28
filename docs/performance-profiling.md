@@ -3,6 +3,40 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Isolated whole-car preparation candidate (2026-09-28)
+
+`src/game/car_prepare.s` implements the preparation sequence surrounding
+AI/weapon callbacks: idle fuel, human/AI selection, finish suppression,
+steering-input capture, special-state gating, throttle, non-weapon braking,
+exact steering-cache arithmetic, damage yaw, heading normalization and
+post-integration speed publication. One outer register frame keeps the
+race/car bases, index, ticks and controls across callback boundaries. It is
+not linked into gameplay and has no target timing result yet.
+
+`make verify-car-prepare` passes 4096 cases, including 256 extreme tick-word,
+fuel/scalar and signed-clock cases. It checks the entire 256 KiB target-state
+image (including the separately located steering cache), exact callback
+arguments/order and state at each boundary, final controls, stack balance,
+all eleven preserved registers and output write bounds. There are 2841 AI
+and 2042 weapon boundary calls and 820 initially populated cache fixtures.
+Synthetic callbacks deliberately mutate inputs and clobber caller-saved
+registers. They prove the boundary contract, not the real callback bodies
+or whole-game integration. The oracle uses existing scalar preparation
+helpers; the original `prepare_car_motion` remains unchanged in production.
+
+The first assembly attempt caught two out-of-range short branches, corrected
+to word branches before testing. The accepted isolated image uses `-no-opt`,
+matching production assembly settings. Reference drive-physics tests also
+pass, including the fixture rejecting interleaved driver phases; original
+DOS steering/yaw verification passes 103104/1080 cases respectively.
+Logs: `tmp/car-prepare-{build,isolated}-20260928.log`.
+
+Still required: real AI/weapon bridges; a register entry into the native
+integrator so the surrounding native block does not retain nested full saves
+and stacked arguments; independent integration oracle and cache-inclusive
+live shadow checks; then matched four-track and F1-phase benchmarks. This is
+an implementation milestone for a larger candidate, not an accepted speedup.
+
 ## Post-animation CPU profiles (2026-09-28)
 
 Fresh captures on a852985 are

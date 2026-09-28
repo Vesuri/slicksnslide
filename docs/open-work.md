@@ -142,11 +142,13 @@ Candidate fixes, roughly in order of expected value per effort:
   the archived sparse-hash prototype.
 
 - **Remaining C inside `slicks_race_step`.**
-  Next evaluate a coherent preparation/integration register contract using
-  the post-animation profiles: preparation, throttle, cached steering and
-  heading updates feeding the existing native integrator. Include full
-  packed target-state and steering-cache oracle coverage, then a live shadow
-  site before accepting it. Keep AI/weapon callbacks and all-car-motion-before-
+  Complete integration of the isolated `car_prepare.s` candidate: real
+  AI/weapon bridges and a register entry to the native integrator, removing
+  nested full-register saves and stacked arguments. The 4096-case packed
+  state/cache and callback-contract oracle passes, but uses synthetic callback
+  bodies and is not gameplay acceptance. Add an independent real-integration
+  oracle and cache-inclusive live shadow site, then benchmark against the
+  post-animation control before accepting it. Keep AI/weapon callbacks and all-car-motion-before-
   tails order unchanged. Do not claim the whole C sample share as the saving
   available from this subset; other expensive paths remain.
   Preserve the native car-pair loop and its site-8 diagnostic comparison
