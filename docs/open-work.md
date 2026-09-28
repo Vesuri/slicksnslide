@@ -16,9 +16,9 @@ audio and rendering order. Latest benchmark
 (`amiga/bench_tracks.sh direct-div-both-20260928`, outer-only work lines
 per 603 updates / worst update): BASIC 152628/365, F1 177844/432,
 CITY 147876/344, WHACKO 155632/406. Means are 15.7-18.9 ms; the
-worst updates in that run need 9-28% cuts. The prior F1 HUD-clock
-phase sweep reached 440 lines (29% cut); refresh it after the direct-division
-change before claiming a new phase-wide maximum. These are
+worst updates in that run need 9-28% cuts. The refreshed F1 HUD-clock
+phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
+final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1 CPU capture is
@@ -41,11 +41,6 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
-
-- **Refresh F1 HUD-phase coverage after direct division.** Run all four
-  native initial clock phases using `diag_benchmark_hud_phase.gdb`; require
-  the phase readback and matching final states. Keep the worst observed
-  phase, not only the default phase, in the acceptance numbers.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing

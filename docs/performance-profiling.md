@@ -25,8 +25,12 @@ code). Candidates: `tmp/direct-div100-20260928-*` and
 reduces total work on every track by 0.35-0.50%, but does not solve the
 worst-frame budget. Over-312 counts are 62/212/37/80 versus 60/216/40/80 in
 the fresh control: a smaller total is not a guarantee that every update or
-deadline improves. The old F1 HUD-phase sweep still needs refreshing for
-this layout before claiming a new phase-wide maximum.
+deadline improves. The refreshed F1 HUD-phase sweep on this layout gives
+work totals 177840/177871/177877/177857 and maxima 431/435/437/437 lines
+for phases 0/1/2/3. The native remainder readbacks are respectively
+0/819200/1638400/2457600; all four runs complete 603 updates with identical
+final states. Logs: `tmp/direct-div-phase-20260928-{0,1,2,3}.log`.
+The phase-wide observed maximum is 437 lines (28.0 ms), still above budget.
 
 Both candidates pass the 24000-case full-car integration oracle (signed-long
 position extremes, normal/coast/special states, signed tick counts, clamps,
