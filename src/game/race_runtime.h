@@ -360,6 +360,9 @@ struct SlicksRaceRuntime {
     unsigned char actor_order_ready;
     unsigned char actor_order_max;
     unsigned char actor_order_drawn;
+    /* Exact inverse draw chains, consumed by the next restoration pass. */
+    unsigned char actor_order_tail[128];
+    unsigned char actor_order_previous[SLICKS_ACTOR_CAPACITY];
     struct {
         unsigned short lap,last,best;
         unsigned char place,options;

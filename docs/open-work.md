@@ -13,11 +13,11 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh particle-visibility-chain-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 150485/358, F1 176290/435,
-CITY 146470/338, WHACKO 154217/397. Means are 15.6-18.7 ms; the
-worst updates in that run need 8-28% cuts. The refreshed F1 HUD-clock
-phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
+(`amiga/bench_tracks.sh reverse-links-heads-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 150177/356, F1 175661/434,
+CITY 146059/341, WHACKO 153928/382. Means are 15.5-18.7 ms; the
+worst updates in that run need 9-28% cuts. The refreshed F1 HUD-clock
+phase sweep reaches 436 lines (27.9 ms, 28% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
@@ -62,19 +62,6 @@ Candidate fixes, roughly in order of expected value per effort:
   Use uninterrupted timings and the CIA-B sampler; debugger stops are
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
-
-- **Eliminate the actor-chain reversal pass, if cheaper overall.**
-  `restore_actor_order` currently rewrites every live link to reverse the
-  previous draw chains. Prototype backward links and tail heads produced
-  alongside forward links by the existing order builder, then restore by
-  walking those links directly. Preserve ascending handle order for equal
-  priorities when drawing and its exact inverse when restoring. Keep the
-  independent initial/no-prior-draw restoration fallback. Account for added
-  link writes and tail initialization in the benchmark; this is not a free
-  saving. Extend the native ordering oracle to verify both directions and
-  all handles, then use mixed point/sprite/retired/clipped-chain tests,
-  display audits and RETCHECK. No allocator, simulation or effect ordering
-  may change as part of this representation experiment.
 
 - **Remaining F1 sprite overhead.** Use the latest CPU profiles.
   Inspect conflict processing, final
@@ -132,6 +119,13 @@ Candidate fixes, roughly in order of expected value per effort:
   repeated signed X/Y-to-pixel divisions across helper calls, caching only
   if measured savings outweigh exact input-key checks. Verify via a shadow
   site per replaced function.
+  Separately test direct signed 68020 division for remaining C `/100`
+  coordinate/speed conversions: the integrator already uses it, but the
+  surrounding C still emits full-width reciprocal multiply, shift and sign
+  correction sequences. Preserve truncation toward zero over the full signed
+  32-bit domain; verify actual compiled instructions at boundaries and with
+  randomized values before comparing target timings. Do not conflate this
+  lowering experiment with the rejected cross-helper coordinate cache.
 
 - **Further C2P area reduction.** The rectangle converter now handles
   16-pixel columns. Lower priority than simulation/particle work: even the

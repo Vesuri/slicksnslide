@@ -21,7 +21,7 @@ int main(int argc,char **argv){
     unsigned char code[4096];FILE *f=fopen(argv[1],"rb");if(!f)return 2;
     size_t n=fread(code,1,sizeof code,f);fclose(f);if(!n||n==sizeof code)return 2;
     enum{CODE=0x10000,BASE=0x20000,N=0x20000,PIX=32768,ROWS=100000,STACK=0x80000,STOP=0x90000};
-    unsigned PART=off(argv[2],"RACE_TRAIL_PARTICLES"),NEXT=off(argv[2],"RACE_ACTOR_ORDER_NEXT"),
+    unsigned PART=off(argv[2],"RACE_TRAIL_PARTICLES"),NEXT=off(argv[2],"RACE_ACTOR_ORDER_PREVIOUS"),
         INDEX=off(argv[2],"RACE_TRAIL_INDEX"),CHUNKY=off(argv[2],"RACE_CHUNKY");
     uc_engine *u;ck(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&u));
     ck(uc_ctl_set_cpu_model(u,UC_CPU_M68K_M68020));ck(uc_mem_map(u,0,0x100000,UC_PROT_ALL));

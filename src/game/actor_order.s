@@ -11,9 +11,9 @@ AO_PARTICLE_PRIORITY equ 15
 AO_PARTICLE_SIZE equ PARTICLE_SIZE
 AO_PARTICLE_PRIORITY equ PARTICLE_PRIORITY
     endif
-; C ABI: race. Only the forward draw chains; initial reverse construction
-; remains the independent C path. Scan descending handles and prepend so
-; equal-priority actors draw in ascending original handle order.
+; C ABI: race. Build draw chains and their exact inverse; initial saved-actor
+; reverse construction remains the independent C path. Scan descending handles
+; and prepend so equal-priority actors draw in ascending original handle order.
 slicks_build_draw_order:
     movem.l d2-d3/a2-a6,-(sp)
     movea.l 32(sp),a0
@@ -34,6 +34,13 @@ slicks_build_draw_order:
     endr
 ; Current layout is 1 mod 4: one byte + one word + 31 longs + one byte.
     move.b d0,(a5)
+    lea RACE_ACTOR_ORDER_TAIL(a0),a5
+    ifne (RACE_ACTOR_ORDER_TAIL&3)
+    fail "Actor-order tail clear requires long alignment"
+    endif
+    rept 32
+    move.l d0,(a5)+
+    endr
     lea RACE_ACTOR_ORDER_HEAD(a0),a5
     clr.b RACE_ACTOR_ORDER_DRAWN(a0)
     lea RACE_WEAPON_SLOTS(a0),a1
@@ -69,12 +76,31 @@ slicks_build_draw_order:
     bls.s .maximum
     move.b d1,d3
 .maximum:
-    move.b (a5,d1.w),(a6,d2.w)
+    moveq #0,d0
+    move.b (a5,d1.w),d0
+    move.b d0,(a6,d2.w)
+    tst.w d0
+    beq.s .first
+    move.b d2,RACE_ACTOR_ORDER_PREVIOUS(a0,d0.w)
+    bra.s .linked
+.first:
+    move.b d2,RACE_ACTOR_ORDER_TAIL(a0,d1.w)
+.linked:
     move.b d2,(a5,d1.w)
 .next:
     subq.w #1,d2
     bne.s .handle
 .done:
+; Only the final forward head needs a zero backward link. Every other
+; live handle acquired its predecessor when that predecessor was prepended.
+    move.w d3,d0
+.terminate:
+    moveq #0,d1
+    move.b (a5,d0.w),d1
+    beq.s .empty
+    clr.b RACE_ACTOR_ORDER_PREVIOUS(a0,d1.w)
+.empty:
+    dbra d0,.terminate
     move.b d3,RACE_ACTOR_ORDER_MAX(a0)
     move.b #1,RACE_ACTOR_ORDER_READY(a0)
     movem.l (sp)+,d2-d3/a2-a6

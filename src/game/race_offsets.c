@@ -26,6 +26,8 @@ void slicks_race_offsets(void)
     OFFSET(RACE_ACTOR_ORDER_MAX, struct SlicksRaceRuntime, actor_order_max);
     OFFSET(RACE_ACTOR_ORDER_READY, struct SlicksRaceRuntime, actor_order_ready);
     OFFSET(RACE_ACTOR_ORDER_DRAWN, struct SlicksRaceRuntime, actor_order_drawn);
+    OFFSET(RACE_ACTOR_ORDER_TAIL, struct SlicksRaceRuntime, actor_order_tail);
+    OFFSET(RACE_ACTOR_ORDER_PREVIOUS, struct SlicksRaceRuntime, actor_order_previous);
     OFFSET(RACE_SKIDMARK_COUNT, struct SlicksRaceRuntime, skidmark_count);
     OFFSET(RACE_RANDOM_STATE, struct SlicksRaceRuntime, random_state);
     OFFSET(RACE_EMISSION_SLOT_CURSOR, struct SlicksRaceRuntime, emission_slot_cursor);

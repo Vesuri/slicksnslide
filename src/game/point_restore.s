@@ -22,7 +22,7 @@ slicks_restore_point_chain:
     movea.l 28(sp),a5
     lea RACE_TRAIL_PARTICLES(a5),a0
     movea.l RACE_CHUNKY(a5),a1
-    lea RACE_ACTOR_ORDER_NEXT(a5),a2
+    lea RACE_ACTOR_ORDER_PREVIOUS(a5),a2
     lea RACE_TRAIL_INDEX(a5),a3
     move.l 32(sp),d3
     lea mult320,a4

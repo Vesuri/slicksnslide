@@ -1802,6 +1802,7 @@ static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
 #endif
     race->actor_order_drawn=0;
     for(unsigned p=0;p<128;++p) race->actor_order_head[p]=0;
+    if(!reverse) __builtin_memset(race->actor_order_tail,0,sizeof race->actor_order_tail);
     unsigned maximum=0;
     unsigned count=race->weapons.slots.high_water;
     for(unsigned i=1;i<count;++i) {
@@ -1821,29 +1822,50 @@ static void build_actor_order(struct SlicksRaceRuntime *race,int reverse)
         unsigned p=t>=0?race->trail_particles[t].priority:race->weapons.actors[h].priority;
         if(p>=128) continue;
         if(p>maximum) maximum=p;
-        race->actor_order_next[h]=race->actor_order_head[p];
+        unsigned old_head=race->actor_order_head[p];
+        race->actor_order_next[h]=(unsigned char)old_head;
+        if(!reverse) {
+            if(old_head) race->actor_order_previous[old_head]=(unsigned char)h;
+            else race->actor_order_tail[p]=(unsigned char)h;
+        }
         race->actor_order_head[p]=(unsigned char)h;
     }
+    if(!reverse)for(unsigned p=0;p<=maximum;++p)
+        if(race->actor_order_head[p])race->actor_order_previous[race->actor_order_head[p]]=0;
     race->actor_order_max=(unsigned char)maximum;
     race->actor_order_ready=1;
 }
 
 static void restore_actor_order(struct SlicksRaceRuntime *race)
 {
-    if(!race->actor_order_drawn) { build_actor_order(race,1);return; }
-    /* No actor simulation/allocation occurs between the draw and the next
-     * restoration. Reverse the exact chains that painted the backgrounds,
-     * rather than loading every actor's priority and sorting them again.
-     * Clipped actors are harmless: restoration still checks saved validity. */
-    unsigned char *next=race->actor_order_next;
-    for(unsigned p=0;p<=race->actor_order_max;++p) {
-        unsigned h=race->actor_order_head[p],previous=0;
-        while(h) {
-            unsigned following=next[h];
-            next[h]=(unsigned char)previous;previous=h;h=following;
-        }
-        race->actor_order_head[p]=(unsigned char)previous;
+    if(!race->actor_order_drawn) {
+        build_actor_order(race,1);
+        __builtin_memcpy(race->actor_order_tail,race->actor_order_head,
+                         sizeof race->actor_order_head);
+        __builtin_memcpy(race->actor_order_previous,race->actor_order_next,
+                         sizeof race->actor_order_next);
+        return;
     }
+#if defined(SLICKS_RETENTION_CHECK)
+    if(slicks_race_disable_retention) {
+        /* Independent legacy reversal for the full-frame reference pass:
+         * deliberately ignore the inverse links produced by the builder. */
+        __builtin_memcpy(race->actor_order_previous,race->actor_order_next,
+                         sizeof race->actor_order_next);
+        for(unsigned p=0;p<=race->actor_order_max;++p) {
+            unsigned h=race->actor_order_head[p],previous=0;
+            while(h) {
+                unsigned following=race->actor_order_previous[h];
+                race->actor_order_previous[h]=(unsigned char)previous;
+                previous=h;h=following;
+            }
+            race->actor_order_tail[p]=(unsigned char)previous;
+        }
+    }
+#endif
+    /* No simulation/allocation occurs after drawing before restoration.
+     * Walk the exact inverse chains constructed alongside the draw order.
+     * Keep the independent initial reverse-construction fallback above. */
     race->actor_order_drawn=0;
     race->actor_order_ready=1;
 }
@@ -1857,11 +1879,11 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
     int ordered=race->actor_order_ready && (priority>=0 || bucket!=3);
     unsigned p=priority>=0?(unsigned)priority:bucket==0?0:bucket==1?3:5;
     if(ordered) {
-        const unsigned char *next=race->actor_order_next;
+        const unsigned char *next=race->actor_order_previous;
         const short *trail_index=race->weapons.trail_index;
         struct SlicksTrailParticle *particles=race->trail_particles;
         unsigned char *chunky=race->chunky;
-        for(unsigned h=race->actor_order_head[p];h;) {
+        for(unsigned h=race->actor_order_tail[p];h;) {
             int t=trail_index[h];
 #if defined(__m68k__)
             if(t<0 && race->sprite_dirty_deferred) {
@@ -1903,11 +1925,11 @@ static void restore_trail_priority(struct SlicksRaceRuntime *race,
         }
         return;
     }
-    at = ordered?race->actor_order_head[p]:shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
+    at = ordered?race->actor_order_tail[p]:shared_actor_pool(race)?race->weapons.slots.high_water:race->trail_priority_counts[bucket];
     while (at) {
         unsigned index;
         unsigned handle;
-        if(ordered) { handle=at;at=race->actor_order_next[at]; }
+        if(ordered) { handle=at;at=race->actor_order_previous[at]; }
         else handle=--at;
         if(shared_actor_pool(race)) {
             int trail=race->weapons.trail_index[handle];
@@ -2464,7 +2486,7 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
     restore_actor_order(race);
     if(profile) race->profile_marker(11);
     for(int p=race->actor_order_max;p>=6;--p)
-        if(race->actor_order_head[p]) restore_trail_priority(race,3,p);
+        if(race->actor_order_tail[p]) restore_trail_priority(race,3,p);
 #if defined(SLICKS_RETENTION_CHECK)
     /* Independently exercise the old unconditional wrapper calls during
      * the reference update, including empty layers. */
@@ -2483,17 +2505,17 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
         return;
     }
 #endif
-    /* The reversed chains are authoritative, including saved retired
+    /* The backward chains are authoritative, including saved retired
      * actors. Empty heads have no pixels or saved state to restore. */
-    if(race->actor_order_head[5])restore_trail_particles(race,2);
-    if(race->actor_order_head[4])restore_trail_priority(race,3,4);
+    if(race->actor_order_tail[5])restore_trail_particles(race,2);
+    if(race->actor_order_tail[4])restore_trail_priority(race,3,4);
     if(profile) race->profile_marker(12);
     restore_layered_cars(race,logical);
     if(profile) race->profile_marker(13);
-    if(race->actor_order_head[2])restore_trail_priority(race,3,2);
+    if(race->actor_order_tail[2])restore_trail_priority(race,3,2);
     restore_shadows(race,logical);
-    if(race->actor_order_head[1])restore_trail_priority(race,3,1);
-    if(race->actor_order_head[0])restore_trail_particles(race,0);
+    if(race->actor_order_tail[1])restore_trail_priority(race,3,1);
+    if(race->actor_order_tail[0])restore_trail_particles(race,0);
     if(profile) race->profile_marker(14);
     race->actor_order_ready=0;
 }

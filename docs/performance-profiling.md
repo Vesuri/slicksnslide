@@ -3,6 +3,80 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Bidirectional actor chains (2026-09-28)
+
+Build 200 previous links and 128 tail heads alongside the forward draw
+chains. Restoration walks the backward chains directly, removing the
+per-actor reversal traversal. The initial/no-prior-draw path still constructs
+saved actors independently in C and publishes those reverse chains. Equal
+priorities still draw in ascending handle order and restore in descending
+order. No actor allocation, simulation, retirement or drawing priority changes.
+The additional mutable metadata uses 328 bytes and is covered by RETCHECK's
+snapshot prefix. Target offsets are regenerated from the C layout.
+
+The first direct-walk version clears each added actor's backward link; a
+second version only terminates the final forward heads. Every other live
+handle gets its predecessor when that predecessor is prepended. Empty tails
+are cleared each build so previous-frame chains cannot leak into empty layers.
+
+Fresh control `tmp/reverse-links-control-20260928-*`, work/worst over 603
+updates: BASIC 150485/358, F1 176290/435, CITY 146481/338, WHACKO 154249/398.
+The first version (`tmp/reverse-links-direct-20260928-*`) gives
+150268/357, 175791/429, 146154/341, 154008/396, with identical final states.
+The reduced-write version (`tmp/reverse-links-heads-20260928-*`) gives
+150177/356, 175661/434, 146059/341, 153928/382. All final states match.
+Total-work savings are 0.20/0.36/0.29/0.21%; over-budget counts are
+40/199/16/69. Worst-update changes are mixed: CITY grows three lines,
+while WHACKO falls sixteen. Improvements are small; do not claim the frame
+deadline is met.
+
+Both native layouts pass 12000 ordering cases with independent inverse
+traversal expectations, exact untouched bytes, ABI checks and initial
+saved-actor fallback enumeration (including inactive-but-saved actors).
+Both point-restoration layouts pass 4096 chains, 335076 visits, 170497
+restores and 1359 sprite boundaries. Dirty coverage, retention groups,
+surface effects, original track/weapon/particle lifecycle and native
+particle/sprite draw/restore suites pass. Target display audits pass 600
+updates each on F1/CITY/WHACKO with live statistics off:
+`tmp/reverse-links-audit-20260928-{1,2,3}.log`. All four RETCHECK runs also
+pass 603 updates each with zero rendering/particle/immutable-map mismatches,
+700 status-cache checks per track, and identical final states. Geometry
+checks are 0/575/603/0 with zero mismatches. Logs:
+`tmp/reverse-links-ret-20260928-{0,1,2,3}.log`. RETCHECK's reference restoration explicitly
+ignores prebuilt inverse links and reverses the forward chains with the legacy
+algorithm; the normal build contains no such diagnostic work. Both layout
+oracles also poison every backward link before exercising this diagnostic
+path, verifying that it reconstructs the expected order independently.
+AddressSanitizer repeats of both ordering-layout oracles also pass (12000
+cases each), including the poisoned-link reference and saved-actor fallback.
+
+The restored normal build passes all four F1 clock phases with totals
+175669/175666/175657/175641 and maxima 433/433/436/435 lines. Clock
+remainders are 0/819200/1638400/2457600; all final states match. Logs:
+`tmp/reverse-links-phase-20260928-{0,1,2,3}.log`. Every phase total improves;
+the maximum across phases drops from 437 to 436 lines. Retain the modest
+work reduction and 328-byte metadata cost, without claiming that every
+individual update improves or that the 312-line goal is achieved.
+
+## Isolated C division lowering probe (2026-09-28)
+
+The remaining C coordinate/speed `/100` conversions still compile to a
+signed full-width reciprocal multiply, shift and sign correction. A separate
+target compiler probe compares that expression with non-volatile inline
+`DIVS.L #100`, leaving the normal and diagnostic game executables untouched.
+The stand-alone reference leaf is 28 bytes (including a saved register);
+the direct-division leaf is 14 bytes. Inlining can alter the surrounding
+register traffic, so these sizes are not a frame-time estimate.
+
+Both actual compiled entry points pass 262144 signed inputs in Unicorn:
+the complete -65536..65535 range, 1000 values at each signed 32-bit limit,
+and randomized full-domain values. Checks include independent host division,
+return PC, stack and callee-saved registers. Local-only probe files:
+`tmp/div100_probe.{c,ld,o,bin}` and `tmp/verify_div100_probe.c`.
+No production integration or timing acceptance is claimed. This is distinct
+from the already accepted native-integrator division change and the rejected
+cross-helper coordinate cache.
+
 ## Precomputed particle visibility (2026-09-28)
 
 Append 58880 word values to the runtime, prepared at every successful race
