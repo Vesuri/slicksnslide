@@ -3,6 +3,45 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Bounds-proven particle address calculation (2026-09-28)
+
+The native particle body checks unsigned word x<=319 and y<=183 before
+forming its address. Replace six instructions (two zero extensions, row
+lookup and long addition) with a word-indexed long row lookup and word
+addition. The maximum address is 183*320+319=58879: no low-word carry is
+possible and the row table's upper word remains zero. This preserves the
+existing low-word coordinate semantics and all visibility/drawing behavior.
+
+| Track | Parent work / worst | Candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 152402 / 365 | 152149 / 360 |
+| F1 | 176686 / 427 | 176520 / 426 |
+| CITY | 147150 / 341 | 146991 / 343 |
+| WHACKO | 155339 / 404 | 155094 / 406 |
+
+Logs: `tmp/sprite-address-20260928-*` and
+`tmp/particle-offset-20260928-*`. All four 603-update final states match.
+Total work falls 0.09-0.17%; maxima are mixed, so this is not a universal
+worst-update improvement.
+
+Both 24-byte and isolated 20-byte native particle suites pass 4096 single,
+256 batch and 256 actor-chain cases, comparing complete screens, metadata,
+dirty lists, overflow handling and register/stack ABI. New test-only entry
+metadata executes the actual two production address instructions for all
+58880 visible coordinates with poisoned high halves in x/y registers and
+the output register. Both layouts pass, including offsets above 32767 and
+the final visible pixel. Entry aliases add no production instructions/data.
+
+Target display audits pass 600 updates each on F1/CITY/WHACKO with live
+statistics off: `tmp/particle-offset-audit-20260928-{1,2,3}.log`.
+F1's four native clock phases have totals 176529/176582/176560/176575 and
+maxima 426/435/436/428, with verified remainder values
+0/819200/1638400/2457600 and identical final states over 603 updates.
+Logs: `tmp/particle-offset-phase-20260928-{0,1,2,3}.log`. The largest
+observed phase is 436 lines versus the parent's 437. Retain the smaller
+address sequence as a verified simplification; the 312-line goal is still
+unmet. No simulation, restoration order or retention policy changes.
+
 ## Fresh F1 CPU profile after sprite addressing (2026-09-28)
 
 Capture: `tmp/pcprof-sprite-address-f1-20260928.{bin,log,elf}`. It completes

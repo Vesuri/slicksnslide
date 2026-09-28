@@ -72,12 +72,13 @@ slicks_draw_particle:
 	bhi.s .hidden
 	cmpi.w #183,d1
 	bhi.s .hidden
-	moveq #0,d2
-	move.w d1,d2
-	move.l (a6,d2.l*4),d2
-	moveq #0,d4
-	move.w d0,d4
-	add.l d4,d2
+	; Bounds above prove signed-word row/index inputs and a byte offset
+	; below 58880. The row-table long has a zero high word; ADD.W cannot
+	; carry out of its low word, so no separate zero extensions are needed.
+slicks_particle_address_start equ *
+	move.l (a6,d1.w*4),d2
+	add.w d0,d2
+slicks_particle_address_end equ *
 	tst.b PD_OCCLUSION(a0)
 	beq.s .visible
 	moveq #0,d4

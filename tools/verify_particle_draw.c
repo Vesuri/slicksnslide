@@ -36,6 +36,26 @@ int main(int argc,char **argv)
     ck(uc_mem_write(u,0x10000,code,size));
     unsigned char rows[1024];for(unsigned y=0;y<256;++y)be32(rows+y*4,y*320);
     ck(uc_mem_write(u,0x80000,rows,sizeof rows));
+    /* Execute the production address instructions for every visible pixel.
+     * Poison high halves to verify the word-index and word-add contracts,
+     * including offsets above 32767 and the final visible pixel at 58879. */
+    uint32_t address_start=0x10000,address_end=0x10000;
+    for(unsigned i=0;i<4;++i) {
+        address_start+=(uint32_t)code[size-16+i]<<(24-8*i);
+        address_end+=(uint32_t)code[size-12+i]<<(24-8*i);
+    }
+    for(unsigned y=0;y<184;++y)for(unsigned x=0;x<320;++x) {
+        uint32_t dx=0xa5a50000U|x,dy=0x5a5a0000U|y,out=0xdeadbeef,base=0x80000,pc;
+        ck(uc_reg_write(u,UC_M68K_REG_D0,&dx));
+        ck(uc_reg_write(u,UC_M68K_REG_D1,&dy));
+        ck(uc_reg_write(u,UC_M68K_REG_D2,&out));
+        ck(uc_reg_write(u,UC_M68K_REG_A6,&base));
+        ck(uc_emu_start(u,address_start,address_end,0,8));
+        ck(uc_reg_read(u,UC_M68K_REG_D2,&out));
+        ck(uc_reg_read(u,UC_M68K_REG_PC,&pc));
+        if(pc!=address_end || out!=y*320+x)fail("point address full-domain mismatch");
+    }
+    puts("Point address: all 58880 visible coordinates match with poisoned register high halves");
     static struct SlicksRaceRuntime race;
     static unsigned char pixels[64000],before[64000],actual[64000],dirty[2048],got_dirty[2048];
     const unsigned addresses[]={0x20000,0x30000,0x40000,0x50000,0x60000,0x70000,0x80000};

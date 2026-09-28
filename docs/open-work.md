@@ -13,16 +13,16 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh sprite-address-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 152402/365, F1 176686/427,
-CITY 147150/341, WHACKO 155339/404. Means are 15.6-18.8 ms; the
+(`amiga/bench_tracks.sh particle-offset-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 152149/360, F1 176520/426,
+CITY 146991/343, WHACKO 155094/406. Means are 15.6-18.8 ms; the
 worst updates in that run need 9-27% cuts. The refreshed F1 HUD-clock
-phase sweep reaches 437 lines (28.0 ms, 29% cut needed), with matching
+phase sweep reaches 436 lines (27.9 ms, 28% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1 CPU capture is
-`tmp/pcprof-sprite-address-f1-20260928` (current sprite-address build);
+`tmp/pcprof-sprite-address-f1-20260928` (before the particle-address simplification);
 the refreshed WHACKO capture is
 `tmp/pcprof-whacko-current-20260928`, with inner profiling disabled and
 the accepted address change present. Their sampler overhead is not part of
@@ -41,6 +41,20 @@ diag_dirty_sprites.gdb` for F1/CITY/WHACKO) and the retention check
 retention is touched.
 
 Candidate fixes, roughly in order of expected value per effort:
+
+- **Precompute immutable particle visibility values.** The point renderer
+  combines material and surface bytes for every occluded point. Prototype a
+  load-time map of `(material<<3)|(surface&7)` and compare directly against
+  the point's limit. This is terrain metadata, not a framebuffer shadow.
+  Prefer exact word values for the full byte-input domain initially (117760
+  bytes for the 320x184 point area); measure memory headroom on the stock
+  2 MiB target and loading cost as well as frame savings. Append derived
+  storage so existing native offsets remain stable. Initialize before any
+  race drawing, leave the scalar oracle using the independent original maps,
+  and test all visibility thresholds, limit-zero bypass, edges and restart.
+  Verify all native callers and synthetic fixtures use the new ABI, then
+  benchmark before accepting the additional storage. A byte representation
+  requires an explicit loader-range proof or invalid-value fallback.
 
 - **Resolve worst-update transitions, not just particle-count averages.**
   Use the current F1 and refreshed WHACKO CPU captures when choosing
