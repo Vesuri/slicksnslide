@@ -19,6 +19,15 @@ The phase checks reach F1 413 and WHACKO 384, so the
 worst observed F1 update still needs about a 24% reduction. These are sampled
 maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
+## Registration verification
+
+- Exercise the interactive Y/F1 ordering-help branch on exit. The optional
+  external order-form image needs a visual check if matching original data
+  becomes available; it is absent from the supplied archive.
+
+Implementation and completed verification evidence are separate in
+[registration-support.md](registration-support.md).
+
 ## Remaining performance work
 
 Optimization is stopped at the user's request. No experiment is active;

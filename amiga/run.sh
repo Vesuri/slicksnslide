@@ -22,6 +22,13 @@ else
 fi
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$EXE" "$DH1/SlicksDiag"
+# Runtime-only personal key; never linked or packaged. Keep an installation's
+# existing key if no local file was supplied.
+REGISTRATION_KEY="${SLICKS_REGISTRATION_KEY:-../tmp/slicks.rek}"
+if [ -n "${SLICKS_REGISTRATION_KEY:-}" ] && [ ! -f "$REGISTRATION_KEY" ]; then
+  echo 'Registration key file not found.' >&2; exit 2
+fi
+if [ -f "$REGISTRATION_KEY" ]; then cp -f "$REGISTRATION_KEY" "$DH1/SLICKS.REK"; fi
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
 cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
 mkdir -p "$DH1/TRACKS"

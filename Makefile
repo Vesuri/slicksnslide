@@ -223,6 +223,19 @@ verify-dos-ai: build/verify_dos_ai
 .PHONY: verify-dos-damage
 .PHONY: verify-dos-hud
 .PHONY: verify-weapon-actions
+.PHONY: verify-registration
+build/verify_registration: tools/verify_registration.c src/game/registration.h src/ui/registration_ui.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-registration: build/verify_registration
+	build/verify_registration "$(REGISTRATION_KEY)"
+build/registration_test_config: tools/registration_test_config.c src/gen/setup_defaults.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+.PHONY: verify-registration-pixels
+build/verify_registration_pixels: tools/verify_registration_pixels.c tools/verify_palette_remap.c src/ui/registration_ui.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-registration-pixels: build/verify_registration_pixels build/font_string_test.bin
+	build/verify_registration_pixels
+
 .PHONY: verify-weapon-shop
 .PHONY: verify-moving-probe
 .PHONY: verify-actor-slots

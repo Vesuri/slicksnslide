@@ -2,6 +2,8 @@
 
 # Original and derived game material stays local.
 SLICKS.EXE
+# Personal registration keys are never source or release assets (any directory).
+*.[rR][eE][kK]
 tmp/
 ref/
 disasm/*.bin

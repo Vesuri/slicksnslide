@@ -5,7 +5,7 @@ memory. The current implementation combines directly translated 68020
 assembly with recovered game/UI logic in native C and C++ platform support.
 It has no generated-C CPU-context emulation stage and is not a whole-PC emulator.
 
-## Current status (2026-09-26)
+## Current status (2026-09-28)
 
 The current queue is [docs/open-work.md](docs/open-work.md). Native player
 setup, CFG/PLR save/restart and correct race setup are complete, with manual
@@ -16,8 +16,10 @@ save/load/resume now works through native menus, including fresh-process
 resume, repeated saves, overwrite/delete confirmation and rejected-load
 state preservation. The native-port feature/integration/release checklist is
 complete within its tested scope; this is not exhaustive compatibility proof
-for every track, option combination or original runtime path. Performance work
-is active: sustained 20 ms updates on a stock A1200 have not been achieved.
+for every track, option combination or original runtime path. The subsequently
+identified registration gap is covered by [keyfile support](docs/registration-support.md).
+Performance work is stopped at the user's request: sustained 20 ms updates on
+a stock A1200 have not been achieved.
 
 See [setup evidence](docs/player-setup-completion.md) and
 [audio evidence](docs/audio-channel-plan.md), and
@@ -352,5 +354,5 @@ amiga/                 build, run, debug, and diagnostic scripts
 ## Immediate next step
 
 Follow [the current queue](docs/open-work.md) for remaining gameplay priorities and deferred
-checks. Performance is active; do not restart the deferred manual joystick
+checks. Performance optimization is stopped; do not restart the deferred manual joystick
 check without agreement.

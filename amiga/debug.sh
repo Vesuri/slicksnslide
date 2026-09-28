@@ -294,6 +294,8 @@ elif [ "${SLICKS_ZONE_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HIGHZONES\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_LAP_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LAP\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_REGISTRATION_TEST:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag REGCHECK\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"
 else
@@ -305,6 +307,11 @@ else
 fi
 cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$DEBUG_BUILD.exe" "$DH1/SlicksDiag"
+# Explicit opt-in: do not silently register ordinary regression fixtures.
+if [ -n "${SLICKS_REGISTRATION_KEY:-}" ]; then
+  [ -f "$SLICKS_REGISTRATION_KEY" ] || { echo 'Registration key file not found.' >&2; exit 2; }
+  cp -f "$SLICKS_REGISTRATION_KEY" "$DH1/SLICKS.REK"
+fi
 cp -f ../ref/SLICKS.000 "$DH1/SLICKS.000"
 cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
 mkdir -p "$DH1/TRACKS"

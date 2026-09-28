@@ -2,6 +2,8 @@
 	xdef	slicks_draw_title_pages
 	xdef	slicks_draw_title_menu_selection
 	xdef	slicks_draw_title_text
+	xdef slicks_draw_title_registration
+	xdef slicks_tick_title_registration
 	xdef	slicks_draw_original_text
 	xdef	slicks_dispatch_title_key
 	xdef	slicks_setup_basic_mode
@@ -94,6 +96,42 @@ slicks_draw_title_menu_selection:
 	rts
 
 ; C ABI: slicks_draw_title_text(planes, text, x, y, colour)
+; C ABI: slicks_draw_title_registration(planes, text). Original right-aligned
+; registered-name anchor (310,190), small font, flags=2, no forced shadow.
+; C ABI: slicks_tick_title_registration(planes, text, palette).
+; Advance the original colour pulse only while the title is visible.
+slicks_tick_title_registration:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 56(sp),a0
+	lea slicks_title_render_state,a1
+	lea slicks_title_fallback_color,a2
+	lea slicks_title_phase,a3
+	jsr sui_title_tail
+	bra.s slicks_registration_draw
+slicks_draw_title_registration:
+	movem.l d2-d7/a2-a6,-(sp)
+slicks_registration_draw:
+	movea.l 48(sp),a0
+	movea.l 52(sp),a2
+	movea.l slicks_title_small_font,a1
+	move.b 6(a1),-(sp)
+	move.b slicks_title_render_state+6,6(a1)
+	clr.w slicks_title_text_page
+	move.w #310,d0
+	move.w #190,d1
+	moveq #2,d2
+	moveq #1,d3
+	moveq #10,d4
+	moveq #0,d5
+	move.w #$0100,d6
+	jsr sui_font_string_planar
+	move.b (sp)+,6(a1)
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+	xref slicks_title_small_font
+	xref slicks_title_text_page
+	xref sui_font_string_planar
+
 slicks_draw_title_text:
 	movem.l	d2-d7/a2-a6,-(sp)
 	movea.l	48(sp),a0
