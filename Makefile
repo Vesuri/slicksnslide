@@ -1531,6 +1531,16 @@ build/verify_retention_groups: tools/verify_retention_groups.c src/game/race_run
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip $< src/game/track_scene.c -o $@
 
 .PHONY: verify-retention-groups
+build/retention_address.bin: tools/retention_address_test.s src/game/sprite_retention.s build/offsets/race_offsets.i | build
+	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
+
+build/verify_retention_address: tools/verify_retention_address.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+
+.PHONY: verify-retention-address
+verify-retention-address: build/retention_address.bin build/verify_retention_address
+	build/verify_retention_address build/retention_address.bin build/offsets/race_offsets.i
+
 verify-retention-groups: build/verify_retention_groups
 	build/verify_retention_groups
 

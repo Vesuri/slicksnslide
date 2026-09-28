@@ -13,15 +13,16 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh inner-off-integrated-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 153391/363, F1 179169/435,
-CITY 148964/345, WHACKO 156334/407. Means are 15.8-19.1 ms; the
-worst updates in that run need 10-28% cuts. The verified F1 HUD-clock
+(`amiga/bench_tracks.sh retention-address-revisit-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 153390/365, F1 178463/432,
+CITY 148559/344, WHACKO 156342/406. Means are 15.8-19.0 ms; the
+worst updates in that run need 9-28% cuts. The verified F1 HUD-clock
 phase sweep reaches 440 lines (29% cut still needed). These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
-explain the maxima. The current F1 CPU capture is
-`tmp/pcprof-inner-integrated-20260928`; the latest WHACKO capture,
+explain the maxima. The latest F1 CPU capture is
+`tmp/pcprof-inner-integrated-20260928` (before the small address change);
+the latest WHACKO capture,
 `tmp/pcprof-current-whacko-20260928`, predates removal of inner profiling
 checks. Their sampler overhead is not part of the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
@@ -60,13 +61,7 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Remaining F1 sprite overhead.** Use the current CPU profiles.
-  Measure cheaper exact addressing in the final decision loop (handle*164
-  actor offset and handle*12 previous-descriptor offset) without weakening
-  its frame/colour/occlusion checks or geometry invalidation contract.
-  The local `tmp/retention-address-20260928.patch` and accompanying native
-  test are parked for re-evaluation after HUD batching; they still require
-  full target display/retention audits if accepted.
+- **Remaining F1 sprite overhead.** Use the latest CPU profiles.
   Inspect conflict processing, final
   keep/restore decisions, draw-packet validation and group rebuild/late
   restoration at the worst updates. Preserve atomic group retention and
@@ -78,6 +73,14 @@ Candidate fixes, roughly in order of expected value per effort:
   whole traversals, not merely moving argument setup across the call.
   Preserve legacy traversal and sprite/overflow boundaries; any removed
   checks need explicit invariant coverage in the native oracle.
+
+- **Particle emission scan bound.** Measure loading the unchanged
+  high-water bound into a scratch register before the native slot scan,
+  instead of reading it from Chip RAM on each iteration. Preserve first-free
+  selection, capacity handling and register contracts. Use the existing
+  100000-pool `verify-emission-scan` oracle with the real setup included in
+  its entry, then matched four-track timings. This is not the rejected
+  four-byte scanning algorithm; avoid any extra bitmap or reordered slots.
 
 - **Exact retention of unmoved particles (design needed, larger).** Most
   points stay on the same pixel for several updates (velocities are at

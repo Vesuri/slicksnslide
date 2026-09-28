@@ -190,7 +190,58 @@ regression set, not exhaustive proof of all possible phase/contention
 combinations. The earlier single-run parent maximum 433 must not be used
 as a universal F1 bound.
 
+## Retention addressing revisited after inner-profile removal (2026-09-28)
+
+Reapplied the actor-offset table and scaled previous-descriptor address
+calculation on top of 344d422. The table has 200 signed-word offsets;
+assembler guards reject an actor layout exceeding that signed range or a
+previous-descriptor stride other than 12. No eligibility or restoration
+decision changes. Native verification covers all handles, eight even base
+alignments, both actual instruction paths, the full table and preserved
+registers. The group/geometry host suite also passes, including its nine
+missing-invalidation mutations (`tmp/retention-address-revisit-final-oracles-20260928.log`).
+
+| Track | Parent work / worst | Address candidate work / worst |
+| --- | ---: | ---: |
+| BASIC | 153391 / 363 | 153390 / 365 |
+| F1 | 179169 / 435 | 178463 / 432 |
+| CITY | 148964 / 345 | 148559 / 344 |
+| WHACKO | 156334 / 407 | 156342 / 406 |
+
+All 603-update final states match. BASIC/WHACKO total work is essentially
+unchanged; F1 improves about 0.4% and CITY about 0.3%. BASIC's peak rises
+two lines. Candidate logs: `tmp/retention-address-revisit-20260928-{0,1,2,3}.log`;
+parent logs: `tmp/inner-off-integrated-20260928-{0,1,2,3}.log`.
+
+F1 native clock phases, all initialized fractions verified and final states
+identical (`tmp/address-revisit-phase-20260928-{0,1,2,3}.log`):
+
+| Phase | Parent work / worst | Address candidate work / worst |
+| --- | ---: | ---: |
+| 0 | 179168 / 435 | 178471 / 432 |
+| 1 | 179242 / 440 | 178510 / 440 |
+| 2 | 179221 / 433 | 178472 / 437 |
+| 3 | 179183 / 432 | 178488 / 437 |
+
+Total work improves in every phase; the maximum across phases remains 440.
+This is a small throughput gain, not a reduction of the general worst-case
+budget. Target display audits pass 600 updates each: F1 32 actors/2076
+marks, CITY 18/1480, WHACKO 5/1854
+(`tmp/address-revisit-audit-20260928-{1,2,3}.log`).
+
+Full RETCHECK comparisons pass all four tracks: 603 racing surface hashes
+and particle-state comparisons, 700 forced-cold HUD comparisons per track,
+zero mismatches and canonical final states. Geometry comparisons pass
+575 F1 and 603 CITY updates, zero mismatches. Logs:
+`tmp/address-revisit-retcheck-20260928-{0,1,2,3}.log`. These correctness
+runs use the existing unpaced `SLICKS_SHADOW_TRACK` launch of the same
+NATURALB scenarios; none of their timing is acceptance evidence.
+Accepted with the small timing trade-offs above. All owned test sessions
+exited; the normal non-reference build is restored before committing.
+
 ## Retention addressing trial and F1 fuel-blink phase (2026-09-28)
+
+This earlier parked trial is superseded by the verified revisit above.
 
 Tested a signed-word actor-offset table in the final retention decision
 loop and scaled addressing for handle*12. All 200 handles, eight even base

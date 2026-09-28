@@ -10,6 +10,12 @@
 	xref	slicks_retention_cars
 	xref	slicks_retention_late
 	include	"race_offsets.i"
+	ifgt ((ACTOR_CAPACITY-1)*ACTOR_SIZE-32767)
+	fail "Retention actor offsets must fit a signed word"
+	endif
+	ifne (PREV_SIZE-12)
+	fail "Update retention previous-descriptor scaled addressing"
+	endif
 
 ; C ABI: void slicks_prepare_sprite_retention(race)
 ; Per-update pass of sprite_retention.inc (prepare_sprite_retention_reference
@@ -288,9 +294,8 @@ slicks_prepare_sprite_retention:
 .decide_loop:
 	moveq	#0,d1
 	move.b	ENTRY_HANDLE(a3),d1
-	move.w	d1,d0
-	mulu.w	#ACTOR_SIZE,d0
-	lea	(a6,d0.l),a2
+	move.w	.actor_offsets(pc,d1.w*2),d0
+	lea	(a6,d0.w),a2
 	moveq	#0,d2			; eligible: candidate without conflict
 	moveq	#3,d0
 	and.b	ENTRY_FLAGS(a3),d0
@@ -302,10 +307,13 @@ slicks_prepare_sprite_retention:
 	beq.s	.set_bits
 	tst.b	d2
 	beq.s	.late
-	move.w	d1,d0			; same comparison as the unchanged draw
-	mulu.w	#PREV_SIZE,d0
+.previous_address:
+	; PREV_SIZE is 12: three times the handle, scaled by four in the EA.
+	move.w	d1,d0
+	add.w	d0,d0
+	add.w	d1,d0
 	lea	RACE_SPRITE_DIRTY_PREVIOUS(a4),a0
-	adda.l	d0,a0
+	lea	(a0,d0.w*4),a0
 	; With no rebuild, eligibility implies an unmoved cached entry: .geo
 	; already checked its handle, kind, asset and pixel-position key. KEPT
 	; came from an unchanged draw, so the previous descriptor has that same
@@ -380,3 +388,12 @@ slicks_prepare_sprite_retention:
 	lea	20(sp),sp
 	movea.l	(sp)+,a1
 	rts
+
+; Every retained entry was validated against the 200-slot actor pool.
+; 199*164 fits a signed word; keep the table outside the decision loop.
+.actor_offsets:
+actor_offset_value set 0
+	rept ACTOR_CAPACITY
+	dc.w actor_offset_value
+actor_offset_value set actor_offset_value+ACTOR_SIZE
+	endr
