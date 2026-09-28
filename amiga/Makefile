@@ -55,6 +55,7 @@ OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/fra
 	obj/framework_copper_list.o obj/framework_palette24.o \
 	obj/resource_archive.o obj/amiga_audio.o obj/amiga_player_menu.o obj/amiga_shop.o obj/amiga_setup_storage.o obj/track_scene.o \
 	obj/race_runtime.o obj/car_motion.o obj/car_emission.o obj/track_motion.o obj/dirty_rect.o obj/car_render.o obj/sprite_retention.o obj/particle_runtime.o obj/particle_draw.o obj/actor_allocate.o obj/car_draw.o obj/sprite_opaque.o obj/track_sprite_fast.o \
+	obj/track_sprite_animation.o obj/track_sprite_animation_publish.o \
 	obj/gcc8_c_support.o obj/gcc8_a_support.o obj/memory.o \
 	obj/sgfx_plot_plane.o obj/sgfx_span_fill.o \
 	obj/sgfx_planar_blit.o obj/sgfx_transparent_blit.o \
@@ -199,6 +200,12 @@ obj/sprite_opaque.o: $(REPO)/src/game/sprite_opaque.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/track_sprite_fast.o: $(REPO)/src/game/track_sprite_fast.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/track_sprite_animation.o: $(REPO)/src/game/track_sprite_animation.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/track_sprite_animation_publish.o: $(REPO)/src/game/track_sprite_animation_publish.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/particle_draw.o: $(REPO)/src/game/particle_draw.s | obj

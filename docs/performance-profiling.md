@@ -3,6 +3,78 @@
 Measured evidence for the 2026-09-27 performance work. Current actionable
 work stays in [open-work.md](open-work.md).
 
+## Verified animation-chain integration (2026-09-28)
+
+The drawing chain now attempts the verified register-contract animation
+entry after unchanged-sprite validation fails. It passes the race/packet
+directly, retains one outer register-save frame, and continues with the next
+handle after successful drawing/publication. Rejected cases still return to
+the existing general renderer. Cheap necessary descriptor/frame gates avoid
+preparing the candidate for the hidden flag and unchanged-frame movement.
+The added race argument can be null; RETCHECK's reference pass uses that
+to force changed frames through the old general renderer, rather than
+comparing the new animation implementation against itself.
+
+The 2304-case mixed-chain oracle passes 1728 changed, 1728 unchanged and
+1728 kept sprites, with 1728 point/moving/clipped boundaries. Three repeated
+passes preserve packets across calls. Overlapping actors at handles h,
+h+64 and h+128 deliberately alias every packet slot, with exact full-image,
+actor/descriptor and native dirty-list comparisons, write bounds and ABI.
+Existing 5376 drawing-chain and 384 restore-chain cases and the 4096-case
+publication oracle also pass. Logs: `tmp/animation-chain-{oracle,legacy,gated-oracle}-20260928.log`.
+Host surface-effects, dirty-tracking and retention-group suites pass:
+`tmp/animation-chain-host-20260928.log`.
+
+Normal 603-update measurements against 3287b20 (unchanged gameplay):
+
+| Track | Control work / worst | Initial integration | With early gates |
+| --- | ---: | ---: | ---: |
+| BASIC | 147048 / 351 | 147182 / 351 | 146826 / 346 |
+| F1 | 172860 / 425 | 172118 / 418 | 171753 / 417 |
+| CITY | 143512 / 332 | 143146 / 333 | 143111 / 333 |
+| WHACKO | 150954 / 389 | 150588 / 371 | 150565 / 371 |
+
+Logs: `tmp/animation-chain-{control,candidate,gated}-20260928-{0..3}.log`.
+All final states match. Total-work reductions with the gates are 0.15%,
+0.64%, 0.28%, 0.26%. CITY's sampled maximum regresses one line; the other
+three improve in this run. These are not universal maxima. The live display/
+retention audits and F1 phase sweep are recorded below.
+The 312-line goal is not met.
+
+All three live display audits now pass 600 updates, with the statistics-off
+launch flag explicitly checked: F1 32 actors/2076 marks, CITY 18/1480,
+WHACKO 5/1854. Logs: `tmp/animation-chain-audit-20260928-{1,2,3}.log`.
+The shared opacity primitive oracle also passes after the isolated image
+layout change (`tmp/animation-chain-opacity-20260928.log`).
+
+The F1 phase sweep subsequently passes all four verified initial clock
+remainders, with canonical final states:
+
+| Phase | Previous native-pairs control work / worst | Animation work / worst |
+| --- | ---: | ---: |
+| 0 | 172840 / 426 | 171756 / 417 |
+| 1 | 172866 / 415 | 171776 / 417 |
+| 2 | 172856 / 415 | 171779 / 417 |
+| 3 | 172854 / 429 | 171718 / 417 |
+
+Logs: `tmp/car-pairs-phase-20260928-*` and
+`tmp/animation-chain-phase-20260928-*`. The sampled four-phase envelope
+improves from 429 to 417 lines (26.7 ms), while phases 1/2 each regress two
+lines. All candidate maxima occur at update 551. This does not establish
+a universal bound, but the animation-change spike no longer determines
+the largest observed phase maximum.
+
+RETCHECK passes all four tracks: each has 603 surface/particle
+comparisons and 700 HUD-cache checks, with zero mismatches or immutable-map
+changes and canonical final states. F1 additionally exercises 575 successful
+geometry-cache checks, and CITY exercises 603; BASIC and WHACKO have no
+eligible geometry-cache users. Logs:
+`tmp/animation-chain-ret-20260928-{0,1,2,3}.log`. The sequential runner exited
+successfully after restoring `RETCHECK=0 INNER_PROFILE=0`; normal build log:
+`tmp/animation-chain-normal-restore-20260928.log`. This completes acceptance
+of the integration, not the 50 FPS goal. Debug runs were muted and owned
+emulators were closed by the runner.
+
 ## Native animation publication entry verified in isolation (2026-09-28)
 
 `track_sprite_animation_publish.s` wraps the validated drawing register
@@ -3146,6 +3218,9 @@ The fuel (`diag_fuel.gdb`) and damage (`diag_damage_race.gdb`) race fixtures
 fail on both this build and a rebuilt 5fa9458 with byte-identical output:
 a finished car's lap counter reaches 6, and the fuel fixture counts no
 finished cars. The status-pixel parts of both pass.
+These historical fixture failures were subsequently resolved against the
+original executable without changing game code; see
+[Fuel and damage fixture correction](finish-fixture-verification.md).
 
 ## Native wheel emission
 

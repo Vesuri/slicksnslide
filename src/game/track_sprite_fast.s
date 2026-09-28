@@ -5,6 +5,7 @@
 	xref slicks_draw_sprite_opaque_regs
 	xref slicks_draw_sprite_visible_regs
 	xref mult320
+	xref slicks_draw_animated_track_sprite_publish_regs
 	ifnd SLICKS_SPRITE_TEST_BASE
 SLICKS_SPRITE_TEST_BASE equ 0
 	endif
@@ -299,7 +300,8 @@ slicks_restore_sprite_chain:
 
 	xdef slicks_draw_sprite_chain
 ; C ABI: actors, previous descriptors, visibility cache, assets, chunky,
-; next handles, trail indices, first handle, validated drawing packets.
+; next handles, trail indices, first handle, validated drawing packets, race.
+; A null race disables animation-change publication (isolated legacy oracle).
 ; Caller supplies an active,
 ; ordered chain and deferred sprite dirtiness. Return first general/point
 ; handle unchanged, or zero when the chain is exhausted.
@@ -413,7 +415,7 @@ slicks_draw_sprite_chain:
 	movea.l 68(sp),a6
 	bsr.w slicks_draw_unchanged_track_sprite_regs
 	tst.l d0
-	beq.w .done
+	beq.w .animation
 	; Publish a packet only after the existing exact dispatcher validates
 	; and draws this sprite. a4=actor, a6=previous, a5=source base;
 	; a0/a3 point one rectangle past the destination/mask respectively.
@@ -485,6 +487,31 @@ slicks_draw_sprite_chain:
 .publish:
 	move.b #1,33(a2)
 	bra.w .retain
+.animation:
+	; Cheap necessary gates avoid setting up the new path for the hidden
+	; setup flag, moved unchanged-frame sprites and other general actors.
+	cmpi.b #3,6(a3)
+	bne.w .done
+	move.b 16(a2),d0
+	cmp.b 8(a3),d0
+	beq.w .done
+	movea.l 88(sp),a0
+	move.l a0,d0
+	beq.w .done
+	; Failed unchanged validation leaves actor/previous in a2/a3.
+	; Reset the asset base: validation may have advanced a5 before rejecting.
+	movea.l 64(sp),a5
+	movea.l 68(sp),a6
+	move.l (sp),d0
+	andi.w #63,d0
+	move.w slicks_sprite_packet_offsets(pc,d0.w*2),d0
+	movea.l 84(sp),a1
+	adda.w d0,a1
+	jsr slicks_draw_animated_track_sprite_publish_regs+SLICKS_SPRITE_TEST_BASE
+	tst.l d0
+	beq.w .done
+	; Publication already consumed the descriptor and invalidated the packet.
+	; Changed frames do not acquire NEXT retention, matching the general draw.
 .next:
 	movea.l 72(sp),a0
 	move.l (sp),d0

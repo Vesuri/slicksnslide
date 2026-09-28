@@ -117,8 +117,8 @@ int main(void)
             if(pass==5)a->retain=1;
         }
         memcpy(expected,pixels,sizeof expected);actors(araw,&race);previous(praw,&race);
-        unsigned args[]={0x18000,0xa0000,0xb0000,0xc2000,0xc0000,0x30000,0xb1000,0xb2000,head,0xd0000};
-        unsigned char stack[40];for(unsigned i=0;i<10;++i)be32(stack+4*i,args[i]);
+        unsigned args[]={0x18000,0xa0000,0xb0000,0xc2000,0xc0000,0x30000,0xb1000,0xb2000,head,0xd0000,0};
+        unsigned char stack[44];for(unsigned i=0;i<11;++i)be32(stack+4*i,args[i]);
         check(uc_mem_write(u,0x90000,stack,sizeof stack));
         uint32_t sp=0x90000,pc,result;check(uc_reg_write(u,UC_M68K_REG_A7,&sp));
         const int regs[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,

@@ -2426,10 +2426,18 @@ static void draw_trail_priority(struct SlicksRaceRuntime *race,
                 if(race->track_actors_ready && race->sprite_dirty_deferred) {
                     extern unsigned slicks_draw_sprite_chain(struct SlicksWeaponActor *,void *,void *,
                         const struct SlicksTrackActorAsset *,unsigned char *,
-                        const unsigned char *,const short *,unsigned,struct SlicksTrackDrawPacket *);
+                        const unsigned char *,const short *,unsigned,struct SlicksTrackDrawPacket *,
+                        struct SlicksRaceRuntime *);
                     h=slicks_draw_sprite_chain(race->weapons.actors,race->sprite_dirty_previous,
                         race->track_sprite_visibility,race->track_actor_assets,race->chunky,
-                        next,trail_index,h,race->track_draw_packets);
+                        next,trail_index,h,race->track_draw_packets,
+#if defined(SLICKS_RETENTION_CHECK)
+                        /* The reference pass must use the general renderer
+                         * for changed animation, not compare the new path
+                         * against itself. Normal builds have no selector. */
+                        slicks_race_disable_retention ? 0 :
+#endif
+                        race);
                     if(!h)break;
                     if(trail_index[h]>=0)continue;
                     draw_weapon_actor_general(race,h);

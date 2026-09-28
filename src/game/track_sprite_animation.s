@@ -7,7 +7,7 @@
 SLICKS_SPRITE_TEST_BASE equ 0
 	endif
 
-; Isolated candidate, not yet linked into gameplay.
+; Changed-frame native drawing core, also exercised by an isolated oracle.
 ; C ABI: actor, previous descriptor, track assets, chunky.
 ; Caller proves active track actor, ready assets and deferred sprite dirtiness.
 ; Return 1 after drawing a changed unmasked animation at unchanged position;
@@ -24,7 +24,7 @@ slicks_draw_animated_track_sprite:
 	movem.l (sp)+,d2-d7/a2-a6
 	rts
 
-; Register ABI for a future outer chain owning the saves:
+; Register ABI for the outer drawing chain owning the saves:
 ; a2 actor, a3 previous, a5 assets, a6 chunky. Clobbers d0-d7/a0-a6.
 ; On success a4 actor/a6 previous remain available to the publication step.
 slicks_draw_animated_track_sprite_regs:

@@ -13,18 +13,18 @@ Goal: at most 20 ms (312 raster lines) per update on a stock PAL A1200
 (68020, 2 MiB Chip RAM, no Fast RAM) in general gameplay, including
 particle-heavy frames, with identical behaviour, effects, permanent marks,
 audio and rendering order. Latest benchmark
-(`amiga/bench_tracks.sh native-car-pairs-20260928`, outer-only work lines
-per 603 updates / worst update): BASIC 147023/347, F1 172830/416,
-CITY 143524/333, WHACKO 150951/374. Means are 15.3-18.4 ms; the
+(`amiga/bench_tracks.sh animation-chain-gated-20260928`, outer-only work lines
+per 603 updates / worst update): BASIC 146826/346, F1 171753/417,
+CITY 143111/333, WHACKO 150565/371. Means are 15.2-18.3 ms; the
 worst updates in that run need 6-25% cuts. The latest matched F1 HUD-clock
-phase sweep still reaches 429 lines (27.5 ms, 27% cut needed), with matching
+phase sweep still reaches 417 lines (26.7 ms, 25% cut needed), with matching
 final states across all four phases. These are
 sampled maxima, not exhaustive upper bounds for every gameplay situation.
 Particle-heavy frames remain expensive, but live count alone does not
 explain the maxima. The latest F1/WHACKO CPU captures are
 `tmp/pcprof-post-pairs-{f1,whacko}-20260928`, including native car-pair
 integration, with exact companion ELFs and zero missed samples.
-Their sampler overhead is not part of
+These captures predate animation-chain integration. Their sampler overhead is not part of
 the acceptance numbers above.
 F1 is also slow without points. Detailed inner profiling now requires
 `INNER_PROFILE=1`; the benchmark runner selects this for detail levels 1..7.
@@ -64,26 +64,10 @@ Candidate fixes, roughly in order of expected value per effort:
   only for correctness/region inspection. Keep these transitions in the
   regression set when evaluating further changes.
 
-- **Remaining F1 sprite overhead.** Use the latest CPU profiles.
-  Next implement and measure native animation-change handling inside the
-  sprite chain. F1 update 613's six changing, stationary, unmasked sprites
-  currently fall back to the general renderer and restart the chain; its
-  seventh fallback is the offscreen setup flag.
-  The isolated candidate `src/game/track_sprite_animation.s` now passes
-  `make verify-sprite-animation`; it is not linked into gameplay. Integrate
-  `slicks_draw_animated_track_sprite_publish_regs` into the chain and extend
-  the chain oracle for animation changes, interleaved handles and packet
-  aliases. `make verify-sprite-animation-publication` already verifies the
-  combined drawing, native old/new dirty publication and packet invalidation
-  entry in isolation; it does not yet cover chain traversal or gameplay.
-  Support validated in-bounds track sprites whose position/style stay fixed, selecting the
-  new frame's actual dimensions/pixels/opacity. Preserve saved-under bytes,
-  old/new dirty coverage, descriptor and packet invalidation, retention
-  flags, aliases and exact handle order. Never assume animation dimensions
-  match without checking. Test against the independent general renderer,
-  then display/retention audits and matched four-track/phase benchmarks.
-  Explicitly retain the general path for invalid assets, clipped/moving or
-  occluded cases not covered by the new entry. The hidden flag is a separate
+- **Remaining F1 sprite overhead.** Refresh CPU profiles after the verified
+  native animation-chain integration; do not attribute its removed general
+  fallbacks to the current build. Preserve the independent RETCHECK reference
+  pass, which disables the new animation entry. The hidden setup flag is a separate
   possible fast rejection; preserve its original saved/retain/error semantics.
   Read-only counts are in `docs/performance-profiling.md`: within-priority
   point/sprite transitions never exceed one per update on F1/WHACKO.
