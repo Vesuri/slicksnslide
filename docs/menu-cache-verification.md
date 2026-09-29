@@ -928,3 +928,27 @@ checkpoint, and its runner closes the emulator. Logs:
 An initial picker invocation mistakenly used persistence mode 9 and failed the
 picker visit-count gate; only the corrected mode 3 run is counted. No production
 change was needed. Extended picker scrolling remains open.
+
+## Tracks storage/format and Help failure publications
+
+Fresh muted native runs pass the following complete-pixel checks:
+
+- `SLICKS_TRACK_MENU=5 SLICKS_DEBUG_READ_ONLY=1` with
+  `diag_track_lists_save_failure_rectangles.gdb`: 18 publications, actual DOS
+  error 214 on saving, requester restoration, warning dismissal and the
+  unchanged two-track playlist reaching race entry.
+- `SLICKS_HELP_MENU=8` with `diag_help_failure_rectangles.gdb`: seven
+  publications, missing-resource/allocation warnings, exact before/after screen
+  restoration for each warning, unchanged profiles/selections, successful Help
+  retry and system restoration 31.
+- `SLICKS_TRACK_MENU=3` with `diag_track_lists_invalid_rectangles.gdb` and
+  an isolated synthetic malformed `SLICKS.TRK`: 12 publications, invalid-format
+  result 2, warning dismissal and unchanged one-track playlist at race entry.
+  The malformed input remains byte-identical; it is not replaced or repaired.
+
+Every captured bitmap decodes to all 64,000 authoritative chunky pixels.
+Logs: `tmp/track-readonly-rectangles.log`,
+`tmp/tracks-help-failure-rectangles.log`, `tmp/track-invalid-rectangles.log`.
+All runners closed their emulators. No production change was needed. These
+cover the named failures, not every catalogue truncation, recovery artifact or
+storage failure; the host storage oracle covers additional cases separately.
