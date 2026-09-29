@@ -153,6 +153,44 @@ demo-return test has passed yet; production remains unchanged by this helper.
 
 ### Demo consumer branch inventory
 
+Caller-lifetime audit (2026-09-29): not every DS:0459 reader is a per-demo
+operation. The following startup readers are inside the original process
+owner beginning at `25ac0`, before its title/race loop:
+
+- `25c05` gates `2b486`, the existing configuration-file loader, not a race
+  save. Its exact data handling is covered by `verify-configuration`.
+- `25d76` gates `2c0b9`, whose argument-vector walk starts at argument 1,
+  accepts `-`/`/` option prefixes and dispatches on the following character.
+  It is command-line processing, not a demo exit dialog.
+- `25eaa` bypasses the opening image/text/fade sequence and conditional
+  unregistered/date warning through `2611e`. It is not the post-race results
+  owner. `26175` similarly gates the startup wait with argument 500.
+- `26304` is in the subsequent loop: positive mode bypasses the normal
+  title calls, while negative and zero flags still call `296cd`/`2a2b4`.
+  Do not give the title's negative idle-demo flag the positive-mode route.
+
+Consequently, starting a demo from the already-running title must not reload
+configuration, parse startup arguments or replay the opening warning. These
+identifications come from caller order and instruction inspection; they are
+not a claim that the complete process owner has run under an oracle.
+
+Two race-time readers have more specific contracts than “skip demo UI”:
+`25067` calls the filename/record HUD renderer `2adbe` for zero **and negative**
+flags; only positive flags skip it. `25316` bypasses the timed result-key wait
+`2b73b(50)` for any nonzero flag and synthesizes scan `0x44`, which takes the
+existing early-dismiss branch at `253f4`. The normal wait implementation is
+already covered by `verify-result-wait`, and the HUD by `verify-dos-hud`;
+their demo callers still need native wiring. Do not hide the normal lower HUD
+merely because an idle demo is active, or wait for human confirmation there.
+
+The supporting suites were rerun after this audit: configuration defaults,
+save streams and full-loader comparisons; 192 result-wait sequences; 768
+composed HUD pixel transitions plus its component suites; and the existing
+demo setup, input, timer and eleven-reader branch tests all pass. No native
+executable, pacing or startup behaviour was changed by this documentation
+audit. The caller distinctions above remain integration requirements, not
+claims of a functioning native demo.
+
 `make verify-demo-return` now executes the original `25552` return branch
 through `25a05`, including the complete reset routine at `1c10b..1c24a`.
 All 256 flag bytes and four patterned data segments pass (1,024 cases).

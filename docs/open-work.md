@@ -69,6 +69,10 @@ Implementation and completed verification evidence are separate in
   Audit the signed demo flag's race input, AI, results and persistence consumers
   before enabling it; eleven additional original readers now have exhaustive
   byte-flag branch checks, but their native side-effect wiring remains open.
+  Keep process-startup configuration/argument/splash gates separate from live
+  demo transitions. Negative idle demos retain the filename/record HUD; the
+  nonzero post-race wait route synthesizes scan 0x44 instead of waiting for
+  confirmation. Preserve these caller distinctions in the live integration.
   Preserve the nonzero-flag return's race-state reset and saved-image restore,
   not just its bypass of ordinary post-race results. The isolated return oracle
   verifies these boundaries; live return wiring remains open. Do not infer
