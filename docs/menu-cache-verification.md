@@ -1059,3 +1059,26 @@ All fifteen publications match all chunky pixels; the before/after dialog
 background is byte-identical. Two open/animate/close cycles, font restoration,
 unchanged selection and the subsequent race entry pass. The muted runner
 exited. Native log: `tmp/records-glyph-bounds-native.log`.
+
+## Existing saved-game backup preservation (2026-09-29)
+
+`SLICKS_CHAMPIONSHIP=save-fail`, `SLICKS_DEBUG_WARP=1`,
+`FSUAE_RUN=.run/saved-backup-v1`, and
+`diag_saved_backup_rectangles.gdb` exercise the genuine first-intermission
+Save path with an existing synthetic `dh1/E2E.SSS.bak`. The local-only file
+contains exactly `Synthetic retained championship backup. Saving must not
+replace this artifact.` followed by a newline; no original save or private
+data is used. No `E2E.SSS` or `E2E.SSS.new` exists before the run.
+
+The actual filesystem transaction returns recovery-required, presents
+`SAVE RECOVERY REQUIRED - KEEP NEW/BAK`, reopens the picker, accepts cancellation
+and restores system state 31. The existing lifetime fixture verifies that
+RAM-only picker/name/warning closures retain ownership, the transaction runs
+with AmigaOS available, and requester state is restored. The backup remains
+byte-identical and neither a primary save nor a `.new` file is created.
+All 24 shared menu publications decode to their complete chunky surfaces.
+The muted runner closed its emulator. Log: `tmp/saved-backup-native.log`.
+
+This covers refusal to overwrite a pre-existing backup, not a failure to
+remove a backup after committing a successful save. That later failure and
+blocked deletion remain separate open cases.
