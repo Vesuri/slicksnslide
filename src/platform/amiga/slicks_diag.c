@@ -4241,7 +4241,9 @@ int main(void)
         }
     }
     if(title_help_test) {
-        static const unsigned char keys[]={0x4d,0x4d,0x4d,0x4d,0x44,0x45,0x50,0x45,0x4d,0x44};
+        /* F2 is ignored by the original title at both GO and Read This.
+         * Keep its Change Cars meaning confined to the intermission owner. */
+        static const unsigned char keys[]={0x51,0x4d,0x4d,0x4d,0x4d,0x51,0x44,0x45,0x50,0x45,0x4d,0x44};
         platform.key_tail=0;
         for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
         platform.key_head=sizeof keys;

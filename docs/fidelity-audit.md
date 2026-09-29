@@ -20,7 +20,7 @@ and a production-screen comparison establish different things.
 | F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
 | F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. Native integration and original full-screen renderer comparisons pass. Caller/transition font-alias lifetime, shortcut and mouse coverage remain to be completed. |
 | F11 | Added mouse-click title activation | Native code dispatched Enter on a left-button edge through a second, incomplete owner path. Removed: original `36ce0..36d64`, called by the title at `2a376`, reads the keyboard scan latch and repeat timer, not mouse buttons. |
-| F12 | Missing title F9 and demo routes | The native owner originally ignored dispatcher actions 4 and 5. F9 is now connected to race preparation; demo remains missing. Original F9 jumps to the result-99 case; F12 and the title idle timeout enter `2a3db` demo setup, backing up configuration and selecting a random track with four computer profiles. These are not ordinary GO. |
+| F12 | Missing title F9 and demo routes | The native owner originally ignored dispatcher actions 4 and 5. F9, keyboard demo and idle demo are now connected; bounded lifecycle checks are recorded below. Loading/return presentation and remaining caller coverage are still open. Original F9 jumps to result 99; F12 and idle enter `2a3db` demo setup. These are not ordinary GO. |
 | F13 | Missing computer-car display-direction delay | Original `23d97..23e7a` retains a displayed direction in DS:3068 and a byte timer in DS:3069. Native `draw_car_reference` and `car_render.s` choose directly from the current heading and have no equivalent state. Found while mapping the demo return reset, which initializes these two fields. |
 | F14 | Missing prepared-title background tints | Original `261e8..2623d` shades two rectangles before capturing DS:4c1c. Native startup previously converted the untouched artwork, affecting 10,837 pixels with the supplied artwork/palette. Corrected with one-time preparation; evidence below. |
 
@@ -759,6 +759,29 @@ with the original reset fields. Log: `tmp/demo-native-return.log`.
 At this checkpoint this was a verified reset helper, **not** a live demo-return route;
 the title owner, saved-image restoration and setup-selection refresh remain
 to be connected.
+
+## Normal title F1/F2 integration (2026-09-29)
+
+The original title dispatch at `2a3ac` ignores DOS F2 (`3c`). The extended
+`verify-title-help` oracle executes the actual table for all six modes and
+seven row values, requiring the fall-through endpoint `2a566` and unchanged
+selection/result sentinel. All 42 cases pass, alongside the existing 256
+keyboard-reader cases, 84 F9 cases and original Help-topic calls. F2's Change
+Cars meaning belongs to the intermission owner, not the title.
+
+The native `HELP` input sequence now presses F2 at GO and at Read This before
+activating Read This, closing it, opening F1 Help, closing it and quitting.
+On the current stripped binary, stock-speed A1200 with 2 MiB Chip/no Fast and
+confirmed 4 KiB stack, exactly the expected two Help opens occur: chapter
+353/page 0 for Read This and chapter 9589/page 0 for F1's empty-topic anchor.
+Both closes retain the display; final system restoration is 31. The 64,000-byte
+Read This saved background and its close image compare identically.
+
+Evidence: `tmp/title-shortcuts-host.log`, `tmp/title-shortcuts-build.log`,
+`tmp/standalone-release-sw30j684`. The run was muted and the harness closed
+its emulator. This covers this normal-title sequence, not every mode/row's
+native Help caller, held-key timing, or all Arcade shortcut routes. No
+production shortcut behavior changed.
 
 ## Approved Amiga demo shortcut adapter (2026-09-29)
 

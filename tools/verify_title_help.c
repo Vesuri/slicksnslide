@@ -49,6 +49,19 @@ int main(void)
         unsigned char result; check(uc_mem_read(u,0x8efff,&result,1));
         if(result!=99 || readword(u,0x8effc)!=row) abort();
     }
-    check(uc_close(u)); puts("Original title Help topics, 256 keyboard scans and 84 F9 caller cases match");
+    /* F2 belongs to other menu owners, not the title. Prove the actual
+     * table falls through without changing the selection or result byte. */
+    for(unsigned mode=0;mode<6;++mode) for(unsigned row=0;row<7;++row) {
+        regs(u,0);
+        word(u,0x8eff2,0x3c); word(u,0x8effc,row);
+        word(u,0x8effe,0x5a00); word(u,0x3cbf0+0x92,mode);
+        check(uc_emu_start(u,0x2a3ac,0x2a566,0,100));
+        uint16_t cs,ip;
+        check(uc_reg_read(u,UC_X86_REG_CS,&cs));
+        check(uc_reg_read(u,UC_X86_REG_IP,&ip));
+        if((unsigned)cs*16+ip!=0x2a566 || readword(u,0x8effc)!=row ||
+           readword(u,0x8effe)!=0x5a00) abort();
+    }
+    check(uc_close(u)); puts("Original title Help topics, 256 keyboard scans, 84 F9 and 42 ignored-F2 caller cases match");
     return 0;
 }
