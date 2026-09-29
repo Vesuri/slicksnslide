@@ -880,3 +880,26 @@ Logs: `tmp/trial-prompt-native.log`, `tmp/trial-prompt-host.log`,
 `tmp/registration-prompt-build.log`. The muted runner closed its emulator.
 The private key was not used; optional image and warning-failure coverage remain
 open, and this is not the complete default-stack release gate.
+
+## Combined title and child-menu publication regression
+
+Fresh muted runs on the current integrated build pass the original native
+title audits plus independent child-menu bitplane decoding:
+
+- `SLICKS_REGISTRATION_TEST=5`, `diag_title_transition_rectangles.gdb`:
+  modes=31, roles=7, counts=3, 33 complete logical-VGA/chunky/planar title
+  checks, zero errors, and seven complete child-menu publication comparisons.
+- `SLICKS_REGISTRATION_TEST=7`, `diag_arcade_title_rectangles.gdb`:
+  counts=15, 30 Arcade draws, 45 complete title checks, zero errors, one
+  Options return/publication, and the expected two-human/two-computer race
+  handoff. The Options bitmap independently matches all 64,000 chunky pixels.
+- `SLICKS_REGISTRATION_TEST=6`, `diag_title_animation.gdb`: 72 pulse updates,
+  19 palette-index changes, 73 complete title checks, zero errors, and exactly
+  one full-screen publication over more than a complete counter cycle.
+
+All three runs reach restoration 31 and their runners close the emulators.
+Logs: `tmp/title-transition-rectangles.log`,
+`tmp/arcade-transition-rectangles.log`, `tmp/title-pulse-final.log`.
+These close the listed normal title transition/pulse publication checks on the
+integrated build; they do not measure wall-clock cadence against DOS or settle
+the remaining F10/F11/F12/input/demo callers. No production change was needed.
