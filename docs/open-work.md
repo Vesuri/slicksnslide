@@ -69,6 +69,10 @@ Implementation and completed verification evidence are separate in
   Audit the signed demo flag's race input, AI, results and persistence consumers
   before enabling it; eleven additional original readers now have exhaustive
   byte-flag branch checks, but their native side-effect wiring remains open.
+  Preserve the nonzero-flag return's race-state reset and saved-image restore,
+  not just its bypass of ordinary post-race results. The isolated return oracle
+  verifies these boundaries; live return wiring remains open. Do not infer
+  that finish-event rewards are suppressed by this later return branch.
   Include the original demo loading caption and two-pass race overlay in
   that wiring; the reusable overlay renderer matches a separate original
   caller oracle, but live font binding/rendering/publication is not connected.

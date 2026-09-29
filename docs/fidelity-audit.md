@@ -153,6 +153,23 @@ demo-return test has passed yet; production remains unchanged by this helper.
 
 ### Demo consumer branch inventory
 
+`make verify-demo-return` now executes the original `25552` return branch
+through `25a05`, including the complete reset routine at `1c10b..1c24a`.
+All 256 flag bytes and four patterned data segments pass (1,024 cases).
+The test compares the entire 64 KiB data segment against the reset contract,
+including all four participation combinations (inactive, positive and negative),
+per-car damage/motion fields and timing defaults. The zero-flag case stops at
+the normal-results entry `2555c` and must leave the data segment unchanged.
+
+For every nonzero flag, reset precedes the saved-image restore at `34f15`.
+The latter alone is stubbed: its image handle from DS:4c1c, destination from
+DS:1d87 and six zero geometry/default arguments are checked, as is AL=0 on
+return. This is not a palette load or screen clear. Actual saved-image pixels
+and native publication are not covered by this test. The branch bypasses
+`2555c..259dc`; it does not establish suppression of earlier finish-event
+rewards. Native demo return must preserve the reset/restore sequence as well
+as the separate configuration restoration. Live integration remains open.
+
 `verify-title-demo` now executes eleven additional original flag readers for
 all 256 byte values (2,816 branch comparisons). It stops before either branch's
 side effects, so these are classification proofs, not completed native demo
