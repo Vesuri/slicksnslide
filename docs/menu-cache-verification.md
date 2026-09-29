@@ -1480,6 +1480,30 @@ boundaries, not live error-notice dismissal/retry, nested surface/font failure
 coverage, or the separate sparse-player policy question. No production cleanup
 fix was needed.
 
+## Native shop live failure dismissal and retry (2026-09-29)
+
+`SETUPS1..5` inject the same five constructor boundaries individually through
+ordinary GO preparation. Each run displays error 9, dismisses it with Escape,
+opens and closes Players, retries GO, opens the shop successfully, and exits
+the shop with Escape to reach gameplay. The consumed one-shot fault is not
+reapplied. These diagnostic fixtures do not alter normal launch behavior.
+
+`diag_shop_live_failure.gdb` combines the normal preparation transaction gate
+with complete publication capture. Session and configuration dumps before
+preparation and after failure are byte-identical in every case. Each run has
+four full 64,000-pixel comparisons, including the error screen and restored
+title; all match their chunky surfaces. This verifies publication consistency,
+not an independent DOS pixel oracle for the generic platform error message.
+
+Runs in fault order: `tmp/standalone-release-6f7zkrb2`,
+`tmp/standalone-release-0ccn_hl3`, `tmp/standalone-release-ns2x31t8`,
+`tmp/standalone-release-ylugiccn`, `tmp/standalone-release-8e_rx1cl`.
+All use the stripped binary, confirmed 4 KiB stack, stock PAL 68020 and
+2 MiB Chip/no Fast. Build: `tmp/shop-live-failure-build.log`. All muted
+emulators were closed. No production recovery fix was required. These gates
+end at race entry, not normal process exit; nested font/surface helper
+failures and sparse-driver policy are not covered by these five boundaries.
+
 ## Native shop purchase rejection boundaries (2026-09-29)
 
 Explicit `NATURALWX/Y/Z` fixtures set up the first visible weapon before shop

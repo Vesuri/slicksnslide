@@ -2,6 +2,7 @@
 #define SLICKS_AMIGA_SHOP_H
 #include "amiga_player_menu.h"
 #include "../../ui/shop_draw.h"
+extern unsigned char g_slicks_diag_shop_create_fault;
 int slicks_amiga_shop_check_create_failures(struct SlicksResourceArchive *,
     unsigned char *,const struct SlicksShopContent *);
 /* Dedicated surface; decoded original background is kept in saved[]. */

@@ -6,13 +6,13 @@
 #include "../../ui/help_text_dirty.h"
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
-static unsigned char shop_create_fault;
+unsigned char g_slicks_diag_shop_create_fault;
 volatile unsigned short g_slicks_shop_create_checks;
 volatile unsigned long g_slicks_shop_create_free_before,g_slicks_shop_create_free_after;
 static int create_fault(unsigned char stage)
 {
-    if(shop_create_fault!=stage)return 0;
-    shop_create_fault=0;return 1;
+    if(g_slicks_diag_shop_create_fault!=stage)return 0;
+    g_slicks_diag_shop_create_fault=0;return 1;
 }
 
 struct ShopPainter {
@@ -131,11 +131,11 @@ int slicks_amiga_shop_check_create_failures(struct SlicksResourceArchive *archiv
         struct SlicksShopMenu state;
         Forbid();
         g_slicks_shop_create_free_before=AvailMem(MEMF_ANY);
-        shop_create_fault=stage;
+        g_slicks_diag_shop_create_fault=stage;
         struct SlicksAmigaPlayerMenu *m=slicks_amiga_shop_create(archive,chunky,content,&state);
-        int failed=m!=0 || shop_create_fault!=0;
+        int failed=m!=0 || g_slicks_diag_shop_create_fault!=0;
         slicks_amiga_player_menu_destroy(m);
-        shop_create_fault=0;
+        g_slicks_diag_shop_create_fault=0;
         g_slicks_shop_create_free_after=AvailMem(MEMF_ANY);
         Permit();
         if(failed || g_slicks_shop_create_free_before!=g_slicks_shop_create_free_after)return -1;

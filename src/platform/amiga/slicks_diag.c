@@ -162,6 +162,7 @@ volatile unsigned long g_slicks_load_ticks[14];
 static unsigned char shop_end_game;
 static unsigned char shop_test;
 static unsigned char shop_create_failure_test;
+static unsigned char shop_live_failure_test;
 /* Explicit NATURALWX/Y/Z boundary fixtures; never enabled by normal launches. */
 static unsigned char shop_rejection_test;
 volatile signed char g_slicks_shop_rejection_item;
@@ -2009,6 +2010,9 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     platform->key_tail=platform->key_head;
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_shop_menu=&state; slicks_diag_shop_ready();
+    if(shop_live_failure_test) {
+        platform->key_tail=0;platform->keys[0]=0x45;platform->key_head=1;
+    }
     if(mode_transition_test) {
         platform->key_tail=0; platform->keys[0]=0x45; platform->key_head=1;
     }
@@ -3931,12 +3935,22 @@ int main(void)
     unsigned char profile_dialog_failure_sent=0;
     unsigned char profile_dialog_fault=profile_dialog_failure_test && argv[8]=='L'?2:1;
     if(profile_dialog_failure_test) --argc;
+    /* SETUPS1..5 use the ordinary GO/error/Players/retry input path, with
+     * one shop-constructor boundary fault and a native Escape on reopening. */
+    if(argc==7 && argv[0]=='S' && argv[1]=='E' && argv[2]=='T' && argv[3]=='U' &&
+       argv[4]=='P' && argv[5]=='S' && argv[6]>='1' && argv[6]<='5') {
+        shop_live_failure_test=(unsigned char)(argv[6]-'0');
+        g_slicks_diag_shop_create_fault=shop_live_failure_test;
+        configuration.options[0]=4;configuration.options[7]=1;configuration.options[4]=1000;
+        configuration.selected_profile[0]=2;
+        argc=6;argv="SETUPF";
+    }
     unsigned char setup_session_test=(unsigned char)((argc==5 || (argc==6 && (argv[5]=='I' || argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G'))) && argv[0]=='S' &&
         argv[1]=='E' && argv[2]=='T' && argv[3]=='U' && argv[4]=='P');
     unsigned char setup_input_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='I');
     unsigned char setup_reload_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G'));
     unsigned char setup_failure_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='F' || argv[5]=='G'));
-    if(setup_failure_test) g_slicks_diag_race_load_fault=argv[5]=='F'?2:6;
+    if(setup_failure_test && !shop_live_failure_test) g_slicks_diag_race_load_fault=argv[5]=='F'?2:6;
     unsigned char setup_abort_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='A'),setup_abort_sent=0;
     unsigned char pause_live_test=(unsigned char)((argc==8 || (argc==9 && (argv[8]=='F' || argv[8]=='N'))) && argv[0]=='L' && argv[1]=='I' &&
         argv[2]=='V' && argv[3]=='E' && argv[4]=='M' && argv[5]=='E' && argv[6]=='N' && argv[7]=='U');

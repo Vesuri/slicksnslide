@@ -11,6 +11,7 @@ commands
   end
   if $loads == 1
     set $configuration = configuration
+    set $chunky = chunky
     dump binary memory .run/race-load-failure-v1/session-before.bin session session+1
     dump binary memory .run/race-load-failure-v1/config-before.bin configuration configuration+1
   end
@@ -19,9 +20,21 @@ end
 break slicks_diag_race_load_failed
 commands
   silent
-  if $loads != 1 || (g_slicks_diag_race_error != 2 && g_slicks_diag_race_error != 6) || g_slicks_diag_race_load_fault || g_slicks_diag_ingame || !g_slicks_diag_profile_platform->active
+  if !$_isvoid($shop_failure_expected) && g_slicks_diag_race_error != 9
+    printf "EXPECTED_SHOP_PREPARATION_FAILURE\n"
+    quit 1
+  end
+  if $loads != 1 || (g_slicks_diag_race_error != 2 && g_slicks_diag_race_error != 6 && g_slicks_diag_race_error != 9) || g_slicks_diag_race_load_fault || g_slicks_diag_ingame || !g_slicks_diag_profile_platform->active
     printf "RACE_LOAD_FAILURE_NOT_RECOVERABLE\n"
     quit 1
+  end
+  if g_slicks_diag_race_error==9
+    if $_isvoid($shop_failure_expected) || !shop_live_failure_test || g_slicks_diag_shop_create_fault
+      quit 1
+    end
+    set $pixels=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
+    dump binary memory .run/menu-rectangles/1000.planar $pixels $pixels+64000
+    dump binary memory .run/menu-rectangles/1000.chunky $chunky $chunky+64000
   end
   dump binary memory .run/race-load-failure-v1/session-after.bin &g_slicks_setup_session &g_slicks_setup_session+1
   dump binary memory .run/race-load-failure-v1/config-after.bin $configuration $configuration+1
@@ -33,6 +46,11 @@ break slicks_diag_race_load_dismissed
 commands
   silent
   set $dismissed = $dismissed+1
+  if !$_isvoid($shop_failure_expected)
+    set $pixels=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
+    dump binary memory .run/menu-rectangles/1001.planar $pixels $pixels+64000
+    dump binary memory .run/menu-rectangles/1001.chunky $chunky $chunky+64000
+  end
   continue
 end
 break slicks_diag_player_menu_ready
