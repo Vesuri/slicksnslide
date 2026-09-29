@@ -3,12 +3,45 @@
 #undef main
 #include "../src/ui/title_navigation.h"
 
+/* Scan every byte, not just the disassembler's known code. These are encoded
+ * reference candidates, not a proof against computed indirect calls or runtime
+ * code patches. Accept segment aliases and near-call 16-bit IP wrapping. */
+static void load_reference_candidates(const unsigned char *image,size_t size)
+{
+    const unsigned targets[]={0x1d934,0x1d20c};
+    const unsigned expected_far[]={0x2a51f,0};
+    const unsigned expected_near[]={0,0x1d96b};
+    for(unsigned t=0;t<2;++t) {
+        unsigned fars=0,nears=0;
+        for(size_t i=0;i+3<size;++i) {
+            unsigned offset=image[i]|image[i+1]<<8;
+            unsigned segment=image[i+2]|image[i+3]<<8;
+            if(offset+16U*segment==targets[t]) {
+                if(0x10100U+i!=expected_far[t]) abort();
+                ++fars;
+            }
+        }
+        for(size_t i=0;i+2<size;++i) if(image[i]==0xe8) {
+            int displacement=(int16_t)(image[i+1]|image[i+2]<<8);
+            if(((0x10100U+(unsigned)i+3+displacement-targets[t])&65535U)==0) {
+                if(0x10100U+i!=expected_near[t]) abort();
+                ++nears;
+            }
+        }
+        if(fars!=(expected_far[t]!=0) || nears!=(expected_near[t]!=0)) abort();
+    }
+    /* Confirm the wrapper reference is actually a far CALL instruction. */
+    if(image[0x2a51e - 0x10100]!=0x9a) abort();
+    puts("Load reference audit: only hidden title handler -> wrapper -> loader; encoded candidates only");
+}
+
 int main(void)
 {
     unsigned char runtime[300000];
     FILE *file=fopen("disasm/runtime.bin","rb"); if(!file) return 2;
     size_t size=fread(runtime,1,sizeof runtime,file); fclose(file);
     if(size<200000 || size==sizeof runtime) return 2;
+    load_reference_candidates(runtime,size);
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u));
     check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
     check(uc_mem_write(u,0x10100,runtime,size));

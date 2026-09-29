@@ -633,6 +633,18 @@ a title-owner boundary proof, not whole-program or runtime-patch reachability.
 Independent exhaustive helper comparisons still pass (17,920 normal navigation,
 51,200 mode-navigation and 655,360 action-map cases).
 
+The follow-up whole-image encoded-reference scan checks every byte, including
+regions absent from the disassembler's known-code inventory. For wrapper
+`1d934`, the only segment:offset representation is the operand at `2a51f`
+of the title handler's far CALL at `2a51e`; there are no relative near-CALL
+candidates. For the underlying loader `1d20c`, there are no far-pointer
+candidates and exactly one relative CALL, at `1d96b` inside that wrapper.
+The scan accepts segment aliases and 16-bit relative-address wrapping; it is
+part of `verify-title-navigation`, not a manually curated call-site list.
+This finds no alternative encoded entry route. Computed indirect targets or
+runtime code patches are not ruled out by this scan, and it does not turn
+the hidden handler into a user-accessible feature.
+
 The former CHAMPLOAD/CHAMPEDIT sequence of four Downs then Enter relied on the
 removed port-only row; it cannot be counted as current native resume evidence.
 Do not fix it by inserting that row or injecting selection 4 and claiming a

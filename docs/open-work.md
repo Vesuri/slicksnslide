@@ -144,8 +144,11 @@ Implementation and completed verification evidence are separate in
   rows. The hidden Save Game cancel/name/save/exit sequence is covered;
   recheck load/edit entry routes without restoring invented visible rows.
   The original title-owner reachability check cannot select Load Game; exposing
-  it as an extension is awaiting the user's choice. Audit other original entry
-  points separately. Repeated-save/edit testing now uses a genuine first
+  it as an extension is awaiting the user's choice. The whole-image encoded
+  reference scan finds only the hidden title handler calling the wrapper and
+  that wrapper calling the loader; it has not revealed another entry route.
+  Computed indirect targets/runtime patches are not disproved by that scan.
+  Repeated-save/edit testing now uses a genuine first
   intermission; load/rejection fixtures still need their entry route resolved.
   `CHAMPLOAD` still queues the obsolete four-Down title selection and cannot
   serve as a release gate until that route is resolved; do not repeat it as-is.
