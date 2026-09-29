@@ -48,6 +48,9 @@ Implementation and completed verification evidence are separate in
   remaining title shortcuts and mouse routes against original callers.
   Implement F10's separate Arcade title renderer and audit its input routes;
   the original mode-5 caller does not draw the ordinary six-row title.
+  Original Arcade arrow navigation and row-to-action mapping are translated
+  and oracle-verified in `title_navigation.h`; connect them with the renderer,
+  including the mutable DS:0f1a player override passed to race setup.
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
 - Recheck save/edit fixtures which previously assumed the extra intermission

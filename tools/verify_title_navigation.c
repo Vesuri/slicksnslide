@@ -37,7 +37,48 @@ int main(void)
         }
         ++cases;
     }
+    unsigned mode_cases=0;
+    for(unsigned key=0;key<256;++key) for(unsigned r=0;r<10;++r)
+    for(unsigned pattern=0;pattern<10;++pattern) for(unsigned arcade=0;arcade<2;++arcade) {
+        short selected=edges[r],count=edges[pattern],mode=arcade?5:4;
+        short players=edges[(pattern+3)%10],total=195;
+        unsigned char refresh=71;
+        uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xf000;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+        word(u,0x8f000,0);word(u,0x8f002,0x9000);
+        word(u,0x8f004,key);word(u,0x8f006,0);word(u,0x8f008,0x7000);
+        word(u,0x70000,(unsigned short)selected);word(u,0x3cbf0+0x90,(unsigned short)count);
+        word(u,0x3cbf0+0x92,(unsigned short)mode);word(u,0x3cbf0+0x4da8,total);
+        word(u,0x3cbf0+0xf1a,(unsigned short)players);
+        check(uc_mem_write(u,0x3cbf0+0x1146,&refresh,1));
+        check(uc_emu_start(u,0x2a25b,0x90000,0,400));
+        slicks_title_mode_navigation(&selected,&count,total,&mode,&players,&refresh,key);
+        unsigned char actual;check(uc_mem_read(u,0x3cbf0+0x1146,&actual,1));
+        if(readword(u,0x70000)!=(unsigned short)selected ||
+           readword(u,0x3cbf0+0x90)!=(unsigned short)count ||
+           readword(u,0x3cbf0+0x92)!=(unsigned short)mode ||
+           readword(u,0x3cbf0+0xf1a)!=(unsigned short)players || actual!=refresh) {
+            fprintf(stderr,"Mode title navigation mismatch key=%u row=%u pattern=%u arcade=%u\n",key,r,pattern,arcade);return 1;
+        }
+        ++mode_cases;
+    }
+    unsigned action_cases=0;
+    for(unsigned m=0;m<10;++m) for(unsigned r=0;r<65536;++r) {
+        uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xf000,ax;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+        word(u,0x8f000,0);word(u,0x8f002,0x9000);word(u,0x8f004,r);
+        word(u,0x3cbf0+0x92,(unsigned short)edges[m]);
+        check(uc_emu_start(u,0x2a28f,0x90000,0,100));
+        check(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if(ax!=(unsigned short)slicks_title_action_selection(edges[m],(short)r)) {
+            fprintf(stderr,"Title action mapping mismatch mode=%d row=%u\n",edges[m],r);return 1;
+        }
+        ++action_cases;
+    }
     uc_close(u);
     printf("Original title navigation: %u input/selection/count/mode/refresh comparisons pass\n",cases);
+    printf("Original title mode dispatch: %u navigation and %u action-map comparisons pass\n",mode_cases,action_cases);
     return 0;
 }

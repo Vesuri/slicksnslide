@@ -191,6 +191,19 @@ The animated REGCHECKT regression also passes: modes=31, roles=7, counts=3,
 This proves the restored colour sequence and publication, not equivalence
 of DOS wall-clock cadence or completion of the separate Arcade title.
 
+### Arcade input translation (not yet connected to presentation)
+
+The original mode dispatch at `2a25b` selects `2a1c9` for mode 5, rather
+than normal navigation `2a0cb`. Arcade has rows 0/1; row-zero Left/Right
+changes DS:0f1a, the human-driver override count, within 1..4. Up invalidates
+status only on movement; Down does not. `2a28f` maps visual row 1 to action
+3 (Options), without changing the visual selection. These semantics are now
+available in `title_navigation.h`. The original-instruction oracle passes
+51,200 mode-dispatched input/edge-state cases and all 65,536 selection words
+for each of ten modes (655,360 action mappings), alongside 17,920 existing
+normal-title cases. Production integration must accompany the two-row Arcade
+renderer, not silently apply these controls to the ordinary six-row display.
+
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |
 | Startup/title/registration/exit | registration and title verification | Whole title composition, real state changes, both registration states, input and animation; missing optional order image remains unverified. |
