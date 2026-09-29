@@ -21,13 +21,13 @@ commands
   end
   if $m->picker
     set $p = $m->picker
-    if $p->renderer.state.count != 2848 || $p->owned_names_size != 59808 || !$p->scrollbar_saved.pixels
+    if $p->renderer.state.count != 2848 || $p->owned_names_size != 5696 || !$p->renderer.name_offsets || !$p->scrollbar_saved.pixels
       printf "LARGE_LIST_STORAGE_FAILED\n"
       quit 1
     end
     if $p->renderer.state.selected == 2847
       set $ends = $ends+1
-      printf "LARGE_LIST_END title=%s\n", $p->owned_names+2847*21
+      printf "LARGE_LIST_END title=%s\n", $p->renderer.names+$p->renderer.name_offsets[2847]
     end
   end
   continue
@@ -37,6 +37,7 @@ commands
   silent
   set $closed = $closed+1
   if g_slicks_track_menu->picker || g_slicks_track_menu->track_lists || g_slicks_track_menu->message
+    printf "LARGE_LIST_CLOSE_FAILED picker=%p lists=%p message=%p load=%d io=%ld\n",g_slicks_track_menu->picker,g_slicks_track_menu->track_lists,g_slicks_track_menu->message,g_slicks_track_lists_load.result,g_slicks_track_lists_load.io_error
     quit 1
   end
   if $closed == 1

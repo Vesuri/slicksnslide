@@ -908,18 +908,21 @@ int slicks_amiga_track_lists_picker(struct SlicksAmigaPlayerMenu *m,
     struct SlicksAmigaTrackLists *lists=m->track_lists;
     struct SlicksAmigaProfilePicker *p=list_alloc_fault(1)?0:AllocMem(sizeof *p,MEMF_ANY|MEMF_CLEAR);
     if(!p) return -2;
-    p->owned_names_size=21UL*(lists->catalogue.count?lists->catalogue.count:1);
+    /* The catalogue stays resident and immutable throughout this modal.
+     * Index its validated titles instead of duplicating up to 59,829 bytes. */
+    p->owned_names_size=2UL*(lists->catalogue.count?lists->catalogue.count:1);
     p->owned_names=list_alloc_fault(2)?0:AllocMem(p->owned_names_size,MEMF_ANY|MEMF_CLEAR);
     if(!p->owned_names) { free_picker(p); return -2; }
     /* The loader validated every record. Walk once rather than repeatedly
      * searching from the start for each title in a large catalogue. */
     const unsigned char *entry=lists->catalogue.bytes+8;
     for(unsigned i=0;i<lists->catalogue.count;++i) {
-        for(unsigned j=0;j<21;++j) p->owned_names[21UL*i+j]=entry[2+j];
+        ((unsigned short *)p->owned_names)[i]=(unsigned short)(entry+2-lists->catalogue.bytes);
         entry+=23UL+8UL*slicks_track_list_word(entry);
     }
     struct SlicksListRenderer *r=&p->renderer;
-    r->ui=m->renderer.ui; r->font=m->fonts[0]; r->names=p->owned_names; r->stride=21;
+    r->ui=m->renderer.ui; r->font=m->fonts[0]; r->names=lists->catalogue.bytes; r->stride=21;
+    r->name_offsets=(const unsigned short *)p->owned_names;
     /* Original 2d774..2d7af, called with (150,20). */
     r->left=150; r->top=20; r->right=280; r->bottom=90;
     r->measure=picker_measure; r->text=text; r->context=m; m->error=0;

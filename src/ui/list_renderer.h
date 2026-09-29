@@ -14,6 +14,7 @@ struct SlicksListRenderer {
     struct SlicksSavedRectangle original,tinted,caption_saved;
     unsigned char *font;
     const unsigned char *names;
+    const unsigned short *name_offsets; /* Optional offsets into borrowed names. */
     short left,top,right,bottom,thumb,stride;
     short scrollbar_top,scrollbar_bottom;
     unsigned char colours[3],old_colour,active;
@@ -65,8 +66,10 @@ static inline void slicks_list_rectangle(void *p,short l,short t,short right,sho
     }
     slicks_ui_rectangle(&r->ui,l,t,right,b,colour);
 }
+static inline const unsigned char *slicks_list_name(const struct SlicksListRenderer *r,unsigned index)
+{ return r->names+(r->name_offsets?r->name_offsets[index]:index*r->stride); }
 static inline void slicks_list_row_text(void *p,short index,short x,short y)
-{ struct SlicksListRenderer *r=p; slicks_list_text(r,r->names+(unsigned)index*r->stride,x,y,0); }
+{ struct SlicksListRenderer *r=p; slicks_list_text(r,slicks_list_name(r,(unsigned)index),x,y,0); }
 
 /* Preparation order from 30cc4..31155. Allocation is outside hardware
  * takeover; preflight all storage/geometry before changing the screen. */
@@ -80,7 +83,8 @@ static inline int slicks_list_renderer_open(struct SlicksListRenderer *r,
        count<0 || count>4095 || r->left<0 || r->top<0 || r->right>320 || r->bottom>200 ||
        r->right-r->left<16 || r->bottom-r->top<r->font[2]+12) return -1;
     for(short i=0;i<count;++i) {
-        unsigned j=0; while(j<(unsigned)r->stride && r->names[(unsigned)i*r->stride+j]) ++j;
+        const unsigned char *name=slicks_list_name(r,(unsigned)i);
+        unsigned j=0; while(j<(unsigned)r->stride && name[j]) ++j;
         if(j==(unsigned)r->stride) return -1;
     }
     struct SlicksListCaptionOps ops={slicks_list_measure,slicks_list_colour,slicks_list_nearest,slicks_list_text,r};

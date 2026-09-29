@@ -569,6 +569,11 @@ int main(void)
         struct Vga v={0}; memcpy(v.pixels,base,64000); memcpy(pixels,base,64000);
         font[6]=71; check(uc_mem_write(u,0x60000,font,font_size));
         unsigned char names[2849][21]={{0}}; for(unsigned i=0;i<2849;++i) snprintf((char *)names[i],21,"PLAYER %u",i);
+        unsigned char indexed_names[2849][22]; unsigned short name_offsets[2849];
+        for(unsigned i=0;i<2849;++i) {
+            memcpy(indexed_names[i],names[i],21); indexed_names[i][21]=0xa5;
+            name_offsets[i]=(unsigned short)(i*22);
+        }
         /* Keep the maximum catalogue clear of font, labels, palette and stack. */
         check(uc_mem_write(u,0x70000,names,sizeof names));
         const unsigned char *labels=(const unsigned char *)(test&1?"MODIFY,REMOVE,CANCEL":"SELECT");
@@ -595,6 +600,7 @@ int main(void)
         if(ip!=0x31155-0x2e0f0 || allocator.calls!=2) abort();
         unsigned char original[64000],tinted[64000],caption[64000]; struct SlicksListRenderer r={0};
         r.ui=(struct SlicksChunkyUi){pixels,palette,0,0}; r.font=font; r.names=&names[0][0]; r.stride=21;
+        if(test&1) { r.names=&indexed_names[0][0]; r.name_offsets=name_offsets; }
         r.left=160; r.top=top; r.right=310; r.bottom=top+100; r.measure=list_measure; r.text=renderer_text; r.context=&n;
         if(slicks_list_renderer_open(&r,1,count,labels,66,1,original,sizeof original,tinted,sizeof tinted,caption,sizeof caption)) abort();
         compare_list(u,&v,&r,"prepare",test); ++cases;

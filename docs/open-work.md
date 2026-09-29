@@ -57,8 +57,10 @@ Implementation and completed verification evidence are separate in
   for their existing navigation/animation fixtures. Track Information closes
   restore lifetime bounds; five pre-draw allocation/resource failure returns
   also pass. Track-list save/name/cancel/delete/reopen publication checks now
-  pass; extend native publication coverage to large-list scrolling and failure
-  paths rather than inferring it from the small-list fixtures.
+  pass. Large-list End/cancel/reopen/load and both picker/index allocation
+  failures now have complete native publication comparisons. Extend scrolling
+  and remaining storage/format failure paths rather than inferring exhaustive
+  coverage from those fixtures.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.

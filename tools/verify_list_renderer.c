@@ -22,6 +22,8 @@ int main(void)
 {
     unsigned char screen[64000],before[64000],palette[768],font[8]={0},names[2849][21];
     unsigned char original[64000],tinted[64000],caption[64000];
+    unsigned short offsets[2849];
+    for(unsigned i=0;i<2849;++i) offsets[i]=(unsigned short)(i*21);
     for(unsigned i=0;i<768;++i) palette[i]=(unsigned char)((i*17+i/5)%64);
     for(unsigned i=0;i<2849;++i) snprintf((char *)names[i],21,"PLAYER %u",i);
     const unsigned char *labels[]={ (const unsigned char *)"SELECT",(const unsigned char *)"MODIFY,REMOVE,CANCEL" };
@@ -34,6 +36,7 @@ int main(void)
         for(unsigned i=0;i<64000;++i) screen[i]=before[i]=(unsigned char)(i*31+i/320);
         struct SlicksListRenderer r={0}; r.ui=(struct SlicksChunkyUi){screen,palette,dirty,&f};
         r.font=font; r.names=&names[0][0]; r.stride=21;
+        if(kind) r.name_offsets=offsets;
         r.left=160; r.top=(short)(30+row*16); r.right=310; r.bottom=r.top+100;
         r.measure=measure; r.text=text; r.context=&f;
         unsigned char scrollbar[800]; struct SlicksSavedRectangle saved_scrollbar;

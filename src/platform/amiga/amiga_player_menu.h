@@ -68,7 +68,7 @@ struct SlicksAmigaNameDialog {
 struct SlicksAmigaProfilePicker {
     struct SlicksListRenderer renderer;
     unsigned char original[15200],tinted[14896],caption[4096];
-    unsigned char *owned_names;
+    unsigned char *owned_names; /* Owned packed names, or track-title offset table. */
     unsigned long owned_names_size;
     struct SlicksSavedRectangle scrollbar_saved;
     unsigned char scrollbar_background[800];

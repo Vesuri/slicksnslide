@@ -591,3 +591,37 @@ large-list cases retain the original outlying scrollbar pixels before the
 platform's auxiliary restore, which the separate 88-cycle composition gate
 checks. The shared suite also retains its name/colour/options/controllers
 pixel and font checks. Log: `tmp/list-scrollbar-bounds-host-recheck.log`.
+
+## Resident large catalogue: remove duplicated titles
+
+The new large-list publication audit found an actual 2 MiB regression:
+the resident 65,528-byte catalogue loaded, but its separate 59,808-byte
+title allocation failed with no-free-store (103). The diagnostic now reports
+close failure state, and an allocation-release probe confirmed a null title
+allocation with that requested size. The failed runs are not rendering passes.
+
+Track-list pickers now borrow the validated, immutable cached title bytes via
+a native 16-bit offset table. Each title lies in the bounded 64 KiB catalogue;
+the modal closes before the cache is refreshed/freed. Ordinary profile and
+saved-filename lists keep their packed-name storage. At 2,848 entries this
+uses 5,696 bytes instead of 59,808, saving 54,112 bytes, with constant-time row
+lookup and no extra disk read. Allocation-failure boundaries remain intact.
+
+The normal build and 88 host list composition/restoration cycles pass, with
+offset-backed names exercised alongside packed names. Fresh muted native
+`SLICKS_TRACK_MENU=9` / `diag_track_lists_large_rectangles.gdb` reaches entry
+2,847, cancels, reopens, loads its playlist and enters the race. All fifteen
+published surfaces match, and cancel restores the complete saved menu.
+`SLICKS_TRACK_MENU=10` / `diag_track_lists_alloc_rectangles.gdb` passes both
+injected allocation warnings, byte-exact dismissal restores and successful
+retry/load/race; all eighteen publications match. Both runners closed their
+emulators. These use the existing isolated synthetic catalogues, not reference
+asset modifications. Logs: `tmp/track-lists-large-memory.log` (failure),
+`tmp/list-offset-large-native.log`, `tmp/list-offset-fault-native.log`.
+
+The original pixel gate also passes all 390 composed-list comparisons, with
+alternating native cases reading titles through offsets into deliberately
+different 22-byte records while DOS reads the original packed 21-byte records.
+This independently checks that title indexing leaves the displayed text and
+navigation result unchanged, including large lists. The shared modal/font
+gates remain green. Log: `tmp/list-offset-pixels.log`.
