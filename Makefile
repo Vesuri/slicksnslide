@@ -623,6 +623,12 @@ verify-help-pixels: build/verify_help_pixels build/font_string_test.bin
 	build/verify_help_pixels
 
 .PHONY: verify-standings-dirty
+.PHONY: verify-track-data-view
+build/verify_track_data_view: tools/verify_track_data_view.c tools/verify_options_menu.c src/ui/track_data_view.h src/ui/chunky_ui.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-data-view: build/verify_track_data_view
+	build/verify_track_data_view
+
 build/verify_standings_dirty: tools/verify_standings_dirty.c tools/verify_help_pixels.c tools/verify_palette_remap.c tools/host_archive.h $(wildcard src/ui/*.h) | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-standings-dirty: build/verify_standings_dirty build/font_string_test.bin

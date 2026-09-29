@@ -72,7 +72,9 @@ Implementation and completed verification evidence are separate in
   The setup profile IDs precede Arcade selection override.
   The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
   into production. Preserve F11/F12's exceptional track-data views; they are
-  not exit keys or file captures. Their native display route remains missing.
+  not exit keys or file captures. The isolated track-data renderer is verified
+  against the original complete pixel loops; its live flag/input gating,
+  publication and return route remain missing.
   The idle scan replacement passes 36,864 original timer-boundary cases.
   Live integration must use elapsed time, not rendered-frame count, preserve
   the strict >20,000 ms test and reset the timer after original input routes.

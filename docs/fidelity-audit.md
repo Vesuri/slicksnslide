@@ -63,8 +63,24 @@ reading original `1b089` and writing through `3b55:000e`. F11 reads the
 material byte shifted right by three; F12 combines two-bit packed data with
 the material byte's low three bits. Near-call disassembly at `23fad` must
 honour 16-bit IP wrap: the target is `1b089`, not linear `2b089`. Their native
-display route remains unimplemented/unverified. The earlier conversational
+display route remains unconnected. The earlier conversational
 description as a screen capture was incorrect.
+
+The isolated `track_data_view.h` renderer now passes eight full-image
+comparisons against the original `23f87..23fd8` loops and `1b089` sampler.
+The test intercepts only the final VGA pixel-plot boundary; the material
+arithmetic and near-call wrap execute as original instructions. Four patterned
+raw/packed maps exercise every byte value and both scan modes. Each case checks
+60,800 original column-major plots, identical complete 64,000-byte output
+(including the untouched ten HUD rows), and one `(0,0)..(320,190)` dirty region.
+The renderer consumes the already-decoded native lower/upper material maps,
+not a framebuffer dump. `make verify-track-data-view` passes; local log:
+`tmp/track-data-view-oracle.log`.
+
+This is isolated renderer evidence, not a live demo or Amiga publication pass.
+The original preceding gate bypasses these views when DS:0459 is zero, so
+ordinary race hotkeys must not enable them indiscriminately. Demo lifetime,
+input mapping and publication/return wiring remain open.
 
 The idle scan replacement `2a387..2a39c` now passes 36,864 original-instruction
 comparisons: all byte scans, twelve initial timestamps and twelve elapsed
