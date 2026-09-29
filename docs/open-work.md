@@ -50,6 +50,10 @@ Implementation and completed verification evidence are separate in
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
+  A real SLICKS.TRK Open failure (directory at the file path) now has native
+  warning/dismissal/race-entry publication coverage, one startup load and no
+  archive reopen/display teardown while the Tracks menu is active. Keep
+  Read/Close failures and other malformed inputs separate from that check.
   Tracks `.new` and `.bak` recovery warnings now each have native publication,
   dismissal, unchanged-playlist and single-startup-load coverage; keep other
   read/format failure cases separate from those verified artifact checks.

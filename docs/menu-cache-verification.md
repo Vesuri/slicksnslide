@@ -953,6 +953,31 @@ All runners closed their emulators. No production change was needed. These
 cover the named failures, not every catalogue truncation, recovery artifact or
 storage failure; the host storage oracle covers additional cases separately.
 
+## Tracks real startup Open failure (2026-09-30)
+
+`diag_track_lists_io_rectangles.gdb`, using TRACKSR on an isolated installation
+with an empty directory named `SLICKS.TRK`, observes a real AmigaDOS Open error
+212. No target result or state is injected. The cached report remains I/O
+failure 1 and names SLICKS.TRK. Warning display/dismissal and race entry preserve
+the original one-track playlist (entry zero), with no race error or remaining
+Tracks menu. Exactly one track-list load occurs, at startup; repeated loads
+would fail the check. Archive reopening and platform teardown are forbidden
+while the Tracks menu exists, including its warning and return navigation.
+
+Run `tmp/standalone-release-h7papn50` passes on stock PAL 68020, 2 MiB Chip/no
+Fast and the confirmed 4 KiB stack. The independent interleaved-bitmap decoder
+matches all 64,000 chunky pixels for each of 12 publications. The isolated
+`tmp/tracks-io-directory-mOq4EF/data/SLICKS.TRK` remains an empty directory.
+The run is muted and its emulator closed by the harness. No production change
+was needed. This closes this real Open failure, not Read/Close failures,
+all malformed formats, or post-race/system-restoration behavior: the fixture
+terminates at verified race entry.
+
+The first attempted fixture used two command lists at the same ready address;
+one continued before the other's counter ran. That test failure was corrected
+by keeping warning accounting in the shared failure fixture, which now also
+requires a nonzero OS error for I/O failures. It was not a game failure or pass.
+
 ## Full Players catalogue scrolling (2026-09-29)
 
 `SLICKS_PLAYER_MENU=19` / `PLAYERSS` with

@@ -15,7 +15,11 @@ commands
     quit 1
   end
   set $warning = $warning+1
-  printf "TRACK_LIST_LOAD_WARNING result=%u path=%s\n", g_slicks_track_lists_load.result, g_slicks_track_lists_load.path
+  if $expected_load==1 && !g_slicks_track_lists_load.io_error
+    printf "TRACK_LIST_MISSING_IO_ERROR\n"
+    quit 1
+  end
+  printf "TRACK_LIST_LOAD_WARNING result=%u io=%ld path=%s\n", g_slicks_track_lists_load.result, g_slicks_track_lists_load.io_error, g_slicks_track_lists_load.path
   continue
 end
 break slicks_diag_frame_ready
