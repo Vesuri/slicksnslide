@@ -1805,6 +1805,37 @@ restoration and normal system exit (`tmp/title-prepared-demo-native.log`).
 All three native runs were muted and their emulators closed. Build log:
 `tmp/title-preparation-build.log`.
 
+## Font-loader references and Arcade Options return (2026-09-30)
+
+`verify-font-resource` now scans every byte of the relocated original image
+for encoded far-pointer aliases of font loader 2fc0c and wrapped near-call
+candidates. Exactly three far CALL operands are found, at startup call sites
+19de0, 19e07 and 19e1c; no near candidates occur. The existing executed startup
+caller checks the requested resources and resident slots, and the original
+loader comparisons verify each returned font pointer is written to DS:6bd4/6bd6.
+The recovered instruction listing's direct writes to those alias words are
+2fe14/2fe18 in that loader. This supports retaining the startup iso.@f alias;
+encoded-reference scanning is not proof against computed indirect targets,
+runtime patches or arbitrary indirect writes. Log:
+`tmp/font-alias-reference-verify.log`.
+
+`diag_arcade_options_return_pixels.gdb` extends REGCHECKB with a capture of the
+first complete title publication after the native Options dialog closes. Run
+`tmp/standalone-release-d44we5ga` uses the private registered English fixture.
+The captured Settings-row title (selection 1, mode 5, player override 2) matches
+all 64,000 original complete-wrapper pixels, including the owner name. This is
+a real nested-menu return, not a seeded native framebuffer or direct painter
+invocation. The same run passes all four player-count selections, 42 native
+display checks with zero errors, two-human/two-computer race handoff and normal
+restoration mask 31 on stock PAL A1200, 2 MiB Chip/no Fast, default 4 KiB stack.
+Audio was muted and the emulator closed. No production change was required.
+
+This closes the registered English Arcade Options-return composition check.
+It does not establish every nested Help/Players route, language or hidden
+font-state byte; complete-font isolated painter checks remain separate from
+this live full-pixel check. The expected startup alias used by the wrapper
+oracle now has the additional caller-reference evidence above.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

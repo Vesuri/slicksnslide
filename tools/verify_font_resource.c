@@ -14,6 +14,31 @@ static void word(uc_engine *u,unsigned a,unsigned v)
 static unsigned get(uc_engine *u,unsigned a)
 { unsigned char b[2]; check(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
 static unsigned startup_fonts;
+/* Whole-image encoded candidates, including segment aliases and wrapped near
+ * calls. This does not rule out computed indirect calls or runtime patches. */
+static void verify_font_loader_references(const unsigned char *image,size_t size)
+{
+    const unsigned calls[]={0x19de0,0x19e07,0x19e1c};
+    unsigned mask=0,near=0;
+    for(size_t i=0;i+3<size;++i) {
+        unsigned offset=image[i]|image[i+1]<<8,segment=image[i+2]|image[i+3]<<8;
+        if(offset+16U*segment==0x2fc0c) {
+            unsigned address=0x10100U+(unsigned)i,found=0;
+            for(unsigned j=0;j<3;++j)if(address==calls[j]+1 && i && image[i-1]==0x9a){
+                mask|=1U<<j;found=1;
+            }
+            if(!found){fprintf(stderr,"Unexpected font-loader far reference %x\n",address);abort();}
+        }
+    }
+    for(size_t i=0;i+2<size;++i)if(image[i]==0xe8){
+        int displacement=(int16_t)(image[i+1]|image[i+2]<<8);
+        if(((0x10100U+(unsigned)i+3+displacement-0x2fc0c)&65535U)==0){
+            fprintf(stderr,"Font-loader near candidate %x\n",0x10100U+(unsigned)i);++near;
+        }
+    }
+    if(mask!=7 || near)abort();
+    puts("Font loader encoded-reference audit: exactly three startup far calls, no near candidates");
+}
 static void startup_font(uc_engine *u,uint64_t address,uint32_t size,void *context)
 {
     (void)address; (void)size; (void)context;
@@ -58,6 +83,7 @@ int main(void)
 {
     unsigned char runtime[300000]; FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
     size_t bytes=fread(runtime,1,sizeof runtime,f); fclose(f); if(bytes<200000 || bytes==sizeof runtime) return 2;
+    verify_font_loader_references(runtime,bytes);
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
     check(uc_mem_write(u,0x10100,runtime,bytes));
     verify_startup_font(u);

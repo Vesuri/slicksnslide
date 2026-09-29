@@ -160,6 +160,11 @@ Implementation and completed verification evidence are separate in
   title F1 and ignored-F2 navigation now have a current-build native check;
   extend caller coverage to other modes/rows without adding an F2 title action.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
+  The registered English Arcade Options-return title now matches every pixel
+  of the original complete wrapper, with native display and race-handoff
+  checks. Font-loader encoded references are limited to the three startup
+  calls; keep computed/indirect paths and other nested-menu/language routes
+  separate from that bounded evidence.
   The Arcade body now passes original full-screen and font-state comparisons.
   The separate Arcade renderer, original arrow/action
   routing and mutable DS:0f1a player override are connected; native Options
