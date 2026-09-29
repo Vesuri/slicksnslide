@@ -26,6 +26,7 @@
 #include "../../game/post_race_records.h"
 #include "../../ui/palette_fade.h"
 #include "../../ui/result_wait.h"
+#include "../../ui/title_demo.h"
 #include "../../ui/saved_file_dialog.h"
 #include "amiga_saved_files.h"
 #include "../../game/arcade_setup.h"
@@ -89,6 +90,7 @@ static unsigned char *title_arcade_font;
 static unsigned char title_language[2048];
 static unsigned title_language_used;
 static unsigned char title_arcade_refresh=2;
+static struct SlicksTitleDemo title_demo;
 extern unsigned char slicks_title_counter;
 extern unsigned short slicks_title_third_color;
 extern void slicks_title_font_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
@@ -2087,6 +2089,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     slicks_race_set_timer(race,slicks_speed_timer_argument(configuration->field_05de));
     if(session) { race->finish_reward=award_race_finish; race->track_reward=award_race_track; }
     slicks_race_set_mode(race,configuration->options[0],configuration->options[13]);
+    if(slicks_race_set_demo(race,title_demo.active?-1:0,
+        slicks_original_demo_overlay)) {
+        g_slicks_diag_race_error=7; goto cleanup;
+    }
     if(session) {
         for(unsigned driver=0;driver<4;++driver) {
             if(session->players.participation[driver]<0 && configuration->player_input[driver]>2) {
@@ -3602,8 +3608,14 @@ int main(void)
         else if(argc==9) registration_help_test=argv[8]=='G'?3:argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
-    /* Explicit diagnostic clock fraction, never a normal-game override.
+    /* Explicit diagnostic state, never a normal-game override.
      * Set natively: debugger writes are not reliable on every FS-UAE stub. */
+    if(argc==11 && argv[0]=='N' && argv[1]=='A' && argv[2]=='T' && argv[3]=='U' &&
+       argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && argv[7]=='O' &&
+       argv[8]>='0' && argv[8]<='3' && argv[9]=='Q' && argv[10]=='D') {
+        /* Overlay-only display audit, not the title demo lifecycle. */
+        title_demo.active=1; argc=10;
+    }
     if(argc==11 && argv[0]=='N' && argv[1]=='A' && argv[2]=='T' && argv[3]=='U' &&
        argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && argv[7]=='B' && argv[8]>='0' && argv[8]<='3' &&
        argv[9]=='P' && argv[10]>='0' && argv[10]<='3') {

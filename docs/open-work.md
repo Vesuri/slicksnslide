@@ -79,17 +79,24 @@ Implementation and completed verification evidence are separate in
   not just its bypass of ordinary post-race results. The isolated return oracle
   verifies these boundaries; live return wiring remains open. Do not infer
   that finish-event rewards are suppressed by this later return branch.
-  Include the original demo loading caption and two-pass race overlay in
-  that wiring; the reusable overlay renderer matches a separate original
-  caller oracle, but live font binding/rendering/publication is not connected.
+  Include the original demo loading caption in that wiring. The two-pass
+  overlay now has a race-renderer binding, original/68020 pixel comparisons
+  and passing F1/CITY/WHACKO native publication diagnostics; connect the title's
+  actual demo state and verify the complete lifecycle. This renderer
+  coverage does not establish the missing entry/return lifecycle.
   The setup profile IDs precede Arcade selection override; their composed
   selection/restoration now passes original-instruction tests, but the live
   owner must retain that order and refresh restored selections on title return.
+  The original title re-entry calls `2bb70(suppress=0, choose=0)` at
+  `2a357..2a360` after clearing the race demo flag; restore the native session
+  through that selection refresh, not just the configuration's profile IDs.
   The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
   into production. Preserve F11/F12's exceptional track-data views; they are
   not exit keys or file captures. The isolated track-data renderer is verified
   against the original complete pixel loops; its live flag/input gating,
   publication and return route remain missing.
+  Use the user-approved Shift+F1/Shift+F2 aliases for original F11/F12 on the
+  Amiga keyboard; ordinary F1/F2 and driving bindings must remain unchanged.
   The idle scan replacement passes 36,864 original timer-boundary cases.
   Live integration must use elapsed time, not rendered-frame count, preserve
   the strict >20,000 ms test and reset the timer after original input routes.

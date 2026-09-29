@@ -423,7 +423,16 @@ struct SlicksRaceRuntime {
     /* Immutable terrain metadata, not displayed pixels. Word values retain
      * the complete byte-input domain of (material<<3)|(surface&7). */
     unsigned short particle_visibility[SLICKS_PARTICLE_VISIBILITY_SIZE];
+    /* Appended: preserve the existing native simulation/drawing ABI. */
+    signed char demo_flag;
+    unsigned char demo_label[9];
+    const unsigned char *demo_palette;
 };
+
+/* Original DS:0459 / DS:0bff. The palette supplied to set_status_palette
+ * remains live for the race, including palette animation. */
+int slicks_race_set_demo(struct SlicksRaceRuntime *,signed char,
+    const unsigned char *);
 
 /* Unchanged track-sprite retention state (sprite_retention.inc/.s): cached
  * geometry and candidate maps derived from actors, never pixels. */

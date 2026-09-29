@@ -77,6 +77,9 @@ elif [ "${SLICKS_TRACK_ACTOR_TEST:-0}" = 1 ]; then
   case "$actor_case" in 0|1|2|3) ;; *) exit 2;; esac
   actor_stats_suffix=
   case "${SLICKS_LIVE_STATS:-1}" in 0) actor_stats_suffix=Q;; 1) ;; *) exit 2;; esac
+  if [ "${SLICKS_DEMO_RENDER_TEST:-0}" = 1 ]; then
+    actor_stats_suffix=QD
+  fi
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALO%s%s\n' "$actor_case" "$actor_stats_suffix" > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUDIO_PCM_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALQB\n' > "$DH0/s/startup-sequence"

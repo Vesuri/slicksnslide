@@ -10,6 +10,8 @@
 #include "race_timing.h"
 #include "finish_rank.h"
 #include "../ui/arcade_hud.h"
+#include "../ui/demo_overlay.h"
+#include "../ui/chunky_ui.h"
 #include "../ui/menu_icon.h"
 #include "moving_probe.h"
 #include "animated_boundary.h"
@@ -3404,6 +3406,7 @@ int slicks_race_status_rects(const struct SlicksRaceRuntime *race,
 void slicks_race_set_status_palette(struct SlicksRaceRuntime *race,
                                     const unsigned char palette[768])
 {
+    race->demo_palette=palette;
     static const unsigned char rgb[14][3]={{15,15,25},{50,50,15},{60,20,5},{55,55,10},
         {50,50,70},{60,60,35},{55,55,65},{33,33,70},{4,4,4},{40,40,40},{60,60,60},
         {64,64,50},{45,45,45},{30,30,30}};
@@ -3737,9 +3740,64 @@ int slicks_race_set_track_info(struct SlicksRaceRuntime *race,
     return 0;
 }
 
+int slicks_race_set_demo(struct SlicksRaceRuntime *race,signed char flag,
+    const unsigned char *label)
+{
+    unsigned length=0;
+    if(flag<0) {
+        if(!label) return -1;
+        while(length<sizeof race->demo_label && label[length]) ++length;
+        if(length==sizeof race->demo_label) return -1;
+    }
+    for(unsigned i=0;i<length;++i) race->demo_label[i]=label[i];
+    race->demo_label[length]=0;
+    race->demo_flag=flag;
+    return 0;
+}
+
+struct RaceDemoPainter {
+    struct SlicksRaceRuntime *race;
+    unsigned char *logical;
+};
+static unsigned char race_demo_nearest(void *context,unsigned char r,
+    unsigned char g,unsigned char b)
+{
+    struct RaceDemoPainter *p=context;
+    struct SlicksChunkyUi ui={.palette=p->race->demo_palette};
+    return slicks_ui_nearest(&ui,r,g,b);
+}
+static void race_demo_colour(void *context,unsigned char index,unsigned char value)
+{
+    struct RaceDemoPainter *p=context;
+    p->race->font.runtime[6+index]=value;
+}
+static void race_demo_text(void *context,const unsigned char *label,
+    short x,short y,unsigned char flags)
+{
+    struct RaceDemoPainter *p=context;
+    struct SlicksRaceRuntime *race=p->race;
+    struct SlicksHudText command={0};
+    command.x=x; command.y=y; command.flags=flags;
+    for(unsigned i=0;label[i];++i) command.text[i]=(char)label[i];
+    struct SlicksHudRun run=hud_text_run(&race->font,&command);
+    draw_hud_run(race,&run);
+    if(p->logical) for(int row=y;row<y+race->font.height;++row)
+        for(int column=run.x;column<run.x+run.width;++column)
+            write_pixel(p->logical,0,column,row,race->chunky[mult320[row]+column]);
+    mark_dirty_rect(race,run.x,y,run.x+run.width,y+race->font.height);
+}
+
 static void draw_arcade_timer(struct SlicksRaceRuntime *race,unsigned char *logical)
 {
-    if(race->race_mode!=5 || !race->chunky || !race->font.ready) return;
+    if(!race->chunky || !race->font.ready) return;
+    if(race->demo_flag<0) {
+        struct RaceDemoPainter painter={race,logical};
+        const struct SlicksDemoOverlayOps ops={race_demo_nearest,
+            race_demo_colour,race_demo_text,&painter};
+        slicks_demo_overlay(race->demo_flag,race->demo_label,&ops);
+        return;
+    }
+    if(race->race_mode!=5) return;
     struct SlicksArcadeHud hud;
     if(slicks_arcade_hud(race->race_mode,race->arcade_seconds,race->game_clock_ticks,
         race->game_clock_ticks,race->finish_deadline,&hud)<0) return;

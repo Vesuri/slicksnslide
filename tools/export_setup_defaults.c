@@ -136,6 +136,19 @@ int main(int argc,char **argv)
         }
         fputs("};\n",out);
     }
+    {
+        const unsigned offsets[]={0x9a0,0xbff};
+        const char *names[]={"loading","overlay"};
+        for(unsigned i=0;i<2;++i) {
+            fprintf(out,"static const unsigned char slicks_original_demo_%s[] = {",names[i]);
+            unsigned j=0;
+            do {
+                if(j==63 || offsets[i]+j>=sizeof data) return 2;
+                fprintf(out,"%s%u",j?",":"",data[offsets[i]+j]);
+            } while(data[offsets[i]+j++]);
+            fputs("};\n",out);
+        }
+    }
     fputs("static const unsigned char slicks_original_shop_items[13][15] = {\n",out);
     for(unsigned i=0;i<13;++i) {
         fputs("    {",out);

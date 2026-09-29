@@ -617,6 +617,48 @@ this audit. An area is not cleared by a TODO search, an old completion claim,
 or tests against the port itself. No additional discrepancy should be labelled
 confirmed until original-code or matched original-run evidence supports it.
 
+## Demo race renderer integration — 2026-09-29
+
+The race renderer now consumes a signed demo flag and the original extracted
+DS:0bff label. Negative flags replace the ordinary Arcade overlay at its
+existing race-start/update call sites. The original two text passes use the
+race's `kirj` font and current palette, leave its foreground colour changed,
+update the authoritative chunky surface and optional logical mirror, and
+report a narrow rectangle through the normal dirty publisher. New runtime
+fields are appended to preserve existing assembly field offsets. The exporter
+also extracts DS:09a0 for subsequent loading-caption integration; original
+bytes remain in ignored generated assets, not tracked source.
+
+`make verify-demo-pixels` passes 1,024 comparisons across every negative byte
+flag and eight palette/background patterns. It executes the original overlay,
+nearest-colour lookup and text/glyph code against the production host renderer
+and the translated 68020 text/glyph routines. Every visible pixel and complete
+runtime font buffer matches. The test also checks logical-buffer mirrors,
+changed-pixel dirty coverage and a bounded C2P-aligned publication area, and
+changes the palette after binding to reject stale cached colour choices.
+The initial fixture incorrectly supplied a truncated font; that fixture error
+was corrected before accepting the comparison.
+
+`verify-demo-overlay`, `verify-dos-hud`, `verify-arcade-hud` and
+`verify-dirty-tracking` pass alongside the Amiga build. The native fixture
+`diag_demo_overlay.gdb` checks the negative flag selected by the explicit
+`SLICKS_DEMO_RENDER_TEST=1` launch mode and runs the existing dirty-sprite
+publication audit. The initial debugger-write fixture did not activate the
+overlay: its F1/CITY 600-update passes are ordinary-rendering regressions only,
+and its WHACKO run was stopped. Corrected native runs now pass 600 updates on
+F1 (32 actors, 2,068 marks), CITY (18 actors, 1,480 marks) and WHACKO
+(5 actors, 1,854 marks), with no chunky/bitplane mismatch. All three log
+`DEMO_RENDER_BIND_OK`, `DEMO_RENDER_STATE_OK`, `DEMO_RENDER_TEXT_OK` and
+`DIRTY_SPRITE_AUDIT_OK`; the owned muted emulators closed afterward. Logs:
+`tmp/demo-overlay-{f1,city,whacko}-native.log`. Reproduce with
+`SLICKS_DEMO_RENDER_TEST=1 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_LIVE_STATS=0`,
+`SLICKS_TRACK_ACTOR_CASE=1|2|3` and `diag_demo_overlay.gdb`.
+The fixture
+now asserts the bound flag, actual rendering state and first text-call arguments
+without debugger writes. This is explicitly renderer
+coverage, not a claim that F12/idle entry, configuration restoration, input,
+rewards, results or persistence have been integrated. Those remain open.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

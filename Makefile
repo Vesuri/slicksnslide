@@ -636,6 +636,12 @@ build/verify_demo_overlay: tools/verify_demo_overlay.c tools/verify_options_menu
 verify-demo-overlay: build/verify_demo_overlay
 	build/verify_demo_overlay
 
+.PHONY: verify-demo-pixels
+build/verify_demo_pixels: tools/verify_demo_pixels.c tools/verify_palette_remap.c tools/host_archive.h src/game/race_runtime.c src/game/race_runtime.h $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-demo-pixels: build/verify_demo_pixels build/font_string_test.bin
+	build/verify_demo_pixels
+
 build/verify_track_data_view: tools/verify_track_data_view.c tools/verify_options_menu.c src/ui/track_data_view.h src/ui/chunky_ui.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-track-data-view: build/verify_track_data_view
