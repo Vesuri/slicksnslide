@@ -72,7 +72,9 @@ Implementation and completed verification evidence are separate in
   Include the original demo loading caption and two-pass race overlay in
   that wiring; the reusable overlay renderer matches a separate original
   caller oracle, but live font binding/rendering/publication is not connected.
-  The setup profile IDs precede Arcade selection override.
+  The setup profile IDs precede Arcade selection override; their composed
+  selection/restoration now passes original-instruction tests, but the live
+  owner must retain that order and refresh restored selections on title return.
   The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
   into production. Preserve F11/F12's exceptional track-data views; they are
   not exit keys or file captures. The isolated track-data renderer is verified

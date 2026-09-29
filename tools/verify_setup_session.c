@@ -5,6 +5,7 @@
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
 #include "../src/game/setup_session.h"
+#include "../src/ui/title_demo.h"
 static void check(uc_err e) { if(e) { fprintf(stderr,"%s\n",uc_strerror(e)); exit(1); } }
 static void word(uc_engine *u,unsigned a,unsigned v)
 { unsigned char b[2]={v,v>>8}; check(uc_mem_write(u,a,b,2)); }
@@ -48,7 +49,7 @@ int main(void)
     check(uc_hook_add(u,&hook,UC_HOOK_CODE,boundary,&dos,0x1ccfc,0x1ccfc));
     check(uc_hook_add(u,&hook,UC_HOOK_CODE,stop,0,0x263f9,0x263f9));
     check(uc_hook_add(u,&hook,UC_HOOK_CODE,stop,0,0x26429,0x26429));
-    unsigned cases=0;
+    unsigned cases=0,demo_cases=0;
     const short gates[]={-32768,-1,0,1,32767};
     for(unsigned seed=0;seed<32;++seed) for(unsigned mode=0;mode<6;++mode)
     for(unsigned gate_index=0;gate_index<5;++gate_index) {
@@ -138,8 +139,48 @@ int main(void)
 fail:
             fprintf(stderr,"Setup session mismatch seed=%u mode=%u gate=%d stage=%u\n",seed,mode,gate,stage); return 1;
         }
+        /* Compose the real demo setup with the existing profile selector.
+         * The first helper's four profile-1 inputs are not final drivers:
+         * mode 5 applies DS:0f1a's Arcade override afterwards. */
+        struct SlicksConfiguration before=config;
+        struct SlicksTitleDemo demo={0};
+        short tracks[3]={41,42,43},selection=6;
+        struct SlicksTrackPlaylist playlist={tracks,3,3};
+        for(unsigned i=0;i<3;++i) word(u,0x60000+2*i,(unsigned short)tracks[i]);
+        word(u,0x3cbf0+0x62a,0); word(u,0x3cbf0+0x62c,0x6000);
+        word(u,0x3cbf0+0x90,3); word(u,0x3cbf0+0x4da8,195);
+        if(slicks_title_demo_begin(&demo,&config,&playlist,195,&session.random_state,&selection)) abort();
+        run(u,0x2a3db,0x2a566,0x266c);
+        if(playlist.count!=rw(u,0x3cbf0+0x90) || (unsigned short)tracks[0]!=rw(u,0x60000)) abort();
+        memset(&native,0,sizeof native); memset(&dos,0,sizeof dos);
+        slicks_setup_select(&session,&config,&resources,-1);
+        word(u,0x8f004,0); word(u,0x8f006,65535);
+        run(u,0x2bb70,0x70000,0x266c);
+        for(unsigned d=0;d<4;++d) {
+            if(rw(u,0x3cbf0+0x44c+2*d)!=(unsigned short)config.selected_profile[d] ||
+                session.players.participation[d]!=((short)d<override_count?-1:1)) abort();
+        }
+        if(!same(u,0x4bc2,session.players.vehicle,4) || !same(u,0x4bc6,session.players.participation,4) ||
+            !same(u,0x310c,session.players.colours,24) || !same(u,0x4bf2,session.players.order,4) ||
+            !same(u,0x4c16,&session.players.count,1) || memcmp(&native,&dos,sizeof native) ||
+            (rw(u,0x3cbf0+0x2aaa)|((unsigned long)rw(u,0x3cbf0+0x2aac)<<16))!=session.random_state) abort();
+        unsigned long advanced_seed=session.random_state;
+        unsigned char refresh=0;
+        slicks_title_demo_restore(&demo,&config,&playlist,&refresh);
+        run(u,0x2a2f4,0x2a344,0x266c);
+        if(memcmp(&config,&before,sizeof config) || demo.active || refresh!=2 ||
+            playlist.count!=3 || tracks[0]!=41 || tracks[1]!=42 || tracks[2]!=43 ||
+            session.random_state!=advanced_seed) abort();
+        for(unsigned i=0;i<15;++i)
+            if(rw(u,0x3cbf0+0x92+8*i)!=(unsigned short)config.options[i]) abort();
+        for(unsigned d=0;d<4;++d)
+            if(rw(u,0x3cbf0+0x44c+2*d)!=(unsigned short)config.selected_profile[d]) abort();
+        if(rw(u,0x3cbf0+0x90)!=playlist.count || rw(u,0x60000)!=41 ||
+            (rw(u,0x3cbf0+0x2aaa)|((unsigned long)rw(u,0x3cbf0+0x2aac)<<16))!=advanced_seed) abort();
+        ++demo_cases;
     }
     check(uc_close(u));
     printf("DOS setup session: %u composed startup/new-game/post-race transitions match selections, colours, callback order, inventory, cash, points reset/preservation and shared RNG\n",cases);
+    printf("DOS demo/Arcade selection/restore: %u composed cases match roles, vehicles, colours, callback order, shared RNG and restored configuration\n",demo_cases);
     return 0;
 }

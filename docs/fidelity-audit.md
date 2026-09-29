@@ -49,6 +49,25 @@ subsequently applies the ordinary Arcade override. Do not replace that caller
 chain with a guessed all-computer native setup. No emulator or release build
 was needed for this isolated comparison, and no live-demo pass is claimed.
 
+The setup-session suite now composes the original demo setup, original
+`2bb70` selection with `(suppress=0, choose=-1)`, and original title restoration
+against the corresponding port helpers. All 960 cases pass across the prior
+session's six modes, five track-count gates and 32 seeds; the mutable Arcade
+override count spans -1..5. The fixture uses built-in-style profile flags and
+random-vehicle selectors, and checks final profile IDs, participation,
+vehicles, colours, human-first ordering, property callback order, RNG, restored
+configuration and playlist. With those flags, slots below the override count
+become profile 2/negative participation; remaining slots become profile
+1/positive participation. The initial four profile-1 assignments must therefore
+not be treated as a guarantee of four AI roles or replaced with a forced AI
+configuration. The existing 3,840 setup-session transition cases also pass.
+Log: `tmp/demo-selection-composed.log`.
+
+This proves composition at the named instruction boundaries, not native
+interactive demo entry/exit, hardware controls or the complete race owner.
+Returning to title restores configuration without rewinding the consumed RNG;
+refreshing the displayed selection remains a live-owner integration obligation.
+
 The race-loop key boundary `23f65..23ff8` now has 65,536 independent
 original-instruction comparisons, covering every demo-flag byte and keyboard
 scan byte. Negative DS:0459 exits on scans below 128 except F11/F12 (57/58).

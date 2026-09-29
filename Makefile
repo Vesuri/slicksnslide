@@ -280,7 +280,7 @@ verify-weapon-actions: build/verify_weapon_actions
 .PHONY: verify-race-options
 .PHONY: verify-profile-palette
 .PHONY: verify-setup-session
-build/verify_setup_session: tools/verify_setup_session.c src/game/setup_session.h src/game/profile_setup.h src/game/configuration.h src/game/race_options.h src/game/weapon_state.h src/game/race_rewards.h | build
+build/verify_setup_session: tools/verify_setup_session.c src/game/setup_session.h src/game/profile_setup.h src/game/configuration.h src/game/race_options.h src/game/weapon_state.h src/game/race_rewards.h src/ui/title_demo.h src/game/track_playlist.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-setup-session: build/verify_setup_session
