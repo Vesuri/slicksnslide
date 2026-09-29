@@ -953,6 +953,27 @@ All runners closed their emulators. No production change was needed. These
 cover the named failures, not every catalogue truncation, recovery artifact or
 storage failure; the host storage oracle covers additional cases separately.
 
+## Tracks Help normal navigation (2026-09-30)
+
+The diagnostic-only `OPTIONSO` sequence enters Tracks with ordinary keys,
+opens F1 Help, selects/follows its link, returns through history, closes,
+reopens and closes again before normal exit. `diag_tracks_help_rectangles.gdb`
+guards archive reopening and platform teardown from the first Help open
+through the second close, including the intervening Tracks navigation.
+
+`tmp/standalone-release-3mk6czgt` passes on stock PAL 68020, 2 MiB Chip/no
+Fast with a confirmed 4 KiB stack and restoration mask 31. Five ready events
+show the initial chapter 1581/page 4, link destination chapter 353/page 0,
+history return and reopen at the initial chapter. Both complete 64,000-byte
+before/after parent surfaces compare identically. All eight menu publications
+independently decode to every authoritative chunky pixel. The run was muted
+and its emulator closed. Build log: `tmp/tracks-help-build.log`.
+
+Only diagnostic input/verification was added; the existing production painter
+and cache needed no fix for this route. This closes normal Tracks Help
+link/history/reopen publication and lifetime coverage, not every Help owner,
+language, page-scroll route or failure boundary.
+
 ## Tracks real startup Open failure (2026-09-30)
 
 `diag_track_lists_io_rectangles.gdb`, using TRACKSR on an isolated installation

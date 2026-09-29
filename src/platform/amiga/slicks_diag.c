@@ -4036,7 +4036,9 @@ int main(void)
     }
     unsigned char options_test=(unsigned char)((record_recovery_test || intermission_live_test || argc==7 || (argc==8 && (argv[7]=='A' || argv[7]=='B' || argv[7]=='C' || argv[7]=='D' || argv[7]=='E' || argv[7]=='F' || argv[7]=='H' || argv[7]=='J' || argv[7]=='K' || argv[7]=='L' || argv[7]=='M' || argv[7]=='N' || argv[7]=='P' || argv[7]=='Q' || argv[7]=='R' || argv[7]=='S' || argv[7]=='T' || argv[7]=='U' || argv[7]=='V' || argv[7]=='W' || argv[7]=='Z'))) && argv[0]=='O' && argv[1]=='P' &&
         argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S');
-    options_test|=mode_transition_test;
+    unsigned char track_help_test=(unsigned char)(argc==8 && argv[0]=='O' && argv[1]=='P' &&
+        argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S' && argv[7]=='O');
+    options_test|=mode_transition_test || track_help_test;
     unsigned char controllers_test=(unsigned char)(options_test && argc==8 && argv[7]=='C');
     unsigned char collisions_test=(unsigned char)(options_test && argc==8 && argv[7]=='D');
     unsigned char weapons_test=(unsigned char)(options_test && argc==8 && (argv[7]=='E' || argv[7]=='F'));
@@ -4059,6 +4061,7 @@ int main(void)
     unsigned char clear_test=(unsigned char)(options_test && argc==8 && (argv[7]=='R' || argv[7]=='S')),clear_test_stage=0;
     unsigned char help_test=(unsigned char)(options_test && argc==8 && (argv[7]=='H' || argv[7]=='J' || argv[7]=='K' || argv[7]=='L' || argv[7]=='M' || argv[7]=='N'));
     unsigned char help_failure_test=(unsigned char)(help_test && (argv[7]=='L' || argv[7]=='M' || argv[7]=='N')),help_failure_stage=0;
+    help_test|=track_help_test;
     unsigned char options_test_stage=0;
     unsigned char tracks_test=(unsigned char)((argc==6 || (argc==7 && (argv[6]=='L' || argv[6]=='R' || argv[6]=='D' || argv[6]=='F' || argv[6]=='I' || argv[6]=='J' || argv[6]=='K' || argv[6]=='M' || argv[6]=='N'))) && argv[0]=='T' && argv[1]=='R' &&
         argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S');
@@ -4503,6 +4506,7 @@ int main(void)
         if(help_failure_test) platform.key_head=4; /* Enter Options; faults below. */
         if(help_failure_test && argv[7]=='M') platform.key_tail=2; /* Players */
         if(help_failure_test && argv[7]=='N') platform.key_tail=1; /* Tracks */
+        if(track_help_test) platform.key_tail=1; /* Normal Tracks Help navigation. */
         if(argv[7]=='J') {
             /* Same navigation/reopen gate entered through Players. */
             platform.key_tail=2;

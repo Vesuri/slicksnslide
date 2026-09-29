@@ -54,6 +54,10 @@ Implementation and completed verification evidence are separate in
   warning/dismissal/race-entry publication coverage, one startup load and no
   archive reopen/display teardown while the Tracks menu is active. Keep
   Read/Close failures and other malformed inputs separate from that check.
+  Normal Tracks Help now has link/history/close/reopen publication coverage,
+  exact restoration for both closes, no archive reopen/display teardown across
+  the guarded visits, and normal system exit. Other Help owner/page/language
+  routes remain separate from that verified sequence.
   Tracks `.new` and `.bak` recovery warnings now each have native publication,
   dismissal, unchanged-playlist and single-startup-load coverage; keep other
   read/format failure cases separate from those verified artifact checks.
