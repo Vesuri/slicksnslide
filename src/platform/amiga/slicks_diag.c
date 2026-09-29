@@ -166,6 +166,7 @@ static unsigned char shop_end_game;
 static unsigned char shop_test;
 static unsigned char shop_create_failure_test;
 static unsigned char shop_live_failure_test;
+static unsigned char title_start_test;
 /* Explicit NATURALWX/Y/Z boundary fixtures; never enabled by normal launches. */
 static unsigned char shop_rejection_test;
 volatile signed char g_slicks_shop_rejection_item;
@@ -2057,7 +2058,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     platform->key_tail=platform->key_head;
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_shop_menu=&state; slicks_diag_shop_ready();
-    if(shop_live_failure_test) {
+    if(shop_live_failure_test || title_start_test) {
         platform->key_tail=0;platform->keys[0]=0x45;platform->key_head=1;
     }
     if(mode_transition_test) {
@@ -4080,7 +4081,7 @@ int main(void)
         title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]=='9'?0:argv[5]-'0');
         language_choice_test=(unsigned char)(argv[5]=='9'?2:argv[5]=='0');
     }
-    unsigned char title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
+    title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
         argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
         (argv[5]=='G' && argv[6]=='O'?1:argv[5]=='F' && argv[6]=='9'?2:0):0);
     shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');

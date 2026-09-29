@@ -1836,6 +1836,42 @@ font-state byte; complete-font isolated painter checks remain separate from
 this live full-pixel check. The expected startup alias used by the wrapper
 oracle now has the additional caller-reference evidence above.
 
+## Native GO/F9 across all saved modes (2026-09-30)
+
+Fresh isolated native configurations for modes 0..5 now pass both STARTGO
+(Enter at the initial row) and STARTF9 (Down, Down, F9). The latter selects
+TRACKS in ordinary modes and clamps to SETTINGS in Arcade. The strengthened
+fixture requires exactly one race start, no demo or surviving Options/Tracks/
+Players menu, no race error, and an actual race mode equal to the saved title
+configuration. The host additionally requires the specific expected mode in
+the success marker, so silently falling back to mode zero cannot pass.
+
+| Saved mode | GO run suffix | F9 run suffix |
+| --- | --- | --- |
+| 0 | `pol2gj8v` | `seu35irw` |
+| 1 | `iw0ibnei` | `0mtv__75` |
+| 2 | `x3_cvmi5` | `ld8z9thj` |
+| 3 | `u71895mk` | `fqic2dfu` |
+| 4 | `sy5ayb3s` | `7umn8s21` |
+| 5 | `vh30j0k2` | `h__1wwif` |
+
+Directories are under `tmp/standalone-release-`. All twelve runs use the
+stripped executable, PAL stock-speed 68020, 2 MiB Chip/no Fast and confirmed
+4096-byte entry stack. Each fixture uses a newly generated original-format
+configuration and copies of the supplied data. If preparation opens the shop,
+the diagnostic now supplies ordinary Escape input; no production shop bypass
+or debugger mutation is used. STARTGO/STARTF9 are otherwise unchanged. All
+runners stop at the checked race-entry boundary and close their muted emulators;
+these checks do not prove later race completion or normal exit.
+
+The original-code title navigation suite also passes 17,920 ordinary navigation,
+51,200 mode-dispatch and 655,360 action-map comparisons. Logs:
+`tmp/title-start-modes-build.log`, `tmp/title-start-modes-oracle.log`.
+An initial batch was intentionally interrupted before completing the matrix
+to add the missing diagnostic shop input; only the twelve final runs above
+constitute the matrix. Normal-game routing was not changed. Other starting
+rows, Help shortcuts and demo routes retain their separate coverage scope.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

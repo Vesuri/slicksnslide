@@ -148,10 +148,10 @@ Implementation and completed verification evidence are separate in
   Keyboard entry, track-data views, repeated key return and natural deadline
   return are integrated;
   their bounded native verification is recorded in fidelity-audit.md, not
-  proof of all persistence/error routes or exact return presentation. Extend normal
-  GO/F9 integration coverage to other modes/rows alongside the remaining demo
-  routes. Ordinary Enter-at-GO and Down/Down/F9 now reach gameplay on the
-  current stripped binary with read-only native checks. Normal
+  proof of all persistence/error routes or exact return presentation.
+  Enter-at-GO and Down/Down/F9 now reach the correctly selected race mode in
+  all six saved modes on the stripped binary, including Arcade's Settings row.
+  Keep other starting rows and remaining demo routes separate from that matrix. Normal
   title F1 and ignored-F2 navigation now have a current-build native check;
   extend caller coverage to other modes/rows without adding an F2 title action.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
