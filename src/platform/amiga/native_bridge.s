@@ -5,6 +5,7 @@
 	xdef slicks_draw_title_registration
 	xdef slicks_tick_title_registration
 	xdef slicks_draw_title_status_text
+	xdef slicks_tick_title_colours
 	xdef	slicks_draw_original_text
 	xdef	slicks_dispatch_title_key
 	xdef	slicks_setup_basic_mode
@@ -103,6 +104,24 @@ slicks_draw_title_pages:
 	lea	slicks_title_phase,a3
 	jsr	sui_title_tail
 	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; Original 29779..297e8, once per visible normal-title update. The native
+; step also restores the label crop; the caller redraws before publication.
+; C ABI: slicks_tick_title_colours(planes, palette)
+slicks_tick_title_colours:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 48(sp),a0
+	movea.l slicks_title_background,a1
+	movea.l 52(sp),a2
+	lea slicks_title_counter,a3
+	lea slicks_title_third_color,a4
+	moveq #100,d4
+	moveq #0,d7
+	jsr sui_title_step
+	move.w d0,slicks_title_ordinary_color
+	move.w d1,slicks_title_selected_color
+	movem.l (sp)+,d2-d7/a2-a6
 	rts
 
 ; C ABI: slicks_draw_title_menu_selection(planes, palette, selection)

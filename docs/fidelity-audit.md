@@ -16,7 +16,7 @@ and a production-screen comparison establish different things.
 | F05 | Title arrows wrap and lack original left/right edits | Original `2a0cb..2a1b6` clamps Up/Down, skips entry 4, changes selected-track count on TRACKS and mode on OPTIONS with Left/Right. Production wraps and only changes values in the legacy diagnostic setup path. |
 | F06 | Extra visible intermission rows and altered Up navigation | Original `245bb..245c8` forces the first navigable row to 2, and `245da..24702` draws rows 2/3. Production enabled `expose_actions` and intercepted Up before the original dispatcher. |
 | F07 | Menu transitions briefly expose AmigaOS | Menu owners end/begin hardware takeover around disk reads and even RAM-only close/redraw transitions. The separate resident-assets inventory covers the dependencies. |
-| F08 | Title animation cadence is not the full original title loop | Existing registration evidence explicitly excludes this; original `29f2c` selects between two renderers, while production uses a bounded translated title path. Detailed animation/state coverage remains unverified, not a completed feature. |
+| F08 | Title-loop animation coverage is incomplete | Normal selected-label pulse now advances through the translated original routine every visible title update. Arcade and wall-clock cadence/reference comparison remain unverified; see the new native cycle evidence below. |
 | F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
 | F10 | Arcade title uses the ordinary title renderer | Original `29f31..29f47` calls the mode-5 predicate at `198b6`, then selects `29afa` instead of `29753`. Native presentation always uses the ordinary title; this also needs its associated input routes audited. |
 
@@ -164,6 +164,32 @@ restoration=31 on muted 2 MiB/no-Fast A1200. The fixture terminates without
 saving its edits. Combined with the original-instruction command oracle,
 this closes the normal-title status transition obligation. Arcade remains
 separately open as F10; animation and shortcut coverage are not implied.
+
+### Normal-title animation integration
+
+Original `2a36c` calls `29f2c` on each title-loop iteration; normal mode calls
+`29753`, whose `29779..297e8` advances the byte counter by four and selects
+the triangular palette ramp. The port previously ran its translated
+`sui_title_step` only during initial title construction. Visible normal-title
+updates now invoke that routine and redraw through the existing dirty
+publisher, including keyless titles. The shared registration tail advances
+even when no owner name is present. Child dialogs and races do not tick it.
+Arcade is deliberately not passed through this ordinary-menu tick.
+
+`SLICKS_REGISTRATION_TEST=6 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/title-animation ./debug.sh '' diag_title_animation.gdb`
+passes 72 updates, 19 palette-index changes, 73 complete logical/chunky/planar
+pixel audits with zero mismatches, exactly one full-screen publication and
+restoration 31. It crosses a complete byte-counter wrap. The native graphics
+oracle passes 256 original-x86/68020 title-step cases and 256 title-tail cases;
+layout (224), status (6480), navigation (17920) and dirty-bounds tests also pass.
+Local-only logs: `tmp/title-animation-native.log`,
+`tmp/title-animation-oracles.log`, `tmp/title-animation-regression.log`.
+The animated REGCHECKT regression also passes: modes=31, roles=7, counts=3,
+33 publications, zero pixel mismatches, restoration=31
+(`tmp/title-animation-transitions.log`). Both owned emulator sessions exited.
+This proves the restored colour sequence and publication, not equivalence
+of DOS wall-clock cadence or completion of the separate Arcade title.
 
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |

@@ -50,6 +50,7 @@
 #include "../../ui/menu_bitmap.h"
 extern void slicks_draw_title_registration(unsigned char *,const unsigned char *);
 extern void slicks_tick_title_registration(unsigned char *,const unsigned char *,const unsigned char *);
+extern void slicks_tick_title_colours(unsigned char *,const unsigned char *);
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 
 static struct SlicksRegistration registration;
@@ -3467,9 +3468,9 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
-        if(argc==9 && (argv[8]=='D' || argv[8]=='T')) title_dirty_test=argv[8]=='D'?1:2;
+        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:3;
         else if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
@@ -4137,7 +4138,9 @@ int main(void)
                 0x4d,0x4e,0x4e,0x4e,0x4e, /* OPTIONS: all normal badges. */
                 0x4f,0x4f,0x4f,0x4f};
             unsigned at=registration_test-1;
-            if(title_dirty_test==2) {
+            if(title_dirty_test==3) {
+                if(++registration_test==74) {g_slicks_diag_force_exit=1;registration_test=0;}
+            } else if(title_dirty_test==2) {
                 if(at==sizeof transition_keys) {
                     /* Rendering/input fixture only: do not save its edits. */
                     g_slicks_diag_force_exit=1;registration_test=0;
@@ -5401,13 +5404,22 @@ int main(void)
             slicks_amiga_track_info_tick(g_slicks_track_menu,&g_slicks_setup_session.random_state);
             present_menu_surface(&platform,g_slicks_track_menu);
         }
-        if(registration.name[0] && !g_slicks_diag_ingame && !save_prompt &&
+        if(!g_slicks_diag_ingame && !save_prompt &&
            !race_load_prompt && !service_menu_open && !g_slicks_player_menu &&
            !g_slicks_options_menu && !g_slicks_track_menu && !g_slicks_title_help &&
            !g_slicks_diag_saved_menu) {
-            slicks_tick_title_registration(logical,registration.name,source_palette);
-            slicks_title_dirty_add(&title_dirty,0,190,320,200);
-            publish_title_dirty(&platform,logical,chunky);
+            if(configuration.options[0]!=5) {
+                slicks_tick_title_colours(logical,source_palette);
+                /* The shared original tail advances even without a name. */
+                slicks_tick_title_registration(logical,registration.name,source_palette);
+                redraw_title_configuration(&platform,logical,chunky,source_palette,
+                    menu_selection,selected_vehicle,track_path,0);
+            } else if(registration.name[0]) {
+                /* Arcade's separate renderer remains an explicit open item. */
+                slicks_tick_title_registration(logical,registration.name,source_palette);
+                slicks_title_dirty_add(&title_dirty,0,190,320,200);
+                publish_title_dirty(&platform,logical,chunky);
+            }
         }
         if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_lists) {
             if(g_slicks_track_menu->name_dialog) {

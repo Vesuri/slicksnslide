@@ -6,7 +6,14 @@ Historical experiments, rejections and verification evidence are in
 Installer/packaging evidence is in [release-verification.md](release-verification.md),
 with usage in [install-original-data.md](install-original-data.md).
 
-## Goal and current measurements
+## Active goal
+
+Work through the actionable menu/presentation, caching and fidelity-audit
+items below. Commit verified pieces and keep historical evidence separate.
+The explicitly paused performance backlog and deferred manual tests remain
+paused/deferred; completing the active list does not meet the 50 FPS target.
+
+## Retained performance goal and measurements
 
 Finish the performance handoff with verified implementation or measured
 rejection of each proposal and resolve its verification debt. Closing
@@ -36,7 +43,8 @@ Implementation and completed verification evidence are separate in
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.
   Do not claim feature completeness from isolated or historical passes.
-- Close F08's original title animation. Audit the
+- Close F08's remaining title cadence/reference comparison (the normal
+  selected-label pulse is restored and its complete native cycle verified). Audit the
   remaining title shortcuts and mouse routes against original callers.
   Implement F10's separate Arcade title renderer and audit its input routes;
   the original mode-5 caller does not draw the ordinary six-row title.
