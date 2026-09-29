@@ -994,6 +994,32 @@ program-exit/save-failure handling. Diagnostic modes intentionally suppress
 implicit setup saves; their absence here is not proof of every persistence
 caller. Those remaining checks stay in the actionable list.
 
+## Failed demo preparation, restoration and retry (2026-09-29)
+
+`DEMOERR` and `DEMOHUD` (`SLICKS_DEMO_LIFECYCLE_TEST=6` and `7`) exercise
+two existing real-loader fault boundaries on the first demo attempt only:
+an actual Open of a missing track, and a failed HUD resource lookup later
+in preparation. No original/test assets are renamed, deleted or rewritten.
+The next attempt uses its normally selected track and real resources.
+
+Each fixture must show the real load-error owner with the expected code
+(2 or 6), with the demo flag already cleared. It dismisses the error using
+ordinary Enter, compares the entire restored configuration and all playlist
+slots, then starts another demo from the title. The successful attempt checks
+both data views, key return and configuration/playlist restoration again.
+The debugger requires exactly one preparation error, one started race and
+two views; an unexpected second error fails immediately. Final OS restoration
+must be 31, and ordinary results/setup-save calls must not be reached.
+Both fixtures pass all these checks. Runs were muted and both emulators
+exited and were closed.
+
+Logs: `tmp/demo-preparation-failure-build.log`,
+`tmp/demo-preparation-failure-native.log`, `tmp/demo-late-failure-native.log`.
+This covers early and partially initialized loader failures, not injected
+allocation failures, all malformed assets, or production program-exit/save
+failure. The latter remain separate open checks. Diagnostic implicit-save
+suppression remains in force, so this is not an end-to-end persistence test.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

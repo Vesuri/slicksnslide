@@ -77,7 +77,7 @@ Implementation and completed verification evidence are separate in
   FS-UAE instance, and the installed binary did not execute the Lua hook.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
-  Verify failed preparation and program-exit/save-failure
+  Extend failed-demo preparation checks to allocation failure, and verify program-exit/save-failure
   restoration, and compare the complete return presentation against the
   original saved-image/title sequence. Keep finish-event rewards distinct from
   the later skipped track/results branch; do not rewind the shared RNG.
