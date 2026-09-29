@@ -61,7 +61,9 @@ progression, zero race error and restoration 31. No larger stack is requested.
 - Live pause: all 13 steps, child dialogs, speed update, unchanged paused race
   state and clock advancement after resume pass.
 - Intermission: focused original-policy/edit/next-race test passes after the
-  stack repair. This does not rehabilitate the old extra-buffer UIMENU2 fixture.
+  stack repair. The separately repaired UIMENU2 fixture now also passes its
+  17 failure/edit/reopen phases using the resident archive and a borrowed
+  startup snapshot; see the fidelity audit for allocation and boundary checks.
 - Failure recovery: all five track-info injections dismiss/retry/reopen/race;
   every restored screen compares byte-for-byte. Name allocation failure retains
   the editor and passes retry/edit/cancel, with exact saved pixels and profiles.

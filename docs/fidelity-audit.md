@@ -38,7 +38,7 @@ Fresh checks: 65,536 Change Cars option words and 3,072 input-state cases;
 75 full-screen/font comparisons; 8 Change Cars open/close and 20 row redraw
 comparisons. The 68020 target builds successfully.
 
-The native UIMENU2 lifecycle run **did not pass**: it exits after phase 3,
+The earlier native UIMENU2 lifecycle run **did not pass**: it exited after phase 3,
 before the normal successful open, with restoration status 3. Read-only
 allocation tracing found 119,064 bytes free but a largest block of only 60,272
 bytes: the 65,536-byte preview arena cannot be allocated. This fixture retains
@@ -47,6 +47,17 @@ saved screen. Its fault-injection phases can therefore return early for an
 unintended allocation failure. Fix its memory arrangement and require each
 injected failure to reach its intended boundary before claiming the old
 17-phase failure/reopen test passes.
+
+The repaired UIMENU2 gate now passes all 17 phases, with restoration status
+31. It borrows the retained startup title staging buffer rather than allocating
+another 64,000-byte snapshot, uses the resident archive, and loads DAT/track
+data at their actual sizes. Cleanup now frees those exact allocation sizes;
+the former fixture incorrectly freed fixed-capacity blocks using file lengths.
+Separate reached-boundary markers ensure each simulated allocation/resource/
+render failure occurs at its intended site, not an unrelated earlier failure.
+Both edit/reopen rounds pass. Reproduction: `SLICKS_INTERMISSION_SURFACE=1
+SLICKS_DEBUG_WARP=1 FSUAE_RUN=.run/intermission-owner-v1 ./debug.sh ''
+diag_intermission_surface.gdb`; local log `tmp/intermission-owner-native.log`.
 
 The actual production transition passes the focused native regression:
 `SLICKS_INTERMISSION_LIVE=1 SLICKS_DEBUG_WARP=1

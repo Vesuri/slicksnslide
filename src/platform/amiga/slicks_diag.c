@@ -2500,11 +2500,11 @@ done:
 /* Target resource/lifetime gate, separate from the interactive race loop.
  * Real fonts, icons and track data; private driver choices never get saved. */
 static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
-    unsigned char *chunky,const unsigned char *palette)
+    unsigned char *chunky,const unsigned char *palette,unsigned char *saved)
 {
     struct SlicksResourceArchive archive={0}; struct SlicksAmigaPlayerMenu *m=0;
-    unsigned char *dat=AllocMem(65536,MEMF_ANY),*track=AllocMem(8192,MEMF_ANY);
-    unsigned char *saved=AllocMem(64000,MEMF_ANY);
+    unsigned long ds=0,ts=0;
+    unsigned char *dat=0,*track=0;
     int result=-1;
     struct SlicksProfileSelection players={.participation={-1,0,1,-1},
         .vehicle={1,7,3,4},.selected={0,1,2,3},.count=3};
@@ -2516,9 +2516,10 @@ static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
         .labels={(const unsigned char *)"CHANGE CARS",(const unsigned char *)"SAVE GAME",
             (const unsigned char *)"NEXT TRACK",(const unsigned char *)"MAIN MENU"},
         .track_name=(const unsigned char *)"BASIC",.slash=(const unsigned char *)"/"};
-    if(!dat || !track || !saved || slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
-    long ds=load_plain_file("SLICKS.DAT",dat,65536),ts=load_plain_file("TRACKS/BASIC.SS",track,8192);
-    if(ds<=0 || ds>=65536 || ts<=0 || ts>=8192) goto done;
+    if(!saved || slicks_resource_archive_cached(&archive,menu_cache)) goto done;
+    dat=load_plain_allocated("SLICKS.DAT",65536,&ds);
+    track=load_plain_allocated("TRACKS/BASIC.SS",8192,&ts);
+    if(!dat || !track) goto done;
     m=slicks_amiga_intermission_surface_create(&archive,chunky,palette);
     if(!m) goto done;
     g_slicks_diag_intermission_menu=m;
@@ -2527,7 +2528,8 @@ static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
     for(unsigned fault=1;fault<=3;++fault) {
         g_slicks_diag_intermission_fault=(unsigned char)fault;
         if(!slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts) || m->intermission ||
-           m->fonts[0][6]!=colour || g_slicks_diag_intermission_fault) goto done;
+           m->fonts[0][6]!=colour || g_slicks_diag_intermission_fault ||
+           g_slicks_diag_intermission_fault_reached!=fault) goto done;
         for(unsigned long i=0;i<64000;++i) if(saved[i]!=chunky[i]) goto done;
         ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
     }
@@ -2546,7 +2548,8 @@ static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
             g_slicks_diag_change_cars_fault=(unsigned char)fault;
             if(slicks_amiga_change_cars_open(m,&archive,&players,profiles,10,
                 slicks_original_vehicle_weights,&seed,1,(const unsigned char *)"CARS")!=-1 ||
-                m->change_cars || m->fonts[0][6]!=menu_colour || seed!=1234) goto done;
+                m->change_cars || m->fonts[0][6]!=menu_colour || seed!=1234 ||
+                g_slicks_diag_change_cars_fault_reached!=fault) goto done;
             for(unsigned long i=0;i<64000;++i) if(saved[i]!=chunky[i]) goto done;
             ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
         }
@@ -2582,7 +2585,6 @@ done:
     slicks_resource_archive_close(&archive);
     if(dat) FreeMem(dat,ds);
     if(track) FreeMem(track,ts);
-    if(saved) FreeMem(saved,64000);
     return result;
 }
 
@@ -3877,7 +3879,8 @@ int main(void)
     /* Automated gates prepare before takeover. Interactive play deliberately
      * waits until GO so the native menu can choose the track, car and laps;
      * its loader temporarily runs with AmigaOS restored. */
-    if(!g_slicks_diag_audit_bitmap) {
+    if(!g_slicks_diag_audit_bitmap && !(argc==7 && argv[0]=='U' && argv[1]=='I' &&
+       argv[2]=='M' && argv[3]=='E' && argv[4]=='N' && argv[5]=='U' && argv[6]=='2')) {
         FreeMem(title_asset,64003UL); title_asset=0;
     }
     if(slicks_amiga_menu_keymap_init() ||
@@ -3905,7 +3908,9 @@ int main(void)
 
     if(argc==7 && argv[0]=='U' && argv[1]=='I' && argv[2]=='M' &&
        argv[3]=='E' && argv[4]=='N' && argv[5]=='U' && argv[6]=='2') {
-        if(test_intermission_surface(&platform,chunky,race_palette)) goto cleanup;
+        /* Reuse the startup staging buffer for the audit's snapshot. The
+         * fixture exits afterward; no extra 64 KB modal allocation needed. */
+        if(test_intermission_surface(&platform,chunky,race_palette,title_asset)) goto cleanup;
         result=0; goto cleanup;
     }
     if(argc==6 && argv[0]=='U' && argv[1]=='I' && argv[2]=='M' &&

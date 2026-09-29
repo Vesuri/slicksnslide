@@ -334,6 +334,7 @@ void slicks_amiga_player_menu_clear_dirty(struct SlicksAmigaPlayerMenu *m)
 
 unsigned char g_slicks_diag_change_cars_fault;
 unsigned char g_slicks_diag_intermission_fault;
+unsigned char g_slicks_diag_intermission_fault_reached,g_slicks_diag_change_cars_fault_reached;
 struct IntermissionPreviewInput {
     const unsigned char *dat,*track;
     unsigned long dat_size,track_size;
@@ -369,7 +370,10 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
        m->race_menu || m->help || m->help_warning || m->controllers_dialog || m->picker || m->editor_active ||
        m->name_dialog || m->colour_dialog || m->message || m->track_info || m->track_lists) return -1;
     unsigned char fault=g_slicks_diag_intermission_fault; g_slicks_diag_intermission_fault=0;
+    g_slicks_diag_intermission_fault_reached=0;
+    if(fault==1) g_slicks_diag_intermission_fault_reached=1;
     struct SlicksAmigaIntermission *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    if(fault==2 && d) g_slicks_diag_intermission_fault_reached=2;
     unsigned char *arena=fault==2?0:AllocMem(65536,MEMF_ANY);
     if(!d || !arena) { if(d) FreeMem(d,sizeof *d); if(arena) FreeMem(arena,65536); return -1; }
     d->content=*content;
@@ -391,6 +395,7 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     int result=slicks_intermission_renderer_open(&d->renderer,&d->state,&d->content,source_palette,
         d->buttons,sizeof d->buttons,d->cars,sizeof d->cars,intermission_preview,&input);
     FreeMem(arena,65536);
+    if(!result && fault==3) g_slicks_diag_intermission_fault_reached=3;
     if(result || fault==3) { (void)slicks_amiga_intermission_close(m); return -1; }
     return 0;
 before_paint:
@@ -448,6 +453,8 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *m,struct SlicksR
     if(!count || count!=players->count) return -1;
     if(!slicks_change_cars_prepare(players,profiles,vehicle_count,weights,random_state,show)) return 0;
     unsigned char fault=g_slicks_diag_change_cars_fault; g_slicks_diag_change_cars_fault=0;
+    g_slicks_diag_change_cars_fault_reached=0;
+    if(fault==1) g_slicks_diag_change_cars_fault_reached=1;
     struct SlicksAmigaChangeCars *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
     if(!d) return -1;
     /* Small bounded resource scratch: the ten menu car icons fit 192 pixels. */
@@ -455,7 +462,9 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *m,struct SlicksR
     for(unsigned i=0;i<(unsigned)vehicle_count;++i) {
         char name[]="auto01.@16"; name[5]=(char)('0'+i);
         const char *path=i?name:"carimage16";
-        if(fault==2 && i==(unsigned)vehicle_count-1) path="missing-car-icon";
+        if(fault==2 && i==(unsigned)vehicle_count-1) {
+            path="missing-car-icon";g_slicks_diag_change_cars_fault_reached=2;
+        }
         long size=slicks_resource_archive_load(archive,path,resource,sizeof resource);
         if(size<0 || slicks_decode_menu_icon(resource,(unsigned long)size,m->renderer.ui.palette,
             d->pixels[i],sizeof d->pixels[i],&d->icons[i+1].width,&d->icons[i+1].height)) goto failed;
@@ -468,7 +477,8 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *m,struct SlicksR
     if(slicks_change_cars_renderer_open(&d->renderer,&d->state,210,71,count,title,
         d->original,sizeof d->original,d->decorated,sizeof d->decorated) || m->error) goto failed;
     if(slicks_change_cars_renderer_draw(&d->renderer,&d->state,players->participation,players->vehicle) ||
-       m->error || fault==3) goto failed;
+       m->error) goto failed;
+    if(fault==3) {g_slicks_diag_change_cars_fault_reached=3;goto failed;}
     m->change_cars=d; return 1;
 failed:
     if(d->renderer.active) (void)slicks_change_cars_renderer_close(&d->renderer);

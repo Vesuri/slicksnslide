@@ -42,10 +42,8 @@ Implementation and completed verification evidence are separate in
   the original mode-5 caller does not draw the ordinary six-row title.
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
-- Repair UIMENU2's extra-buffer fragmentation and assert that fault injection
-  reaches the intended allocation/render boundary. The production F06
-  intermission edit/next-race path passes; the old 17-phase fixture does not.
-  Recheck save/edit fixtures which previously assumed the extra rows.
+- Recheck save/edit fixtures which previously assumed the extra intermission
+  rows. Keep the original hidden Save Game route covered.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 

@@ -149,6 +149,7 @@ int slicks_amiga_intermission_key(struct SlicksAmigaPlayerMenu *,unsigned char);
 int slicks_amiga_intermission_refresh_cars(struct SlicksAmigaPlayerMenu *,const signed char [4]);
 int slicks_amiga_intermission_close(struct SlicksAmigaPlayerMenu *);
 extern unsigned char g_slicks_diag_intermission_fault;
+extern unsigned char g_slicks_diag_intermission_fault_reached;
 int slicks_amiga_race_speed_open(struct SlicksAmigaPlayerMenu *,struct SlicksConfiguration *,unsigned char *);
 int slicks_amiga_race_speed_key(struct SlicksAmigaPlayerMenu *,struct SlicksConfiguration *,unsigned char);
 int slicks_amiga_race_speed_close(struct SlicksAmigaPlayerMenu *,const struct SlicksConfiguration *,unsigned short *);
@@ -163,6 +164,7 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *,struct SlicksRe
 int slicks_amiga_change_cars_key(struct SlicksAmigaPlayerMenu *,unsigned char);
 int slicks_amiga_change_cars_close(struct SlicksAmigaPlayerMenu *);
 extern unsigned char g_slicks_diag_change_cars_fault;
+extern unsigned char g_slicks_diag_change_cars_fault_reached;
 /* Call only with the OS available, before hardware takeover. Strings are
  * original initialized-DS resources, kept alive for the menu lifetime.
  * Chunky storage (with C2P lookahead) belongs to the caller. */
