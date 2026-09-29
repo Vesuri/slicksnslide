@@ -680,9 +680,84 @@ does not otherwise clear the accumulated counter.
 Both native car drawing paths instead divide the live heading by 1200.
 Their cache comparisons validate one native renderer against another and do
 not cover this original caller-level direction state. This confirms F13 from
-the original instructions and production consumers; an independent executable
-comparison and the correction are not yet complete. The new state belongs to
+the original instructions and production consumers; the subsequent executable
+comparisons and correction are recorded below. The new state belongs to
 rendering, not steering, wheel-effect geometry or the simulation heading.
+
+### F13 correction and verification
+
+`car_display.h` now reproduces the original pre-submission and post-submission
+state updates separately from simulation heading. `verify-car-display`
+executes `23d9c..23e7a`, stubbing only the actor device call and inspecting
+the frame argument at that boundary. Its 278,528 comparisons pass: every
+byte counter/timestep pair for human, inactive and computer roles, all signed
+word headings, all role bytes and repeated direction-change sequences.
+The counter's signed test, wrapping addition, retained partial count and
+one-last-old-frame threshold behaviour are included.
+
+Production prepares the four display frames once per update; both the C
+renderer and 68020 cache path consume them. The fields are appended to avoid
+moving the existing assembly state. Initial preparation starts from -1/0,
+while legacy isolated renderer calls without a prepared display state still
+derive their frame from heading. Retention conflict geometry follows the
+display frame too, not its potentially smaller physics-heading sprite.
+Wheel-effect geometry and simulation heading remain unchanged.
+
+Host checks pass: 4,096 car-cache pixel/state comparisons (including a
+display frame different from heading), surface effects, dirty coverage,
+10,000 retention-touch comparisons and 1,024 retention-group permutations.
+A specific case verifies that a wider delayed car frame invalidates an
+overlapping retained sprite outside the current-heading sprite's footprint.
+Logs: `tmp/car-display-host.log`, `tmp/car-display-retention-host.log`,
+`tmp/car-display-retention-groups.log`.
+
+The first F1 native shadow run was **invalid**, not a pass: it reported zero
+site-5 calls. Renderer shadowing requires a separate 64 KiB surface, whose
+allocation was unchecked and attempted while temporary loading assets were
+still resident. The fixture now allocates comparison buffers after those
+assets are freed, allocates the surface only for rendering sites and rejects
+allocation failure. The corrected F1 run passes 2,800 site-5 comparisons with
+zero mismatches over the 603-update benchmark. The normal-build F1 audit
+passes 600 updates (32 actors, 2,068 marks) and observes a delayed frame at
+update 164, driver 2 (heading 9302, displayed frame 8). CITY passes 600
+updates too (18 actors, 1,480 marks), with a delayed frame at update 176,
+driver 2 (heading 18902, displayed frame 0). WHACKO passes 600 updates
+(5 actors, 1,854 marks), observing its delay at update 147, driver 2
+(heading 18902, displayed frame 0). All three runs report exact
+chunky/bitplane agreement.
+Logs: `tmp/shadow-car-display-buffers-1.log`,
+`tmp/car-display-native-{1,2,3}.log`. Reproduce the latter with
+`SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 SLICKS_LIVE_STATS=0`
+and `diag_car_display.gdb`; the fixture rejects an unexercised delay.
+
+The F1 target retention-versus-full-redraw comparison also passes: 603
+updates, zero pixel/particle mismatches, 575 geometry checks and 700 status
+cache checks with zero mismatches, and unchanged immutable maps. Its final
+positions and 2,244 marks match the native/reference run. This is a
+correctness run, not a performance measurement. Log:
+`tmp/car-display-retcheck.log`. The harness restored a successful normal
+build (`tmp/car-display-final-build.log`) after closing its emulator.
+
+The retention snapshot now also preserves the mutable tail appended after
+the immutable terrain arrays, including demo and car-display state. Its host
+test overwrites that tail before restoring and compares the entire runtime;
+all mutable bytes restore and mutations to each excluded terrain array are
+detected. This prevents the two-pass checker from advancing display state
+twice and verifies the tail rather than silently omitting it.
+
+### Native demo-return reset
+
+`race_return.h` translates the mapped `1c10b..1c24a` reset, including the
+new display-direction/counter state. `verify-demo-return` now compares its
+native state against the original reset in all 1,024 existing flag/target
+cases, in addition to the full original DS-byte comparison and saved-image
+call assertions. Sentinel-filled unrelated native bytes must survive exactly;
+positions, current/total clocks, inventory, RNG and the submitted display
+frame are not cleared. Native derived speed/time/rank views are kept consistent
+with the original reset fields. Log: `tmp/demo-native-return.log`.
+This is a verified reset helper, **not** a completed live demo-return route;
+the title owner, saved-image restoration and setup-selection refresh remain
+to be connected.
 
 ## Approved Amiga demo shortcut adapter (2026-09-29)
 

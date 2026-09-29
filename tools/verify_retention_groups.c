@@ -53,6 +53,24 @@ static void restore_expected(unsigned h){
         expected[(a->old_y+y)*320+a->old_x+x]=a->saved_under[y*5+x];
 }
 int main(void){
+    /* A delayed frame can be wider than the current physics direction.
+     * The conflict footprint must follow the frame that will be painted. */
+    for(unsigned delayed=0;delayed<2;++delayed) {
+        memset(&race,0,sizeof race);memset(&slicks_retention,0,sizeof slicks_retention);
+        race.participation_ready=1;race.participation[0]=1;
+        race.cars[0].x=race.cars[0].y=10000;
+        race.sprites[0][0].width=race.sprites[0][0].height=1;
+        race.sprites[0][1].width=10;race.sprites[0][1].height=3;
+        race.car_display_ready=(unsigned char)delayed;race.car_display[0].frame=1;
+        slicks_retention.count=1;
+        slicks_retention.entries[0]=(struct SlicksRetentionEntry){
+            .left=107,.top=100,.right=108,.bottom=101,.flags=RETENTION_CANDIDATE};
+        memset(slicks_retention.cells,1,sizeof slicks_retention.cells);
+        slicks_retention_cars(&race);
+        require(!!(slicks_retention.entries[0].flags&RETENTION_CONFLICT)==delayed,
+            "delayed car frame conflict extent",delayed);
+    }
+    puts("Retained sprites: car conflict bounds follow delayed display frames.");
     /* Independent original per-cell traversal, including crowded cells.
      * Arbitrary cell contents exercise early/late shared cells, clipping,
      * empty rectangles, prior conflict flags and all candidate counts. */

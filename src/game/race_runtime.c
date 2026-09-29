@@ -765,7 +765,9 @@ static void draw_car_reference(struct SlicksRaceRuntime *race, unsigned char *lo
                      unsigned short car_index)
 {
     struct SlicksRaceCar *car = &race->cars[car_index];
-    unsigned short direction = (unsigned short)car->heading / SLICKS_HEADING_STEP;
+    unsigned short direction = race->car_display_ready
+        ? (unsigned short)race->car_display[car_index].frame
+        : (unsigned short)car->heading / SLICKS_HEADING_STEP;
     unsigned char base_direction = direction & 3;
     unsigned char rotation = direction >> 2;
     const struct SlicksCarSprite *sprite =
@@ -2652,6 +2654,14 @@ static void restore_race_actors(struct SlicksRaceRuntime *race,unsigned char *lo
     race->actor_order_ready=0;
 }
 
+static void prepare_car_display(struct SlicksRaceRuntime *race,unsigned short ticks)
+{
+    for(unsigned i=0;i<4;++i)
+        slicks_car_display_step(&race->car_display[i],race->cars[i].heading,
+            driver_role(race,i),ticks);
+    race->car_display_ready=1;
+}
+
 static void draw_race_actors(struct SlicksRaceRuntime *race,unsigned char *logical)
 {
     if(!race->track_actors_ready) {
@@ -4192,6 +4202,9 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     prepare_particle_visibility(race);
     slicks_race_invalidate_retention(race);
     race->car_render_cache.ready=0;
+    race->car_display_ready=0;
+    for(unsigned i=0;i<4;++i)
+        race->car_display[i]=(struct SlicksCarDisplay){-1,0,0};
     for(unsigned i=0;i<64;++i)race->track_draw_packets[i].valid=0;
     race->status_bar_cache.valid=0;
     for(unsigned i=0;i<64;++i)race->track_sprite_visibility[i].valid=0;
@@ -4304,6 +4317,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->game_clock_ticks = 0;
     race->finish_deadline = 0;
     race->arcade_hud_valid = 0;
+    prepare_car_display(race,0);
     draw_timers(race, logical);
     draw_arcade_timer(race, logical);
     if(race->track_actors_ready) draw_race_actors(race,logical);
@@ -4391,6 +4405,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
                 race->racing = 1;
         }
         advance_weapon_actors(race);
+        prepare_car_display(race,ticks);
         if(race->track_actors_ready) {
             draw_race_actors(race,logical);
             if(race->countdown_stage<SLICKS_START_LIGHT_COUNT)
@@ -4410,6 +4425,7 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
         race->profile_marker(1);
     if(race->poll_driver_devices) race->poll_driver_devices(race,ticks);
     update_cars(race, ticks);
+    prepare_car_display(race,ticks);
     if(race->race_complete) slicks_race_award_track(race);
     if (profile)
         race->profile_marker(3);

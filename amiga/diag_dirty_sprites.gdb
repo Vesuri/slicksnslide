@@ -2,6 +2,8 @@
 # with optional statistics off through an explicit launch mode. No writes.
 # debug.sh closes this owned emulator on exit.
 set $race=(struct SlicksRaceRuntime *)0
+init-if-undefined $display_delay_required=0
+init-if-undefined $display_delay_seen=0
 break *slicks_race_start
 commands
   silent
@@ -60,6 +62,10 @@ break slicks_diag_race_progress
 commands
   silent
   if $race && $race->frame_count>=600
+    if $display_delay_required && !$display_delay_seen
+      printf "CAR_DISPLAY_INVALID delayed frame was not exercised\n"
+      quit 1
+    end
     if !g_slicks_diag_audit_bitmap || g_slicks_diag_live_stats || g_slicks_diag_race_error || $race->collision_error
       printf "DIRTY_SPRITE_INVALID\n"
       quit 1

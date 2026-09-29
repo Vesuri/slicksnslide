@@ -266,8 +266,11 @@ void slicks_retention_cars(struct SlicksRaceRuntime *race)
             slicks_retention_touch(car->old_x,car->old_y,car->old_x+car->old_width,
                 car->old_y+car->old_height,-1);
         if(!driver_role(race,d)) continue;
+        unsigned direction=race->car_display_ready
+            ? (unsigned short)race->car_display[d].frame
+            : (unsigned short)car->heading/SLICKS_HEADING_STEP;
         const struct SlicksCarSprite *sprite=
-            &race->sprites[car->vehicle][((unsigned short)car->heading/SLICKS_HEADING_STEP)&3];
+            &race->sprites[car->vehicle][direction&3];
         int extent=sprite->width>sprite->height?sprite->width:sprite->height;
         int x=(short)(car->x/100),y=(short)(car->y/100);
         slicks_retention_touch(x-extent,y-extent,x+extent+1,y+extent+1,-1);

@@ -31,6 +31,8 @@ int main(void)
         if(trial%8==0){car->x=31000;car->y=18000;}
         if(trial%16==15){car->x=0;car->y=19000;}
         car->heading=direction*SLICKS_HEADING_STEP;car->style=trial*17;
+        race.car_display_ready=(unsigned char)(trial&1);
+        race.car_display[0].frame=(short)((direction+5)%16);
         car->actor_layer=trial%3?1:0;
         for(unsigned i=0;i<64000;++i)before[i]=(unsigned char)(i*19+trial);
         if(trial%4==1)memset(race.material_map,255,sizeof race.material_map);
@@ -43,7 +45,14 @@ int main(void)
         if(trial%7==0)++car->style; /* Stale key must fall back. */
         struct SlicksRaceCar initial=*car;
         memcpy(native,before,sizeof native);race.car_render_cache.ready=0;
+        /* Independent selector expectation: the old heading-only renderer
+         * receives the frame chosen by the original display-state oracle. */
+        unsigned char delayed=race.car_display_ready;
+        race.car_display_ready=0;
+        if(delayed) car->heading=race.car_display[0].frame*SLICKS_HEADING_STEP;
         draw_car(&race,0,0);memcpy(expected,native,sizeof expected);
+        car->heading=initial.heading;
+        race.car_display_ready=delayed;
         struct SlicksRaceCar result=*car;
         *car=initial;memcpy(native,before,sizeof native);race.car_render_cache.ready=1;
         draw_car(&race,0,0);
@@ -57,6 +66,6 @@ int main(void)
         ++cases;
     }
     if(hits<500)fail("cache path was not exercised");
-    printf("car render cache: %u comparisons, %u native fast-path calls; exact pixels, saved backgrounds and ABI passed\n",cases,hits);
+    printf("car render cache: %u comparisons, %u native fast-path calls; exact pixels, delayed-frame selection, saved backgrounds and ABI passed\n",cases,hits);
     return 0;
 }

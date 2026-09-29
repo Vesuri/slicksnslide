@@ -11,6 +11,7 @@ int main(void)
     slicks_retention_capture(&saved,&race);
     memset(&race,0xa5,SLICKS_RETENTION_PREFIX);
     memset(race.steering_cache,0x5a,sizeof race.steering_cache);
+    memset((unsigned char *)&race+SLICKS_RETENTION_TAIL,0x3c,sizeof race-SLICKS_RETENTION_TAIL);
     if(!slicks_retention_restore(&race,&saved) || memcmp(&race,&original,sizeof race))return 1;
     for(unsigned region=0;region<3;++region)for(unsigned edge=0;edge<4;++edge) {
         unsigned char *p;unsigned n;

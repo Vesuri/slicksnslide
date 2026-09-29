@@ -6,9 +6,11 @@
  * starts. Preserve every mutable byte and check the excluded arrays before
  * and after both reference and optimized passes instead of duplicating them. */
 #define SLICKS_RETENTION_PREFIX __builtin_offsetof(struct SlicksRaceRuntime,material_map)
+#define SLICKS_RETENTION_TAIL __builtin_offsetof(struct SlicksRaceRuntime,demo_flag)
 struct SlicksRetentionSnapshot {
     unsigned char prefix[SLICKS_RETENTION_PREFIX];
     struct SlicksSteeringCache steering[SLICKS_RACE_CAR_COUNT];
+    unsigned char tail[sizeof(struct SlicksRaceRuntime)-SLICKS_RETENTION_TAIL];
     unsigned int immutable_hash;
 };
 _Static_assert(sizeof(unsigned int)==4,"32-bit diagnostic hash");
@@ -23,9 +25,9 @@ _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,steering_cache)==
 _Static_assert(__builtin_offsetof(struct SlicksRaceRuntime,particle_visibility)==
     __builtin_offsetof(struct SlicksRaceRuntime,steering_cache)+
     sizeof(((struct SlicksRaceRuntime *)0)->steering_cache),"snapshot mutable tail layout");
-_Static_assert(sizeof(struct SlicksRaceRuntime)==
+_Static_assert(SLICKS_RETENTION_TAIL==
     __builtin_offsetof(struct SlicksRaceRuntime,particle_visibility)+
-    sizeof(((struct SlicksRaceRuntime *)0)->particle_visibility),"snapshot covers runtime tail");
+    sizeof(((struct SlicksRaceRuntime *)0)->particle_visibility),"snapshot covers post-map mutable tail");
 
 static unsigned int slicks_retention_map_hash(const struct SlicksRaceRuntime *race)
 {
@@ -48,6 +50,7 @@ static void slicks_retention_capture(struct SlicksRetentionSnapshot *saved,
 {
     __builtin_memcpy(saved->prefix,race,sizeof saved->prefix);
     __builtin_memcpy(saved->steering,race->steering_cache,sizeof saved->steering);
+    __builtin_memcpy(saved->tail,(const unsigned char *)race+SLICKS_RETENTION_TAIL,sizeof saved->tail);
     saved->immutable_hash=slicks_retention_map_hash(race);
 }
 static int slicks_retention_maps_match(const struct SlicksRetentionSnapshot *saved,
@@ -59,6 +62,7 @@ static int slicks_retention_restore(struct SlicksRaceRuntime *race,
     int unchanged=slicks_retention_maps_match(saved,race);
     __builtin_memcpy(race,saved->prefix,sizeof saved->prefix);
     __builtin_memcpy(race->steering_cache,saved->steering,sizeof saved->steering);
+    __builtin_memcpy((unsigned char *)race+SLICKS_RETENTION_TAIL,saved->tail,sizeof saved->tail);
     return unchanged;
 }
 #endif

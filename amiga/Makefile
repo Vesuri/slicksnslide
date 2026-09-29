@@ -219,7 +219,7 @@ obj/particle_draw.o: $(REPO)/src/game/particle_draw.s | obj
 obj/actor_allocate.o: $(REPO)/src/game/actor_allocate.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/race_offsets.i: $(REPO)/src/game/race_offsets.c $(REPO)/src/game/race_runtime.h Makefile | obj
+obj/race_offsets.i: $(REPO)/src/game/race_offsets.c $(REPO)/src/game/race_runtime.h $(REPO)/src/game/car_display.h Makefile | obj
 	$(CC) $(CCFLAGS) -S -o obj/race_offsets.s $<
 	sed -n 's/^@@//p' obj/race_offsets.s > $@
 

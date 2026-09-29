@@ -626,7 +626,13 @@ verify-help-pixels: build/verify_help_pixels build/font_string_test.bin
 .PHONY: verify-track-data-view
 .PHONY: verify-demo-overlay
 .PHONY: verify-demo-return
-build/verify_demo_return: tools/verify_demo_return.c tools/verify_options_menu.c | build
+.PHONY: verify-car-display
+build/verify_car_display: tools/verify_car_display.c tools/verify_options_menu.c src/game/car_display.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-car-display: build/verify_car_display
+	build/verify_car_display
+
+build/verify_demo_return: tools/verify_demo_return.c tools/verify_options_menu.c src/game/race_return.h src/game/race_runtime.h src/game/car_display.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-demo-return: build/verify_demo_return
 	build/verify_demo_return
@@ -1012,7 +1018,7 @@ verify-drive-trajectory: build/verify_drive_trajectory
 	build/verify_drive_trajectory 4 ref/TRACKS/BUMPS.SS
 
 build/verify_surface_effects: tools/verify_surface_effects.c \
-		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h src/game/car_display.h src/game/sprite_retention.inc
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/track_scene.c -o $@
@@ -1022,7 +1028,7 @@ verify-surface-effects: build/verify_surface_effects
 
 .PHONY: verify-dirty-tracking verify-planar-writes
 build/verify_dirty_tracking: tools/verify_dirty_tracking.c \
-		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h
+		src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.h src/game/car_display.h src/game/sprite_retention.inc
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
 		-Wl,-dead_strip $< src/game/track_scene.c -o $@
@@ -1344,7 +1350,7 @@ verify-particle-compact-trial: unpack build/particle_advance.bin build/particle_
 	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin build/particle_compact_trial.bin build/particle_compact_legacy.bin
 
 # Target structure offsets from the 68020 compiler for native-routine tests.
-build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h src/game/weapon_runtime.h | build
+build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h src/game/weapon_runtime.h src/game/car_display.h | build
 	mkdir -p build/offsets
 	$(M68K_CC) -m68020 -O2 -S -o build/offsets/race_offsets.s $<
 	sed -n 's/^@@//p' build/offsets/race_offsets.s > $@
@@ -1431,7 +1437,7 @@ build/verify_car_draw: tools/verify_car_draw.c tools/verify_surface_effects.c sr
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-draw
-build/verify_car_render_cache: tools/verify_car_render_cache.c tools/verify_surface_effects.c tools/native_sprite_oracle.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h | build
+build/verify_car_render_cache: tools/verify_car_render_cache.c tools/verify_surface_effects.c tools/native_sprite_oracle.h src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/car_display.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 .PHONY: verify-car-render-cache

@@ -22,8 +22,17 @@ slicks_draw_car_native:
 	lea	RACE_CARS(a4),a5
 	adda.l	d0,a5
 	moveq	#0,d6
+	tst.b	RACE_CAR_DISPLAY_READY(a4)
+	beq.s	.live_heading
+	move.w	d7,d0
+	mulu.w	#CAR_DISPLAY_SIZE,d0
+	lea	RACE_CAR_DISPLAY(a4),a0
+	move.w	CAR_DISPLAY_FRAME(a0,d0.l),d6
+	bra.s	.direction_ready
+.live_heading:
 	move.w	CAR_HEADING(a5),d6
 	divu.w	#1200,d6		; direction (low word)
+.direction_ready:
 	moveq	#3,d0
 	and.w	d6,d0
 	moveq	#0,d1

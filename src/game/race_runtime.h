@@ -1,5 +1,6 @@
 #ifndef SLICKS_RACE_RUNTIME_H
 #define SLICKS_RACE_RUNTIME_H
+#include "car_display.h"
 
 #include "track_scene.h"
 #include "weapon_runtime.h"
@@ -427,6 +428,8 @@ struct SlicksRaceRuntime {
     signed char demo_flag;
     unsigned char demo_label[9];
     const unsigned char *demo_palette;
+    struct SlicksCarDisplay car_display[4];
+    unsigned char car_display_ready;
 };
 
 /* Original DS:0459 / DS:0bff. The palette supplied to set_status_palette

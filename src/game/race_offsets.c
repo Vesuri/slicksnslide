@@ -14,6 +14,10 @@ void slicks_race_offsets(void);
 void slicks_race_offsets(void)
 {
     OFFSET(RACE_CARS, struct SlicksRaceRuntime, cars);
+    OFFSET(RACE_CAR_DISPLAY, struct SlicksRaceRuntime, car_display);
+    OFFSET(RACE_CAR_DISPLAY_READY, struct SlicksRaceRuntime, car_display_ready);
+    OFFSET(CAR_DISPLAY_FRAME, struct SlicksCarDisplay, frame);
+    VALUE(CAR_DISPLAY_SIZE, sizeof(struct SlicksCarDisplay));
     OFFSET(RACE_MATERIAL_MAP, struct SlicksRaceRuntime, material_map);
     OFFSET(RACE_SURFACE_MAP, struct SlicksRaceRuntime, surface_map);
     OFFSET(RACE_BOUNDARY_LEVEL, struct SlicksRaceRuntime, boundary_level);
