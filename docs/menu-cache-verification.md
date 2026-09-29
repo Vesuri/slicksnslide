@@ -420,3 +420,23 @@ The passing local logs are `tmp/records-resident-retry-final.log`,
 `tmp/records-resident-read-skip-recheck.log`. All runs were muted PAL A1200,
 2 MiB Chip/no Fast RAM, and their runner closed the emulators. This is a
 record-owner lifetime/recovery check, not a whole-game release or timing gate.
+
+## Championship results return residency
+
+Championship results now keep display ownership through the initial race fade,
+RAM-only cleanup and return. A nonzero-score cup still explicitly releases
+ownership to load its on-demand bitmap/palette, closes the disk archive before
+takeover, and uses the cached font provider. Zero-score return performs no cup
+load. Both copper palettes finish black before the title owner reconstructs
+pixels and installs the title palette, avoiding an exposed intermediate view.
+
+Fresh muted native runs passed `diag_championship_zero_resident.gdb` with
+`SLICKS_INTERMISSION_LIVE=3` and `diag_championship_resident.gdb` with
+`SLICKS_OPTIONS_MENU=8`. Local logs `tmp/cup-resident-zero.log` and
+`tmp/cup-resident-points.log` report `NATIVE_CUP_RESIDENT_RETURN_OK`, respectively
+zero and one disk loads. Guards checked owned returns, explicit disk boundaries,
+all 256 colours in both banks of both copper lists black at return, title
+reconstruction entry while owned, and restoration 31. The runner closed both
+emulators. Host palette-fade, championship-standings and standings-draw gates
+also passed. This is scoped lifetime/fade evidence, not complete menu rectangle
+coverage or a refreshed release validation.

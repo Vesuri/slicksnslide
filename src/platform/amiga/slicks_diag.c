@@ -3190,6 +3190,8 @@ done:
 /* 25965..259d7 / 2a63e..2aad5. This owns the actual archive bitmap and
  * font, not a captured DOS screen. Profile statistics are published once,
  * after successful resource loading/drawing and before the original wait. */
+__attribute__((noinline)) void slicks_diag_standings_io(void) { __asm__ volatile("" ::: "memory"); }
+__attribute__((noinline)) void slicks_diag_standings_closed(void) { __asm__ volatile("" ::: "memory"); }
 static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     const unsigned char *race_palette,unsigned short timer,unsigned char *setup_dirty,unsigned char diagnostic)
 {
@@ -3201,12 +3203,15 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
     unsigned short view=0;
     int result=-1,nonzero=0;
     for(unsigned i=0;i<4;++i) nonzero|=g_slicks_setup_session.points[i];
-    slicks_amiga_platform_end(platform);
-    for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,platform->views[i].bitmap,0,200);
-    if(slicks_amiga_platform_set_view(platform,0,race_palette) || slicks_amiga_platform_begin(platform,0) ||
-       result_fade(platform,race_palette,100,0,2,timer,&view)) goto done;
-    slicks_amiga_platform_end(platform);
+    /* The record/intermission owner returns on view 1. Prepare view 0,
+     * switch, then populate the now-inactive second bitmap for palette fades. */
+    slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+    if(slicks_amiga_platform_set_view(platform,0,race_palette) || show_menu(platform)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,platform->views[1].bitmap,0,200);
+    if(result_fade(platform,race_palette,100,0,2,timer,&view)) goto done;
     if(!nonzero) { result=0; goto done; }
+    slicks_diag_standings_io();
+    slicks_amiga_platform_end(platform);
     if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
     bitmap=AllocMem(64003,MEMF_ANY);
     if(!bitmap || slicks_resource_archive_load(&archive,"sskuppi.@I",bitmap,64003)!=64003 ||
@@ -3214,7 +3219,10 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
        slicks_resource_archive_load(&archive,"sskuppi.@p",palette,768)!=768) goto done;
     for(unsigned long i=0;i<64000;++i) chunky[i]=bitmap[i+3];
     FreeMem(bitmap,64003); bitmap=0;
+    slicks_resource_archive_close(&archive);
+    if(slicks_resource_archive_cached(&archive,menu_cache)) goto done;
     m=slicks_amiga_help_surface_create(&archive,chunky,palette);
+    slicks_resource_archive_close(&archive);
     if(!m) goto done;
     const unsigned char *names[4];
     for(unsigned i=0;i<4;++i) {
@@ -3239,12 +3247,14 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
     g_slicks_diag_standings_phase=3; slicks_diag_standings_ready();
     result=0;
 done:
-    slicks_amiga_platform_end(platform);
     g_slicks_diag_standings_menu=0;
+    if(!result && (slicks_amiga_platform_set_view(platform,0,black) ||
+                   slicks_amiga_platform_set_view(platform,1,black))) result=-1;
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&archive);
     if(bitmap) FreeMem(bitmap,64003);
-    /* The caller rebuilds the original title while hardware is restored. */
+    /* Both palettes remain black until the caller has drawn the title. */
+    slicks_diag_standings_closed();
     return result;
 }
 
@@ -4516,12 +4526,12 @@ int main(void)
                     if (slicks_setup_basic_mode(logical, mode_state) != 0)
                         goto cleanup;
                     make_title_surface(logical, title_frame, source_palette);
-                    if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
                     redraw_title_configuration(
                         &platform, logical, chunky, source_palette,
                         menu_selection, selected_vehicle,
                         track_names[selected_track],
                         selected_laps);
+                    if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
                     if(!platform.active && slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;

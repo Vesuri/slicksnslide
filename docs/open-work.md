@@ -39,6 +39,11 @@ Implementation and completed verification evidence are separate in
 
 ## Menu loading and presentation
 
+- Audit every menu's repaint bounds and C2P publication. Preserve horizontal
+  as well as vertical dirty bounds, merge overlapping rectangles, and convert
+  only the covered blocks. Check ordinary selection changes, nested dialogs,
+  restoration, scrolling and transitions; reserve full-screen conversion for
+  actual full-screen replacements. Verify producer coverage and native pixels.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.
@@ -94,8 +99,9 @@ Implementation and completed verification evidence are separate in
   warning close and RAM-only track-list chooser input now retain hardware
   ownership. Saved-game picker-to-name, notice closes and RAM-only returns also
   retain ownership. Verify the existing cached Load-owner transition after its
-  entry route is resolved; migrate championship results and remaining RAM-only
-  owners. Post-race record assets/close and recovery returns now use the cache
+  entry route is resolved; migrate remaining RAM-only owners. Championship
+  results retain ownership except for their explicit on-demand cup load.
+  Post-race record assets/close and recovery returns now use the cache
   and retain ownership outside explicit record I/O boundaries.
   Normal intermission and retry/end-match warning returns retain ownership;
   rerun their lifetime checks as part of the broader release gates.
