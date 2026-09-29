@@ -41,6 +41,7 @@
 #include "../../ui/profile_actions.h"
 #include "../../ui/title_help.h"
 #include "../../ui/title_navigation.h"
+#include "../../ui/title_start.h"
 #include "../../ui/arcade_title_painter.h"
 #include "../../ui/language_table.h"
 #include "resource_archive.h"
@@ -5075,6 +5076,8 @@ int main(void)
                     /* Original 2a593..2a5e4 supplies one random track when
                      * GO is selected with an empty playlist. */
                     if(original_setup) {
+                        if(slicks_title_start_shuffle(&g_slicks_track_playlist,action,
+                            g_slicks_track_state.random_order,&g_slicks_setup_session.random_state)) goto cleanup;
                         if(!g_slicks_track_playlist.count && slicks_track_playlist_random(
                             &g_slicks_track_playlist,track_count,1,&g_slicks_setup_session.random_state)) goto cleanup;
                         selected_track=(unsigned short)track_selection[0];

@@ -50,8 +50,8 @@ restores saved state when DS:1148 is set. Demo caller implementation is still op
 F9 now takes the native GO preparation tail without activating the highlighted
 row. An additional 84 original-instruction cases execute the real dispatch
 table at `2a3ac` through `2a566`: all six modes, seven rows and both
-registration-flag values return 99 with selection unchanged. No submenu or
-registration-notification callback is stubbed on this path. Subsequent
+random-order flag values return 99 with selection unchanged. No submenu or
+shuffle callback is stubbed on this path. Subsequent
 empty-playlist randomization and player preparation use the existing shared
 native race-start path, rather than a second shortcut-only implementation.
 
@@ -65,6 +65,27 @@ computer participants and override=2. The muted emulator exits normally.
 Local log: `tmp/title-f9-native.log`. The initial diagnostic launch failed
 because its outer argument parser omitted the new C suffix; this was fixed
 and the complete run repeated, not counted as a gameplay failure or pass.
+
+The follow-up caller trace corrected an earlier interpretation of DS:0624:
+it is the track Random Order flag, not registration. Original GO at `2a4e7`
+calls playlist shuffle `26d34` when it is nonzero, whereas F9 bypasses the
+shuffle. Production shuffled at startup and when enabling Random Order but
+missed this additional GO boundary. The GO-only call is now restored before
+empty-playlist fallback and race preparation. `verify-track-playlist` passes
+576 GO/F9 caller comparisons (six list lengths, sixteen RNG seeds, three flag
+values, both actions), comparing all 256 list words, count, RNG and return
+value against the original instructions. The original real shuffle and RNG
+execute without substitute callbacks. Its existing 480 playlist cases and
+the title input/Help/F9 checks also pass.
+
+The ordinary GO native regression passes after the shuffle fix: counts=15,
+draws=30, checks=45, errors=0, options=1, starts=1, restore=31, with the
+expected two-human/two-computer handoff. Run from `amiga/` using
+`SLICKS_REGISTRATION_TEST=7 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/title-go-shuffle ./debug.sh '' diag_arcade_title.gdb`;
+local evidence is `tmp/title-go-shuffle-native.log`. Muted FS-UAE exited.
+This regression checks the native caller remains connected; the independent
+original-instruction comparison above proves the shuffle/RNG semantics.
 
 After removing mouse activation, the native `REGCHECKT` title-transition run
 passes modes=31, roles=7, counts=3, checks=33, errors=0, restore=31. The

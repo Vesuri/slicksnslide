@@ -2,6 +2,7 @@
 #include "verify_options_menu.c"
 #undef main
 #include "../src/game/track_playlist.h"
+#include "../src/ui/title_start.h"
 static void name_boundary(uc_engine *u,uint64_t address,uint32_t size,void *p)
 {
     (void)address; (void)size; (void)p;
@@ -52,6 +53,30 @@ int main(void)
         }
         ++cases;
     }
+    unsigned starts=0;
+    for(unsigned action=2;action<=4;action+=2) for(unsigned flag=0;flag<3;++flag)
+    for(unsigned c=0;c<6;++c) for(unsigned pattern=0;pattern<16;++pattern) {
+        unsigned count=counts[c];
+        short list[256];
+        for(unsigned i=0;i<256;++i) {
+            list[i]=(short)(i<count?count-1-i:0x7777);
+            word(u,0x70000+2*i,(unsigned short)list[i]);
+        }
+        unsigned long seed=(pattern*0x9e3779b9UL+c)&0xffffffffUL;
+        word(u,0x3cbf0+0x2aaa,seed);word(u,0x3cbf0+0x2aac,seed>>16);
+        word(u,0x3cbf0+0x62a,0);word(u,0x3cbf0+0x62c,0x7000);
+        word(u,0x3cbf0+0x90,count);word(u,0x3cbf0+0x624,flag==2?255:flag);
+        regs(u,0);word(u,0x8effe,0);
+        check(uc_emu_start(u,action==2?0x2a4e7:0x2a4c5,
+            action==2?0x2a537:0x2a566,0,5000000));
+        struct SlicksTrackPlaylist p={list,(unsigned short)count,256};
+        if(slicks_title_start_shuffle(&p,action,flag==2?255:flag,&seed) ||
+            seed!=(readword(u,0x3cbf0+0x2aaa)|((unsigned long)readword(u,0x3cbf0+0x2aac)<<16)) ||
+            readword(u,0x3cbf0+0x90)!=count || (readword(u,0x8effe)>>8)!=99) abort();
+        for(unsigned i=0;i<256;++i) if((unsigned short)list[i]!=readword(u,0x70000+2*i)) abort();
+        ++starts;
+    }
+    printf("Original GO/F9 caller: %u playlist/RNG/return comparisons pass\n",starts);
     /* Native capacity guards must reject before changing list, count or RNG. */
     short guarded[3]={0,1,123},before[3]; memcpy(before,guarded,sizeof guarded);
     struct SlicksTrackPlaylist full={guarded,2,2}; unsigned long seed=1234;

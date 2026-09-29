@@ -37,14 +37,14 @@ int main(void)
         if((ax&255)!=(scan<128?scan:0)) abort();
     }
     /* Execute F9's real dispatch table and case, including arbitrary menu
-     * rows and both registration states. Unlike Enter it never opens the
-     * selected submenu or invokes GO's registration notification. */
+     * rows and both random-order states. Unlike Enter it never opens the
+     * selected submenu or invokes GO's playlist shuffle. */
     for(unsigned mode=0;mode<6;++mode) for(unsigned row=0;row<7;++row)
-    for(unsigned registered=0;registered<2;++registered) {
+    for(unsigned random_order=0;random_order<2;++random_order) {
         regs(u,0);
         word(u,0x8eff2,0x43); word(u,0x8effc,row);
         word(u,0x8effe,0); word(u,0x3cbf0+0x92,mode);
-        word(u,0x3cbf0+0x624,registered);
+        word(u,0x3cbf0+0x624,random_order);
         check(uc_emu_start(u,0x2a3ac,0x2a566,0,100));
         unsigned char result; check(uc_mem_read(u,0x8efff,&result,1));
         if(result!=99 || readword(u,0x8effc)!=row) abort();
