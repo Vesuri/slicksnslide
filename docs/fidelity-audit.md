@@ -20,7 +20,7 @@ and a production-screen comparison establish different things.
 | F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
 | F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. Native integration and original full-screen renderer comparisons pass. Caller/transition font-alias lifetime, shortcut and mouse coverage remain to be completed. |
 | F11 | Added mouse-click title activation | Native code dispatched Enter on a left-button edge through a second, incomplete owner path. Removed: original `36ce0..36d64`, called by the title at `2a376`, reads the keyboard scan latch and repeat timer, not mouse buttons. |
-| F12 | Missing title F9 and demo routes | The dispatcher returns actions 4 and 5, but the native title owner ignores them. Original F9 jumps to the result-99 case; F12 and the title idle timeout enter `2a3db` demo setup, backing up configuration and selecting a random track with four computer profiles. These are not ordinary GO. |
+| F12 | Missing title F9 and demo routes | The native owner originally ignored dispatcher actions 4 and 5. F9 is now connected to race preparation; demo remains missing. Original F9 jumps to the result-99 case; F12 and the title idle timeout enter `2a3db` demo setup, backing up configuration and selecting a random track with four computer profiles. These are not ordinary GO. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
@@ -45,7 +45,26 @@ demo lifecycle. The original dispatch table at CS:3f5e maps scan 43 to
 `2a4c5` and scan 58 to `2a3db`; title elapsed time above 20000 also supplies
 scan 58. Demo setup saves selected profiles and configuration, chooses a
 random track and substitutes four computer profiles; the next title entry
-restores saved state when DS:1148 is set. Caller implementation is still open.
+restores saved state when DS:1148 is set. Demo caller implementation is still open.
+
+F9 now takes the native GO preparation tail without activating the highlighted
+row. An additional 84 original-instruction cases execute the real dispatch
+table at `2a3ac` through `2a566`: all six modes, seven rows and both
+registration-flag values return 99 with selection unchanged. No submenu or
+registration-notification callback is stubbed on this path. Subsequent
+empty-playlist randomization and player preparation use the existing shared
+native race-start path, rather than a second shortcut-only implementation.
+
+Native F9 verification uses `REGCHECKC`, repeating the Arcade count edits and
+Options round-trip from `REGCHECKB` but replacing the final Up/Enter with
+F9 while Settings remains selected. `SLICKS_REGISTRATION_TEST=8
+SLICKS_DEBUG_WARP=1 FSUAE_RUN=.run/title-f9 ./debug.sh ''
+diag_arcade_title.gdb` passes counts=15, draws=28, checks=43, errors=0,
+options=1, starts=1, restore=31. The race handoff has two human and two
+computer participants and override=2. The muted emulator exits normally.
+Local log: `tmp/title-f9-native.log`. The initial diagnostic launch failed
+because its outer argument parser omitted the new C suffix; this was fixed
+and the complete run repeated, not counted as a gameplay failure or pass.
 
 After removing mouse activation, the native `REGCHECKT` title-transition run
 passes modes=31, roles=7, counts=3, checks=33, errors=0, restore=31. The

@@ -45,11 +45,12 @@ Implementation and completed verification evidence are separate in
   Do not claim feature completeness from isolated or historical passes.
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
-  remaining title shortcuts against original callers: F9's result-99 path
-  and F12/idle-timeout demo setup are currently ignored by the native owner.
+  remaining title shortcuts against original callers: F12/idle-timeout demo
+  setup is currently ignored by the native owner.
   Implement their configuration backup/restore and race-return lifecycle;
   do not merely map them to ordinary GO. The added mouse activation path
   has been removed following the original keyboard-reader audit.
+  F9 now reaches normal race preparation independently of the highlighted row.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
   The Arcade body now passes original full-screen and font-state comparisons.
   The separate Arcade renderer, original arrow/action

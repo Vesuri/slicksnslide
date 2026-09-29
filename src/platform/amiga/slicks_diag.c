@@ -3505,9 +3505,9 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
-        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:4;
+        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
         else if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
@@ -4181,13 +4181,17 @@ int main(void)
                 0x4d,0x4e,0x4e,0x4e,0x4e, /* OPTIONS: all normal badges. */
                 0x4f,0x4f,0x4f,0x4f};
             unsigned at=registration_test-1;
-            if(title_dirty_test==4) {
+            if(title_dirty_test==4 || title_dirty_test==5) {
                 static const unsigned char arcade_keys[]={0x4d,0x4d,0x4d,
                     0x4e,0x4e,0x4e,0x4e,0x4e, /* mode 0 -> Arcade */
                     0x4c,0x4c,0x4c, /* visual row zero */
                     0x4e,0x4e,0x4e,0x4e,0x4f,0x4f,0x4f,0x4e,
                     0x4d,0x44,0x45,0x4c,0x44}; /* Options, return, GO */
-                if(at==sizeof arcade_keys) registration_test=0;
+                if(title_dirty_test==5 && at==sizeof arcade_keys-2) {
+                    /* F9 from Settings must start, not activate Options. */
+                    static const unsigned char f9=0x58;
+                    championship_test_keys(&platform,&f9,1);registration_test=0;
+                } else if(at==sizeof arcade_keys) registration_test=0;
                 else {championship_test_keys(&platform,&arcade_keys[at],1);++registration_test;}
             } else if(title_dirty_test==3) {
                 if(++registration_test==74) {g_slicks_diag_force_exit=1;registration_test=0;}
@@ -4237,7 +4241,7 @@ int main(void)
         }
         if (!g_slicks_diag_ingame)
             slicks_amiga_platform_wait_vblank(&platform);
-        if(title_dirty_test==4 && g_slicks_diag_ingame && race->frame_count>=2)
+        if((title_dirty_test==4 || title_dirty_test==5) && g_slicks_diag_ingame && race->frame_count>=2)
             g_slicks_diag_force_exit=1;
         if (g_slicks_diag_force_exit || (natural_results_test && argv[7]=='O' &&
             g_slicks_diag_ingame && race->frame_count>=600) ||
@@ -5063,7 +5067,9 @@ int main(void)
                     exit_requested=1;
                     continue;
                 }
-                if (action == 2 && menu_selection == 0) {
+                /* Original F9 (2a4c5) returns 99 regardless of the selected
+                 * row, sharing the GO playlist/player preparation tail. */
+                if (action == 4 || (action == 2 && menu_selection == 0)) {
                     g_slicks_diag_ready = 0;
                     slicks_amiga_platform_end(&platform);
                     /* Original 2a593..2a5e4 supplies one random track when
