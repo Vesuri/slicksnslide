@@ -699,6 +699,40 @@ stack, muted audio and automatic emulator cleanup. Build log:
 `tmp/title-pulse-rows-build.log`. These debugger-stopped checks are not timing
 measurements and do not change the recorded cadence results.
 
+### Supplied translated-title overlap coverage (2026-09-30)
+
+`verify-title-menu-pixels` now additionally runs native font measurement and
+individual selected-label drawing for every visible row across eight supplied
+language tables plus missing-table fallback. Production glyph bounds contain
+the resulting native foreground/shadow pixels in all 54 cases. Measurement
+and painting must both return normally; the existing 63 original-instruction
+full-screen/font/crop comparisons still pass. Log:
+`tmp/title-pulse-bounds-verify.log`.
+
+The exhaustive supplied-label inventory finds exactly two intersections with
+the status rectangle: row 3 in language 3 (120,124..201,133) and language 4
+(119,124..201,133). Both use the conservative original-order label/status
+redraw path rather than the ordinary single-glyph pulse.
+
+Native `REGCHECKA3` with actual saved configurations verifies these cases:
+
+| Language | Native run under `tmp/standalone-release-` |
+| --- | --- |
+| 3 | `s9eequ4z` |
+| 4 | `pv765sw0` |
+
+Each passes 75 ticks, 21 colour changes, 27 complete native display checks,
+zero errors and system restoration 31. Each records 22 complete-title painter
+calls at row 3 (navigation entry plus changed-colour overlap redraws), but
+neither increases the full-screen publication count during the title cycle.
+For each run, all 65 consecutive captured compositions independently match
+every pixel produced by the original DOS title wrapper.
+
+These are muted stock PAL A1200, 2 MiB Chip/no Fast, default 4 KiB stack runs;
+both owned emulators closed. This closes the supplied translated-label/status
+overlap pulse gap, not other rows' native input cycles, registered-owner
+combinations or animation timing. No production rendering change was needed.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

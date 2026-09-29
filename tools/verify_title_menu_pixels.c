@@ -4,6 +4,10 @@
 #include "verify_palette_remap.c"
 #undef main
 #include "../src/ui/title_background.h"
+#include "../src/ui/help_text_dirty.h"
+struct PulseBounds { short l,t,r,b; };
+static void pulse_bounds(void *context,short l,short t,short r,short b)
+{ *(struct PulseBounds *)context=(struct PulseBounds){l,t,r,b}; }
 static unsigned big32(const unsigned char *p)
 {return (unsigned)p[0]<<24|(unsigned)p[1]<<16|(unsigned)p[2]<<8|p[3];}
 static void native_long(uc_engine *m,unsigned at,unsigned v)
@@ -45,13 +49,48 @@ int main(void)
     struct Vga v={0};uc_hook hook;
     check(uc_hook_add(x,&hook,UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE,vga_access,&v,0xa0000,0xaffff));
     check(uc_hook_add(x,&hook,UC_HOOK_INSN,font_port,&v,1,0,UC_X86_INS_OUT));
-    unsigned cases=0;
+    unsigned cases=0,pulse_cases=0,overlaps=0;
     for(unsigned language=0;language<=8;++language){
         for(unsigned i=0;i<7;++i){unsigned char key[]="menu1";key[4]=(unsigned char)('1'+i);
             const unsigned char *text=menu_language_title(x,language,key);
             unsigned at=0x70000+128*i;
             check(uc_mem_write(m,at,text,strlen((const char *)text)+1));native_long(m,big32(code+4)+4*i,at);}
         for(unsigned row=0;row<7;++row){
+            if(row!=4) {
+                unsigned char text[128],paint_font[8192];
+                check(uc_mem_read(m,0x70000+128*row,text,sizeof text));
+                memcpy(paint_font,font,font_size);paint_font[6]=254;
+                check(uc_mem_write(m,0x60000,paint_font,font_size));
+                native_reg(m,UC_M68K_REG_SR,0);native_reg(m,UC_M68K_REG_A7,0x300000);
+                native_long(m,0x300000,0x380000);
+                native_reg(m,UC_M68K_REG_A1,0x60000);native_reg(m,UC_M68K_REG_A2,0x70000+128*row);
+                native_reg(m,UC_M68K_REG_D0,0);native_reg(m,UC_M68K_REG_D3,1);native_reg(m,UC_M68K_REG_D4,10);
+                check(uc_emu_start(m,big32(code+16),0x380000,0,2000000));
+                uint32_t width,stopped;check(uc_reg_read(m,UC_M68K_REG_PC,&stopped));
+                if(stopped!=0x380000)abort();
+                check(uc_reg_read(m,UC_M68K_REG_D0,&width));
+                short y=(short)(85+13*(row>4?row-1:row));
+                struct PulseBounds bounds={0};
+                struct SlicksChunkyUi ui={0,palette,pulse_bounds,&bounds};
+                slicks_font_text_dirty(&ui,font,text,160,y,1,5,(short)width,0);
+                memset(logical,0,sizeof logical);check(uc_mem_write(m,0x100000,logical,sizeof logical));
+                native_reg(m,UC_M68K_REG_A0,0x100000);native_reg(m,UC_M68K_REG_A7,0x300000);
+                native_reg(m,UC_M68K_REG_D0,160);native_reg(m,UC_M68K_REG_D1,(unsigned)y);
+                native_reg(m,UC_M68K_REG_D2,5);native_reg(m,UC_M68K_REG_D5,9);native_reg(m,UC_M68K_REG_D6,0x100);
+                check(uc_emu_start(m,big32(code+20),0x380000,0,2000000));
+                check(uc_reg_read(m,UC_M68K_REG_PC,&stopped));if(stopped!=0x380000)abort();
+                check(uc_mem_read(m,0x100000,actual,sizeof actual));
+                for(unsigned py=0;py<200;++py)for(unsigned px=0;px<320;++px)
+                    if(actual[(px&3)*65536+py*100+(px>>2)] &&
+                       ((int)px<bounds.l || (int)px>=bounds.r || (int)py<bounds.t || (int)py>=bounds.b)) {
+                        fprintf(stderr,"Pulse bounds miss native glyph language=%u row=%u at %u,%u\n",language,row,px,py);return 1;
+                    }
+                if(bounds.l<244 && bounds.r>200 && bounds.t<140 && bounds.b>96) {
+                    printf("Title pulse status overlap: language=%u row=%u bounds=%d,%d,%d,%d\n",language,row,bounds.l,bounds.t,bounds.r,bounds.b);
+                    ++overlaps;
+                }
+                ++pulse_cases;
+            }
             memcpy(v.pixels,base,sizeof base);memset(logical,0,sizeof logical);
             for(unsigned y=0;y<200;++y)for(unsigned col=0;col<320;++col)
                 logical[(col&3)*65536+y*100+(col>>2)]=base[y*320+col];
@@ -75,5 +114,6 @@ int main(void)
             if(memcmp(original_font,native_font,font_size))abort();++cases;
         }
     }
-    uc_close(x);uc_close(m);printf("Original title menu pixels: %u full-screen/font and dirty-crop comparisons across eight languages plus fallback pass\n",cases);return 0;
+    uc_close(x);uc_close(m);printf("Original title menu pixels: %u full-screen/font and dirty-crop comparisons across eight languages plus fallback pass\n",cases);
+    printf("Title pulse glyph bounds: %u native-store checks; %u status-overlap cases\n",pulse_cases,overlaps);return 0;
 }

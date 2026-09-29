@@ -104,8 +104,10 @@ Implementation and completed verification evidence are separate in
   Registered Finnish timing still averages 22.500 ms, with eight of 64 intervals
   taking two refreshes. Finnish Options now also has a complete native
   65-frame original-wrapper pulse comparison and selective-publication check.
-  Extend pulse coverage to remaining rows and translated-label status overlaps
-  and address remaining title-pulse cost separately.
+  Both supplied translated-label/status overlap cases now have complete native
+  pulse/original-wrapper comparisons and no full-screen pulse publication.
+  Extend pulse coverage to remaining rows and address remaining title-pulse
+  cost separately.
   This is menu fidelity/publication work,
   not a resumption of the paused gameplay optimization backlog. Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:

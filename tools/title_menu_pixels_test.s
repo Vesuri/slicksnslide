@@ -1,5 +1,6 @@
 	section code
 	dc.l sui_title_menu,slicks_title_labels,slicks_title_font,slicks_title_third_color
+	dc.l sui_font_measure,sui_font_string_planar
 	include "src/ui/sui_title_menu.s"
 	include "src/ui/sui_text.s"
 	include "src/ui/sui_bevel.s"
