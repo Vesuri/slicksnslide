@@ -1,5 +1,5 @@
 	section code
-	dc.l sui_title_menu,sui_draw_text,sui_bevel
+	dc.l sui_title_menu,sui_draw_text,sui_bevel,slicks_title_labels
 	include "src/ui/sui_title_menu.s"
 sui_draw_text:
 	rts

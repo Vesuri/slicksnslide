@@ -248,6 +248,41 @@ on missing `KICKSTART` before launching; it is not a test result.
 This does not establish all native per-language menu/input routes or close
 the remaining title-row localization audit.
 
+### F15 ordinary title labels (2026-09-29)
+
+Original `298fc` calls `36227` on a constructed `menuN` key. The native
+assembly had hardcoded English strings. Startup now resolves all seven keys
+into the resident language table; the assembly uses those pointers for the
+six visible rows. The original unconditional omission of row five is unchanged.
+Missing keys retain the original key fallback. Resolution adds no redraw-time
+file I/O or allocation and does not change the label/bevel drawing order.
+
+`verify-title-menu` no longer intercepts the original lookup or substitutes
+numeric label IDs. It compares actual text and complete drawing commands in
+2,016 cases: eight tables plus no-table fallback, seven selections (including
+the hidden row), sixteen colour pairs and both VGA pages.
+`verify-title-menu-pixels` executes the complete original and production
+68020 composition, text and bevel paths without drawing hooks. Its 63 cases
+compare all 64,000 pixels and complete font state across the nine table cases
+and seven selections. Every changed pixel remains within the existing
+x=108..207, y=77..173 dirty crop; no wider C2P publication is needed for the
+supplied translations. Font/ABI and title dirty-list regression gates pass.
+
+The first live translated-title run, `tmp/standalone-release-xoeg8u18`,
+confirmed all label pointers resident, zero pixel errors and restoration 31,
+but failed the older exact-six-partial-redraw assertion: timed pulses added
+seven publications during debugger-assisted navigation. The gate now requires
+at least the six navigation publications, one full initialization, one pixel
+audit per publication, unchanged final dirty area and complete restoration.
+It does not suppress or disregard pixel failures. Build:
+`tmp/title-language-build.log`.
+The corrected gate passes on `tmp/standalone-release-bwcjc0ti`, using a
+persisted language-2 configuration and the stripped executable on stock
+PAL 68020, 2 MiB/no Fast and the default 4 KiB stack. The read-only constructor
+equivalent check observes all seven label pointers inside the resident table
+at each assembly-menu entry. Both owned muted emulators are closed. This is
+one native language/navigation route, not exhaustive keyboard/lifetime coverage.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title

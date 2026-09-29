@@ -94,6 +94,7 @@ unsigned char *slicks_title_small_font;
 static unsigned char *title_arcade_font;
 static unsigned char title_language[2048];
 static unsigned title_language_used;
+extern const unsigned char *slicks_title_labels[7];
 static char menu_language_name[10]="lang1.txt";
 static unsigned char language_choice_test;
 volatile unsigned char g_slicks_language_console_modes,g_slicks_language_console_bytes;
@@ -4079,6 +4080,9 @@ int main(void)
         long bytes=slicks_resource_archive_load(&archive,menu_language_name,title_asset,64003UL);
         if(bytes<0 || slicks_language_table_load(title_asset,(unsigned)bytes,title_language,
             sizeof title_language,&title_language_used)) goto cleanup;
+        for(unsigned i=0;i<7;++i)
+            slicks_title_labels[i]=slicks_language_lookup(title_language,title_language_used,
+                slicks_title_labels[i],slicks_title_labels[i]);
     }
 
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);

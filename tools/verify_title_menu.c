@@ -7,6 +7,8 @@
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
 #include <unicorn/m68k.h>
+#include "host_archive.h"
+#include "../src/ui/language_table.h"
 static void ck(uc_err e) { if(e) { fprintf(stderr,"%s\n",uc_strerror(e)); exit(1); } }
 static unsigned rw(uc_engine *u,unsigned a)
 { unsigned char b[2]; ck(uc_mem_read(u,a,b,2)); return b[0]|b[1]<<8; }
@@ -18,7 +20,7 @@ static void wl(uc_engine *u,unsigned a,unsigned v)
 { unsigned char b[4]={v>>24,v>>16,v>>8,v}; ck(uc_mem_write(u,a,b,4)); }
 static unsigned mr(uc_engine *u,int r) { unsigned v; ck(uc_reg_read(u,r,&v)); return v; }
 static void mw(uc_engine *u,int r,unsigned v) { ck(uc_reg_write(u,r,&v)); }
-struct Call { unsigned short kind,a[8]; };
+struct Call { unsigned short kind,a[8]; unsigned char text[128]; };
 struct Trace { struct Call calls[16]; unsigned count,colour; };
 static struct Call *call(struct Trace *t,unsigned kind)
 { if(t->count==16) abort(); struct Call *c=&t->calls[t->count++]; c->kind=kind; return c; }
@@ -28,15 +30,11 @@ static void xhook(uc_engine *u,uint64_t address,uint32_t size,void *p)
     ck(uc_reg_read(u,UC_X86_REG_SP,&sp)); ck(uc_reg_read(u,UC_X86_REG_SS,&ss));
     unsigned stack=16U*ss+sp;
     if(address==0x2fe63) t->colour=rw(u,stack+4)&255;
-    else if(address==0x36227) {
-        unsigned at=16*rw(u,stack+6)+rw(u,stack+4); unsigned char key;
-        ck(uc_mem_read(u,at+4,&key,1)); if(key<'1' || key>'7') abort();
-        uint16_t ax=(uint16_t)(key-'1'),dx=0x7000;
-        ck(uc_reg_write(u,UC_X86_REG_AX,&ax)); ck(uc_reg_write(u,UC_X86_REG_DX,&dx));
-    } else if(address==0x301ab) {
-        struct Call *c=call(t,1); unsigned char id;
-        ck(uc_mem_read(u,16*rw(u,stack+10)+rw(u,stack+8),&id,1));
-        c->a[0]=id;c->a[1]=rw(u,stack+4);c->a[2]=rw(u,stack+6);
+    else if(address==0x301ab) {
+        struct Call *c=call(t,1);
+        unsigned at=16*rw(u,stack+10)+rw(u,stack+8);
+        for(unsigned i=0;i<sizeof c->text;++i){ck(uc_mem_read(u,at+i,c->text+i,1));if(!c->text[i])break;if(i==sizeof c->text-1)abort();}
+        c->a[1]=rw(u,stack+4);c->a[2]=rw(u,stack+6);
         c->a[3]=t->colour;c->a[4]=rw(u,stack+16);c->a[5]=rw(u,stack+18);
     } else if(address==0x309cf) {
         struct Call *c=call(t,2); for(unsigned i=0;i<8;++i) c->a[i]=rw(u,stack+4+2*i);
@@ -49,10 +47,8 @@ static void mhook(uc_engine *u,uint64_t address,uint32_t size,void *p)
 {
     (void)size; struct Native *n=p;
     if(address==n->text) {
-        static const char *labels[]={"GO !!!","PLAYERS","TRACKS","OPTIONS","LOAD GAME","READ THIS","QUIT"};
-        char text[16]={0}; ck(uc_mem_read(u,mr(u,UC_M68K_REG_A1),text,15));
-        unsigned id=0;while(id<7 && strcmp(labels[id],text)) ++id;if(id==7) abort();
-        struct Call *c=call(&n->trace,1);c->a[0]=id;
+        struct Call *c=call(&n->trace,1);unsigned at=mr(u,UC_M68K_REG_A1);
+        for(unsigned i=0;i<sizeof c->text;++i){ck(uc_mem_read(u,at+i,c->text+i,1));if(!c->text[i])break;if(i==sizeof c->text-1)abort();}
         c->a[1]=mr(u,UC_M68K_REG_D0);c->a[2]=mr(u,UC_M68K_REG_D1);
         c->a[3]=mr(u,UC_M68K_REG_D2)&255;c->a[4]=5;c->a[5]=mr(u,UC_M68K_REG_D3);
     } else if(address==n->bevel) {
@@ -79,12 +75,22 @@ int main(int argc,char **argv)
     ck(uc_ctl_set_cpu_model(m,UC_CPU_M68K_M68020));
     ck(uc_mem_map(x,0,0x100000,UC_PROT_ALL));ck(uc_mem_write(x,0x10100,runtime,size));
     ck(uc_mem_map(m,0,0x100000,UC_PROT_ALL));ck(uc_mem_write(m,0,code,sizeof code));
-    const unsigned char ids[]={0,1,2,3,4,5,6};ck(uc_mem_write(x,0x70000,ids,sizeof ids));
     struct Trace original={0};struct Native native={.text=be32(code+4),.bevel=be32(code+8)};uc_hook hook;
-    const unsigned addresses[]={0x2fe63,0x36227,0x301ab,0x309cf};
-    for(unsigned i=0;i<4;++i) ck(uc_hook_add(x,&hook,UC_HOOK_CODE,xhook,&original,addresses[i],addresses[i]));
+    const unsigned addresses[]={0x2fe63,0x301ab,0x309cf};
+    for(unsigned i=0;i<3;++i) ck(uc_hook_add(x,&hook,UC_HOOK_CODE,xhook,&original,addresses[i],addresses[i]));
     ck(uc_hook_add(m,&hook,UC_HOOK_CODE,mhook,&native,1,0));
     unsigned cases=0;
+    for(unsigned language=0;language<=8;++language){
+        unsigned char table[2000],resource[2000];unsigned used=0;
+        if(language){char name[10];if(slicks_language_resource(name,language))abort();
+            long n=host_archive_load("ref/SLICKS.000",name,resource,sizeof resource);
+            if(n<=0 || slicks_language_table_load(resource,(unsigned)n,table,sizeof table,&used))abort();
+            ck(uc_mem_write(x,0x70000,table,used));}
+        ww(x,0x3cbf0+0x1722,0);ww(x,0x3cbf0+0x1724,language?0x7000:0);
+        for(unsigned i=0;i<7;++i){unsigned char key[]="menu1";key[4]=(unsigned char)('1'+i);
+            const unsigned char *label=slicks_language_lookup(language?table:0,used,key,key);
+            unsigned at=0x60000+128*i;
+            ck(uc_mem_write(m,at,label,strlen((const char *)label)+1));wl(m,be32(code+12)+4*i,at);}
     for(unsigned row=0;row<7;++row) for(unsigned colour=0;colour<256;colour+=17)
     for(unsigned page=0;page<2;++page) {
         original=(struct Trace){0};native.trace=(struct Trace){0};
@@ -101,6 +107,7 @@ int main(int argc,char **argv)
             fprintf(stderr,"Title draw mismatch row=%u colour=%u page=%u calls=%u/%u\n",row,colour,page,original.count,native.trace.count);return 1;
         }
         ++cases;
+    }
     }
     uc_close(m);uc_close(x);printf("Original/68020 title menu: %u complete draw-command comparisons pass\n",cases);return 0;
 }

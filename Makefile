@@ -1212,7 +1212,7 @@ build/title_menu.elf: tools/title_menu_test.s src/ui/sui_title_menu.s Makefile
 	$(VASM) -quiet -m68020 -Felf -I. -o build/title_menu.o $<
 	$(M68K_CC) -nostdlib -Wl,--section-start=code=0,--section-start=data=0x2000,-e,sui_title_menu build/title_menu.o -o $@
 
-build/verify_title_menu: tools/verify_title_menu.c
+build/verify_title_menu: tools/verify_title_menu.c tools/host_archive.h src/ui/language_table.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \
 		-L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
@@ -1220,6 +1220,15 @@ build/verify_title_menu: tools/verify_title_menu.c
 .PHONY: verify-title-menu
 verify-title-menu: build/title_menu.elf build/verify_title_menu
 	build/verify_title_menu build/title_menu.elf
+
+build/title_menu_pixels_test.elf: tools/title_menu_pixels_test.s src/ui/sui_title_menu.s src/ui/sui_text.s src/ui/sui_bevel.s src/util/sutil_palette_nearest.s src/graphics/sgfx_span_fill.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph_planar.s | build
+	$(VASM) -quiet -m68020 -Felf -I. -o build/title_menu_pixels_test.o $<
+	$(M68K_CC) -nostdlib -Wl,--section-start=code=0,--section-start=data=0x10000,-e,sui_title_menu build/title_menu_pixels_test.o -o $@
+build/verify_title_menu_pixels: tools/verify_title_menu_pixels.c tools/verify_palette_remap.c tools/host_archive.h src/ui/language_table.h src/ui/title_background.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+.PHONY: verify-title-menu-pixels
+verify-title-menu-pixels: build/title_menu_pixels_test.elf build/verify_title_menu_pixels
+	build/verify_title_menu_pixels
 
 build/title_bridge.bin: tools/title_bridge_test.s src/platform/amiga/native_bridge.s src/ui/sui_title_dispatch.s src/ui/sui_text.s
 	@mkdir -p build

@@ -151,9 +151,10 @@ Implementation and completed verification evidence are separate in
   and target-side per-language selection coverage remain separate.
   Tracks, Players and Options heading callers now resolve the original keys
   through the resident table instead of painting the untranslated key; retain
-  remaining title-row and other label-caller audit scope. The ordinary title
-  painter still hardcodes six English labels where original `298fc` resolves
-  the constructed `menuN` key; connect that lookup and verify its pixel bounds.
+  other label-caller audit scope. Ordinary title rows now resolve the original
+  `menuN` keys at startup, retaining the hidden fifth row; all supplied
+  translations have original-command, full-pixel/font and dirty-crop coverage.
+  Keep remaining caller/lifetime/input routes distinct from these painter checks.
   The zero-selector chooser is connected with original first-line labels,
   clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
   reaches the selected table and restores the system. Real input.device events,

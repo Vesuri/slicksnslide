@@ -1,5 +1,6 @@
 	section	code
 	xdef	sui_title_menu
+	xdef	slicks_title_labels
 	xref	sui_bevel
 	xref	sui_draw_text
 
@@ -20,27 +21,27 @@ sui_title_menu:
 	move.l	a1,4(a6)
 	move.w	d2,8(a6)
 
-	lea	.label_go,a1
+	movea.l slicks_title_labels,a1
 	moveq	#85,d1
 	moveq	#0,d6
 	bsr.s	.label
-	lea	.label_players,a1
+	movea.l slicks_title_labels+4,a1
 	moveq	#98,d1
 	moveq	#1,d6
 	bsr.s	.label
-	lea	.label_tracks,a1
+	movea.l slicks_title_labels+8,a1
 	moveq	#111,d1
 	moveq	#2,d6
 	bsr.s	.label
-	lea	.label_options,a1
+	movea.l slicks_title_labels+12,a1
 	moveq	#124,d1
 	moveq	#3,d6
 	bsr.s	.label
-	lea	.label_read,a1
+	movea.l slicks_title_labels+20,a1
 	move.w	#137,d1
 	moveq	#5,d6
 	bsr.s	.label
-	lea	.label_quit,a1
+	movea.l slicks_title_labels+24,a1
 	move.w	#150,d1
 	moveq	#6,d6
 	bsr.s	.label
@@ -78,10 +79,16 @@ sui_title_menu:
 	rts
 
 	section	data,data
-.label_go:	dc.b	"GO !!!",0
-.label_players:	dc.b	"PLAYERS",0
-.label_tracks:	dc.b	"TRACKS",0
-.label_options:	dc.b	"OPTIONS",0
-.label_read:	dc.b	"READ THIS",0
-.label_quit:	dc.b	"QUIT",0
+; Startup resolves these into the resident language table. Original 36227
+; falls back to the key itself when a table/key is absent.
+slicks_title_labels:
+	dc.l .label_go,.label_players,.label_tracks,.label_options
+	dc.l .label_load,.label_read,.label_quit
+.label_go:	dc.b	"menu1",0
+.label_players:	dc.b	"menu2",0
+.label_tracks:	dc.b	"menu3",0
+.label_options:	dc.b	"menu4",0
+.label_load:	dc.b	"menu5",0
+.label_read:	dc.b	"menu6",0
+.label_quit:	dc.b	"menu7",0
 	even
