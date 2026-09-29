@@ -31,7 +31,12 @@ static void loading_font_request(uc_engine *u,uint64_t address,uint32_t size,voi
     unsigned stack=(unsigned)ss*16+sp;
     unsigned name=getword(u,stack+4)+16*getword(u,stack+6);
     unsigned char text[9];check(uc_mem_read(u,name,text,sizeof text));
-    if(memcmp(text,"/KIRJ.@F",sizeof text) || getword(u,stack+8)!=0 || ++*calls!=1) abort();
+    ++*calls;
+    if(*calls>3 || getword(u,stack+8)!=0 ||
+       (*calls==1?memcmp(text,"/KIRJ.@F",sizeof text):text[0]!=0)) abort();
+    /* The two subsequent blank-name requests populate independent slots.
+     * Distinct returned pointers detect any accidental alias replacement. */
+    dx=(uint16_t)(0x6000+(*calls-1)*0x100);
     ip=getword(u,stack);cs=getword(u,stack+2);sp+=4;
     check(uc_reg_write(u,UC_X86_REG_AX,&ax));check(uc_reg_write(u,UC_X86_REG_DX,&dx));
     check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_IP,&ip));
@@ -70,10 +75,12 @@ int main(void)
     uint16_t init_cs=0x1987,init_ds=0x3cbf,init_ss=0x8000,init_sp=0xf000;
     check(uc_reg_write(u,UC_X86_REG_CS,&init_cs));check(uc_reg_write(u,UC_X86_REG_DS,&init_ds));
     check(uc_reg_write(u,UC_X86_REG_SS,&init_ss));check(uc_reg_write(u,UC_X86_REG_SP,&init_sp));
-    check(uc_emu_start(u,0x19dd8,0x19e01,0,1000));
+    check(uc_emu_start(u,0x19dd8,0x19e2b,0,1000));
     uint16_t init_ip;check(uc_reg_read(u,UC_X86_REG_CS,&init_cs));check(uc_reg_read(u,UC_X86_REG_IP,&init_ip));
-    if((unsigned)init_cs*16+init_ip!=0x19e01 || font_requests!=1 ||
-       getword(u,dsbase+0x680)!=0 || getword(u,dsbase+0x682)!=0x6000) abort();
+    if((unsigned)init_cs*16+init_ip!=0x19e2b || font_requests!=3 ||
+       getword(u,dsbase+0x680)!=0 || getword(u,dsbase+0x682)!=0x6000 ||
+       getword(u,dsbase+0x684)!=0 || getword(u,dsbase+0x686)!=0x6100 ||
+       getword(u,dsbase+0x688)!=0 || getword(u,dsbase+0x68a)!=0x6200) abort();
     check(uc_hook_del(u,font_hook));
     word(u,dsbase+0x1d7b,100);word(u,dsbase+0x1d87,0);
     word(u,dsbase+0x1d8d,0);word(u,dsbase+0x1d8f,200);

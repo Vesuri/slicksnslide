@@ -1183,6 +1183,16 @@ This establishes the startup binding and painter consumption, not absence
 of later alias writes, menu-transition font-state changes, or live loading
 screen display lifetime. Those integration checks remain open.
 
+The loading-pixel oracle now continues startup through `19e2b`, including
+the following two empty-name font-loader requests. It supplies three distinct
+return pointers and requires all three original destination slots to contain
+the corresponding values; the subsequent loading painter must still use the
+first font. All ten full-pixel/font-state comparisons pass
+(`tmp/loading-font-slots.log`). This connects the existing three-slot startup
+check from `verify-font-resource` to the loading-painter comparison. Loader
+calls remain substituted, so it does not establish their internal alias side
+effects or later menu-transition lifetime.
+
 ## Saved title image: capture provenance (2026-09-29)
 
 Instruction inspection narrows the pending return-pixel comparison. Startup
