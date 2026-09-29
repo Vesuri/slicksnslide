@@ -46,13 +46,11 @@ Implementation and completed verification evidence are separate in
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
   remaining title shortcuts and mouse routes against original callers.
-  Implement F10's separate Arcade title renderer and audit its input routes;
-  the original mode-5 caller does not draw the ordinary six-row title.
-  Original Arcade arrow navigation and row-to-action mapping are translated
-  and oracle-verified in `title_navigation.h`; connect them with the renderer,
-  including the mutable DS:0f1a player override passed to race setup.
-  `arcade_title_draw.h` now has the complete original-command oracle; it still
-  needs production font/language/pixel bindings and full-screen validation.
+  Finish F10's original full-screen pixel comparison, font-alias lifetime and
+  input-route audit. The separate Arcade renderer, original arrow/action
+  routing and mutable DS:0f1a player override are connected; native Options
+  round-trip and two-human/two-computer race handoff pass. Command/bridge and
+  native buffer-agreement tests are not an original full-screen comparison.
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
 - Recheck save/edit fixtures which previously assumed the extra intermission

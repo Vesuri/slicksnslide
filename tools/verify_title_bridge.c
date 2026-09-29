@@ -107,6 +107,17 @@ int main(int argc,char **argv)
            reg(uc,UC_M68K_REG_A2)!=0x61000) return 1;
     }
     puts("Title label font wrapper: 256 foreground colours preserve the original palette-selected shadow");
+    for(unsigned flags=0;flags<8;++flags) for(unsigned colour=0;colour<256;++colour) {
+        put32(uc,0x90004,0x50000);put32(uc,0x90008,0x52000);put32(uc,0x9000c,0x61000);
+        put32(uc,0x90010,120);put32(uc,0x90014,126);put32(uc,0x90018,flags);put32(uc,0x9001c,colour);
+        run(uc,be32(code+40),be32(code+32));
+        if(reg(uc,UC_M68K_REG_A0)!=0x50000 || reg(uc,UC_M68K_REG_A1)!=0x52000 ||
+           reg(uc,UC_M68K_REG_A2)!=0x61000 || (reg(uc,UC_M68K_REG_D0)&65535)!=120 ||
+           (reg(uc,UC_M68K_REG_D1)&65535)!=126 || (reg(uc,UC_M68K_REG_D2)&65535)!=flags ||
+           reg(uc,UC_M68K_REG_D3)!=1 || reg(uc,UC_M68K_REG_D4)!=10 ||
+           (reg(uc,UC_M68K_REG_D5)&65535)!=colour || (reg(uc,UC_M68K_REG_D6)&65535)!=256) return 1;
+    }
+    puts("Arcade title font bridge: 2048 font/flags/shadow argument cases pass");
     uc_close(uc);
     puts("Title GCC bridge: 65536 dispatch and 512 text/selection argument cases pass");
     return 0;

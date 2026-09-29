@@ -79,6 +79,12 @@ does not prove they are unused by every original-game feature.
 
 ## RAM and ownership constraints
 
+Arcade title presentation now retains its own decoded `pieni.@f` allocation
+(8,192-byte capacity) and a 2,048-byte decoded language table at startup.
+These are additional to the encoded cache. No modal/font/language reads occur
+while drawing this title. Release memory gates must be refreshed for this
+ownership change; the historical measurements below do not include it.
+
 Do not cache the whole 642,007-byte archive. The current release measurements
 leave 345,872 bytes of Chip RAM free at title/race, 259,640 in options and
 149,688 in help; the largest free block in help is only 99,352 bytes. These are

@@ -6,6 +6,8 @@
 	xdef slicks_tick_title_registration
 	xdef slicks_draw_title_status_text
 	xdef slicks_tick_title_colours
+	xdef slicks_title_font_text
+	xdef slicks_draw_title_background
 	xdef	slicks_draw_original_text
 	xdef	slicks_dispatch_title_key
 	xdef	slicks_setup_basic_mode
@@ -69,6 +71,25 @@ slicks_draw_title_status_text:
 	movem.l (sp)+,d2-d7/a2-a6
 	rts
 
+; Generic original title font/flags bridge for the two-row Arcade renderer.
+; C ABI: planes, font, text, x, y, flags, shadow colour.
+slicks_title_font_text:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 48(sp),a0
+	movea.l 52(sp),a1
+	movea.l 56(sp),a2
+	move.w 62(sp),d0
+	move.w 66(sp),d1
+	move.w 70(sp),d2
+	move.w 74(sp),d5
+	moveq #1,d3
+	moveq #10,d4
+	move.w #$0100,d6
+	clr.w slicks_title_text_page
+	jsr sui_font_string_planar
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
 slicks_prepare_title_frame:
 	movea.l	4(sp),a0
 	movea.l	8(sp),a1
@@ -78,6 +99,24 @@ slicks_prepare_title_frame:
 ; Temporary C-platform bridge. The translated/native side uses the register
 ; ABI directly; this wrapper preserves the Amiga GCC callee-saved registers.
 ; C ABI: slicks_draw_title_pages(planes, frame, palette)
+; Arcade initialization must not execute the ordinary renderer and advance
+; the shared colour counter an extra time before drawing its own first frame.
+slicks_draw_title_background:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 48(sp),a0
+	movea.l 52(sp),a1
+	moveq #100,d4
+	move.w #$7fbc,d5
+	moveq #0,d6
+	jsr sgfx_title_pages
+	movea.l 56(sp),a0
+	lea slicks_title_render_state,a1
+	lea slicks_title_fallback_color,a2
+	lea slicks_title_phase,a3
+	jsr sui_title_tail
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
 slicks_draw_title_pages:
 	movem.l	d2-d7/a2-a6,-(sp)
 	movea.l	48(sp),a0

@@ -18,7 +18,7 @@ and a production-screen comparison establish different things.
 | F07 | Menu transitions briefly expose AmigaOS | Menu owners end/begin hardware takeover around disk reads and even RAM-only close/redraw transitions. The separate resident-assets inventory covers the dependencies. |
 | F08 | Title-loop animation coverage is incomplete | Normal selected-label pulse now advances through the translated original routine every visible title update. Arcade and wall-clock cadence/reference comparison remain unverified; see the new native cycle evidence below. |
 | F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
-| F10 | Arcade title uses the ordinary title renderer | Original `29f31..29f47` calls the mode-5 predicate at `198b6`, then selects `29afa` instead of `29753`. Native presentation always uses the ordinary title; this also needs its associated input routes audited. |
+| F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. The separate native renderer and arrow/action routing are now connected; original full-screen pixel, font-alias lifetime, shortcut and mouse coverage remain to be completed. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
@@ -221,9 +221,38 @@ two-line settings summary. The summary consumes DS:00fa/0102 (options
 13/14). Preserve the distinct DS:6bd4 last-loaded-font alias used immediately
 before the settings heading; do not silently treat that write as targeting
 the following text call's font. The original 1..4 override must be mutable
-in both profile selection and race-palette preparation, which still use the
-initial exported constant in production. Native renderer, input integration,
-localization/formatting and full-screen comparisons remain open.
+in both profile selection and race-palette preparation, which previously used
+the initial exported constant in production.
+
+The production title now selects the separate Arcade draw sequence and
+advances its pulse while visible. It retains decoded `pieni.@f` and the
+language table at startup; ordinary redraws do no file I/O. A generic planar
+font bridge uses the original font, flags and shadow, and has 2,048 native
+argument cases. Signed settings formatting has 65,536 value-pair comparisons
+and explicit capacity/unsupported-format checks. Status restoration retains
+the original two-update invalidation byte rather than restoring on every tick.
+The 1..4 count is now mutable in setup resources and race-palette preparation;
+the original profile selector maps its human slots to profile 2 and the other
+slots to computer profile 1. Consequently 2P means two humans and two computer
+drivers, not two active cars. Keyboard and click action dispatch map the
+second visual row to Options. Full original-pixel and mouse/shortcut route
+audits are still required; command/bridge tests do not prove those boundaries.
+
+Native `REGCHECKB` gate: `SLICKS_REGISTRATION_TEST=7 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/arcade-title ./debug.sh '' diag_arcade_title.gdb` passes all
+four override counts (mask 15), 30 Arcade draws, 45 logical/chunky/bitplane
+checks with zero errors, one Options round-trip and one race start with
+roles -1/-1/1/1, override 2, four participating cars, and restoration 31.
+The first diagnostic expectation incorrectly required the nonhuman slots
+inactive; original `2bb70` profile-selection evidence corrected the test,
+not the game. Full profile-selection and setup-session oracles pass again.
+Local logs: `tmp/arcade-title-native.log`, `tmp/arcade-title-host.log`,
+`tmp/arcade-title-profiles.log`.
+Normal-title regression still passes modes=31, roles=7, counts=3, 33 display
+audits, zero pixel errors and restoration 31
+(`tmp/arcade-title-normal-regression.log`). Arcade initialization now uses a
+background-only bridge: it must not advance the ordinary title counter before
+executing its own renderer. The shared owner-name tail still advances once.
 
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |

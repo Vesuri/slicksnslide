@@ -46,6 +46,17 @@ static void boundary(uc_engine *u,uint64_t address,uint32_t size,void *p)
 }
 int main(void)
 {
+    for(unsigned i=0;i<65536;++i) {
+        short values[2]={(short)i,(short)(65535-i)};unsigned char out[96];char expected[96];
+        snprintf(expected,sizeof expected,"%d SECS\n%d TRACKS",values[0],values[1]);
+        if(slicks_arcade_title_format(out,sizeof out,(const unsigned char *)"%d SECS\n%d TRACKS",values,2) || strcmp((char *)out,expected)) return 1;
+    }
+    {unsigned char out[4];short value=1;
+        if(!slicks_arcade_title_format(out,sizeof out,(const unsigned char *)"%d",&value,0) ||
+           !slicks_arcade_title_format(out,sizeof out,(const unsigned char *)"%s",&value,1) ||
+           !slicks_arcade_title_format(out,sizeof out,(const unsigned char *)"1234",&value,1) ||
+           slicks_arcade_title_format(out,sizeof out,(const unsigned char *)"%%",&value,0) || strcmp((char *)out,"%")) return 1;
+    }
     unsigned char runtime[300000];FILE *f=fopen("disasm/runtime.bin","rb");if(!f)return 2;
     size_t bytes=fread(runtime,1,sizeof runtime,f);fclose(f);
     uc_engine *u;check(uc_open(UC_ARCH_X86,UC_MODE_16,&u));check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));

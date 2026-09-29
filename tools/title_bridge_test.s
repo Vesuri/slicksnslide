@@ -4,6 +4,7 @@
 	dc.l slicks_draw_original_text,sui_font_string
 	dc.l slicks_draw_title_status_text,sui_font_string_planar
 	dc.l sui_draw_text
+	dc.l slicks_title_font_text
 	include "src/platform/amiga/native_bridge.s"
 	include "src/ui/sui_title_dispatch.s"
 	include "src/ui/sui_text.s"

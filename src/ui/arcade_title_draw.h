@@ -15,6 +15,34 @@ struct SlicksArcadeTitleDrawOps {
     void (*text)(void *,unsigned,unsigned,short,short,unsigned char);
     void *context;
 };
+/* Original sprintf calls use signed 16-bit %d, literal bytes and %% only.
+ * Bound caller storage instead of reproducing the DOS stack overflow. */
+static inline int slicks_arcade_title_format(unsigned char *out,unsigned capacity,
+    const unsigned char *format,const short *values,unsigned count)
+{
+    unsigned used=0,arg=0;
+    while(*format) {
+        unsigned char ch=*format++;
+        if(ch=='%') {
+            ch=*format++;
+            if(ch=='d') {
+                if(arg==count) return -1;
+                int value=values[arg++];unsigned magnitude=value<0?(unsigned)-value:(unsigned)value;
+                unsigned char digits[6];unsigned n=0;
+                do {digits[n++]=(unsigned char)('0'+magnitude%10);magnitude/=10;} while(magnitude);
+                if(value<0) digits[n++]='-';
+                if(used+n>=capacity) return -1;
+                while(n) out[used++]=digits[--n];
+                continue;
+            }
+            if(ch!='%') return -1;
+        }
+        if(used+1>=capacity) return -1;
+        out[used++]=ch;
+    }
+    if(used>=capacity) return -1;
+    out[used]=0;return 0;
+}
 static inline void slicks_arcade_title_draw(unsigned char *counter,
     unsigned char *refresh,unsigned char selection,short players,
     const signed char colours[4][6],const struct SlicksArcadeTitleDrawOps *o)

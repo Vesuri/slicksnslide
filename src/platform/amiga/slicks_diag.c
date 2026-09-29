@@ -41,6 +41,7 @@
 #include "../../ui/profile_actions.h"
 #include "../../ui/title_help.h"
 #include "../../ui/title_navigation.h"
+#include "../../ui/arcade_title_draw.h"
 #include "../../ui/language_table.h"
 #include "resource_archive.h"
 #include "menu_resources.h"
@@ -51,6 +52,7 @@
 extern void slicks_draw_title_registration(unsigned char *,const unsigned char *);
 extern void slicks_tick_title_registration(unsigned char *,const unsigned char *,const unsigned char *);
 extern void slicks_tick_title_colours(unsigned char *,const unsigned char *);
+extern void slicks_draw_title_background(unsigned char *,const unsigned char *,const unsigned char *);
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 
 static struct SlicksRegistration registration;
@@ -79,6 +81,13 @@ static int load_registration(void)
 
 unsigned char *slicks_title_font;
 unsigned char *slicks_title_small_font;
+static unsigned char *title_arcade_font;
+static unsigned char title_language[2048];
+static unsigned title_language_used;
+static unsigned char title_arcade_refresh=2;
+extern unsigned char slicks_title_counter;
+extern unsigned short slicks_title_third_color;
+extern void slicks_title_font_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 #include "../../ui/title_status.h"
 #include "../../ui/menu_icon.h"
 static const struct SlicksConfiguration *title_configuration;
@@ -767,6 +776,7 @@ volatile unsigned long g_slicks_title_last_pixels;
 static unsigned char title_dirty_test;
 volatile unsigned long g_slicks_title_dirty_checks,g_slicks_title_dirty_errors;
 volatile unsigned short g_slicks_title_seen_modes,g_slicks_title_seen_roles,g_slicks_title_seen_counts;
+volatile unsigned short g_slicks_title_arcade_counts,g_slicks_title_arcade_draws;
 static void publish_title_dirty(struct SlicksAmigaPlatform *p,
     const unsigned char *logical,unsigned char *chunky)
 {
@@ -803,7 +813,10 @@ static void make_title_surface(unsigned char *planes,
                                const unsigned char *frame,
                                const unsigned char *palette)
 {
-    slicks_draw_title_pages(planes, frame, palette);
+    if(title_configuration && title_configuration->options[0]==5)
+        slicks_draw_title_background(planes,frame,palette);
+    else slicks_draw_title_pages(planes, frame, palette);
+    title_arcade_refresh=2;
     slicks_title_dirty_add(&title_dirty,0,0,320,200);
 }
 
@@ -837,6 +850,50 @@ static int show_race_load_error(struct SlicksAmigaPlatform *platform,
     slicks_diag_race_load_failed(); return 0;
 }
 
+struct ArcadeTitleSurface {unsigned char *logical;struct SlicksChunkyUi ui;};
+static unsigned char *arcade_font(unsigned id)
+{ return id==0?slicks_title_small_font:id==1?title_arcade_font:slicks_title_font; }
+static unsigned char arcade_nearest(void *p,unsigned char r,unsigned char g,unsigned char b)
+{return slicks_ui_nearest(&((struct ArcadeTitleSurface *)p)->ui,r,g,b);}
+static void arcade_colour(void *p,unsigned font,unsigned char colour)
+{(void)p;arcade_font(font)[6]=colour;}
+static void arcade_shadow(void *p,unsigned char colour)
+{(void)p;slicks_title_third_color=colour;}
+static void arcade_restore(void *p,short x,short y,short width,short height)
+{
+    struct ArcadeTitleSurface *s=p;x&=(short)~3;width&=(short)~3;
+    for(unsigned dy=(unsigned)y;dy<(unsigned)(y+height);++dy)
+        for(unsigned dx=(unsigned)x;dx<(unsigned)(x+width);++dx)
+            s->logical[(dx&3)*65536UL+dy*100+(dx>>2)]=
+                slicks_title_background[2+(dx&3)*16000UL+dy*80+(dx>>2)];
+    slicks_title_dirty_add(&title_dirty,x,y,(short)(x+width),(short)(y+height));
+}
+static void arcade_rectangle(void *p,short l,short t,short r,short b,unsigned char colour)
+{
+    struct ArcadeTitleSurface *s=p;
+    for(unsigned y=(unsigned)t;y<(unsigned)b;++y)for(unsigned x=(unsigned)l;x<(unsigned)r;++x)
+        s->logical[(x&3)*65536UL+y*100+(x>>2)]=colour;
+    slicks_title_dirty_add(&title_dirty,l,t,r,b);
+}
+static void arcade_text(void *p,unsigned font,unsigned id,short x,short y,unsigned char flags)
+{
+    struct ArcadeTitleSurface *s=p;unsigned char buffer[96];const unsigned char *text;
+    if(id==0 || id==5) text=slicks_language_lookup(title_language,title_language_used,
+        (const unsigned char *)(id?"settings":"players"),(const unsigned char *)(id?"SETTINGS":"PLAYERS"));
+    else {
+        short values[2]={(short)id,0};const unsigned char *format=(const unsigned char *)"%dP";
+        if(id==6) {
+            values[0]=title_configuration->options[13];values[1]=title_configuration->options[14];
+            format=slicks_language_lookup(title_language,title_language_used,
+                (const unsigned char *)"arcade.settingstext",(const unsigned char *)"%d SECS\n%d TRACKS");
+        }
+        if(slicks_arcade_title_format(buffer,sizeof buffer,format,values,id==6?2:1)) {
+            g_slicks_diag_force_exit=1;return;
+        }
+        text=buffer;
+    }
+    slicks_title_font_text(s->logical,arcade_font(font),text,x,y,flags,slicks_title_third_color);
+}
 static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
@@ -847,6 +904,19 @@ static void redraw_title_configuration(
     /* These legacy diagnostic arguments never belong on the original title.
      * Its status is alongside PLAYERS/TRACKS/OPTIONS, not a black footer. */
     (void)vehicle; (void)track_name; (void)laps;
+    if(title_configuration && title_configuration->options[0]==5) {
+        if(title_dirty_test) {
+            ++g_slicks_title_arcade_draws;
+            if(setup_resources.override_count>=1 && setup_resources.override_count<=4)
+                g_slicks_title_arcade_counts|=1U<<(setup_resources.override_count-1);
+        }
+        struct ArcadeTitleSurface surface={logical,{.palette=palette}};
+        const struct SlicksArcadeTitleDrawOps ops={arcade_nearest,arcade_colour,arcade_shadow,
+            arcade_restore,arcade_rectangle,arcade_text,&surface};
+        slicks_arcade_title_draw(&slicks_title_counter,&title_arcade_refresh,(unsigned char)selection,
+            setup_resources.override_count,(const signed char (*)[6])slicks_original_fallback_colours,&ops);
+        goto owner;
+    }
     slicks_title_dirty_add(&title_dirty,200,96,244,140);
     /* Restore the status background as well as the original label crop:
      * shrinking counts, inactive drivers and disabled badges must erase. */
@@ -895,6 +965,7 @@ static void redraw_title_configuration(
             }
         }
     }
+owner:
     if(registration.name[0]) {
         slicks_draw_title_registration(logical,registration.name);
         slicks_title_dirty_add(&title_dirty,0,190,320,200);
@@ -1727,7 +1798,7 @@ static void prepare_race_palette(unsigned char *palette,
     slicks_select_profile_colours(car_ramps,configuration->selected_profile,
         g_slicks_profiles.setup,g_slicks_profiles.count,
         slicks_original_fallback_colours,configuration->options[0],
-        slicks_original_override_count);
+        setup_resources.override_count);
     slicks_profile_palette(palette,car_ramps);
     palette[183 * 3] = 39;
     palette[183 * 3 + 1] = 43;
@@ -3402,6 +3473,7 @@ int main(void)
     int result = 20;
 
     g_slicks_diag_profile_platform = &platform;
+    setup_resources.override_count=slicks_original_override_count;
     /* Query only: preserve the OS/user cache configuration. */
     g_slicks_diag_initial_cache_control = CacheControl(0,0);
 
@@ -3468,9 +3540,9 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
-        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:3;
+        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:4;
         else if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
@@ -3675,6 +3747,14 @@ int main(void)
         bytes=slicks_resource_archive_load(&archive,"kirj.@f",title_asset,64003UL);
         if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
             slicks_title_small_font,8192UL)<0) goto cleanup;
+        title_arcade_font=(unsigned char *)AllocMem(8192UL,MEMF_ANY);
+        if(!title_arcade_font) goto cleanup;
+        bytes=slicks_resource_archive_load(&archive,"pieni.@f",title_asset,64003UL);
+        if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
+            title_arcade_font,8192UL)<0) goto cleanup;
+        bytes=slicks_resource_archive_load(&archive,"lang1.txt",title_asset,64003UL);
+        if(bytes<0 || slicks_language_table_load(title_asset,(unsigned)bytes,title_language,
+            sizeof title_language,&title_language_used)) goto cleanup;
     }
 
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);
@@ -4138,7 +4218,15 @@ int main(void)
                 0x4d,0x4e,0x4e,0x4e,0x4e, /* OPTIONS: all normal badges. */
                 0x4f,0x4f,0x4f,0x4f};
             unsigned at=registration_test-1;
-            if(title_dirty_test==3) {
+            if(title_dirty_test==4) {
+                static const unsigned char arcade_keys[]={0x4d,0x4d,0x4d,
+                    0x4e,0x4e,0x4e,0x4e,0x4e, /* mode 0 -> Arcade */
+                    0x4c,0x4c,0x4c, /* visual row zero */
+                    0x4e,0x4e,0x4e,0x4e,0x4f,0x4f,0x4f,0x4e,
+                    0x4d,0x44,0x45,0x4c,0x44}; /* Options, return, GO */
+                if(at==sizeof arcade_keys) registration_test=0;
+                else {championship_test_keys(&platform,&arcade_keys[at],1);++registration_test;}
+            } else if(title_dirty_test==3) {
                 if(++registration_test==74) {g_slicks_diag_force_exit=1;registration_test=0;}
             } else if(title_dirty_test==2) {
                 if(at==sizeof transition_keys) {
@@ -4186,6 +4274,8 @@ int main(void)
         }
         if (!g_slicks_diag_ingame)
             slicks_amiga_platform_wait_vblank(&platform);
+        if(title_dirty_test==4 && g_slicks_diag_ingame && race->frame_count>=2)
+            g_slicks_diag_force_exit=1;
         if (g_slicks_diag_force_exit || (natural_results_test && argv[7]=='O' &&
             g_slicks_diag_ingame && race->frame_count>=600) ||
             (natural_results_test && audio_pcm_test && g_slicks_diag_ingame && race->frame_count>=150) ||
@@ -4876,8 +4966,9 @@ int main(void)
                     short count=(short)g_slicks_track_playlist.count;
                     short old_mode=configuration.options[0];
                     unsigned char refresh=0;
-                    redraw=slicks_title_navigation(&selection,&count,(short)track_count,
-                        &configuration.options[0],&refresh,amiga_raw_to_dos_scan(raw));
+                    redraw=slicks_title_mode_navigation(&selection,&count,(short)track_count,
+                        &configuration.options[0],&setup_resources.override_count,&refresh,amiga_raw_to_dos_scan(raw));
+                    if(refresh) title_arcade_refresh=refresh;
                     menu_selection=(unsigned short)selection;
                     g_slicks_track_playlist.count=(unsigned short)count;
                     if(configuration.options[0]!=old_mode) setup_dirty=1;
@@ -4920,12 +5011,13 @@ int main(void)
                 }
                 unsigned short action = slicks_dispatch_title_key(
                     amiga_raw_to_dos_scan(code));
-                const unsigned char *help_topic=slicks_title_help_topic(action,menu_selection);
+                unsigned short action_selection=(unsigned short)slicks_title_action_selection(configuration.options[0],(short)menu_selection);
+                const unsigned char *help_topic=slicks_title_help_topic(action,action_selection);
                 if(help_topic) {
                     if(open_title_help(&platform,logical,chunky,source_palette,help_topic)) goto cleanup;
                     continue;
                 }
-                if(action==2 && menu_selection==1 && original_setup) {
+                if(action==2 && action_selection==1 && original_setup) {
                     if(open_player_menu(&platform,chunky,&configuration,&player_menu_state)) goto cleanup;
                     continue;
                 }
@@ -4933,7 +5025,7 @@ int main(void)
                     if(open_track_menu(&platform,chunky,track_names,(short)track_count,configuration.field_0626)) goto cleanup;
                     continue;
                 }
-                if (action == 2 && menu_selection == 3) {
+                if (action == 2 && action_selection == 3) {
                     if(original_setup) {
                         if(open_options_menu(&platform,chunky,source_palette,&configuration)) goto cleanup;
                         continue;
@@ -5336,12 +5428,13 @@ int main(void)
         left_down = (unsigned char)slicks_amiga_platform_left_mouse();
         if (!save_prompt && !g_slicks_diag_ingame && left_down && !left_was_down) {
             unsigned short action = slicks_dispatch_title_key(0x1c);
+            unsigned short action_selection=(unsigned short)slicks_title_action_selection(configuration.options[0],(short)menu_selection);
             if(g_slicks_player_menu || g_slicks_options_menu || g_slicks_track_menu || g_slicks_title_help || g_slicks_title_help_warning) {
                 action=0; /* Original player menu is keyboard-driven. */
             } else if(action==2 && menu_selection==5) {
                 if(open_title_help(&platform,logical,chunky,source_palette,slicks_title_help_topic(action,menu_selection))) goto cleanup;
                 action=0;
-            } else if(action==2 && menu_selection==1 && original_setup) {
+            } else if(action==2 && action_selection==1 && original_setup) {
                 if(open_player_menu(&platform,chunky,&configuration,&player_menu_state)) goto cleanup;
                 action=0;
             } else if (service_menu_open) {
@@ -5359,7 +5452,7 @@ int main(void)
                         service_selection, configuration.options[9], configuration.options[10]);
                 }
                 action = 0;
-            } else if (action == 2 && menu_selection == 3) {
+            } else if (action == 2 && action_selection == 3) {
                 if(original_setup) {
                     if(open_options_menu(&platform,chunky,source_palette,&configuration)) goto cleanup;
                     action=0;
@@ -5414,11 +5507,10 @@ int main(void)
                 slicks_tick_title_registration(logical,registration.name,source_palette);
                 redraw_title_configuration(&platform,logical,chunky,source_palette,
                     menu_selection,selected_vehicle,track_path,0);
-            } else if(registration.name[0]) {
-                /* Arcade's separate renderer remains an explicit open item. */
+            } else {
                 slicks_tick_title_registration(logical,registration.name,source_palette);
-                slicks_title_dirty_add(&title_dirty,0,190,320,200);
-                publish_title_dirty(&platform,logical,chunky);
+                redraw_title_configuration(&platform,logical,chunky,source_palette,
+                    menu_selection,selected_vehicle,track_path,0);
             }
         }
         if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_lists) {
@@ -5948,6 +6040,7 @@ cleanup:
         FreeMem(title_asset, 64003UL);
     if(slicks_title_font) { FreeMem(slicks_title_font,TITLE_FONT_CAPACITY); slicks_title_font=0; }
     if(slicks_title_small_font) { FreeMem(slicks_title_small_font,8192UL); slicks_title_small_font=0; }
+    if(title_arcade_font) {FreeMem(title_arcade_font,8192UL);title_arcade_font=0;}
     if (GfxBase)
         CloseLibrary((struct Library *)GfxBase);
     if (DOSBase)
