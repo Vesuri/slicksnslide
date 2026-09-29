@@ -58,6 +58,7 @@ extern void slicks_records_text(unsigned char *,const unsigned char *,const unsi
 
 static struct SlicksRegistration registration;
 static struct SlicksResourceCache *menu_cache;
+static struct SlicksAmigaTrackListCache track_list_cache;
 volatile unsigned long g_slicks_menu_cache_bytes;
 volatile short g_slicks_registration_status;
 __attribute__((noinline)) void slicks_diag_registration_loaded(void) { __asm__ volatile("" ::: "memory"); }
@@ -1380,8 +1381,8 @@ static int open_track_menu(struct SlicksAmigaPlatform *platform,unsigned char *c
     char names[][SLICKS_TRACK_NAME_SIZE],short total,short random_count)
 {
     /* This constructor only loads trckmenu/fonts from the memory provider;
-     * names is the startup catalogue. LISTS and RECORDS still have separate
-     * explicit OS boundaries in their action handlers below. */
+     * names and saved track lists are startup catalogues. RECORDS still
+     * loads the explicitly selected track through an OS boundary. */
     struct SlicksResourceArchive archive={0};
     if(slicks_resource_archive_cached(&archive,menu_cache)) return -1;
     g_slicks_track_menu=slicks_amiga_track_menu_create(&archive,chunky,
@@ -1399,7 +1400,7 @@ struct SlicksSetupLoadReport g_slicks_track_lists_load;
 struct SlicksSetupStorageReport g_slicks_track_lists_save;
 __attribute__((noinline)) void slicks_diag_track_lists_ready(void) { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void slicks_diag_track_lists_closed(void) { __asm__ volatile("" ::: "memory"); }
-/* Modal transitions allocate and perform DOS IO only with hardware released. */
+/* Modal transitions are RAM-only; commits explicitly release hardware. */
 static int track_lists_finish(struct SlicksAmigaPlatform *platform,short total,const char *error)
 {
     slicks_amiga_track_lists_close(g_slicks_track_menu);
@@ -1424,7 +1425,11 @@ static int track_lists_commit(struct SlicksAmigaPlatform *platform,short total,v
     case SLICKS_SETUP_RECOVERY_REQUIRED: error="KEEP SLICKS.TRK NEW/BAK FILES"; break;
     default: error="SLICKS.TRK SAVE FAILED"; break;
     }
-    return track_lists_finish(platform,total,error);
+    int result=track_lists_finish(platform,total,error);
+    /* Close every borrowed view before publishing a refreshed catalogue.
+     * This remains part of the explicit save/delete disk boundary. */
+    slicks_amiga_track_list_cache_refresh(&track_list_cache);
+    return result;
 }
 static int track_lists_key(struct SlicksAmigaPlatform *platform,short total,void *names,
     unsigned char character,unsigned char scan,unsigned long tick)
@@ -3938,6 +3943,7 @@ int main(void)
     slicks_resource_archive_close(&archive);
     if(!menu_cache) goto cleanup;
     g_slicks_menu_cache_bytes=slicks_resource_cache_bytes(menu_cache);
+    slicks_amiga_track_list_cache_refresh(&track_list_cache);
     if (auto_race) {
         struct SlicksConfiguration diagnostic_configuration=configuration;
         if(fuel_race_test && !natural_results_test) {
@@ -4628,16 +4634,15 @@ int main(void)
                     } else if(g_slicks_track_action==SLICKS_TRACK_MENU_HELP) {
                         if(open_help(&platform,g_slicks_track_menu,slicks_original_track_help)) goto cleanup;
                     } else if(g_slicks_track_action==SLICKS_TRACK_MENU_LISTS) {
-                        slicks_amiga_platform_end(&platform);
                         g_slicks_track_lists_load=slicks_amiga_track_lists_open(g_slicks_track_menu,
-                            slicks_original_track_list_actions,slicks_original_players_footer_percent);
+                            &track_list_cache,slicks_original_track_list_actions,slicks_original_players_footer_percent);
                         if(g_slicks_track_lists_load.result!=SLICKS_SETUP_LOADED) {
                             const char *error=g_slicks_track_lists_load.result==SLICKS_SETUP_LOAD_RECOVERY?
                                 "KEEP SLICKS.TRK NEW/BAK FILES":"SLICKS.TRK LOAD FAILED";
                             if(track_lists_finish(&platform,(short)track_count,error)) goto cleanup;
                         } else if(slicks_amiga_profile_picker_draw(g_slicks_track_menu,picker_clock.ticks)) goto cleanup;
                         present_menu_surface(&platform,g_slicks_track_menu);
-                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        if(show_menu(&platform)) goto cleanup;
                         slicks_diag_track_lists_ready();
                     } else if(g_slicks_track_action==SLICKS_TRACK_MENU_RECORDS) {
                         slicks_amiga_platform_end(&platform);
@@ -5923,6 +5928,7 @@ cleanup:
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;
+    slicks_amiga_track_list_cache_free(&track_list_cache);
     if (sample_resource)
         FreeMem(sample_resource, 131691UL);
     if (chunky)

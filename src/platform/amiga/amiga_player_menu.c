@@ -502,7 +502,6 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
     if(m->help_warning) (void)slicks_amiga_help_warning_close(m);
     if(m->track_info) FreeMem(m->track_info,sizeof *m->track_info);
     if(m->track_lists) {
-        if(m->track_lists->bytes) FreeMem(m->track_lists->bytes,SLICKS_AMIGA_TRACK_LIST_BYTES);
         FreeMem(m->track_lists,sizeof *m->track_lists);
     }
     if(m->message) FreeMem(m->message,sizeof *m->message);
@@ -947,21 +946,20 @@ void slicks_amiga_track_lists_close(struct SlicksAmigaPlayerMenu *m)
     if(m->message) (void)slicks_amiga_message_close(m);
     if(m->name_dialog) (void)slicks_amiga_name_dialog_close(m);
     if(m->picker) (void)slicks_amiga_profile_picker_close(m);
-    if(m->track_lists->bytes) FreeMem(m->track_lists->bytes,SLICKS_AMIGA_TRACK_LIST_BYTES);
     FreeMem(m->track_lists,sizeof *m->track_lists); m->track_lists=0;
 }
 struct SlicksSetupLoadReport slicks_amiga_track_lists_open(struct SlicksAmigaPlayerMenu *m,
-    const unsigned char *captions,unsigned char percent)
+    const struct SlicksAmigaTrackListCache *cache,const unsigned char *captions,unsigned char percent)
 {
     struct SlicksSetupLoadReport report={SLICKS_SETUP_LOAD_INVALID,0,"SLICKS.TRK",0,0};
     if(!m || m->track_lists || m->picker || !captions || prepare_keymap(m)) return report;
+    if(!cache) return report;
+    report=cache->report;
+    if(report.result!=SLICKS_SETUP_LOADED) return report;
     struct SlicksAmigaTrackLists *lists=AllocMem(sizeof *lists,MEMF_ANY|MEMF_CLEAR);
     if(!lists) { report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE; return report; }
     m->track_lists=lists;
-    lists->bytes=AllocMem(SLICKS_AMIGA_TRACK_LIST_BYTES,MEMF_ANY);
-    if(!lists->bytes) { report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE; goto failed; }
-    report=slicks_amiga_load_track_lists(lists->bytes,SLICKS_AMIGA_TRACK_LIST_BYTES,&lists->catalogue);
-    if(report.result!=SLICKS_SETUP_LOADED) goto failed;
+    lists->catalogue=cache->view; /* Immutable borrow until modal close. */
     int picker_result=slicks_amiga_track_lists_picker(m,captions,percent);
     if(picker_result) {
         report.result=picker_result==-2?SLICKS_SETUP_LOAD_IO_ERROR:SLICKS_SETUP_LOAD_INVALID;

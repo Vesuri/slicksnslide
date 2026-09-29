@@ -1,5 +1,15 @@
 set $resident_guard = 0
 set $commits = 0
+break slicks_amiga_track_lists_open
+commands
+  silent
+  if !g_slicks_diag_profile_platform->active
+    printf "TRACK_LIST_OPEN_WITH_DISPLAY_RELEASED\n"
+    quit 1
+  end
+  set $resident_guard = 1
+  continue
+end
 break slicks_amiga_load_track_lists
 commands
   silent

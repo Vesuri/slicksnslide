@@ -27,7 +27,6 @@ void slicks_amiga_standings_draw(struct SlicksAmigaPlayerMenu *,
     const struct SlicksChampionshipStandings *,const unsigned char [4][6],
     const unsigned char *const [4]);
 struct SlicksAmigaTrackLists {
-    unsigned char *bytes;
     struct SlicksTrackLists catalogue;
     unsigned char name[21];
     short pending_delete;
@@ -192,7 +191,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_help_surface_create(
     struct SlicksResourceArchive *,unsigned char *,const unsigned char *);
 void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *);
 struct SlicksSetupLoadReport slicks_amiga_track_lists_open(
-    struct SlicksAmigaPlayerMenu *,const unsigned char *,unsigned char);
+    struct SlicksAmigaPlayerMenu *,const struct SlicksAmigaTrackListCache *,const unsigned char *,unsigned char);
 int slicks_amiga_track_lists_picker(struct SlicksAmigaPlayerMenu *,const unsigned char *,unsigned char);
 struct SlicksTrackListChoice slicks_amiga_track_lists_choice(struct SlicksAmigaPlayerMenu *,short);
 void slicks_amiga_track_lists_close(struct SlicksAmigaPlayerMenu *);

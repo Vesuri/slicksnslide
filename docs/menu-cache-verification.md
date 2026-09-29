@@ -171,3 +171,47 @@ Fresh host gates also pass: `verify-saved-file-dialog` (262,144 original-caller
 comparisons), `verify-saved-game-storage` (1,485 save-failure and 2,310 load-I/O
 cases), and `verify-championship` (state/codec/staging and atomic rejection).
 No storage transaction or file-format implementation changed.
+
+## Startup-resident SLICKS.TRK catalogue
+
+Startup now loads the validated catalogue into exact-sized retained storage.
+The picker borrows its immutable view rather than allocating 65,536 bytes and
+reading the file on every open. Its constructor and ordinary opening transition
+are RAM-only and keep hardware ownership. All borrowed modal views close before
+the cache refresh at an explicit save/delete disk boundary. Cleanup releases
+the snapshot after destroying its borrowers. Missing files retain the original
+empty-catalogue semantics (eight bytes). External file edits/repairs are picked
+up on the next startup, not through hidden navigation reads.
+
+Refresh preserves the previous allocation on every failure, but records the
+error so a failed/recovery refresh cannot silently expose stale entries. The
+existing NEW/BAK rules remain authoritative. Successful refresh replaces the
+snapshot atomically. Its temporary load buffers remain bounded at 64 KiB each;
+these exist only at startup/transaction boundaries, not during list navigation.
+This is not yet a whole-game peak-memory or release-gate result.
+
+Fresh host gates: `verify-track-lists` passes 60 reader and 80 writer comparisons
+against original instructions. `verify-track-list-storage` passes 361 save-fault
+cases and its prior load checks, plus cache allocation/read/close faults,
+all catalogue truncations, recovery-artifact preservation, exact-size replacement
+and leak-free cleanup. The mock explicitly retains one live cache allocation
+between refreshes; its original reset helper requires zero live allocations and
+was not suitable for these persistent-owner cases.
+
+Muted native A1200/2 MiB tests use `FSUAE_RUN=.run/track-cache-resident`,
+`SLICKS_DEBUG_WARP=1`, and `SLICKS_TRACK_MENU` 2, 3, 4, then 5:
+
+- `diag_track_lists.gdb`: save two selected tracks; subsequent run selects
+  the saved list with zero commits. Both reach race entry correctly.
+- `diag_track_lists_delete.gdb`: cancel name, cancel delete, confirm delete,
+  reopen the newly empty cached catalogue; exactly one disk commit.
+- `diag_track_lists_save_failure.gdb` with `SLICKS_DEBUG_READ_ONLY=1`: error
+  214, warning dismissal and correct unchanged playlist at race entry.
+
+The shared residency guard now starts at the picker constructor, requiring
+active display ownership and prohibiting catalogue/archive loads and teardown
+through RAM-only input. Explicit transactions still require released ownership.
+Logs: `tmp/track-cache-{save,load,delete,readonly}.log`. All four gates pass;
+the runner closes each owned emulator. They terminate at race entry, not normal
+system restoration. Saved-game filename caching and broader release gates
+remain separate open work.

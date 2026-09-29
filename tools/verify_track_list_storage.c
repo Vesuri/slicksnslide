@@ -5,6 +5,12 @@
 #undef main
 static const unsigned char *track_name(void *p,unsigned index)
 { (void)p; static const unsigned char n[][9]={"BASIC","1WAY","ABCDEFGH"}; return n[index]; }
+static void initialize_with_cache(const unsigned char *bytes,unsigned size)
+{
+    assert(allocations==1);
+    memset(files,0,sizeof files); memcpy(files[0].bytes,bytes,size);
+    files[0].size=size; files[0].present=1; operation=error=0;
+}
 int main(void)
 {
     paths[0]="SLICKS.TRK"; paths[1]="SLICKS.TRK.new"; paths[2]="SLICKS.TRK.bak";
@@ -81,6 +87,38 @@ int main(void)
     assert(load.result==SLICKS_SETUP_LOADED && !slicks_track_lists_select(&view,0,&restored,3,track_name,0));
     assert(restored.count==4 && !memcmp(recovered,indices,sizeof recovered) && !allocations);
     for(unsigned i=0;i<4;++i) assert(results[i]);
+    struct SlicksAmigaTrackListCache cache={0};
+    initialize(old,(unsigned)old_size); fail_first=fail_second=0;
+    slicks_amiga_track_list_cache_refresh(&cache);
+    assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.size==(unsigned long)old_size &&
+        cache.view.count==1 && !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
+    calls=operation;
+    const unsigned char *retained=cache.view.bytes;
+    for(unsigned fault_at=1;fault_at<=calls;++fault_at) {
+        initialize_with_cache(old,(unsigned)old_size); fail_first=fault_at; fail_second=0;
+        slicks_amiga_track_list_cache_refresh(&cache);
+        assert(cache.report.result!=SLICKS_SETUP_LOADED && cache.view.bytes==retained &&
+            !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
+    }
+    fail_first=fail_second=0;
+    for(unsigned cut=0;cut<(unsigned)old_size;++cut) {
+        initialize_with_cache(old,cut);
+        slicks_amiga_track_list_cache_refresh(&cache);
+        assert(cache.report.result==SLICKS_SETUP_LOAD_INVALID && cache.view.bytes==retained &&
+            !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
+    }
+    for(unsigned artifact=1;artifact<3;++artifact) {
+        initialize_with_cache(old,(unsigned)old_size); files[artifact].present=1;
+        slicks_amiga_track_list_cache_refresh(&cache);
+        assert(cache.report.result==SLICKS_SETUP_LOAD_RECOVERY && cache.view.bytes==retained && allocations==1);
+    }
+    initialize_with_cache(empty,sizeof empty); files[0].present=0;
+    slicks_amiga_track_list_cache_refresh(&cache);
+    assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.size==8 &&
+        !cache.view.count && !memcmp(cache.view.bytes,empty,8) && allocations==1);
+    slicks_amiga_track_list_cache_free(&cache);
+    assert(!allocations && !cache.view.bytes && cache.report.result==SLICKS_SETUP_LOAD_INVALID);
+    puts("Resident track-list cache: exact-size replacement, all refresh faults, recovery retention and cleanup pass");
     printf("Amiga saved-list storage: %u single/double save faults, load/close/allocation failures, truncation, recovery guards and missing-file first save pass\n",cases);
     return 0;
 }

@@ -202,6 +202,32 @@ struct SlicksSetupLoadReport slicks_amiga_load_track_lists(
     }
     FreeMem(buffer,capacity); return report;
 }
+void slicks_amiga_track_list_cache_free(struct SlicksAmigaTrackListCache *cache)
+{
+    if(cache->view.bytes) FreeMem((APTR)cache->view.bytes,cache->view.size);
+    cache->view=(struct SlicksTrackLists){0,0,0};
+    cache->report=(struct SlicksSetupLoadReport){SLICKS_SETUP_LOAD_INVALID,0,"SLICKS.TRK",0,0};
+}
+void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *cache)
+{
+    unsigned char *work=AllocMem(SLICKS_AMIGA_TRACK_LIST_BYTES,MEMF_ANY);
+    struct SlicksTrackLists next;
+    cache->report=(struct SlicksSetupLoadReport){SLICKS_SETUP_LOAD_IO_ERROR,ERROR_NO_FREE_STORE,"SLICKS.TRK",0,0};
+    if(!work) return;
+    cache->report=slicks_amiga_load_track_lists(work,SLICKS_AMIGA_TRACK_LIST_BYTES,&next);
+    if(cache->report.result==SLICKS_SETUP_LOADED) {
+        unsigned char *bytes=AllocMem(next.size,MEMF_ANY);
+        if(!bytes) {
+            cache->report.result=SLICKS_SETUP_LOAD_IO_ERROR;
+            cache->report.io_error=ERROR_NO_FREE_STORE; cache->report.path="SLICKS.TRK";
+        } else {
+            for(unsigned long i=0;i<next.size;++i) bytes[i]=work[i];
+            if(cache->view.bytes) FreeMem((APTR)cache->view.bytes,cache->view.size);
+            next.bytes=bytes; cache->view=next;
+        }
+    }
+    FreeMem(work,SLICKS_AMIGA_TRACK_LIST_BYTES);
+}
 struct SlicksSetupStorageReport slicks_amiga_store_track_lists(
     const struct SlicksTrackLists *lists,int remove,const unsigned char *title,
     const struct SlicksTrackPlaylist *playlist,unsigned total,

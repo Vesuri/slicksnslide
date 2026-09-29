@@ -80,8 +80,10 @@ Implementation and completed verification evidence are separate in
   keyboard snapshot are implemented; title Help, Options, Players, Controllers,
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
-  Cache the SLICKS.TRK and saved-game catalogues, preserving transactional
-  save/delete updates and recovery/error handling. Track-information and its
+  Cache the saved-game catalogue, preserving transactional save/delete updates
+  and recovery/error handling. The SLICKS.TRK startup snapshot and explicit
+  transaction refresh are implemented; external repairs currently require
+  restarting, not hidden rereads on navigation. Track-information and its
   warning close and RAM-only track-list chooser input now retain hardware
   ownership. Saved-game picker-to-name and notice closes also retain ownership;
   catalogue rereads and its released-on-return contract remain to be migrated,

@@ -44,8 +44,9 @@ Shop, records and intermission share the same car icons; do not load them again.
 - `SLICKS.REK`: validate at startup and keep the resulting registration state.
   Do not retain another copy of the private key merely for navigation.
 - `SLICKS.TRK`: read the track-list catalogue at startup, retaining parsed
-  entries and any bounded source storage needed by its editor. Currently the
-  track-list picker reads it when opened.
+  entries and exact-sized source storage borrowed by its editor. The chooser
+  does not reread it. Explicit save/delete boundaries refresh the snapshot
+  after closing borrowed views, retaining transactional recovery checks.
 - Track-name catalogue: retain startup discovery results for list browsing.
 - Saved championships (`*.SSS`): discover names at startup and retain the
   chooser catalogue. Currently opening the chooser scans the directory.

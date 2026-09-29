@@ -61,6 +61,15 @@ struct SlicksSetupLoadReport slicks_amiga_load_setup(
  * owns the catalogue buffer; load publishes neither it nor its view on
  * failure. Missing file is an empty catalogue. OS must be available. */
 #define SLICKS_AMIGA_TRACK_LIST_BYTES 65536UL
+/* Startup-owned exact-size snapshot. Refresh only with OS available and no
+ * borrowed modal views. A failed refresh preserves bytes, but records failure
+ * so callers cannot silently browse stale state across recovery artifacts. */
+struct SlicksAmigaTrackListCache {
+    struct SlicksTrackLists view;
+    struct SlicksSetupLoadReport report;
+};
+void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *);
+void slicks_amiga_track_list_cache_free(struct SlicksAmigaTrackListCache *);
 struct SlicksSetupLoadReport slicks_amiga_load_track_lists(
     unsigned char *,unsigned long,struct SlicksTrackLists *);
 struct SlicksSetupStorageReport slicks_amiga_store_track_lists(
