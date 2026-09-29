@@ -65,6 +65,32 @@ int main(void)
         REQUIRE(filename[0]=='/' && !strcmp(filename+1,native_name));
     }
     puts("Original persisted language selector: all eight resource names match");
+    unsigned choices=0;
+    for(unsigned count=1;count<=8;++count) for(unsigned selected=0;selected<count;++selected)
+        for(unsigned key=0;key<256;++key) {
+            uint16_t cs=0x39d6,ss=0x8000,sp=0xe000,bp=0xf000,ax=key;
+            check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_SS,&ss));
+            check(uc_reg_write(u,UC_X86_REG_SP,&sp));check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+            check(uc_reg_write(u,UC_X86_REG_AX,&ax));
+            word(u,0x8effc,selected);word(u,0x8effe,count);
+            check(uc_emu_start(u,0x39e7f,0x39ec1,0,100));
+            unsigned char native_selection=(unsigned char)selected;
+            int done=slicks_language_choice_key(&native_selection,(unsigned char)count,(unsigned char)key);
+            REQUIRE(get(u,0x8effc)==(unsigned)(native_selection|(done<<8)));
+            ++choices;
+        }
+    /* Execute the default detector's decision after its DOS KEYB call. */
+    for(unsigned code=0;code<65536;++code) {
+        uint16_t cs=0x1987,ss=0x8000,sp=0xe000,bp=0xf000,ax=code;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_SS,&ss));
+        check(uc_reg_write(u,UC_X86_REG_SP,&sp));check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+        check(uc_reg_write(u,UC_X86_REG_AX,&ax));
+        word(u,0x8f000,0);word(u,0x8f002,0);word(u,0x8f004,0x9000);
+        check(uc_emu_start(u,0x25aac,0x90000,0,100));
+        check(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        REQUIRE(ax==slicks_language_default((unsigned short)code));
+    }
+    printf("Original language chooser: %u key/boundary cases and 65536 default-code cases pass\n",choices);
     static const unsigned char synthetic[]="Title\r\nfoo=first\r\nfoo=second\r\nfoobar=long\r\nempty=\r\nmultiline=one\xaftwo\r\n.\r\nignored=value\r\n";
     const char *keys[]={"back","help","controllers","speed","nexttrack","mainmenu",
         "tracks","menu1","menu7","missing","MAINMENU","main","","foo","foobar","empty","multiline","ignored"};

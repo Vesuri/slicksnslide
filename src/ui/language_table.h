@@ -1,6 +1,21 @@
 #ifndef SLICKS_LANGUAGE_TABLE_H
 #define SLICKS_LANGUAGE_TABLE_H
 
+/* Original 25aa3: only the KEYB-reported code 358 chooses table 2. */
+static inline unsigned char slicks_language_default(unsigned short code)
+{ return code==358?2:1; }
+
+/* Original console chooser 39e7f..39ec1, zero-based selection. Escape,
+ * Space and Enter all accept; arrows clamp rather than wrap. */
+static inline int slicks_language_choice_key(unsigned char *selected,
+    unsigned char count,unsigned char key)
+{
+    if(!selected || !count || *selected>=count) return -1;
+    if(key==72 && *selected) --*selected;
+    if(key==80 && *selected<count-1) ++*selected;
+    return key==13 || key==27 || key==32;
+}
+
 /* Original 2b70a constructs /langN.txt from the persisted language byte.
  * The archive API uses names without the leading slash. Only the eight
  * supplied tables are accepted here; startup chooser/default policy is separate. */

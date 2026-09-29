@@ -146,6 +146,10 @@ Implementation and completed verification evidence are separate in
   pause and intermission language-table consumers. Implement the original
   startup zero/negative selector chooser/default policy, and audit the other
   label callers; honoring positive selections does not complete localization.
+  Original default-code and chooser-key helpers are independently verified
+  but not integrated. Preserve first-line resource labels, clamped arrows,
+  and Escape/Space/Enter acceptance; resolve the DOS KEYB platform boundary
+  rather than guessing a generic locale-to-language mapping.
 
 - Finish disk-free ordinary navigation using the startup-resident inventory in
   [menu-resident-assets.md](menu-resident-assets.md). The 57-resource cache and

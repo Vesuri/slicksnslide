@@ -62,6 +62,29 @@ the original chooser/default policy remains a confirmed implementation gap.
 Other hardwired labels require caller-level audit rather than assuming the
 existing table consumers comprise the whole localization path.
 
+### F15 startup selection rules (2026-09-29)
+
+The original automatic-language path is not a general OS locale lookup:
+`25aa3` calls `39ce0`, which executes `keyb > keyb.out`, parses that output
+and removes the temporary file. Only reported code 358 selects language 2;
+every other 16-bit result selects language 1. The native helper
+`slicks_language_default` now matches the original decision instructions for
+all 65,536 input codes. DOS command execution remains a platform boundary;
+the helper does not pretend to detect an Amiga keyboard setting.
+
+The explicit chooser enumerates consecutive `/langN.txt` resources and uses
+their first lines as labels. Its selection is zero-based; Up/Down clamp.
+Enter, Escape and Space all accept the current choice. The original
+`39e7f..39ec1` key decision matches `slicks_language_choice_key` in 9,216
+cases: all byte inputs, every available selection for counts 1–8. These pass
+within `make verify-language-table` alongside filename, table and fallback
+oracles. No emulator was started for this isolated instruction comparison.
+
+The helpers are not yet wired to startup. The platform keyboard/default
+adapter, original first-line labels, console/input lifetime, accepted-choice
+persistence and native chooser verification remain integration obligations.
+Escape must not be implemented as cancellation based on other menu owners.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title
