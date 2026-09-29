@@ -1106,6 +1106,12 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 .PHONY: verify-title-navigation
 .PHONY: verify-title-status
 .PHONY: verify-title-dirty
+.PHONY: verify-menu-dirty
+build/verify_menu_dirty: tools/verify_menu_dirty.c src/ui/menu_dirty.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-menu-dirty: build/verify_menu_dirty
+	build/verify_menu_dirty
+
 build/verify_title_dirty: tools/verify_title_dirty.c src/ui/title_dirty.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-title-dirty: build/verify_title_dirty

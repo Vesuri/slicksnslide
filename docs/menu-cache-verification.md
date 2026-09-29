@@ -440,3 +440,34 @@ reconstruction entry while owned, and restoration 31. The runner closed both
 emulators. Host palette-fade, championship-standings and standings-draw gates
 also passed. This is scoped lifetime/fade evidence, not complete menu rectangle
 coverage or a refreshed release validation.
+
+## Shared menu rectangle publication
+
+The shared menu dirty callback previously discarded X bounds and published
+whole-width row intervals. It now retains up to 16 painter-reported rectangles,
+clips them to the visible screen, aligns X to 16-pixel C2P blocks, merges touching
+or overlapping rectangles transitively and collapses overflow to their combined
+bounds. No shadow framebuffer or per-row flags are used. Empty publications
+do not wait; nonempty ones use the existing display-blank wait and rectangle
+converter. Actual full-screen constructors still invalidate the whole surface.
+
+`make verify-menu-dirty verify-c2p16` passes 40,000 independently checked
+clipped coverage steps plus narrow/disjoint, merge and overflow cases, and the
+native converter's single-bit, random, exhaustive horizontal-span, empty,
+canary and ABI checks. The normal Amiga build passes.
+
+Fresh muted native tests use `diag_options_rectangles.gdb` with
+`SLICKS_OPTIONS_MENU=1`, then `diag_player_rectangles.gdb` with
+`SLICKS_PLAYER_MENU=1`. Both retain the existing workflow assertions.
+`tools/check_menu_publications.py` independently decodes every captured planar
+surface and compares all 64,000 pixels: ten Options publications and six Players
+publications pass. Options includes close/reopen and race handoff; Players
+includes Down/C/Right/Left/Up. Both runners closed their emulators.
+Local logs are `tmp/options-rectangles.log` and `tmp/player-rectangles.log`.
+
+Ordinary Players redraws publish (32,28)-(240,100) and
+(32,105)-(144,200): 25,616 pixels rather than the previous full-width row
+coverage of 53,440. These cover the original painter's two broad restoration
+regions, not merely its highlighted label. This demonstrates reduced publication
+area, not measured beam safety or coverage of all nested dialogs. The remaining
+per-owner, full-screen restoration and text-bound audits stay on the open list.

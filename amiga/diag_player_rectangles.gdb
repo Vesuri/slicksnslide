@@ -1,0 +1,2 @@
+source diag_menu_rectangles.gdb
+source diag_player_menu.gdb

@@ -37,25 +37,7 @@ static int list_alloc_fault(unsigned char stage)
 static void dirty(void *context,short left,short top,short right,short bottom)
 {
     struct SlicksAmigaPlayerMenu *m=context;
-    if(left>=right || top>=bottom || bottom<=0 || top>=200) return;
-    if(top<0) top=0;
-    if(bottom>200) bottom=200;
-    /* Small interval list, no per-row booleans and no shadow comparisons. */
-    for(unsigned i=0;i<m->dirty_count;) {
-        struct SlicksMenuRows *r=&m->dirty[i];
-        if(bottom<r->top || top>r->bottom) { ++i; continue; }
-        if(top>r->top) top=(short)r->top;
-        if(bottom<r->bottom) bottom=(short)r->bottom;
-        m->dirty[i]=m->dirty[--m->dirty_count]; i=0;
-    }
-    if(m->dirty_count==16) {
-        for(unsigned i=0;i<16;++i) {
-            if(top>m->dirty[i].top) top=(short)m->dirty[i].top;
-            if(bottom<m->dirty[i].bottom) bottom=(short)m->dirty[i].bottom;
-        }
-        m->dirty_count=0;
-    }
-    m->dirty[m->dirty_count++]=(struct SlicksMenuRows){(unsigned short)top,(unsigned short)bottom};
+    slicks_menu_dirty_add(m->dirty,&m->dirty_count,left,top,right,bottom);
 }
 static int records_text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,
     const unsigned char *string,short x,short y,unsigned char flags,unsigned char highlight)
@@ -1072,7 +1054,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
     m->renderer.saved=m->saved; m->renderer.icons=m->icons; m->renderer.icon_count=11;
     m->renderer.text=text; m->renderer.icon=icon; m->renderer.context=m;
     if(slicks_player_renderer_prepare(&m->renderer,title,footer,footer_percent) || m->error) goto failed;
-    m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRows){0,200};
+    m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
     if(resource) FreeMem(resource,32768);
@@ -1106,7 +1088,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_options_menu_create(
     if(slicks_options_renderer_init(renderer,&m->renderer,options_measure_bridge) ||
        slicks_options_renderer_prepare(renderer,title) || m->error) goto failed;
     FreeMem(resource,8192);
-    m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRows){0,200};
+    m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
     if(resource) FreeMem(resource,8192);
@@ -1143,7 +1125,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_track_menu_create(
     if(slicks_track_renderer_init(renderer,&m->renderer,percent,name,name_context) ||
        slicks_track_renderer_prepare(renderer,title,footer,total,percent) || m->error) goto failed;
     FreeMem(resource,64003);
-    m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRows){0,200};
+    m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
     if(resource) FreeMem(resource,64003);

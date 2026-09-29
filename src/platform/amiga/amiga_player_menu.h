@@ -4,6 +4,7 @@
 /* Call with AmigaOS available before any hardware-owned menu is opened. */
 int slicks_amiga_menu_keymap_init(void);
 #include "resource_archive.h"
+#include "../../ui/menu_dirty.h"
 #include "../../ui/player_menu_renderer.h"
 #include "../../ui/list_renderer.h"
 #include "../../ui/profile_editor_renderer.h"
@@ -71,7 +72,6 @@ struct SlicksAmigaProfilePicker {
     unsigned char scrollbar_background[800];
 };
 
-struct SlicksMenuRows { unsigned short top,bottom; };
 struct SlicksAmigaIntermission {
     struct SlicksIntermissionRenderer renderer;
     struct SlicksRecordsRenderer surface;
@@ -103,7 +103,7 @@ struct SlicksAmigaPlayerMenu {
     struct SlicksPlayerMenuLabels labels;
     unsigned char palette[768],saved[64000],fonts[3][6000],pixels[11][192];
     struct SlicksMenuIcon icons[11];
-    struct SlicksMenuRows dirty[16];
+    struct SlicksMenuRect dirty[16];
     unsigned short dirty_count;
     int error;
     struct SlicksAmigaProfilePicker *picker;

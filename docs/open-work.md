@@ -44,6 +44,12 @@ Implementation and completed verification evidence are separate in
   only the covered blocks. Check ordinary selection changes, nested dialogs,
   restoration, scrolling and transitions; reserve full-screen conversion for
   actual full-screen replacements. Verify producer coverage and native pixels.
+  Remaining publication coverage: title transitions/pulse, Players nested
+  picker/editor/name/colour dialogs, Controllers, Tracks/list/info, Help,
+  pause/speed, shop, saved-game/recovery, intermission/results and registration.
+  Audit full-width text callbacks (Help and standings), full-screen modal
+  restores and direct row-converter bypasses separately from the shared
+  publisher. Do not infer whole-menu correctness from an Options smoke test.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.

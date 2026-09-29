@@ -948,10 +948,12 @@ owner:
 
 static void present_menu_surface(struct SlicksAmigaPlatform *platform,struct SlicksAmigaPlayerMenu *menu)
 {
+    if(!menu->dirty_count) return;
     if(platform->active) slicks_amiga_platform_wait_display_blank(platform);
     for(unsigned i=0;i<menu->dirty_count;++i)
-        slicks_chunky_rows_to_amiga(menu->renderer.ui.pixels,platform->views[0].bitmap,
-            menu->dirty[i].top,menu->dirty[i].bottom);
+        slicks_chunky_rect_to_amiga(menu->renderer.ui.pixels,platform->views[0].bitmap,
+            menu->dirty[i].left,menu->dirty[i].top,
+            menu->dirty[i].right,menu->dirty[i].bottom,0);
     slicks_amiga_player_menu_clear_dirty(menu);
 }
 static void present_player_menu(struct SlicksAmigaPlatform *platform)
