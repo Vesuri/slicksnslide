@@ -2304,17 +2304,6 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     race_checkpoint(6);
     if(weapon_hud_fixture) set_weapon_hud_fixture(race);
     if(session) race->random_state=session->random_state;
-#ifdef SLICKS_SHADOW_CHECK
-    {
-        extern unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
-        extern volatile unsigned long slicks_shadow_sites;
-        slicks_shadow_sites=SLICKS_SHADOW_SITES;
-        if (!slicks_shadow_state)
-            slicks_shadow_state = AllocMem(57344, MEMF_ANY);
-        if (!slicks_shadow_chunky)
-            slicks_shadow_chunky = AllocMem(64000, MEMF_ANY);
-    }
-#endif
     if (slicks_race_start(race, logical, chunky) != 0) {
         g_slicks_diag_race_error = 7;
         goto cleanup;
@@ -2361,6 +2350,24 @@ cleanup:
         FreeMem(track, 8192UL);
     if (dat)
         FreeMem(dat, 65536UL);
+#ifdef SLICKS_SHADOW_CHECK
+    if (!result) {
+        /* These buffers compare gameplay updates, not loading. Allocate
+         * after releasing temporary assets so the 2 MiB renderer checks
+         * cannot silently lose their 64 KiB comparison surface. */
+        extern unsigned char *slicks_shadow_state,*slicks_shadow_chunky;
+        extern volatile unsigned long slicks_shadow_sites;
+        slicks_shadow_sites=SLICKS_SHADOW_SITES;
+        if (!slicks_shadow_state)
+            slicks_shadow_state = AllocMem(57344, MEMF_ANY);
+        if ((SLICKS_SHADOW_SITES & (32|64)) && !slicks_shadow_chunky)
+            slicks_shadow_chunky = AllocMem(64000, MEMF_ANY);
+        if (!slicks_shadow_state ||
+            ((SLICKS_SHADOW_SITES & (32|64)) && !slicks_shadow_chunky)) {
+            g_slicks_diag_race_error=1; result=-1;
+        }
+    }
+#endif
     if (result != 0) {
         if(session) {
             *session=saved_session; *configuration=saved_configuration;
