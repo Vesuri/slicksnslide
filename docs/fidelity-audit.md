@@ -85,6 +85,37 @@ adapter, original first-line labels, console/input lifetime, accepted-choice
 persistence and native chooser verification remain integration obligations.
 Escape must not be implemented as cancellation based on other menu owners.
 
+### F15 explicit startup chooser integration (2026-09-29)
+
+A zero saved language now enters a text-console chooser before hardware
+takeover. It reads the first lines of consecutive original language resources,
+starts at the first choice, and uses the independently verified clamped
+Up/Down and Enter/Space/Escape acceptance rules. The accepted ID replaces
+DS:05e1's native field, marks configuration dirty, and selects the resource
+used by live table consumers. A console/input failure rejects startup rather
+than silently selecting a language. Raw console mode is restored on the exit
+path. Nonzero positive selections do not open the chooser.
+
+The Amiga adapter uses immediate console input and CSI arrow reports, per the
+[Console Device documentation](https://wiki.amigaos.net/wiki/Console_Device).
+The marker is an ASCII `>` in the Amiga console rather than the DOS text-mode
+glyph. This is a platform presentation adaptation, not an invented game menu.
+
+`HELPL0` supplies diagnostic chooser keys Up/Down/Down/Up/Escape after real
+resource enumeration; it does not inject the accepted result. Run
+`tmp/standalone-release-_ltzg18h` verifies selection of language 2 and its
+populated table during the subsequent ordinary Read This/F1 lifecycle,
+two closes and system-restoration mask 31. The complete title image before
+and after Read This is byte-identical. The stripped binary runs with a
+confirmed 4 KiB stack, stock-speed PAL 68020, 2 MiB Chip/no Fast; its muted
+emulator was closed. Build: `tmp/language-chooser-build.log`.
+
+That fixture bypasses actual console Read/SetMode, so real console-key input,
+input failures and persisted-file restart are still unverified. Negative
+automatic selection still retains the previous English fallback pending a
+user decision about the ambiguous platform keyboard/default policy. No
+claim of complete localization or chooser release validation is made.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title

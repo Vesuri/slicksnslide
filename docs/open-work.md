@@ -144,12 +144,14 @@ Implementation and completed verification evidence are separate in
   confirmed defects from unverified coverage and user-authorized adaptations.
   F15: positive saved language selections now feed existing title/Arcade,
   pause and intermission language-table consumers. Implement the original
-  startup zero/negative selector chooser/default policy, and audit the other
+  startup negative-selector default policy, and audit the other
   label callers; honoring positive selections does not complete localization.
-  Original default-code and chooser-key helpers are independently verified
-  but not integrated. Preserve first-line resource labels, clamped arrows,
-  and Escape/Space/Enter acceptance; resolve the DOS KEYB platform boundary
-  rather than guessing a generic locale-to-language mapping.
+  The zero-selector chooser is connected with original first-line labels,
+  clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
+  reaches the selected table and restores the system. Verify actual console
+  input/mode cleanup, failure routes and save/restart persistence. Resolve
+  the DOS KEYB platform boundary rather than guessing a generic locale-to-language
+  mapping; the automatic default policy question is awaiting the user.
 
 - Finish disk-free ordinary navigation using the startup-resident inventory in
   [menu-resident-assets.md](menu-resident-assets.md). The 57-resource cache and

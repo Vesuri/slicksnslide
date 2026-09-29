@@ -93,6 +93,57 @@ static unsigned char *title_arcade_font;
 static unsigned char title_language[2048];
 static unsigned title_language_used;
 static char menu_language_name[10]="lang1.txt";
+static unsigned char language_choice_test;
+
+/* Original startup's text-console chooser. This runs before hardware
+ * takeover; the game menus themselves never need console/disk transitions. */
+static int choose_startup_language(struct SlicksResourceArchive *archive)
+{
+    static unsigned char resource[512],labels[8][40];
+    unsigned char count=0,selected=0;
+    for(unsigned i=1;i<=8;++i) {
+        char name[10];
+        if(slicks_language_resource(name,i)) return -1;
+        long size=slicks_resource_archive_load(archive,name,resource,sizeof resource);
+        if(size<0) break;
+        unsigned n=0;
+        while(n<39 && n<(unsigned long)size && resource[n] && resource[n]!='\n' && resource[n]!='\r') {
+            labels[count][n]=resource[n]; ++n;
+        }
+        labels[count++][n]=0;
+    }
+    if(!count) return 1;
+    BPTR input=Input();
+    if(!language_choice_test && (!IsInteractive(input) || !SetMode(input,1))) return -1;
+    PutStr((CONST_STRPTR)"Choose language: (Up/Down, Enter)\n");
+    int result=-1; unsigned step=0;
+    for(;;) {
+        for(unsigned i=0;i<count;++i) {
+            PutStr((CONST_STRPTR)(i==selected?"> ":"  "));
+            PutStr((CONST_STRPTR)labels[i]); PutStr((CONST_STRPTR)"\n");
+        }
+        unsigned char key;
+        if(language_choice_test) {
+            static const unsigned char keys[]={72,80,80,72,27};
+            if(step>=sizeof keys) break;
+            key=keys[step++];
+        } else {
+            if(Read(input,&key,1)!=1) break;
+            if(key==0x9b) {
+                /* Amiga console special-key report; consume the full CSI. */
+                do { if(Read(input,&key,1)!=1) goto finished; } while(key<0x40);
+                key=key=='A'?72:key=='B'?80:0;
+            }
+        }
+        int accepted=slicks_language_choice_key(&selected,count,key);
+        if(accepted) { result=accepted<0?-1:selected+1; break; }
+        char up[]={ (char)0x9b,(char)('0'+count),'A',0 };
+        PutStr((CONST_STRPTR)up);
+    }
+finished:
+    if(!language_choice_test && !SetMode(input,0)) result=-1;
+    return result;
+}
 static unsigned char title_arcade_refresh=2;
 static struct SlicksTitleDemo title_demo;
 static unsigned char demo_render_only;
@@ -3945,8 +3996,9 @@ int main(void)
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
     if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
-       argv[4]=='L' && argv[5]>='1' && argv[5]<='8') {
+       argv[4]=='L' && argv[5]>='0' && argv[5]<='8') {
         title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]-'0');
+        language_choice_test=(unsigned char)(argv[5]=='0');
     }
     unsigned char title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
         argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
@@ -3993,6 +4045,15 @@ int main(void)
 
     if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0)
         goto cleanup;
+    if(!configuration.field_05e1) {
+        int language=choose_startup_language(&archive);
+        if(language<1) {
+            PutStr((CONST_STRPTR)"Slicks: language selection needs an interactive console.\n");
+            goto cleanup;
+        }
+        configuration.field_05e1=(unsigned char)language; setup_dirty=1;
+        if(slicks_language_resource(menu_language_name,(unsigned)language)) goto cleanup;
+    }
     title_asset = (unsigned char *)AllocMem(64003UL, MEMF_ANY);
     title_frame = (unsigned char *)AllocMem(TITLE_FRAME_ALLOCATION_BYTES,
                                           MEMF_ANY | MEMF_CLEAR);
