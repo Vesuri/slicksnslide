@@ -44,7 +44,8 @@ Implementation and completed verification evidence are separate in
   only the covered blocks. Check ordinary selection changes, nested dialogs,
   restoration, scrolling and transitions; reserve full-screen conversion for
   actual full-screen replacements. Verify producer coverage and native pixels.
-  Remaining publication coverage: other Help owners/page/language routes,
+  Remaining publication coverage: Help page/language routes and remaining
+  owner-specific navigation outside the documented coverage,
   shop sparse-selection policy/native coverage
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,

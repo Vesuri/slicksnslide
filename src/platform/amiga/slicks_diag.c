@@ -2726,6 +2726,14 @@ static void pause_live_checkpoint(struct SlicksAmigaPlatform *platform,unsigned 
         }
         return;
     }
+    if(diagnostic==9) {
+        /* Pause Help: Contents, follow/back, close/reopen, then resume. */
+        static const unsigned char keys[]={0x4d,0x44,0x50,0x4d,0x44,0x41,0x45,0x44,0x45,0x45};
+        if(*step<sizeof keys) {
+            platform->key_tail=0;platform->keys[0]=keys[(*step)++];platform->key_head=1;
+        }
+        return;
+    }
     if(diagnostic==7) {
         platform->key_tail=0; platform->keys[0]=0x44; platform->key_head=1;
         return;
@@ -4007,10 +4015,11 @@ int main(void)
     unsigned char setup_failure_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='F' || argv[5]=='G'));
     if(setup_failure_test && !shop_live_failure_test) g_slicks_diag_race_load_fault=argv[5]=='F'?2:6;
     unsigned char setup_abort_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='A'),setup_abort_sent=0;
-    unsigned char pause_live_test=(unsigned char)((argc==8 || (argc==9 && (argv[8]=='F' || argv[8]=='N'))) && argv[0]=='L' && argv[1]=='I' &&
+    unsigned char pause_live_test=(unsigned char)((argc==8 || (argc==9 && (argv[8]=='F' || argv[8]=='N' || argv[8]=='H'))) && argv[0]=='L' && argv[1]=='I' &&
         argv[2]=='V' && argv[3]=='E' && argv[4]=='M' && argv[5]=='E' && argv[6]=='N' && argv[7]=='U');
     unsigned char pause_failure_test=(unsigned char)(pause_live_test && argc==9 && argv[8]=='F');
     unsigned char pause_nested_test=(unsigned char)(pause_live_test && argc==9 && argv[8]=='N');
+    unsigned char pause_help_test=(unsigned char)(pause_live_test && argc==9 && argv[8]=='H');
     unsigned char pause_live_sent=0;
     if(setup_input_test) {
         configuration.selected_profile[0]=2;
@@ -5197,7 +5206,7 @@ int main(void)
                    (scan==1 || scan==0x1d || scan==0x3b || scan==0x3c || scan==0x43 || scan==0x44)) {
                     pause_result=run_race_pause(&platform,&audio,race,chunky,race_palette,&configuration,
                         &setup_dirty,(unsigned char)(scan==0x43?4:scan==0x44?5:0),
-                        (unsigned char)(shop_transition_test?7:pause_nested_test?8:pause_transition_test?(pause_save_test && sequence_returns==1?1:7):pause_failure_test && pause_live_sent<=5?pause_live_sent+1:pause_live_test));
+                        (unsigned char)(shop_transition_test?7:pause_help_test?9:pause_nested_test?8:pause_transition_test?(pause_save_test && sequence_returns==1?1:7):pause_failure_test && pause_live_sent<=5?pause_live_sent+1:pause_live_test));
                     if(pause_result==-3) goto cleanup;
                     /* The pause surface may reuse the chunky buffer. */
                     slicks_race_invalidate_retention(race);

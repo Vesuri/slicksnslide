@@ -678,6 +678,34 @@ All five runners closed their emulators. These are 2 MiB A1200 publication and
 modal-lifetime checks; they do not close other menu owners, manual joystick
 testing or the release-validation gate.
 
+## Live pause Help Contents/history/reopen (2026-09-30)
+
+The explicit LIVEMENUH diagnostic pauses the actual race at update 100 and
+uses ordinary queued keys to select Help, open Contents, select/follow a link,
+return through history, close Help, reopen it, close it and resume. It adds no
+normal-game input or rendering override. `diag_pause_help_rectangles.gdb`
+checks active display ownership and forbids archive reopening/display teardown
+while the pause owner exists.
+
+Run `tmp/standalone-release-wrc5j1l7` passes on stock PAL A1200, 2 MiB
+Chip/no Fast, with a confirmed default 4 KiB stack. Help starts at the original
+empty-topic chapter 9589/page 0, Contents goes to chapter 348/page 0, the
+selected link reaches chapter 1069/page 0, history returns to 348/page 0 and
+reopening returns to 9589/page 0. Both complete Help before/after background
+pairs compare byte-identically. Closing the pause menu restores all 64,000
+race pixels exactly, and the complete car-state bytes before/after match.
+
+The diagnostic requires race frame/game clock/status clock to remain fixed
+through the modal sequence, then observes advancing simulation and active
+engines at update 150, followed by system restoration mask 31. All ten menu
+publications independently decode to every authoritative chunky pixel. The
+run is muted and its emulator closed automatically. Build log:
+`tmp/pause-help-build.log`.
+
+This closes live pause Help Contents/link/history/reopen publication and
+restoration coverage, not every Help topic, page-scroll or other owner route.
+No production behavior defect was found in this sequence.
+
 ## Pause bounds and emergency-warning ownership
 
 Pause now accumulates lifetime painter bounds in the existing saved-screen
