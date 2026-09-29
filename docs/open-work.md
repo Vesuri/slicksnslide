@@ -78,8 +78,8 @@ Implementation and completed verification evidence are separate in
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
   Extend failed-demo preparation checks to race-view setup failure (copper
-  construction/validation, not allocation), and program-exit coverage to clean exit.
-  Dirty exit, direct save retry, save-failure cancellation, demo re-entry and
+  construction/validation, not allocation).
+  Clean and dirty exit, direct save retry, save-failure cancellation, demo re-entry and
   subsequent successful save have native coverage.
   Compare the complete return presentation against the
   original saved-image/title sequence. Keep finish-event rewards distinct from

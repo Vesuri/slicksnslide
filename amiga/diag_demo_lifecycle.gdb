@@ -72,7 +72,7 @@ commands
   silent
   set $demo_done=$demo_done+1
   set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9)
-  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10)
+  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)
   if g_slicks_demo_test_error || $demo_starts!=$expected_starts || g_slicks_demo_test_views!=2*$expected_starts || $demo_load_failures!=$failure_test
     printf "DEMO_LIFECYCLE_FAILED error=%u starts=%u views=%u\n",g_slicks_demo_test_error,$demo_starts,g_slicks_demo_test_views
     quit 1
@@ -115,7 +115,7 @@ commands
     quit 1
   end
   set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9)
-  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10)
+  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)
   if g_slicks_demo_test_error || $demo_starts!=$expected_starts || g_slicks_demo_test_views!=2*$expected_starts || $demo_load_failures!=$failure_test
     printf "DEMO_LIFECYCLE_EARLY_EXIT\n"
     quit 1

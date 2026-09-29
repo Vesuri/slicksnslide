@@ -1101,6 +1101,24 @@ screen's ordinary release-before-timeout behavior. No production behavior
 was changed. Clean unmodified exit and fresh-process reload remain outside
 this specific fixture's scope.
 
+## Demo exit without edited settings (2026-09-29)
+
+`DEMOEXT` (`SLICKS_DEMO_LIFECYCLE_TEST=11`) enters a demo without editing
+Options, exercises both track-data views, then requests program exit. This
+mode is explicitly excluded from diagnostic implicit-save suppression: it
+must take the ordinary unmodified-configuration exit branch. Before that
+branch, the fixture requires a clear dirty flag, restored configuration and
+all 256 playlist entries/count, and cleared demo state. The debugger rejects
+any setup-store call and requires both completion and system restoration.
+
+The muted native run passes with one demo, two pixel-checked views, zero
+saves, zero failures and restoration mask 31. The emulator exits and is
+closed. Logs: `tmp/demo-clean-exit-build.log` and
+`tmp/demo-clean-exit-native.log`. This verifies a bounded clean program exit,
+not every race completion/profile-statistics case or exact return-screen
+presentation. Together with DEMOSAV and DEMORET it covers clean exit, edited
+exit, save-failure cancellation/re-entry and direct retry independently.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
