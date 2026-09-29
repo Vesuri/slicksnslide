@@ -962,6 +962,7 @@ volatile unsigned short g_slicks_diag_saved_phase;
 static unsigned char championship_test,championship_test_stage,championship_picker_count;
 static unsigned char championship_dialog_step;
 void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
+void __attribute__((noinline)) slicks_diag_saved_closed(void) { __asm__ volatile("" ::: "memory"); }
 static void championship_test_keys(struct SlicksAmigaPlatform *p,const unsigned char *keys,unsigned count)
 {
     p->key_tail=0;
@@ -1035,7 +1036,8 @@ static int championship_notice(struct SlicksAmigaPlatform *p,struct SlicksAmigaP
 
 /* The original .SSS list/name widgets, with native transactional disk I/O.
  * RAM-only widget transitions retain takeover. Filesystem calls explicitly
- * release it; the dialog retains its existing released-on-return contract.
+ * release it. Closing RAM-only widgets preserves the current ownership;
+ * callers reacquire only if a preceding file operation released it.
  * Returns 1 accepted, 0 cancelled, -1 unrecoverable display/allocation error. */
 static int run_saved_game_dialog(struct SlicksAmigaPlatform *p,struct SlicksAmigaPlayerMenu *m,
     struct SlicksSavedGame *game,unsigned char tracks[][8],unsigned char saving)
@@ -1147,11 +1149,11 @@ again:
     if(championship_notice(p,m,(const unsigned char *)error)<0) goto done;
     goto again;
 done:
-    slicks_amiga_platform_end(p);
     if(m->picker) (void)slicks_amiga_profile_picker_close(m);
     if(m->name_dialog) (void)slicks_amiga_name_dialog_close(m);
     if(m->message) (void)slicks_amiga_message_close(m);
     present_menu_surface(p,m);
+    slicks_diag_saved_closed();
     g_slicks_diag_saved_menu=0; g_slicks_diag_saved_phase=0;
     return result;
 }
@@ -5017,8 +5019,7 @@ int main(void)
                     static struct SlicksSetupSession staged,previous;
                     struct SlicksConfiguration next_config=configuration;
                     struct SlicksResourceArchive archive={0};
-                    slicks_amiga_platform_end(&platform);
-                    if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto cleanup;
+                    if(slicks_resource_archive_cached(&archive,menu_cache)) goto cleanup;
                     struct SlicksAmigaPlayerMenu *m=slicks_amiga_help_surface_create(&archive,chunky,source_palette);
                     slicks_resource_archive_close(&archive);
                     if(!m) goto cleanup;
@@ -5038,7 +5039,7 @@ int main(void)
                     if(!loaded) {
                         redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
                             selected_vehicle,track_names[selected_track],selected_laps);
-                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        if(show_menu(&platform)) goto cleanup;
                         continue;
                     }
                     for(unsigned i=0;i<4;++i) next_config.selected_profile[i]=staged.players.selected[i];

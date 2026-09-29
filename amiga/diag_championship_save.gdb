@@ -4,6 +4,17 @@ set $picker = 0
 set $name = 0
 set $saved = 0
 set $starts = 0
+set $returns = 0
+break slicks_diag_saved_closed
+commands
+  silent
+  if !g_slicks_diag_profile_platform->active || g_slicks_diag_saved_menu->picker || g_slicks_diag_saved_menu->name_dialog || g_slicks_diag_saved_menu->message
+    printf "SAVED_RETURN_DROPPED_DISPLAY_OR_WIDGET\n"
+    quit 1
+  end
+  set $returns = $returns+1
+  continue
+end
 break *slicks_race_start
 commands
   silent
@@ -55,7 +66,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if !$saved || g_slicks_diag_restore_status != 0x1f || $starts != 1
+  if !$saved || g_slicks_diag_restore_status != 0x1f || $starts != 1 || $returns != 2
     printf "CHAMPIONSHIP_SAVE_FAILED picker=%u restore=%u starts=%u\n",$picker,g_slicks_diag_restore_status,$starts
     quit 1
   end

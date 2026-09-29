@@ -247,3 +247,23 @@ both picker visits and exactly two after saving, with one published cache entry.
 This proves refresh after creation and no rescan on cancel/reopen, not native
 overwrite/delete/error coverage; those fixtures remain open. Local log:
 `tmp/saved-cache-native.log`. The muted runner closed its owned emulator.
+
+## Saved-game return ownership
+
+Removed the unconditional platform release from `run_saved_game_dialog` cleanup.
+RAM-only close/return now preserves ownership; explicit file operations still
+release it. Intermission already reacquires conditionally. The existing title
+Load owner now uses the resident archive and conditional menu acquisition on
+cancel/error rather than reading SLICKS.000 and unconditionally beginning the
+display. Its title-entry route is still under audit, so that caller change has
+build/source evidence but not an end-to-end native Load-route pass.
+
+The fresh native hidden Save fixture adds `slicks_diag_saved_closed` assertions:
+both cancellation and successful-save notice return have active hardware and
+no remaining picker/name/message widget. It passes exactly two returns, one
+race start, cached enumeration counts and normal restoration 31. Reproduction:
+`SLICKS_CHAMPIONSHIP=save SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/championship-return ./debug.sh '' diag_championship_save.gdb`.
+Local log `tmp/saved-return-native.log` ends with the native save/exit pass;
+the muted emulator exited. Fatal constructor/cleanup paths and original Load
+entry still require broader coverage, not inferred from this save-only test.

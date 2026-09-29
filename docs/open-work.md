@@ -86,9 +86,9 @@ Implementation and completed verification evidence are separate in
   names; external repairs currently require
   restarting, not hidden rereads on navigation. Track-information and its
   warning close and RAM-only track-list chooser input now retain hardware
-  ownership. Saved-game picker-to-name and notice closes also retain ownership;
-  its released-on-return contract remains to be migrated,
-  together with results/return and remaining RAM-only transition owners.
+  ownership. Saved-game picker-to-name, notice closes and RAM-only returns also
+  retain ownership. Verify the existing cached Load-owner transition after its
+  entry route is resolved; migrate results/return and remaining RAM-only owners.
   Shop and registration Help
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
