@@ -1,6 +1,18 @@
 #ifndef SLICKS_LANGUAGE_TABLE_H
 #define SLICKS_LANGUAGE_TABLE_H
 
+/* Original 2b70a constructs /langN.txt from the persisted language byte.
+ * The archive API uses names without the leading slash. Only the eight
+ * supplied tables are accepted here; startup chooser/default policy is separate. */
+static inline int slicks_language_resource(char out[10],unsigned language)
+{
+    if(!out || language<1 || language>8) return -1;
+    const char name[]="lang1.txt";
+    for(unsigned i=0;i<sizeof name;++i) out[i]=name[i];
+    out[4]=(char)('0'+language);
+    return 0;
+}
+
 /* Original 3601a text-table loader, with bounded caller-owned storage.
  * fgets reads at most 198 bytes. Lines containing '=' are concatenated
  * after CR truncation, then LF becomes NUL and byte AF becomes LF.

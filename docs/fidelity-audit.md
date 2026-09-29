@@ -23,13 +23,44 @@ and a production-screen comparison establish different things.
 | F12 | Missing title F9 and demo routes | The native owner originally ignored dispatcher actions 4 and 5. F9, keyboard demo and idle demo are now connected; bounded lifecycle checks are recorded below. Loading/return presentation and remaining caller coverage are still open. Original F9 jumps to result 99; F12 and idle enter `2a3db` demo setup. These are not ordinary GO. |
 | F13 | Missing computer-car display-direction delay | Original `23d97..23e7a` retains a displayed direction in DS:3068 and a byte timer in DS:3069. Native `draw_car_reference` and `car_render.s` choose directly from the current heading and have no equivalent state. Found while mapping the demo return reset, which initializes these two fields. |
 | F14 | Missing prepared-title background tints | Original `261e8..2623d` shades two rectangles before capturing DS:4c1c. Native startup previously converted the untouched artwork, affecting 10,837 pixels with the supplied artwork/palette. Corrected with one-time preparation; evidence below. |
+| F15 | Saved language ignored by live table consumers | Original startup resolves DS:05e1 and passes it to `2b70a`, which constructs `/langN.txt`. Native title/Arcade, pause and intermission loads were hardwired to lang1. Positive supplied-language selections are now connected; startup default detection/chooser and remaining translated-label caller coverage are still open. |
 
-The first pass also finds hardwired `lang1.txt` in live pause/intermission.
-This is a **candidate**, not yet a confirmed bug: audit the original language
-selection/startup consumer before changing it. Track catalogue sorting, limits,
+The original language startup/caller audit confirmed the hardwired-language
+candidate as F15. Track catalogue sorting, limits,
 shortcut routing and platform error screens need the same caller-level check.
 
 ## Title input caller audit
+
+### F15: persisted language consumer correction (2026-09-29)
+
+Original startup `25d8e..25db9` resolves the signed DS:05e1 byte: negative
+values enter default detection, zero invokes the language chooser, then the
+selected byte is passed to `2b70a`. The latter constructs `/langN.txt` and
+loads the shared table. The configuration codec already preserves this byte;
+the live native consumers ignored it.
+
+`slicks_language_resource` now constructs the archive name for supplied IDs
+1–8. `verify-language-table` executes the original construction through
+`2b72e` for all eight IDs and compares filenames. All eight language-table
+loader cases, 162 lookups and 324 fallback-wrapper comparisons still pass.
+Native title/Arcade, pause and intermission loads use that selected name,
+including cached loads; no new disk reads are added to navigation.
+
+`HELPL2` / `diag_title_language.gdb` explicitly selects ID 2 before title
+creation and checks the selected resource and populated language table during
+the ordinary Read This/F1 Help lifecycle. Run
+`tmp/standalone-release-z1fvmc0a` passes two Help opens/closes and restoration
+mask 31; the full 64,000-byte title image is identical before/after Read This.
+The stripped binary uses stock-speed PAL 68020, 2 MiB Chip/no Fast and a
+confirmed default 4 KiB stack. Its muted emulator was closed. Build evidence:
+`tmp/menu-language-build.log`.
+
+This native fixture verifies explicit selection and title/Help lifetime, not
+all localized screens or a persisted-file round trip. Zero/negative/default
+and unsupported values currently retain the prior native English fallback;
+the original chooser/default policy remains a confirmed implementation gap.
+Other hardwired labels require caller-level audit rather than assuming the
+existing table consumers comprise the whole localization path.
 
 ### Demo setup/restoration boundary
 

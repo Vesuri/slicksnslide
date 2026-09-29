@@ -52,6 +52,19 @@ int main(void)
     for(unsigned i=0;i<4;++i) { uc_hook h;
         check(uc_hook_add(u,&h,UC_HOOK_CODE,language_boundary,0,addresses[i],addresses[i])); }
     unsigned cases=0;
+    for(unsigned language=1;language<=8;++language) {
+        uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xf000,bp;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+        word(u,0x8f004,language);
+        check(uc_emu_start(u,0x2b70a,0x2b72e,0,10000));
+        check(uc_reg_read(u,UC_X86_REG_BP,&bp));
+        char filename[11],native_name[10];
+        check(uc_mem_read(u,0x80000U+bp-12,filename,sizeof filename));
+        REQUIRE(!slicks_language_resource(native_name,language));
+        REQUIRE(filename[0]=='/' && !strcmp(filename+1,native_name));
+    }
+    puts("Original persisted language selector: all eight resource names match");
     static const unsigned char synthetic[]="Title\r\nfoo=first\r\nfoo=second\r\nfoobar=long\r\nempty=\r\nmultiline=one\xaftwo\r\n.\r\nignored=value\r\n";
     const char *keys[]={"back","help","controllers","speed","nexttrack","mainmenu",
         "tracks","menu1","menu7","missing","MAINMENU","main","","foo","foobar","empty","multiline","ignored"};

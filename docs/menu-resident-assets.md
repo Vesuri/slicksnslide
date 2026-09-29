@@ -29,9 +29,10 @@ resident decoded representations which should be reused instead of duplicated.
 The five small title status resources are decoded at startup and used by the
 live original status renderer. Their role/count/badge bindings and native
 transitions are verified in `fidelity-audit.md` (F02).
-Current pause/intermission paths use `lang1.txt`; retaining all eight languages
-costs only 2,464 bytes altogether, but does not imply all language selection is
-already implemented.
+Title/Arcade and pause/intermission table loads now honor positive saved
+language IDs 1–8. Retaining all eight languages costs only 2,464 bytes
+altogether. Original startup chooser/default handling and remaining label
+callers are still under audit; this is not complete localization.
 
 Options, name entry, colour picking and confirmation dialogs need shared
 fonts/palettes and existing state, not another dedicated background file.

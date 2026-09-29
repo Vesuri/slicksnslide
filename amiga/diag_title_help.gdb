@@ -3,6 +3,12 @@ set $closed = 0
 break slicks_diag_help_ready
 commands
   silent
+  if !$_isvoid($language_expected)
+    if menu_language_name[4]!=$language_expected || !title_language_used
+      printf "TITLE_LANGUAGE_SELECTION_FAILED\n"
+      quit 1
+    end
+  end
   set $v = g_slicks_title_help->help
   if !$v || !$v->renderer.active || $v->navigation.done || !g_slicks_diag_profile_platform->active
     quit 1

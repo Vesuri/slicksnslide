@@ -142,6 +142,10 @@ Implementation and completed verification evidence are separate in
   followed by cancellation and verify the full idle interval restarts on return.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
+  F15: positive saved language selections now feed existing title/Arcade,
+  pause and intermission language-table consumers. Implement the original
+  startup zero/negative selector chooser/default policy, and audit the other
+  label callers; honoring positive selections does not complete localization.
 
 - Finish disk-free ordinary navigation using the startup-resident inventory in
   [menu-resident-assets.md](menu-resident-assets.md). The 57-resource cache and

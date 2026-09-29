@@ -92,6 +92,7 @@ unsigned char *slicks_title_small_font;
 static unsigned char *title_arcade_font;
 static unsigned char title_language[2048];
 static unsigned title_language_used;
+static char menu_language_name[10]="lang1.txt";
 static unsigned char title_arcade_refresh=2;
 static struct SlicksTitleDemo title_demo;
 static unsigned char demo_render_only;
@@ -1326,13 +1327,13 @@ static int test_pause_surface(struct SlicksAmigaPlatform *platform,
     unsigned char old_colour=m->fonts[0][6];
     for(unsigned fault=1;fault<=3;++fault) {
         g_slicks_diag_pause_fault=(unsigned char)fault;
-        if(!slicks_amiga_race_menu_open(m,&archive,"lang1.txt",slicks_original_race_menu_keys,0,50) ||
+        if(!slicks_amiga_race_menu_open(m,&archive,menu_language_name,slicks_original_race_menu_keys,0,50) ||
            m->race_menu || g_slicks_diag_pause_fault || m->fonts[0][6]!=old_colour) goto done;
         for(unsigned long i=0;i<64000;++i) if(chunky[i]!=m->saved[i]) goto done;
         g_slicks_diag_pause_phase=(unsigned short)fault; slicks_diag_pause_checkpoint();
     }
     for(unsigned repeat=0;repeat<2;++repeat) {
-        if(slicks_amiga_race_menu_open(m,&archive,"lang1.txt",slicks_original_race_menu_keys,
+        if(slicks_amiga_race_menu_open(m,&archive,menu_language_name,slicks_original_race_menu_keys,
             (unsigned char)(repeat?5:0),50)) goto done;
         if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
         slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
@@ -2796,7 +2797,7 @@ retry:
     static unsigned char language_resource[512];
     language=AllocMem(2048,MEMF_ANY);
     if(!language || slicks_resource_archive_cached(&archive,menu_cache)) goto unavailable;
-    long size=slicks_resource_archive_load(&archive,"lang1.txt",language_resource,sizeof language_resource);
+    long size=slicks_resource_archive_load(&archive,menu_language_name,language_resource,sizeof language_resource);
     if(size<0 || slicks_language_table_load(language_resource,(unsigned)size,language,2048,&used)) goto unavailable;
     for(unsigned i=0;i<4;++i) {
         content.roles[i]=g_slicks_setup_session.players.participation[i];
@@ -3464,7 +3465,7 @@ static int run_race_pause(struct SlicksAmigaPlatform *platform,struct SlicksAmig
     }
     m=diagnostic==6?0:slicks_amiga_race_surface_create(&archive,chunky,palette);
     if(diagnostic>=2 && diagnostic<=4) g_slicks_diag_pause_fault=(unsigned char)(diagnostic-1);
-    if(!m || slicks_amiga_race_menu_open(m,&archive,"lang1.txt",slicks_original_race_menu_keys,
+    if(!m || slicks_amiga_race_menu_open(m,&archive,menu_language_name,slicks_original_race_menu_keys,
         row,slicks_original_players_footer_percent)) {
         g_slicks_diag_pause_unavailable=m?3:2; goto unavailable;
     }
@@ -3943,6 +3944,10 @@ int main(void)
     unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test);
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
+    if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
+       argv[4]=='L' && argv[5]>='1' && argv[5]<='8') {
+        title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]-'0');
+    }
     unsigned char title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
         argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
         (argv[5]=='G' && argv[6]=='O'?1:argv[5]=='F' && argv[6]=='9'?2:0):0);
@@ -3976,6 +3981,9 @@ int main(void)
         if(configuration.options[3]>=1 && configuration.options[3]<=100)
             selected_laps=(unsigned short)configuration.options[3];
     }
+    /* Preserve the existing default pending the original startup chooser;
+     * positive saved selections must not silently become English. */
+    (void)slicks_language_resource(menu_language_name,configuration.field_05e1);
     if(display_allocation_test) {
         g_slicks_display_allocation_checks=slicks_amiga_platform_check_create_failures(GfxBase);
         if(g_slicks_display_allocation_checks!=10) goto cleanup;
@@ -4021,7 +4029,7 @@ int main(void)
             if(!*fonts[i] || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
                 *fonts[i],title_font_sizes[i])!=required) goto cleanup;
         }
-        long bytes=slicks_resource_archive_load(&archive,"lang1.txt",title_asset,64003UL);
+        long bytes=slicks_resource_archive_load(&archive,menu_language_name,title_asset,64003UL);
         if(bytes<0 || slicks_language_table_load(title_asset,(unsigned)bytes,title_language,
             sizeof title_language,&title_language_used)) goto cleanup;
     }

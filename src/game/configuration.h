@@ -2,6 +2,8 @@
 #define SLICKS_CONFIGURATION_H
 
 struct SlicksConfiguration {
+    /* field_05e1: original persisted language selector (positive table ID;
+     * zero invokes the startup chooser, negative invokes default detection). */
     unsigned char field_05e1, keys[20], player_input[4], field_062e, bindings[60];
     short date_code, field_05de, field_0626, options[15], selected_profile[4];
     short field_172c, field_1728, field_719c, field_172e, field_172a, field_719e;
