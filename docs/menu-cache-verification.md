@@ -559,3 +559,35 @@ An initial host invocation used the nonexistent `verify-track-info-pixels`
 target; the corrected gate uses `verify-track-preview-pixels`.
 Local logs: `tmp/tracks-rectangles.log`, `tmp/track-info-bounds-native.log`,
 `tmp/track-info-bounds-faults.log`, `tmp/track-info-bounds-host-final.log`.
+
+## Track-list publication and bounded scrollbar restoration
+
+The new rectangle wrappers retain the existing catalogue/cache/transaction
+guards and capture every shared menu publication. A fresh isolated catalogue
+passes save/name entry (16 surfaces), load (11) and name/delete cancellation,
+confirmed deletion and empty reopen (26). All 53 complete planar surfaces
+match chunky pixels. Only the fixture-created list is deleted.
+
+The list renderer's auxiliary four-column save-under previously restored
+all 200 rows on every close. It now restores the modal vertical extent plus
+any actual outlying scrollbar rectangle rows, retaining the original signed
+thumb arithmetic. The original full-height 800-byte snapshot remains; no
+shadow scan or pixel comparison is used to select dirty bounds. The 88 host
+composition cycles up to 2,849 entries still restore all 64,000 pixels and
+font state, with an explicit small-list bound check.
+
+After the change, fresh muted save and cancellation/delete/reopen workflows
+pass all 42 publication comparisons and their existing storage/ownership
+assertions. Both runners close their emulators. Logs:
+`tmp/track-lists-rectangles-{save,load,delete}.log` (baseline),
+`tmp/track-lists-bounded-{save,delete}.log` (changed build).
+An initial host invocation used the nonexistent `verify-list-draw` target;
+the actual pixel gate is `verify-list-pixels`. Native large-list and error
+publication coverage remains open.
+
+The corrected `make verify-list-renderer verify-list-pixels` gate passes,
+including 390 original composed-list full-screen/font comparisons. Two
+large-list cases retain the original outlying scrollbar pixels before the
+platform's auxiliary restore, which the separate 88-cycle composition gate
+checks. The shared suite also retains its name/colour/options/controllers
+pixel and font checks. Log: `tmp/list-scrollbar-bounds-host-recheck.log`.

@@ -15,6 +15,7 @@ struct SlicksListRenderer {
     unsigned char *font;
     const unsigned char *names;
     short left,top,right,bottom,thumb,stride;
+    short scrollbar_top,scrollbar_bottom;
     unsigned char colours[3],old_colour,active;
     short (*measure)(void *,const unsigned char *,const unsigned char *);
     void (*text)(void *,struct SlicksChunkyUi *,unsigned char *,const unsigned char *,short,short,unsigned char);
@@ -28,12 +29,16 @@ struct SlicksListRenderer {
 static inline int slicks_list_save_scrollbar(struct SlicksListRenderer *r,
     struct SlicksSavedRectangle *saved,unsigned char *storage,unsigned long capacity)
 {
+    r->scrollbar_top=r->top;
+    r->scrollbar_bottom=r->bottom+2;
+    if(r->scrollbar_bottom>200) r->scrollbar_bottom=200;
     return slicks_save_rectangle(saved,storage,capacity,&r->ui,r->right-6,0,4,200);
 }
 static inline int slicks_list_restore_scrollbar(struct SlicksListRenderer *r,
     const struct SlicksSavedRectangle *saved)
 {
-    return slicks_restore_rectangle(&r->ui,saved,r->right-6,0,0,0,4,200);
+    return slicks_restore_rectangle(&r->ui,saved,r->right-6,0,0,
+        r->scrollbar_top,4,r->scrollbar_bottom-r->scrollbar_top);
 }
 static inline short slicks_list_measure(void *p,const unsigned char *s)
 { struct SlicksListRenderer *r=p; return r->measure(r->context,r->font,s); }
@@ -46,7 +51,20 @@ static inline void slicks_list_text(void *p,const unsigned char *s,short x,short
 static inline void slicks_list_restore(void *p,short x,short y,short sx,short sy,short w,short h)
 { struct SlicksListRenderer *r=p; (void)slicks_restore_rectangle(&r->ui,&r->tinted,x,y,sx,sy,w,h); }
 static inline void slicks_list_rectangle(void *p,short l,short t,short right,short b,unsigned char colour)
-{ struct SlicksListRenderer *r=p; slicks_ui_rectangle(&r->ui,l,t,right,b,colour); }
+{
+    struct SlicksListRenderer *r=p;
+    /* Original signed thumb arithmetic can paint above the dialog. Keep
+     * those outlying rows without restoring the entire 200-row strip. */
+    if(l<r->right-2 && right>r->right-6 && l<right && t<b) {
+        if(t<0) t=0;
+        if(b>200) b=200;
+        if(t<b) {
+            if(t<r->scrollbar_top) r->scrollbar_top=t;
+            if(b>r->scrollbar_bottom) r->scrollbar_bottom=b;
+        }
+    }
+    slicks_ui_rectangle(&r->ui,l,t,right,b,colour);
+}
 static inline void slicks_list_row_text(void *p,short index,short x,short y)
 { struct SlicksListRenderer *r=p; slicks_list_text(r,r->names+(unsigned)index*r->stride,x,y,0); }
 

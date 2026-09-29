@@ -49,6 +49,7 @@ int main(void)
         }
         slicks_list_dialog_key(&r.state,1);
         short result=slicks_list_renderer_close(&r);
+        if(count==3 && (r.scrollbar_top!=r.top || r.scrollbar_bottom!=r.bottom+2)) abort();
         if(slicks_list_restore_scrollbar(&r,&saved_scrollbar)) abort();
         if(result!=1 || r.active || font[6]!=71 ||
            memcmp(screen,before,sizeof screen) || !f.texts || !f.dirty) {
