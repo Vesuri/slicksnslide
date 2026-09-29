@@ -96,6 +96,8 @@ static unsigned char title_arcade_refresh=2;
 static struct SlicksTitleDemo title_demo;
 static unsigned char demo_render_only;
 static unsigned char demo_lifecycle_test,demo_test_stage,demo_test_round;
+static unsigned char display_allocation_test;
+int g_slicks_display_allocation_checks;
 volatile unsigned char g_slicks_demo_test_error,g_slicks_demo_test_views;
 volatile unsigned char g_slicks_demo_idle_entries;
 volatile unsigned char g_slicks_demo_menu_waits;
@@ -3702,6 +3704,10 @@ int main(void)
        argv[4]=='V' && argv[5]=='I' && argv[6]=='W') {
         demo_lifecycle_test=12;argc=0;argv="";
     }
+    if(argc==7 && argv[0]=='D' && argv[1]=='I' && argv[2]=='S' && argv[3]=='P' &&
+       argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
+        display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -3882,6 +3888,10 @@ int main(void)
         selected_vehicle=(unsigned char)g_slicks_setup_session.players.vehicle[0];
         if(configuration.options[3]>=1 && configuration.options[3]<=100)
             selected_laps=(unsigned short)configuration.options[3];
+    }
+    if(display_allocation_test) {
+        g_slicks_display_allocation_checks=slicks_amiga_platform_check_create_failures(GfxBase);
+        if(g_slicks_display_allocation_checks!=10) goto cleanup;
     }
     if (slicks_amiga_platform_create(&platform, GfxBase) != 0)
         goto cleanup;

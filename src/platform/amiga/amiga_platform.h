@@ -44,6 +44,8 @@ extern "C" {
 int slicks_amiga_platform_create(struct SlicksAmigaPlatform *platform,
                                  struct GfxBase *gfx_base);
 void slicks_amiga_platform_destroy(struct SlicksAmigaPlatform *platform);
+/* Diagnostic only: all ten startup allocation sites, before platform_create. */
+int slicks_amiga_platform_check_create_failures(struct GfxBase *gfx_base);
 int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,
                                   unsigned short view,
                                   const unsigned char *vga_palette);

@@ -71,6 +71,11 @@ break slicks_diag_demo_test_done
 commands
   silent
   set $demo_done=$demo_done+1
+  if display_allocation_test && g_slicks_display_allocation_checks!=10
+    printf "DISPLAY_ALLOCATION_CLEANUP_FAILED result=%d\n",g_slicks_display_allocation_checks
+    quit 1
+  end
+  printf "DISPLAY_ALLOCATION_CHECKS %d\n",g_slicks_display_allocation_checks
   set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9 || demo_lifecycle_test==12)
   set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)+(demo_lifecycle_test==12)
   set $expected_views=2*($expected_starts-(demo_lifecycle_test==12))

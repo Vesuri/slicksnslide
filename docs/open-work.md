@@ -86,8 +86,8 @@ Implementation and completed verification evidence are separate in
   FS-UAE instance, and the installed binary did not execute the Lua hook.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
-  Race-view validation failure now has native error/restore/retry coverage;
-  startup display-allocation failures remain separate below.
+  Race-view validation failure has native error/restore/retry coverage;
+  startup display-allocation cleanup is verified separately below.
   Clean and dirty exit, direct save retry, save-failure cancellation, demo re-entry and
   subsequent successful save have native coverage.
   Compare the complete return presentation against the
@@ -157,9 +157,10 @@ Implementation and completed verification evidence are separate in
   plus 600-update F1/CITY/WHACKO full-frame display audits pass with a
   confirmed 4 KiB stack; the other release workflows still need
   current-build coverage (see release-verification.md).
-  Include startup display-allocation failures and partial-create cleanup in
-  those release gates. Both bitmap/copper allocations are startup-resident;
-  demo preparation does not allocate another display.
+  Startup display-allocation failure checks now cover all ten allocation
+  sites, partial-create cleanup and repeat destruction on the target with a
+  4 KiB stack (see release-verification.md). Both bitmap/copper allocations
+  are startup-resident; demo preparation does not allocate another display.
 
 ## Remaining performance work
 

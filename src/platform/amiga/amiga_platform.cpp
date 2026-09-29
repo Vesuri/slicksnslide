@@ -42,6 +42,14 @@ static CopperList *framework_copper[SLICKS_AMIGA_VIEW_COUNT];
 static unsigned short palette_words[SLICKS_AMIGA_VIEW_COUNT][2][256];
 static unsigned char palette_valid[SLICKS_AMIGA_VIEW_COUNT];
 extern "C" unsigned char g_slicks_diag_race_load_fault;
+static unsigned char create_fault, create_allocation, create_fault_consumed;
+static bool fail_create_allocation()
+{
+    if (!create_fault) return false;
+    if (++create_allocation != create_fault) return false;
+    create_fault_consumed = 1;
+    return true;
+}
 
 static unsigned char expand_vga_component(unsigned char value)
 {
@@ -203,11 +211,11 @@ int slicks_amiga_platform_create(struct SlicksAmigaPlatform *platform,
     platform->gfx_base = gfx_base;
     AmigaHardware::hasAGAChipSet = true;
     for (view = 0; view < SLICKS_AMIGA_VIEW_COUNT; ++view) {
-        unsigned char *data = (unsigned char *)AllocMem(
+        unsigned char *data = fail_create_allocation() ? 0 : (unsigned char *)AllocMem(
             BITMAP_BYTES, MEMF_CHIP | MEMF_CLEAR);
-        platform->views[view].bitmap = (struct BitMap *)AllocMem(
+        platform->views[view].bitmap = fail_create_allocation() ? 0 : (struct BitMap *)AllocMem(
             sizeof(struct BitMap), MEMF_ANY | MEMF_CLEAR);
-        platform->views[view].copper = (unsigned long *)AllocMem(
+        platform->views[view].copper = fail_create_allocation() ? 0 : (unsigned long *)AllocMem(
             COPPER_LONGS * sizeof(unsigned long), MEMF_CHIP | MEMF_CLEAR);
         if (!data || !platform->views[view].bitmap ||
             !platform->views[view].copper) {
@@ -222,8 +230,8 @@ int slicks_amiga_platform_create(struct SlicksAmigaPlatform *platform,
         platform->views[view].bitmap->Depth = 8;
         for (plane = 0; plane < 8; ++plane)
             platform->views[view].bitmap->Planes[plane] = data + plane * 40;
-        framework_bitmaps[view] = new Bitmap(data, 320, 200, 8, true);
-        framework_copper[view] = new CopperList(
+        framework_bitmaps[view] = fail_create_allocation() ? 0 : new Bitmap(data, 320, 200, 8, true);
+        framework_copper[view] = fail_create_allocation() ? 0 : new CopperList(
             platform->views[view].copper, COPPER_LONGS);
         if (!framework_bitmaps[view] || !framework_copper[view]) {
             slicks_amiga_platform_destroy(platform);
@@ -265,6 +273,34 @@ void slicks_amiga_platform_destroy(struct SlicksAmigaPlatform *platform)
         if (data)
             FreeMem(data, BITMAP_BYTES);
     }
+}
+
+int slicks_amiga_platform_check_create_failures(struct GfxBase *gfx_base)
+{
+    /* Explicit diagnostic entry only, before the real display is created.
+     * Forbid keeps other tasks from changing AvailMem during each check;
+     * interrupts remain enabled and no hardware takeover occurs here. */
+    if (active_platform) return -1;
+    for (unsigned view=0; view<SLICKS_AMIGA_VIEW_COUNT; ++view)
+        if (framework_bitmaps[view] || framework_copper[view]) return -1;
+    for (unsigned stage=1; stage<=10; ++stage) {
+        struct SlicksAmigaPlatform trial = {};
+        Forbid();
+        unsigned long before = AvailMem(MEMF_ANY);
+        create_fault=stage; create_allocation=0; create_fault_consumed=0;
+        int result=slicks_amiga_platform_create(&trial,gfx_base);
+        create_fault=0;
+        bool clean=result==-1 && create_fault_consumed && !trial.active;
+        for (unsigned view=0; view<SLICKS_AMIGA_VIEW_COUNT; ++view)
+            if (trial.views[view].bitmap || trial.views[view].copper ||
+                framework_bitmaps[view] || framework_copper[view]) clean=false;
+        /* Also check the caller's ordinary second cleanup is harmless. */
+        slicks_amiga_platform_destroy(&trial);
+        if (AvailMem(MEMF_ANY)!=before) clean=false;
+        Permit();
+        if (!clean) return -(int)stage;
+    }
+    return 10;
 }
 
 int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,

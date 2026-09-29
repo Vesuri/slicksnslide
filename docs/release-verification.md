@@ -1,5 +1,36 @@
 # Development release audit
 
+## 2026-09-29 — startup display allocation cleanup
+
+The explicit `DISPMEM` diagnostic tests all ten allocation sites in
+`slicks_amiga_platform_create`: bitmap data, bitmap descriptor, copper storage,
+Bitmap wrapper and CopperList wrapper for each of the two startup views.
+Each case supplies a null allocation at exactly one site; other allocations
+and the ordinary failure cleanup execute normally. Wrapper failures skip
+construction, matching a null `new` result under the build's `-fcheck-new`.
+
+For each case the target requires failure, consumption of the selected fault,
+no active display, and null owning pointers after the internal cleanup.
+It calls destroy again, as the outer cleanup may do, and requires total
+`AvailMem(MEMF_ANY)` to equal the pre-case value. Scheduling is forbidden
+only around each allocation/free check to avoid competing task allocations;
+interrupts remain enabled. The checks occur before the real display is
+created. Normal launches never enable these faults.
+
+The current stripped build passes all ten cases with a confirmed 4096-byte
+entry stack on a stock-speed PAL 68020, 2 MiB Chip and no Fast RAM. It then
+creates the real display, enters a demo, pixel-checks both data views,
+restores configuration/playlist and exits with system-restoration mask 31.
+Evidence: `tmp/standalone-release-lfe6w95v/debug.log` contains
+`DISPLAY_ALLOCATION_CHECKS 10` and `DEMO_LIFECYCLE_EXIT_OK`.
+Build log: `tmp/display-allocation-build.log`. The run was muted and its
+emulator closed. No cleanup defect was found.
+
+This is controlled allocation-failure coverage, not deliberate system-wide
+memory exhaustion, a stack high-water measurement, or validation of unrelated
+startup resource failures. It does not renew every release workflow for this
+binary.
+
 ## 2026-09-29 — current title/menu default-stack regression
 
 Two further workflows pass on the same stripped binary and hardware settings

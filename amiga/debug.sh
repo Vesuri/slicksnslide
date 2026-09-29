@@ -48,7 +48,9 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ "${SLICKS_DEMO_LIFECYCLE_TEST:-0}" = 12 ]; then
+if [ "${SLICKS_DISPLAY_ALLOCATION_TEST:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DISPMEM\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_DEMO_LIFECYCLE_TEST:-0}" = 12 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DEMOVIW\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_DEMO_LIFECYCLE_TEST:-0}" = 11 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DEMOEXT\n' > "$DH0/s/startup-sequence"
