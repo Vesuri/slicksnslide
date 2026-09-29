@@ -49,7 +49,8 @@ Shop, records and intermission share the same car icons; do not load them again.
   after closing borrowed views, retaining transactional recovery checks.
 - Track-name catalogue: retain startup discovery results for list browsing.
 - Saved championships (`*.SSS`): discover names at startup and retain the
-  chooser catalogue. Currently opening the chooser scans the directory.
+  chooser catalogue. Opening/reopening the chooser uses the startup snapshot;
+  explicit save/delete/load boundaries refresh it with the OS available.
   Preserve the existing 40-entry limit and overflow/error reporting; do not
   silently truncate. Read the selected save only on confirmed load.
 - Keyboard layout: the startup snapshot is implemented (8 qualifier variants

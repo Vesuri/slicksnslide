@@ -80,13 +80,14 @@ Implementation and completed verification evidence are separate in
   keyboard snapshot are implemented; title Help, Options, Players, Controllers,
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
-  Cache the saved-game catalogue, preserving transactional save/delete updates
-  and recovery/error handling. The SLICKS.TRK startup snapshot and explicit
-  transaction refresh are implemented; external repairs currently require
+  Extend native saved-game cache coverage to overwrite/delete/failure flows
+  once their original entry-route fixtures are repaired. Startup snapshots and
+  explicit transaction refresh are implemented for SLICKS.TRK and saved-game
+  names; external repairs currently require
   restarting, not hidden rereads on navigation. Track-information and its
   warning close and RAM-only track-list chooser input now retain hardware
   ownership. Saved-game picker-to-name and notice closes also retain ownership;
-  catalogue rereads and its released-on-return contract remain to be migrated,
+  its released-on-return contract remains to be migrated,
   together with results/return and remaining RAM-only transition owners.
   Shop and registration Help
   use the cache, with native tests recorded in the evidence document. Keep explicit

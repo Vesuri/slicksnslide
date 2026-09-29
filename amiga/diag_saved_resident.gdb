@@ -1,5 +1,6 @@
 # Shared by saved-game lifecycle fixtures. Closures must retain the display;
 # filesystem functions must run after the owner's explicit release.
+set $saved_enumerations = 0
 break slicks_amiga_profile_picker_close
 commands
   silent
@@ -39,6 +40,7 @@ end
 break slicks_amiga_saved_files
 commands
   silent
+  set $saved_enumerations = $saved_enumerations+1
   if g_slicks_diag_profile_platform->active
     printf "SAVED_ENUMERATION_WITH_HARDWARE_OWNED\n"
     quit 1

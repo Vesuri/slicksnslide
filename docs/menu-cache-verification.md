@@ -215,3 +215,35 @@ Logs: `tmp/track-cache-{save,load,delete,readonly}.log`. All four gates pass;
 the runner closes each owned emulator. They terminate at race entry, not normal
 system restoration. Saved-game filename caching and broader release gates
 remain separate open work.
+
+## Startup-resident saved-game filenames
+
+The saved-game chooser now borrows a fixed 40-by-9-byte startup name snapshot.
+Ordinary open, name cancellation, and notice return no longer enumerate the
+directory. Explicit store/delete/load operations refresh names before returning
+to navigation; existence checks and selected save loading still use real I/O
+at their explicit boundaries. The dialog's released-on-return contract is
+unchanged and remains open migration work. External edits require restart
+unless an explicit file operation refreshes the snapshot.
+
+Enumeration order, filtering and the 40-file overflow error are unchanged.
+Refresh stages names before publication: failure keeps prior bytes but publishes
+the negative status, so no partial/stale list is displayed as a valid result.
+Successful refresh clears unused slots. The cache holds 360 bytes plus its count;
+the temporary 360-byte refresh array replaces the previous chooser-local array
+on the tested call path rather than adding another persistent allocation.
+
+Fresh host `verify-saved-files` covers startup names, directory filtering,
+40/41 entries, empty replacement, lock/examine/read failures (including failure
+after one valid entry), preservation on failure and requester restoration.
+`verify-saved-game-storage` still passes 1,485 save-fault and 2,310 load-fault/
+truncation cases; transaction recovery rules were not changed.
+
+Native `SLICKS_CHAMPIONSHIP=save SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/championship-catalogue ./debug.sh '' diag_championship_save.gdb`
+passes the hidden Save route, cancel/reopen, E2E name entry, save and normal
+exit/restoration 31. Added assertions require exactly one enumeration before
+both picker visits and exactly two after saving, with one published cache entry.
+This proves refresh after creation and no rescan on cancel/reopen, not native
+overwrite/delete/error coverage; those fixtures remain open. Local log:
+`tmp/saved-cache-native.log`. The muted runner closed its owned emulator.

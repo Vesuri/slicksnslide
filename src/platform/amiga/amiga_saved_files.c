@@ -59,6 +59,16 @@ done:
     if(lock) UnLock(lock);
     process->pr_WindowPtr=window; return result;
 }
+void slicks_amiga_saved_files_refresh(struct SlicksAmigaSavedFilesCache *cache)
+{
+    unsigned char names[40][9];
+    int count=slicks_amiga_saved_files(names);
+    if(count>=0) {
+        for(unsigned i=0;i<40;++i) for(unsigned j=0;j<9;++j)
+            cache->names[i][j]=i<(unsigned)count?names[i][j]:0;
+    }
+    cache->count=count;
+}
 int slicks_amiga_saved_file_delete(const char *path)
 {
     /* Recovery files may contain the last good version: never delete them. */

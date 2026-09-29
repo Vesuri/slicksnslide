@@ -24,6 +24,10 @@ commands
   silent
   printf "SAVED_DIALOG phase=%u picker=%u\n",g_slicks_diag_saved_phase,$picker
   if g_slicks_diag_saved_phase == 1
+    if $saved_enumerations != 1
+      printf "SAVED_PICKER_REENUMERATED\n"
+      quit 1
+    end
     set $picker = $picker+1
   end
   if g_slicks_diag_saved_phase == 2
@@ -33,6 +37,10 @@ commands
     set $name = 1
   end
   if g_slicks_diag_saved_phase == 3
+    if $saved_enumerations != 2 || saved_files_cache.count != 1
+      printf "SAVED_CATALOGUE_REFRESH_FAILED\n"
+      quit 1
+    end
     if !$name || $picker != 2
       quit 1
     end

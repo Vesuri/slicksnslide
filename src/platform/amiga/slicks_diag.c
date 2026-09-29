@@ -59,6 +59,7 @@ extern void slicks_records_text(unsigned char *,const unsigned char *,const unsi
 static struct SlicksRegistration registration;
 static struct SlicksResourceCache *menu_cache;
 static struct SlicksAmigaTrackListCache track_list_cache;
+static struct SlicksAmigaSavedFilesCache saved_files_cache;
 volatile unsigned long g_slicks_menu_cache_bytes;
 volatile short g_slicks_registration_status;
 __attribute__((noinline)) void slicks_diag_registration_loaded(void) { __asm__ volatile("" ::: "memory"); }
@@ -1039,12 +1040,11 @@ static int championship_notice(struct SlicksAmigaPlatform *p,struct SlicksAmigaP
 static int run_saved_game_dialog(struct SlicksAmigaPlatform *p,struct SlicksAmigaPlayerMenu *m,
     struct SlicksSavedGame *game,unsigned char tracks[][8],unsigned char saving)
 {
-    unsigned char names[40][9],name[9]={0}; char path[13];
+    unsigned char (*names)[9]=saved_files_cache.names,name[9]={0}; char path[13];
     int result=-1;
     g_slicks_diag_saved_menu=m;
 again:
-    slicks_amiga_platform_end(p);
-    int count=slicks_amiga_saved_files(names);
+    int count=saved_files_cache.count;
     if(count<0 || (!count && !saving)) {
         const unsigned char *message=count==-2?(const unsigned char *)"MORE THAN 40 SAVES - MANAGE FILES FIRST":
             count<0?(const unsigned char *)"CANNOT READ SAVED GAMES":slicks_original_saved_empty;
@@ -1107,7 +1107,9 @@ again:
         if(key<0) goto done;
         if(slicks_saved_file_delete_accepted((unsigned char)key)) {
             slicks_amiga_platform_end(p);
-            if(slicks_amiga_saved_file_delete(path) &&
+            int failed=slicks_amiga_saved_file_delete(path);
+            slicks_amiga_saved_files_refresh(&saved_files_cache);
+            if(failed &&
                championship_notice(p,m,(const unsigned char *)"DELETE FAILED - CHECK NEW/BAK FILES")<0) goto done;
         }
         goto again;
@@ -1125,6 +1127,7 @@ again:
         if(!error) {
             slicks_amiga_platform_end(p);
             struct SlicksSetupStorageReport report=slicks_amiga_store_saved_game(path,game);
+            slicks_amiga_saved_files_refresh(&saved_files_cache);
             if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
                 if(championship_notice(p,m,(const unsigned char *)(report.result==SLICKS_SETUP_SAVED?
                     "GAME SAVED":"GAME SAVED - BACKUP REMAINS"))<0) goto done;
@@ -1136,6 +1139,7 @@ again:
     } else {
         slicks_amiga_platform_end(p);
         struct SlicksSetupLoadReport report=slicks_amiga_load_saved_game(path,game,tracks,256);
+        slicks_amiga_saved_files_refresh(&saved_files_cache);
         if(report.result==SLICKS_SETUP_LOADED) { result=1; goto done; }
         error=report.result==SLICKS_SETUP_LOAD_RECOVERY?"KEEP SAVE NEW/BAK FILES - RECOVERY REQUIRED":
             report.result==SLICKS_SETUP_LOAD_INVALID?"INVALID SAVED GAME":"LOAD FAILED - RETRY OR ESC";
@@ -3944,6 +3948,7 @@ int main(void)
     if(!menu_cache) goto cleanup;
     g_slicks_menu_cache_bytes=slicks_resource_cache_bytes(menu_cache);
     slicks_amiga_track_list_cache_refresh(&track_list_cache);
+    slicks_amiga_saved_files_refresh(&saved_files_cache);
     if (auto_race) {
         struct SlicksConfiguration diagnostic_configuration=configuration;
         if(fuel_race_test && !natural_results_test) {

@@ -25,7 +25,9 @@ static int Examine(BPTR lock,struct FileInfoBlock *info)
 static int ExNext(BPTR lock,struct FileInfoBlock *info)
 {
     assert(lock==1);
-    if(cursor==count || fault==3) { error=fault==3?99:232; return 0; }
+    if(cursor==count || fault==3 || (fault==5 && cursor==1)) {
+        error=(fault==3 || fault==5)?99:232; return 0;
+    }
     info->fib_DirEntryType=entries[cursor][0]=='D'?1:-1;
     strcpy(info->fib_FileName,entries[cursor++]); return 1;
 }
@@ -46,11 +48,33 @@ int main(void)
     strcpy(entries[3],"TOOLONGNAME.SSS"); strcpy(entries[4],"E2E.SSS.new"); strcpy(entries[5],"NOPE.SST"); count=6;
     assert(slicks_amiga_saved_files(names)==2 && !strcmp((char *)names[1],"lower"));
     assert(!process.pr_WindowPtr);
+    struct SlicksAmigaSavedFilesCache cache;
+    memset(&cache,0xa5,sizeof cache);
+    slicks_amiga_saved_files_refresh(&cache);
+    assert(cache.count==2 && !strcmp((char *)cache.names[0],"E2E") &&
+        !strcmp((char *)cache.names[1],"lower"));
+    for(unsigned i=2;i<40;++i) for(unsigned j=0;j<9;++j) assert(!cache.names[i][j]);
+    unsigned char retained[40][9]; memcpy(retained,cache.names,sizeof retained);
+    for(fault=1;fault<=3;++fault) {
+        slicks_amiga_saved_files_refresh(&cache);
+        assert(cache.count<0 && !memcmp(cache.names,retained,sizeof retained) && !process.pr_WindowPtr);
+    }
+    fault=5; slicks_amiga_saved_files_refresh(&cache);
+    assert(cache.count<0 && !memcmp(cache.names,retained,sizeof retained) && !process.pr_WindowPtr);
+    fault=0;
     for(fault=1;fault<=3;++fault) { assert(slicks_amiga_saved_files(names)<0); assert(!process.pr_WindowPtr); }
     fault=0;
     for(unsigned i=0;i<41;++i) snprintf(entries[i],sizeof entries[i],"S%u.SSS",i);
     count=40; assert(slicks_amiga_saved_files(names)==40);
+    slicks_amiga_saved_files_refresh(&cache);
+    assert(cache.count==40 && !memcmp(cache.names,names,sizeof names));
+    memcpy(retained,cache.names,sizeof retained);
     count=41; assert(slicks_amiga_saved_files(names)==-2);
+    slicks_amiga_saved_files_refresh(&cache);
+    assert(cache.count==-2 && !memcmp(cache.names,retained,sizeof retained));
+    count=0; slicks_amiga_saved_files_refresh(&cache);
+    assert(!cache.count);
+    for(unsigned i=0;i<40;++i) for(unsigned j=0;j<9;++j) assert(!cache.names[i][j]);
     assert(slicks_amiga_saved_file_exists("E2E.SSS")==1);
     assert(slicks_amiga_saved_file_exists("NONE.SSS")==0);
     leftover=1; assert(slicks_amiga_saved_file_delete("E2E.SSS")<0 && !deleted);
