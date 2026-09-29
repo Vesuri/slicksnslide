@@ -1114,3 +1114,26 @@ The runners are muted and close their emulators. Logs:
 fault/recovery/requester tests and 262,144 original action/result comparisons
 (`tmp/saved-delete-host.log`). Post-save backup cleanup failure and native
 enumeration I/O failure remain separate work.
+
+## Rejected native enumeration-error probe (2026-09-29)
+
+A temporary diagnostic changed the process directory to a file lock only
+during startup catalogue refresh, then restored the directory and requester
+state. The host-filesystem run reported `ExNext called for a file`, but did
+not reach the error-screen gate. Repeating with a uniquely named temporary
+RAM-file lock also failed that gate. An expanded failure diagnostic established
+one enumeration with cache count **0**, not the required **-1**. File-as-directory
+enumeration is therefore not a valid I/O-error fixture on this setup.
+
+These are rejected probes, not native error-handling passes. The temporary
+entry mode and filesystem probe were removed; the RAM probe file was deleted
+after restoring the process directory. Logs remain local-only:
+`tmp/saved-enumeration-dos.log`, `tmp/saved-enumeration-ram.log`,
+`tmp/saved-enumeration-ram-detail.log`. The generic catalogue fixture now prints
+enumeration count and cached status when its final gate fails. Future native
+coverage must use a controlled failing operation/handler and prove the actual
+negative result before testing the UI; no return-value patch was accepted.
+After removing the probe, the normal executable was rebuilt and the genuine
+41-file overflow fixture passed again (`count=-2`, one warning/return/race,
+restoration 31). All 19 publications match their chunky pixels. Log:
+`tmp/enumeration-probe-restored-overflow.log`. The runner closed its emulator.

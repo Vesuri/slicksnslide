@@ -35,7 +35,7 @@ break slicks_diag_system_restored
 commands
   silent
   if $overflow_notices != 1 || $overflow_returns != 1 || $overflow_races != 1 || $saved_enumerations != 1 || g_slicks_diag_force_exit || g_slicks_diag_restore_status != 31
-    printf "SAVED_OVERFLOW_RETURN_FAILED notices=%u returns=%u races=%u\n",$overflow_notices,$overflow_returns,$overflow_races
+    printf "SAVED_OVERFLOW_RETURN_FAILED notices=%u returns=%u races=%u enumerations=%u count=%d\n",$overflow_notices,$overflow_returns,$overflow_races,$saved_enumerations,saved_files_cache.count
     quit 1
   end
   printf "NATIVE_SAVED_CATALOGUE_ERROR_WARNING_RETURN_OK error=%d\n",$expected_catalogue_error

@@ -102,7 +102,9 @@ Implementation and completed verification evidence are separate in
   keyboard snapshot are implemented; title Help, Options, Players, Controllers,
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
-  Extend native saved-game cache coverage to enumeration I/O failures and
+  Extend native saved-game cache coverage to enumeration I/O failures (use
+  a controlled failing filesystem operation/handler, not a file-as-directory
+  probe, which returned an empty catalogue) and
   remaining recovery cases (including post-save backup cleanup failures).
   Creation, overwrite/delete, cancellation, read-only save failure,
   catalogue overflow, blocked/read-only deletion and pre-existing `.new`/`.bak` save obstructions have
