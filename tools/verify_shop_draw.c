@@ -82,6 +82,30 @@ int main(void)
         }
         puts("Original shop zero-refresh branch skips painting");
     }
+    unsigned navigation_cases=0;
+    for(unsigned rows=0;rows<=13;++rows) for(unsigned row=0;row<=rows;++row)
+        for(unsigned column=0;column<4;++column) for(unsigned down=0;down<2;++down) {
+            uint16_t cs=0x266c,ss=0x8000,sp=0xe000,bp=0xf000,ip;
+            check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+            check(uc_reg_write(u,UC_X86_REG_SS,&ss));
+            check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+            check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+            word(u,0x8eff3,0);
+            word(u,0x8eff5,column);
+            word(u,0x8effd,rows|(row<<8));
+            check(uc_emu_start(u,down?0x2d085:0x2d075,0x2d229,0,100));
+            check(uc_reg_read(u,UC_X86_REG_IP,&ip));
+            unsigned next=down?(row<rows?row+1:row):(row?row-1:row);
+            unsigned expected=next==row?0:((255U<<8)|(column+1));
+            if(ip!=0x6b69 || readword(u,0x8eff3)!=expected ||
+                (readword(u,0x8effd)>>8)!=next) {
+                fprintf(stderr,"Shop row refresh mismatch rows=%u row=%u column=%u down=%u\n",
+                    rows,row,column,down);
+                return 1;
+            }
+            ++navigation_cases;
+        }
+    printf("Original shop row navigation: %u selector/boundary comparisons pass\n",navigation_cases);
     for(unsigned trial=0;trial<4096;++trial) {
         struct SlicksSetupSession s={0};
         unsigned mask=1+trial%15,flags=(trial/15)%16;

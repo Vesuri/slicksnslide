@@ -50,6 +50,10 @@ Implementation and completed verification evidence are separate in
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
+  For shop partial refresh, remove the blanket saved-background restore only
+  together with selective painter calls; verify the original packed-column
+  selector versus actual-driver indexing for sparse participation. The row
+  selector/boundary oracle is recorded in menu-cache-verification.md.
   Registration archive-unavailable, null Help-surface and viewer-allocation
   failures and malformed Help navigation now have native publication/return
   coverage, with their bounded fault cases recorded in the evidence document.

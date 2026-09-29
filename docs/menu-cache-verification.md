@@ -1429,6 +1429,28 @@ was closed. Build evidence is `tmp/shop-noop-build.log`.
 This does not finish driver/row-specific refresh selectors or shop failure
 coverage, and is not a performance benchmark. Those remain actionable.
 
+## Shop selective-refresh caller audit (2026-09-29)
+
+The original row-navigation branches (`2d075` and `2d085`, stopping at
+`2d229`) now have 840 executable comparisons in `verify-shop-draw`: every
+row count 0–13, every valid row, four columns and both directions. A genuine
+row change sets the driver selector to selected column plus one and the row
+selector to -1; a boundary key leaves both selectors zero. These checks pass
+alongside the existing zero-refresh and painter comparisons.
+
+This exposes two integration constraints, not a completed selective-refresh
+implementation. `slicks_amiga_shop_draw` currently restores every recorded
+saved-background dirty area and passes -1/-1 to the painter. Partial selectors
+must be paired with removing that blanket restore: the original painter
+already restores its selected cells. Also, the original input caller derives
+the driver selector from its packed column, whereas the painter compares it
+against actual driver indices. Sparse participating-driver configurations
+therefore need original caller-level coverage before choosing a mapping;
+passing the native actual driver without checking would not reproduce those
+instructions. Horizontal navigation and transactions still need their
+selector/lifetime integration checks. No production behavior changed in this
+audit, and no target performance result is claimed.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from
