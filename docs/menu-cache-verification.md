@@ -47,6 +47,41 @@ progression, zero race error and restoration 31. No larger stack is requested.
 
 ## Checks
 
+### Track-information resident close and title-font memory repair
+
+Track-information and its load-warning dismissal now keep hardware ownership:
+their close functions restore saved pixels/font colours and free memory, with
+no file operations. The explicit selected-track load remains a disk boundary.
+`diag_track_info_faults.gdb` guards the whole ready-to-dismiss interval against
+platform teardown and archive opening, and requires active hardware ownership
+at both close checkpoints.
+
+The first rerun exposed memory exhaustion before fault stage 2, not a successful
+fault injection: only 64,880 bytes were free (largest 62,816), whereas the
+information dialog requires 67,336. The three retained title fonts reserved
+8,192 bytes each. They now allocate validated decoded lengths: iso 4,244,
+kirj 5,726 and pieni 2,454 bytes, saving 12,152 bytes before Exec rounding.
+Cleanup frees each allocation with its exact size. The shared size validator
+is also the decoder's validation path; malformed/truncated resources still
+fail before any output writes. No font bytes, glyph padding or rendered
+behaviour are discarded.
+
+Fresh `make verify-font-resource` compares exact-capacity output and untouched
+tail bytes against the original loader for all three fonts, including all
+truncations and undersized capacities. `make verify-track-info` passes all
+195 supplied tracks and its bounded-input cases. The native five-fault gate
+then passes dismissal/retry, two successful preview opens/closes and race
+entry. Each of the five restored 64,000-byte screenshots matches the pre-open
+snapshot byte-for-byte. The diagnostic logs the reached stage and available
+memory on failure rather than silently accepting an earlier allocation failure.
+
+Reproduce from `amiga/`: `SLICKS_TRACK_MENU=8 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/track-info-faults-v1 ./debug.sh '' diag_track_info_faults.gdb`.
+Local log: `tmp/track-info-resident-close.log`; snapshots stay in the ignored
+run directory. This muted stock A1200/2 MiB gate ends at race entry, not normal
+system restoration; the runner closes its emulator. Broader release gates
+remain open.
+
 - `make verify-resource-archive`: 182 original-resource comparisons; all 57
   cached resources byte-identical; misses/capacity rejection/close perform no
   I/O or allocation; all 1,193 injected constructor failures release ownership.

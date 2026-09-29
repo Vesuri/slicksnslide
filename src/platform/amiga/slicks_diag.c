@@ -3406,6 +3406,7 @@ int main(void)
     unsigned char *chunky = 0;
     unsigned char *title_asset = 0;
     unsigned char *title_frame = 0;
+    unsigned long title_font_sizes[3]={0,0,0};
     struct SlicksRaceRuntime *race = 0;
     unsigned char *sample_resource = 0;
     unsigned long title_checksum = 0;
@@ -3702,23 +3703,19 @@ int main(void)
         title_configuration=&configuration;
     }
 
-    slicks_title_font=(unsigned char *)AllocMem(TITLE_FONT_CAPACITY,MEMF_ANY);
-    if(!slicks_title_font) goto cleanup;
     {
-        long bytes=slicks_resource_archive_load(&archive,"iso.@f",title_asset,64003UL);
-        if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
-            slicks_title_font,TITLE_FONT_CAPACITY)<0) goto cleanup;
-        slicks_title_small_font=(unsigned char *)AllocMem(8192UL,MEMF_ANY);
-        if(!slicks_title_small_font) goto cleanup;
-        bytes=slicks_resource_archive_load(&archive,"kirj.@f",title_asset,64003UL);
-        if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
-            slicks_title_small_font,8192UL)<0) goto cleanup;
-        title_arcade_font=(unsigned char *)AllocMem(8192UL,MEMF_ANY);
-        if(!title_arcade_font) goto cleanup;
-        bytes=slicks_resource_archive_load(&archive,"pieni.@f",title_asset,64003UL);
-        if(bytes<=0 || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
-            title_arcade_font,8192UL)<0) goto cleanup;
-        bytes=slicks_resource_archive_load(&archive,"lang1.txt",title_asset,64003UL);
+        static const char *const font_names[]={"iso.@f","kirj.@f","pieni.@f"};
+        unsigned char **fonts[]={&slicks_title_font,&slicks_title_small_font,&title_arcade_font};
+        for(unsigned i=0;i<3;++i) {
+            long bytes=slicks_resource_archive_load(&archive,font_names[i],title_asset,64003UL);
+            long required=bytes>0?slicks_font_resource_size(title_asset,(unsigned long)bytes):-1;
+            if(required<=0 || required>(long)TITLE_FONT_CAPACITY) goto cleanup;
+            title_font_sizes[i]=(unsigned long)required;
+            *fonts[i]=AllocMem(title_font_sizes[i],MEMF_ANY);
+            if(!*fonts[i] || slicks_decode_font_resource(title_asset,(unsigned long)bytes,
+                *fonts[i],title_font_sizes[i])!=required) goto cleanup;
+        }
+        long bytes=slicks_resource_archive_load(&archive,"lang1.txt",title_asset,64003UL);
         if(bytes<0 || slicks_language_table_load(title_asset,(unsigned)bytes,title_language,
             sizeof title_language,&title_language_used)) goto cleanup;
     }
@@ -4570,10 +4567,8 @@ int main(void)
                 if(g_slicks_track_menu) {
                     if(g_slicks_track_menu->track_info) {
                         if(!character && !amiga_raw_to_dos_scan(code)) continue;
-                        slicks_amiga_platform_end(&platform);
                         slicks_amiga_track_info_close(g_slicks_track_menu);
                         present_menu_surface(&platform,g_slicks_track_menu);
-                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                         slicks_diag_track_info_closed();
                         continue;
                     }
@@ -4587,10 +4582,8 @@ int main(void)
                         continue;
                     }
                     if(g_slicks_track_menu->message) {
-                        slicks_amiga_platform_end(&platform);
                         if(slicks_amiga_message_close(g_slicks_track_menu)) goto cleanup;
                         present_menu_surface(&platform,g_slicks_track_menu);
-                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                         slicks_diag_track_info_warning_closed();
                         continue;
                     }
@@ -5941,9 +5934,9 @@ cleanup:
         FreeMem(title_frame, TITLE_FRAME_ALLOCATION_BYTES);
     if (title_asset)
         FreeMem(title_asset, 64003UL);
-    if(slicks_title_font) { FreeMem(slicks_title_font,TITLE_FONT_CAPACITY); slicks_title_font=0; }
-    if(slicks_title_small_font) { FreeMem(slicks_title_small_font,8192UL); slicks_title_small_font=0; }
-    if(title_arcade_font) {FreeMem(title_arcade_font,8192UL);title_arcade_font=0;}
+    if(slicks_title_font) { FreeMem(slicks_title_font,title_font_sizes[0]); slicks_title_font=0; }
+    if(slicks_title_small_font) { FreeMem(slicks_title_small_font,title_font_sizes[1]); slicks_title_small_font=0; }
+    if(title_arcade_font) {FreeMem(title_arcade_font,title_font_sizes[2]);title_arcade_font=0;}
     if (GfxBase)
         CloseLibrary((struct Library *)GfxBase);
     if (DOSBase)

@@ -70,6 +70,9 @@ int main(void)
         unsigned char native[16384],original[16384]; memset(native,0xa5,sizeof native);
         check(uc_mem_write(u,0x50000,native,sizeof native));
         long output=slicks_decode_font_resource(source,length,native,sizeof native); if(output<0) return 1;
+        if(slicks_font_resource_size(source,length)!=output) abort();
+        memset(native,0xa5,sizeof native);
+        if(slicks_decode_font_resource(source,length,native,(unsigned long)output)!=output) abort();
         uint16_t cs=0x2e0f,ds=0x3cbf,ss=0x8000,sp=0xf000,ip,ax,dx;
         word(u,0x8f000,0); word(u,0x8f002,0x9000); word(u,0x8f004,0); word(u,0x8f006,0x6000); word(u,0x8f008,0);
         check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
@@ -93,7 +96,8 @@ int main(void)
         }
         for(unsigned cut=0;cut<length;++cut) {
             memset(native,0xa5,sizeof native);
-            if(slicks_decode_font_resource(source,cut,native,sizeof native)!=-1) abort();
+            if(slicks_font_resource_size(source,cut)!=-1 ||
+               slicks_decode_font_resource(source,cut,native,sizeof native)!=-1) abort();
             for(unsigned i=0;i<sizeof native;++i) if(native[i]!=0xa5) abort();
         }
         for(unsigned capacity=0;capacity<(unsigned)output;++capacity) {

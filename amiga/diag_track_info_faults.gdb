@@ -2,6 +2,25 @@ set $failed = 0
 set $dismissed = 0
 set $opened = 0
 set $closed = 0
+set $resident_guard = 0
+break slicks_amiga_platform_end
+commands
+  silent
+  if $resident_guard
+    printf "TRACK_INFO_CLOSE_UNEXPECTED_DISPLAY_TEARDOWN\n"
+    quit 1
+  end
+  continue
+end
+break slicks_resource_archive_open
+commands
+  silent
+  if $resident_guard
+    printf "TRACK_INFO_CLOSE_UNEXPECTED_ARCHIVE_OPEN\n"
+    quit 1
+  end
+  continue
+end
 break open_track_info
 commands
   silent
@@ -17,8 +36,11 @@ end
 break slicks_diag_track_info_ready
 commands
   silent
+  set $resident_guard = 1
   set $m = g_slicks_track_menu
   if !$m || $m->error || !g_slicks_diag_profile_platform->active || g_slicks_diag_track_info_fault
+    printf "TRACK_INFO_READY_INVALID menu=%p error=%d active=%u fault=%u stage=%u\n",$m,$m->error,g_slicks_diag_profile_platform->active,g_slicks_diag_track_info_fault,g_slicks_diag_track_info_stage
+    printf "TRACK_INFO_ALLOCATION free=%lu largest=%lu required=%lu\n",g_slicks_diag_track_info_free,g_slicks_diag_track_info_largest,sizeof(struct SlicksAmigaTrackInfo)
     quit 1
   end
   if $failed < 5
@@ -29,6 +51,7 @@ commands
     set $failed = $failed+1
   else
     if $dismissed != 5 || !$m->track_info || $m->message
+      printf "TRACK_INFO_REOPEN_FAILED dismissed=%u info=%p message=%p\n",$dismissed,$m->track_info,$m->message
       quit 1
     end
     set $opened = $opened+1
@@ -38,6 +61,11 @@ end
 break slicks_diag_track_info_warning_closed
 commands
   silent
+  if !$resident_guard || !g_slicks_diag_profile_platform->active
+    printf "TRACK_INFO_WARNING_GUARD_FAILED guard=%u active=%u\n",$resident_guard,g_slicks_diag_profile_platform->active
+    quit 1
+  end
+  set $resident_guard = 0
   set $m = g_slicks_track_menu
   if !$m || $m->message || $m->track_info || $m->fonts[0][6] != $font0 || $m->fonts[1][6] != $font1 || g_slicks_track_playlist.count != $count || g_slicks_track_state.cursor != $cursor
     printf "TRACK_INFO_FAULT_RESTORE_FAILED\n"
@@ -64,6 +92,11 @@ end
 break slicks_diag_track_info_closed
 commands
   silent
+  if !$resident_guard || !g_slicks_diag_profile_platform->active
+    printf "TRACK_INFO_CLOSE_GUARD_FAILED guard=%u active=%u\n",$resident_guard,g_slicks_diag_profile_platform->active
+    quit 1
+  end
+  set $resident_guard = 0
   set $closed = $closed+1
   continue
 end

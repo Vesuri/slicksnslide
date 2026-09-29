@@ -195,6 +195,8 @@ int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *m,
 }
 /* One-shot diagnostic boundary faults; zero in normal runs. */
 unsigned char g_slicks_diag_track_info_fault;
+unsigned char g_slicks_diag_track_info_stage;
+unsigned long g_slicks_diag_track_info_free,g_slicks_diag_track_info_largest;
 static int track_info_fault(unsigned char stage)
 {
     if(g_slicks_diag_track_info_fault!=stage) return 0;
@@ -247,18 +249,26 @@ int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksRe
     unsigned char *arena)
 {
     if(!m || !archive || !name || !arena || m->track_info || m->message || m->track_lists) return -1;
+    g_slicks_diag_track_info_stage=0;
     struct SlicksTrackRecords records;
     unsigned char description[64];
     if(slicks_track_records(track,track_size,&records)!=1 ||
         slicks_track_description(track,track_size,description,sizeof description)) return -1;
+    if(g_slicks_diag_track_info_fault) {
+        g_slicks_diag_track_info_free=AvailMem(MEMF_ANY);
+        g_slicks_diag_track_info_largest=AvailMem(MEMF_ANY|MEMF_LARGEST);
+    }
     struct SlicksAmigaTrackInfo *d=track_info_fault(1)?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
     if(!d) return -1;
+    g_slicks_diag_track_info_stage=1;
     for(unsigned long i=0;i<64000;++i) d->saved[i]=m->renderer.ui.pixels[i];
     for(unsigned i=0;i<2;++i) d->font_colours[i]=m->fonts[i][6];
     m->track_info=d;
     d->phase=1;
-    if(slicks_resource_archive_load(archive,track_info_fault(3)?"missing-track-palette":"peli.@p",d->palette,sizeof d->palette)!=768 ||
-        slicks_amiga_records_icons_load(m,archive)) goto failed;
+    if(slicks_resource_archive_load(archive,track_info_fault(3)?"missing-track-palette":"peli.@p",d->palette,sizeof d->palette)!=768) goto failed;
+    g_slicks_diag_track_info_stage=2;
+    if(slicks_amiga_records_icons_load(m,archive)) goto failed;
+    g_slicks_diag_track_info_stage=3;
     /* The owner reserves the large workspace before loading smaller files.
      * Keep the diagnostic workspace-failure boundary transactional. */
     if(track_info_fault(2)) goto failed;
