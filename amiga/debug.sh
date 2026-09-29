@@ -48,7 +48,9 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
-if [ -n "${SLICKS_SHADOW_TRACK:-}" ]; then
+if [ "${SLICKS_DEMO_LIFECYCLE_TEST:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DEMOF12\n' > "$DH0/s/startup-sequence"
+elif [ -n "${SLICKS_SHADOW_TRACK:-}" ]; then
   # SHADOW=1 correctness run of the outer benchmark scenario; warp allowed.
   case "$SLICKS_SHADOW_TRACK" in 0|1|2|3) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALB%s\n' "$SLICKS_SHADOW_TRACK" > "$DH0/s/startup-sequence"

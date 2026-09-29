@@ -27,6 +27,8 @@
 #include "../../ui/palette_fade.h"
 #include "../../ui/result_wait.h"
 #include "../../ui/title_demo.h"
+#include "../../ui/track_data_view.h"
+#include "../../game/race_return.h"
 #include "../../ui/saved_file_dialog.h"
 #include "amiga_saved_files.h"
 #include "../../game/arcade_setup.h"
@@ -91,6 +93,10 @@ static unsigned char title_language[2048];
 static unsigned title_language_used;
 static unsigned char title_arcade_refresh=2;
 static struct SlicksTitleDemo title_demo;
+static unsigned char demo_render_only;
+static unsigned char demo_lifecycle_test,demo_test_stage,demo_test_round;
+volatile unsigned char g_slicks_demo_test_error,g_slicks_demo_test_views;
+__attribute__((noinline)) void slicks_diag_demo_test_done(void) { __asm__ volatile("" ::: "memory"); }
 extern unsigned char slicks_title_counter;
 extern unsigned short slicks_title_third_color;
 extern void slicks_title_font_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
@@ -2087,9 +2093,12 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     slicks_race_initialize(race, navigation);
     slicks_race_set_timer(race,slicks_speed_timer_argument(configuration->field_05de));
-    if(session) { race->finish_reward=award_race_finish; race->track_reward=award_race_track; }
+    if(session) {
+        race->finish_reward=award_race_finish;
+        race->track_reward=title_demo.active?0:award_race_track;
+    }
     slicks_race_set_mode(race,configuration->options[0],configuration->options[13]);
-    if(slicks_race_set_demo(race,title_demo.active?-1:0,
+    if(slicks_race_set_demo(race,title_demo.active || demo_render_only?-1:0,
         slicks_original_demo_overlay)) {
         g_slicks_diag_race_error=7; goto cleanup;
     }
@@ -3493,6 +3502,21 @@ static __attribute__((noinline)) void collect_conversion_statistics(
     g_slicks_diag_dirty_c2p_calls+=race->dirty_row_count;
 }
 
+static void restore_demo_configuration(struct SlicksConfiguration *configuration,
+    struct SlicksRaceRuntime *race,unsigned char played)
+{
+    if(!title_demo.active) return;
+    if(played) {
+        g_slicks_setup_session.random_state=race->random_state;
+        slicks_race_reset_return(race);
+    }
+    slicks_title_demo_restore(&title_demo,configuration,&g_slicks_track_playlist,
+        &title_arcade_refresh);
+    (void)slicks_race_set_demo(race,0,0);
+    /* Original title re-entry calls 2bb70(0,0), after clearing DS:0459. */
+    slicks_setup_select(&g_slicks_setup_session,configuration,&setup_resources,0);
+}
+
 int main(void)
 {
     int argc = 0;
@@ -3531,6 +3555,7 @@ int main(void)
     unsigned short selected_track = 0;
     unsigned short track_count;
     unsigned short selected_laps = 4;
+    unsigned short demo_track=0,demo_vehicle=0,demo_laps=0;
     struct SlicksConfiguration configuration = slicks_original_configuration;
     unsigned char setup_dirty=0,exit_requested=0,save_prompt=0,right_was_down=0;
     unsigned char registration_presentation=0;
@@ -3609,6 +3634,10 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='F' && argv[5]=='1' && argv[6]=='2') {
+        demo_lifecycle_test=1;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -3621,7 +3650,7 @@ int main(void)
        argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && argv[7]=='O' &&
        argv[8]>='0' && argv[8]<='3' && argv[9]=='Q' && argv[10]=='D') {
         /* Overlay-only display audit, not the title demo lifecycle. */
-        title_demo.active=1; argc=10;
+        demo_render_only=1; argc=10;
     }
     if(argc==11 && argv[0]=='N' && argv[1]=='A' && argv[2]=='T' && argv[3]=='U' &&
        argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && argv[7]=='B' && argv[8]>='0' && argv[8]<='3' &&
@@ -4300,6 +4329,44 @@ int main(void)
         (continuous_diagnostics || (g_slicks_diag_profile_all && g_slicks_diag_profile_all!=2)));
     for (;;) {
         unsigned short code;
+        if(demo_lifecycle_test && platform.key_head==platform.key_tail) {
+            static struct SlicksConfiguration before;
+            static short playlist_before[256];static unsigned short count_before;
+            if(!demo_test_stage && !g_slicks_diag_ingame) {
+                before=configuration;count_before=g_slicks_track_playlist.count;
+                for(unsigned i=0;i<256;++i) playlist_before[i]=track_selection[i];
+                static const unsigned char keys[]={0x60,0x51,0xd1,0xe0};
+                unsigned char shifts=0;platform.key_tail=0;
+                for(unsigned i=0;i<sizeof keys;++i)
+                    platform.keys[i]=slicks_amiga_key_event(keys[i],&shifts);
+                platform.key_head=sizeof keys;demo_test_stage=1;
+            } else if(demo_test_stage>=1 && demo_test_stage<=3 &&
+                g_slicks_diag_ingame && race->frame_count>=10) {
+                if(!title_demo.active || race->demo_flag!=-1 || race->race_mode!=5 ||
+                   g_slicks_track_playlist.count!=1) g_slicks_demo_test_error=1;
+                unsigned char keys[4]={0x60,0x50,0xd0,0xe0};
+                unsigned count=4;
+                if(demo_test_stage==2) {keys[1]=0x51;keys[2]=0xd1;}
+                if(demo_test_stage==3) {keys[0]=0x33;count=1;}
+                unsigned char shifts=0;platform.key_tail=0;
+                for(unsigned i=0;i<count;++i)
+                    platform.keys[i]=slicks_amiga_key_event(keys[i],&shifts);
+                platform.key_head=(unsigned char)count;++demo_test_stage;
+            } else if(demo_test_stage==4 && !g_slicks_diag_ingame) {
+                const unsigned char *actual=(const unsigned char *)&configuration;
+                const unsigned char *expected=(const unsigned char *)&before;
+                for(unsigned i=0;i<sizeof before;++i)
+                    if(actual[i]!=expected[i]) g_slicks_demo_test_error=2;
+                for(unsigned i=0;i<256;++i)
+                    if(track_selection[i]!=playlist_before[i]) g_slicks_demo_test_error=3;
+                if(title_demo.active || race->demo_flag ||
+                   g_slicks_track_playlist.count!=count_before) g_slicks_demo_test_error=4;
+                if(++demo_test_round<2 && !g_slicks_demo_test_error) demo_test_stage=0;
+                else {
+                    slicks_diag_demo_test_done();exit_requested=1;demo_test_stage=5;
+                }
+            }
+        }
         if(registration_test && title_dirty_test) {
             static const unsigned char keys[]={0x4d,0x4d,0x4f,0x4e,0x4c,0x4c,0x45};
             static const unsigned char transition_keys[]={
@@ -4391,9 +4458,15 @@ int main(void)
         right_was_down=right_down;
         if(exit_requested) {
             exit_requested=0;
+            /* Native program-exit adaptation must never persist temporary
+             * demo options or profiles, even if profile statistics changed. */
+            if(title_demo.active) {
+                restore_demo_configuration(&configuration,race,(unsigned char)g_slicks_diag_ingame);
+                selected_track=demo_track;selected_vehicle=demo_vehicle;selected_laps=demo_laps;
+            }
             /* Diagnostic modes never write setup files implicitly. The normal
              * original caller saves on program exit, not on every modal close. */
-            if((argc && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
+            if(demo_lifecycle_test || (argc && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
             slicks_amiga_platform_end(&platform);
             if(persistence_test && (argv[7]=='T' || argv[7]=='V') && !failure_injected) {
                 /* Isolated diagnostic fault, using AmigaDOS throughout so
@@ -4467,7 +4540,7 @@ int main(void)
             platform.key_tail=0; platform.keys[0]=(unsigned char)(playlist_position?0x59:0x58);
             platform.key_head=1; ++sequence_returns;
         }
-        if(((original_setup && !argc) || ((sequence_test || completion_return_test) &&
+        if((title_demo.active || (original_setup && !argc) || ((sequence_test || completion_return_test) &&
             !pause_transition_test && sequence_returns<playlist_position+1)) &&
             g_slicks_diag_ingame && race->race_complete && platform.key_head==platform.key_tail) {
             /* Natural completion returns to the original post-race caller;
@@ -4534,6 +4607,47 @@ int main(void)
             if (g_slicks_diag_ingame) {
                 int pause_result=0;
                 unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
+                if(title_demo.active) {
+                    scan=(unsigned char)amiga_raw_to_demo_scan(code,platform.key_shifts);
+                    if(code&128) continue;
+                    if(scan==0x57 || scan==0x58) {
+                        struct SlicksChunkyUi ui={chunky,race_palette,0,0};
+                        if(slicks_track_data_view_draw(&ui,race->material_map,
+                            race->surface_map,(unsigned char)(scan-0x57))) goto cleanup;
+                        slicks_race_invalidate_retention(race);
+                        slicks_amiga_platform_wait_display_blank(&platform);
+                        slicks_chunky_rect_to_amiga(chunky,platform.views[1].bitmap,
+                            0,0,320,190,0);
+                        if(demo_lifecycle_test) {
+                            const unsigned char *source=scan==0x57?race->material_map:race->surface_map;
+                            for(unsigned at=0;at<320U*190U;++at)
+                                if(chunky[at]!=(source[at]&31)) g_slicks_demo_test_error=5;
+                            const struct BitMap *bitmap=platform.views[1].bitmap;
+                            for(unsigned y=0;y<200;++y) for(unsigned x=0;x<320;++x) {
+                                unsigned char pixel=0;
+                                for(unsigned p=0;p<8;++p)
+                                    if(bitmap->Planes[p][y*bitmap->BytesPerRow+(x>>3)] & (128U>>(x&7)))
+                                        pixel|=(unsigned char)(1U<<p);
+                                if(pixel!=chunky[mult320[y]+x]) g_slicks_demo_test_error=6;
+                            }
+                            ++g_slicks_demo_test_views;
+                        }
+                        continue;
+                    }
+                    if(!slicks_title_demo_exit_key(race->demo_flag,scan)) continue;
+                    slicks_amiga_platform_wait_display_blank(&platform);
+                    slicks_amiga_audio_stop(&audio);
+                    restore_demo_configuration(&configuration,race,1);
+                    selected_track=demo_track;selected_vehicle=demo_vehicle;selected_laps=demo_laps;
+                    if(slicks_setup_basic_mode(logical,mode_state)) goto cleanup;
+                    make_title_surface(logical,title_frame,source_palette);
+                    redraw_title_configuration(&platform,logical,chunky,source_palette,
+                        menu_selection,selected_vehicle,track_names[selected_track],selected_laps);
+                    if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
+                    slicks_amiga_platform_show(&platform,0);
+                    g_slicks_diag_ingame=0;
+                    continue;
+                }
                 if((!argc || championship_test || pause_live_test || pause_transition_test || shop_transition_test) && !race->race_complete && !(code&128) &&
                    (scan==1 || scan==0x1d || scan==0x3b || scan==0x3c || scan==0x43 || scan==0x44)) {
                     pause_result=run_race_pause(&platform,&audio,race,chunky,race_palette,&configuration,
@@ -5191,8 +5305,14 @@ int main(void)
                 }
                 /* Original F9 (2a4c5) returns 99 regardless of the selected
                  * row, sharing the GO playlist/player preparation tail. */
-                if (action == 4 || (action == 2 && menu_selection == 0)) {
+                if (action == 4 || (action == 5 && original_setup) || (action == 2 && menu_selection == 0)) {
                     g_slicks_diag_ready = 0;
+                    if(action==5) {
+                        demo_track=selected_track;demo_vehicle=selected_vehicle;demo_laps=selected_laps;
+                        if(slicks_title_demo_begin(&title_demo,&configuration,&g_slicks_track_playlist,
+                            track_count,&g_slicks_setup_session.random_state,(short *)&menu_selection)) goto cleanup;
+                        selected_laps=(unsigned short)configuration.options[3];
+                    }
                     slicks_amiga_platform_end(&platform);
                     /* Original 2a593..2a5e4 supplies one random track when
                      * GO is selected with an empty playlist. */
@@ -5209,6 +5329,10 @@ int main(void)
                     if (prepare_race(&platform, logical, chunky, mode_state,
                                      race, track_path, race_palette, selected_vehicle,
                                      &configuration,original_setup?&g_slicks_setup_session:0,1) != 0) {
+                        if(title_demo.active) {
+                            restore_demo_configuration(&configuration,race,0);
+                            selected_track=demo_track;selected_vehicle=demo_vehicle;selected_laps=demo_laps;
+                        }
                         /* This is a native platform error, not invented DOS
                          * gameplay. Keep setup alive so files/controllers can
                          * be corrected and GO retried from the actual menus. */

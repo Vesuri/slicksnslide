@@ -755,7 +755,7 @@ call assertions. Sentinel-filled unrelated native bytes must survive exactly;
 positions, current/total clocks, inventory, RNG and the submitted display
 frame are not cleared. Native derived speed/time/rank views are kept consistent
 with the original reset fields. Log: `tmp/demo-native-return.log`.
-This is a verified reset helper, **not** a completed live demo-return route;
+At this checkpoint this was a verified reset helper, **not** a live demo-return route;
 the title owner, saved-image restoration and setup-selection refresh remain
 to be connected.
 
@@ -777,6 +777,45 @@ passes 1,024 modifier/mapping combinations, delayed consumption with both
 Shift keys, dropped-release recovery, and the existing Help/page-key/physical
 binding regressions. The Amiga build passes. Native input/lifecycle coverage
 remains part of the live demo work.
+
+## Live keyboard demo entry, views and return (2026-09-29)
+
+Shift+F2 now reaches the original demo setup through the normal title owner
+and real race preparation. The temporary profile IDs precede the original
+Arcade selection override; the diagnostic does not force four computer cars.
+The actual race receives the negative demo flag and overlay. Finish-event
+rewards remain connected, while the later track-reward callback is absent.
+Overlay-only fixtures use a separate flag, avoiding an uninitialized demo
+configuration backup.
+
+During a demo, Shift+F1/F2 publish the original material/surface data views
+from live maps, converting only the 320x190 plot and preserving the HUD.
+Other accepted exit keys stop audio, invoke the verified race reset, restore
+configuration and playlist, clear the flag, and refresh restored selections
+through the original choose=0 ordering. The title is rebuilt from resident
+assets without releasing hardware ownership. The shared RNG is not rewound.
+Preparation failure and native program exit also restore temporary settings;
+their failure/persistence consequences still need dedicated native tests.
+
+`SLICKS_DEMO_LIFECYCLE_TEST=1 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/demo-lifecycle-pixels ./debug.sh '' diag_demo_lifecycle.gdb`
+(from the configured amiga environment) passes two real entries, four views,
+two key returns and system restoration. The fixture queues event-time Shift
+chords, compares the complete configuration and all 256 playlist slots after
+each return, and rejects normal-results or setup-save calls. At every view it
+checks all 60,800 plotted indices against the map and all 64,000 displayed
+pixels reconstructed from the actual eight bitplanes against chunky pixels.
+Log: `tmp/demo-lifecycle-pixels.log`; build: `tmp/demo-lifecycle-build.log`.
+
+The title-demo, setup-session, title-navigation, Amiga-key-scan, track-data-view
+and demo-return host suites pass (`tmp/demo-lifecycle-host.log`), retaining
+their independent original-instruction comparisons. The muted native run
+exited and its emulator was closed.
+
+This fixture exits after ten updates: it does **not** establish natural demo
+completion, idle activation, loading-caption fidelity, all failure/exit paths
+or exact saved-image/title return presentation. Those remain explicit open
+work; the live return currently reconstructs the title from resident assets.
 
 ## Adaptations to preserve or explicitly classify
 

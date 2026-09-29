@@ -63,49 +63,18 @@ Implementation and completed verification evidence are separate in
   Do not claim feature completeness from isolated or historical passes.
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
-  remaining title shortcuts against original callers: F12/idle-timeout demo
-  setup is currently ignored by the native owner.
-  Implement their configuration backup/restore and race-return lifecycle;
-  the isolated original demo setup/restore helper now passes 960 paired
-  original-instruction comparisons, but is not connected to the live owner.
-  Audit the signed demo flag's race input, AI, results and persistence consumers
-  before enabling it; eleven additional original readers now have exhaustive
-  byte-flag branch checks, but their native side-effect wiring remains open.
-  Keep process-startup configuration/argument/splash gates separate from live
-  demo transitions. Negative idle demos retain the filename/record HUD; the
-  nonzero post-race wait route synthesizes scan 0x44 instead of waiting for
-  confirmation. Preserve these caller distinctions in the live integration.
-  Preserve the nonzero-flag return's race-state reset and saved-image restore,
-  not just its bypass of ordinary post-race results. Connect the verified
-  native reset (including display direction -1/counter 0), preserving current
-  and total clocks: DS:303f/3041 is speed, not a lap clock. Live return wiring
-  remains open. Do not infer
-  that finish-event rewards are suppressed by this later return branch.
-  Include the original demo loading caption in that wiring. The two-pass
-  overlay now has a race-renderer binding, original/68020 pixel comparisons
-  and passing F1/CITY/WHACKO native publication diagnostics; connect the title's
-  actual demo state and verify the complete lifecycle. This renderer
-  coverage does not establish the missing entry/return lifecycle.
-  The setup profile IDs precede Arcade selection override; their composed
-  selection/restoration now passes original-instruction tests, but the live
-  owner must retain that order and refresh restored selections on title return.
-  The original title re-entry calls `2bb70(suppress=0, choose=0)` at
-  `2a357..2a360` after clearing the race demo flag; restore the native session
-  through that selection refresh, not just the configuration's profile IDs.
-  The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
-  into production. Preserve F11/F12's exceptional track-data views; they are
-  not exit keys or file captures. The isolated track-data renderer is verified
-  against the original complete pixel loops; its live flag/input gating,
-  publication and return route remain missing.
-  Connect the approved Shift+F1/Shift+F2 adapter to live demo controls and
-  verify the actual input sequence. Event-time Shift tracking and title
-  dispatch are implemented; ordinary F1/F2 and driving bindings are unchanged.
-  The idle scan replacement passes 36,864 original timer-boundary cases.
-  Live integration must use elapsed time, not rendered-frame count, preserve
-  the strict >20,000 ms test and reset the timer after original input routes.
-  do not merely map them to ordinary GO. The added mouse activation path
-  has been removed following the original keyboard-reader audit.
-  F9 now reaches normal race preparation independently of the highlighted row.
+  remaining title shortcuts against original callers. Finish the demo lifecycle:
+  connect idle activation using whole-second elapsed time, not rendered-frame
+  count, preserving the strict >20,000 ms test and original input timer resets;
+  implement the original loading caption and its font/colour lifetime.
+  Verify natural completion, failed preparation and program-exit/save-failure
+  restoration, and compare the complete return presentation against the
+  original saved-image/title sequence. Keep finish-event rewards distinct from
+  the later skipped track/results branch; do not rewind the shared RNG.
+  Keyboard entry, track-data views and repeated key return are integrated;
+  their bounded native verification is recorded in fidelity-audit.md, not
+  proof of natural completion or all persistence/error routes. Extend normal
+  F1/F2 and GO/F9 integration regressions alongside the remaining demo routes.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
   The Arcade body now passes original full-screen and font-state comparisons.
   The separate Arcade renderer, original arrow/action
