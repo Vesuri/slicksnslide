@@ -363,8 +363,8 @@ int slicks_amiga_intermission_close(struct SlicksAmigaPlayerMenu *m)
 {
     if(!m || !m->intermission || m->change_cars) return -1;
     struct SlicksAmigaIntermission *d=m->intermission;
-    for(unsigned long i=0;i<64000;++i) m->renderer.ui.pixels[i]=m->saved[i];
-    m->renderer.fonts[0][6]=d->old_colour; dirty(m,0,0,320,200);
+    slicks_amiga_player_menu_restore(m);
+    m->renderer.fonts[0][6]=d->old_colour;
     FreeMem(d,sizeof *d); m->intermission=0; return 0;
 }
 int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct SlicksIntermissionContent *content,
@@ -396,6 +396,7 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     d->renderer.surface=&d->surface; d->renderer.fastest_icon=-1;
     d->old_colour=m->renderer.fonts[0][6];
     for(unsigned long i=0;i<64000;++i) m->saved[i]=m->renderer.ui.pixels[i];
+    m->saved_dirty_count=0; m->track_saved_dirty=1;
     m->intermission=d;
     struct IntermissionPreviewInput input={dat,track,dat_size,track_size,arena};
     int result=slicks_intermission_renderer_open(&d->renderer,&d->state,&d->content,source_palette,

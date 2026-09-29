@@ -773,3 +773,33 @@ oracle. Logs: `tmp/shop-bounds-control.log`, `tmp/shop-bounds-native.log`,
 `tmp/shop-bounds-host.log`, `tmp/shop-bounds-build.log`. Both runners closed their
 emulators. This closes the unconditional full-screen restore, not the remaining
 audit of refresh selectors, all driver/row transitions or failure paths.
+
+## Intermission lifetime restoration and live publications
+
+Intermission now enables lifetime painted bounds after taking its saved-screen
+snapshot. Close, including rollback after a post-paint opening failure, restores
+only those rectangles. The font colour restoration is unchanged; the saved
+snapshot remains full-size. Child vehicle dialogs feed the same tracking.
+
+The focused owner fixture (`SLICKS_INTERMISSION_SURFACE=1`,
+`diag_intermission_rectangles.gdb`) passes all 17 failure/reopen/edit/close
+phases. Its eight publications are byte-identical to the full-restore control,
+and complete bitplane decoding matches every chunky surface. Final restoration
+publishes (16,30)-(288,171), rather than the full screen. Logs:
+`tmp/intermission-bounds-control.log`, `tmp/intermission-bounds-native.log`.
+
+The live fixture (`SLICKS_INTERMISSION_LIVE=1`,
+`diag_intermission_live_rectangles.gdb`) passes 54 complete publication checks,
+nine repeated-edit inputs, unchanged profile bytes, deterministic random state,
+correct edited vehicles in the second race, two rewards and final system
+restoration. Existing guards forbid archive opening and display release during
+resident navigation. Log: `tmp/intermission-bounds-live.log`.
+
+Target build and host gates pass: original dispatcher initialization, 65,536
+Change Cars words, 3,072 key/selection cases, 30 renderer composition/failure
+cases, 75 original intermission pixel/font comparisons, eight Change Cars
+open/close comparisons and 20 row redraws. The renderer-only test uses stub
+assets; the separate pixel test uses real original/68020 painters. Logs:
+`tmp/intermission-bounds-build.log`, `tmp/intermission-bounds-host.log`.
+All debug runs were muted and their runners closed the emulators. Saved-game
+recovery and other intermission error routes remain separate open coverage.
