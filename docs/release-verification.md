@@ -1,5 +1,47 @@
 # Development release audit
 
+## 2026-09-30 — clean-build installer candidate refresh
+
+A clean default-options Amiga rebuild produces the exact same stripped HUNK
+and ELF hashes as the WHDLoad regression below. A separate candidate was
+created at `tmp/installer-candidate-O0ydKu/Slicks-0.1.lha` (267,646 bytes),
+SHA256 `13b5bda2fa2a046b09186ceac8f922a79f0910a1746eda3b68d755f1fe981270`.
+The existing `dist/Slicks-0.1.lha` was neither overwritten nor published.
+
+The independent package audit passes all twelve allowlisted LH5 members,
+header/payload CRCs, decompression, HUNK checks and exact script/icon/source
+identity. No original assets, private keys or emulator/OS material are included.
+The package uses the current production slave, not a diagnostic slave.
+
+Real Amiga Installer tests consume this exact LHA and the unchanged publisher
+ZIP on PAL 68020 with 2 MiB Chip and no Fast RAM:
+
+| Workflow | Run under tmp/ | Verified result |
+| --- | --- | --- |
+| Fresh standalone install | `installer-script-8ozngfgu` | Original data, current executable, icons and staging cleanup match. |
+| Existing install, Keep, optional WHDLoad | `installer-script-d4tsohzy` | Modified track and settings/key placeholders survive; both launch paths and icon metadata are installed. |
+| Explicit Reinstall | `installer-script-9_ib_5o0` | Original track data replaces the modified track; settings/key placeholders survive; staging is removed. |
+
+Only requester answers are supplied by the test harness; extraction, copying,
+filesystem operations and native icon changes execute through the real script.
+Placeholder files are deliberately not a real registration key.
+
+The fresh installation is then launched unchanged through Execute Play:
+`tmp/standalone-release-e7npf7kc` reaches the active native title. A direct
+Options/edit/close/reopen/race run on that same installed executable confirms
+the default 4096-byte stack and passes at race entry:
+`tmp/standalone-release-lpf7judw`. The latter bypasses Play's explicit larger
+stack, rather than claiming the launcher itself uses 4 KiB. These are
+checkpoint checks, not normal-exit proof; the separate WHDLoad quit check is
+recorded below. All test emulators were muted and closed.
+
+Build/package logs: `tmp/release-refresh-build.log`,
+`tmp/release-refresh-package.log`. This candidate is verified packaging for
+the present build, not a declaration of complete fidelity or resolution of the
+outstanding Load Game entry and other open-work policies. Repeat affected
+release gates after further production changes before replacing the published
+candidate.
+
 ## 2026-09-30 — current WHDLoad regression
 
 The stripped executable built from 1d293e2 passes fresh isolated WHDLoad

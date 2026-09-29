@@ -251,9 +251,11 @@ Implementation and completed verification evidence are separate in
   confirmed 4 KiB stack; the other release workflows still need
   current-build coverage (see release-verification.md).
   WHDLoad production startup/idle demo, racing with and without PRELOAD and
-  normal exit are now refreshed for 1d293e2 with 4 MiB Fast RAM. Installer and
-  archive refresh remain separate; repeat final gates after further production
-  changes rather than treating those bounded runs as a release freeze.
+  normal exit are now refreshed for 1d293e2 with 4 MiB Fast RAM. A clean-build
+  candidate also passes fresh Installer, Keep/WHDLoad, Reinstall, archive audit,
+  installed Play startup and direct 4 KiB-stack Options-to-race checks. The
+  existing dist archive is untouched. Repeat affected final gates after further
+  production changes rather than treating these runs as a release freeze.
   Startup display-allocation failure checks now cover all ten allocation
   sites, partial-create cleanup and repeat destruction on the target with a
   4 KiB stack (see release-verification.md). Both bitmap/copper allocations
