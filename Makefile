@@ -1192,6 +1192,16 @@ build/verify_title_navigation: tools/verify_title_navigation.c tools/verify_opti
 verify-title-navigation: build/verify_title_navigation
 	build/verify_title_navigation
 
+.PHONY: verify-title-return-pixels
+build/verify_title_return_pixels: tools/verify_title_return_pixels.c tools/verify_palette_remap.c tools/host_archive.h src/ui/title_background.h src/ui/menu_icon.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+
+# A current diag_title_return_pixels.gdb capture, not a recorded game asset.
+verify-title-return-pixels: build/verify_title_return_pixels
+	@test -n "$(TITLE_RETURN_RUN)" || { echo 'Set TITLE_RETURN_RUN to the native capture directory'; exit 2; }
+	build/verify_title_return_pixels "$(TITLE_RETURN_RUN)"
+
 .PHONY: verify-arcade-title
 build/verify_arcade_title: tools/verify_arcade_title.c tools/verify_arcade_hud.c src/ui/arcade_title_draw.h
 	@mkdir -p build

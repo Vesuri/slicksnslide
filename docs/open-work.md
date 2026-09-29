@@ -1,6 +1,6 @@
 # Open work
 
-Updated 2026-09-29. Actionable open and deferred work only.
+Updated 2026-09-30. Actionable open and deferred work only.
 Historical experiments, rejections and verification evidence are in
 [performance-profiling.md](performance-profiling.md).
 Installer/packaging evidence is in [release-verification.md](release-verification.md),
@@ -115,12 +115,16 @@ Implementation and completed verification evidence are separate in
   startup display-allocation cleanup is verified separately below.
   Clean and dirty exit, direct save retry, save-failure cancellation, demo re-entry and
   subsequent successful save have native coverage.
-  Compare the complete return presentation against the
-  original saved-image/title sequence. DS:4c1c is captured from the prepared
+  Extend the complete return-presentation comparison to registered/Arcade,
+  natural-deadline and other language/font-lifetime cases. Two distinct ordinary
+  unregistered English keyboard-demo returns now match every logical pixel of
+  the original complete title renderer, including icons and counters.
+  DS:4c1c is captured from the prepared
   startup background before subsequent text/menu draws, not immediately before
   a demo; use that producer when constructing the pixel comparison.
   The missing startup background tints (F14) are fixed and independently
-  pixel-verified; the subsequent complete return composition remains open.
+  pixel-verified; remaining return variants and cadence are separate from the
+  verified ordinary composition.
   Keep finish-event rewards distinct from
   the later skipped track/results branch; do not rewind the shared RNG.
   Keyboard entry, track-data views, repeated key return and natural deadline

@@ -1560,6 +1560,37 @@ and subsequent title draws, not an assumed pre-demo framebuffer snapshot.
 
 ## F14: prepare the original title background once
 
+### Live ordinary-title return composition (2026-09-30)
+
+`diag_title_return_pixels.gdb` now captures the actual logical surface after
+each of two distinct keyboard-demo returns, immediately before title C2P.
+It records the native selection, pulse counter, mode, track counts and driver
+roles. It rejects Arcade and registered fixtures; this gate uses English.
+The existing lifecycle checks additionally require two starts, four track-data
+views, restored configuration/playlist and normal system restoration.
+
+`verify-title-return-pixels` independently loads the original artwork, palette,
+fonts and status icons, reconstructs the prepared startup background, and
+executes the complete original ordinary-title renderer `29753..29af9`.
+Language lookup, cropping, palette searches, labels, bevel, icons and numeric
+text run original instructions, without drawing-call mocks. The prepared-image,
+font and indexed-icon decoding helpers retain their separate original-code
+oracles. All 64,000 visible pixels match the native return at counters 8 and
+20, with selection GO, mode 0, 195/195 tracks and roles -1/1/1/1.
+
+Run: `tmp/standalone-release-wjqxqm3e`, current stripped binary, confirmed
+4 KiB stack, stock PAL 68020 and 2 MiB Chip/no Fast. Command:
+`make verify-title-return-pixels TITLE_RETURN_RUN=tmp/standalone-release-wjqxqm3e`.
+The muted emulator was closed. An earlier capture (`f9n8ffao`) accidentally
+recorded two redraws of the first return; it is not two-cycle evidence.
+
+This closes complete logical composition for these ordinary, unregistered,
+English keyboard-demo returns. It does not prove pulse wall-clock cadence,
+registered-name composition, Arcade returns, other language/caller font
+lifetimes, natural-deadline returns, or visible loading-time scanout. In
+particular, the oracle uses the captured pulse value rather than claiming
+the native and DOS title loops advance it at identical times.
+
 `verify-title-preparation` executes the original two ordered tint calls at
 `261e8..26240`, including palette searches and VGA remapping, and compares
 every visible pixel with `slicks_title_prepare_background`. The real
