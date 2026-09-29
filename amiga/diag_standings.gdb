@@ -3,9 +3,12 @@ set $saved = 0
 set $read_errors = 0
 set $save_errors = 0
 set $record_inserts = 0
+set $expected_save_errors = 0
+source diag_records_resident.gdb
 break slicks_diag_record_recovery_ready
 commands
   silent
+  set $record_warning_owned = 1
   if g_slicks_diag_record_results_phase == 4
     set $read_errors = $read_errors+1
   else
@@ -20,8 +23,16 @@ end
 break slicks_diag_record_results_ready
 commands
   silent
+  if g_slicks_diag_record_results_phase == 3
+    set $record_closing = 1
+  end
   if g_slicks_diag_record_results_phase == 1
     set $record_inserts = $record_inserts+1
+    # A skipped first-track read leaves the one-shot save fault pending.
+    # It may be reached by a qualifying second-track record, not by the skip.
+    if g_slicks_diag_record_outcome.changed && (g_slicks_diag_record_faults & 2)
+      set $expected_save_errors = $expected_save_errors+1
+    end
     if $record_inserts == 1
       dump binary memory .run/post-race-records-v1/first.records &g_slicks_diag_record_table (char *)&g_slicks_diag_record_table+sizeof(g_slicks_diag_record_table)
     end
@@ -92,15 +103,15 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $standings != 3 || !$saved || $starts != 2 || $results != 2 || !$title || g_slicks_diag_restore_status != 0x1f
+  if $standings != 3 || !$saved || $starts != 2 || $results != 2 || $record_returns != 2 || !$title || g_slicks_diag_restore_status != 0x1f
     printf "STANDINGS_FLOW_FAILED phase=%u\n",$standings
     quit 1
   end
-  if ($read_errors || $save_errors) && ($read_errors != 1 || $save_errors != (g_slicks_diag_record_skip != 2) || $record_inserts != (g_slicks_diag_record_skip == 2 ? 1 : 2))
+  if ($read_errors || $save_errors) && ($read_errors != 1 || $save_errors != $expected_save_errors || $record_inserts != (g_slicks_diag_record_skip == 2 ? 1 : 2))
     printf "RECORD_RECOVERY_FAILED reads=%u saves=%u inserts=%u\n",$read_errors,$save_errors,$record_inserts
     quit 1
   end
-  printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK\n"
+  printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK reads=%u saves=%u inserts=%u returns=%u\n",$read_errors,$save_errors,$record_inserts,$record_returns
   quit
 end
 source diag_completion_flow.gdb

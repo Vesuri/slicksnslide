@@ -94,7 +94,9 @@ Implementation and completed verification evidence are separate in
   warning close and RAM-only track-list chooser input now retain hardware
   ownership. Saved-game picker-to-name, notice closes and RAM-only returns also
   retain ownership. Verify the existing cached Load-owner transition after its
-  entry route is resolved; migrate results and remaining RAM-only owners.
+  entry route is resolved; migrate championship results and remaining RAM-only
+  owners. Post-race record assets/close and recovery returns now use the cache
+  and retain ownership outside explicit record I/O boundaries.
   Normal intermission and retry/end-match warning returns retain ownership;
   rerun their lifetime checks as part of the broader release gates.
   Shop and registration Help

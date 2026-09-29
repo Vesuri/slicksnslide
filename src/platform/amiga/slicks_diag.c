@@ -2853,11 +2853,11 @@ static int record_retry_notice(struct SlicksAmigaPlatform *platform,struct Slick
         }
     }
 done:
-    slicks_amiga_platform_end(platform);
     if(slicks_amiga_emergency_warning_close()) result=-1;
     return result;
 }
 
+__attribute__((noinline)) void slicks_diag_record_results_closed(void) { __asm__ volatile("" ::: "memory"); }
 /* Original 255ff..25934. Run once, before selection refresh can change the
  * profile/vehicle associated with a completed lap. Never reinsert on Retry. */
 static int run_record_results(struct SlicksAmigaPlatform *platform,
@@ -2879,6 +2879,7 @@ static int run_record_results(struct SlicksAmigaPlatform *platform,
         (unsigned long)now.ds_Tick/TICKS_PER_SECOND,&date);
     CloseLibrary((struct Library *)UtilityBase);
 load_records:
+    slicks_amiga_platform_end(platform);
     records=(struct SlicksTrackRecords){0};
     bytes=AllocMem(8192,MEMF_ANY);
     long size=bytes?load_plain_file(g_slicks_diag_record_faults&1?"missing-post-race-track":path,bytes,8192):-1;
@@ -2907,7 +2908,7 @@ load_records:
     g_slicks_diag_record_table=records;
     g_slicks_diag_record_results_phase=1; slicks_diag_record_results_ready();
     if(outcome.show) {
-        if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+        if(slicks_resource_archive_cached(&archive,menu_cache)) goto done;
         m=slicks_amiga_race_surface_create(&archive,chunky,palette);
         if(!m || slicks_amiga_records_icons_load(m,&archive)) goto done;
         for(unsigned long i=0;i<64000;++i) m->saved[i]=chunky[i];
@@ -2921,11 +2922,11 @@ load_records:
         platform->key_tail=platform->key_head;
         g_slicks_diag_record_results_phase=2; slicks_diag_record_results_ready();
         if(result_wait(platform,300,diagnostic)) goto done;
-        slicks_amiga_platform_end(platform);
         for(unsigned long i=0;i<64000;++i) chunky[i]=m->saved[i];
     }
     if(outcome.changed) {
         for(;;) {
+            slicks_amiga_platform_end(platform);
             unsigned char changed;
             char obstruction[80]; unsigned at=0;
             unsigned char own_obstruction=0;
@@ -2956,14 +2957,18 @@ load_records:
     g_slicks_diag_record_results_phase=3; slicks_diag_record_results_ready();
     result=0;
 done:
-    slicks_amiga_platform_end(platform);
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&archive);
     if(bytes) FreeMem(bytes,8192);
     if(!result) {
         slicks_chunky_rows_to_amiga(chunky,platform->views[1].bitmap,0,200);
-        if(slicks_amiga_platform_set_view(platform,1,palette) || slicks_amiga_platform_begin(platform,1)) result=-1;
+        if(slicks_amiga_platform_set_view(platform,1,palette)) result=-1;
+        else if(platform->active) {
+            slicks_amiga_platform_wait_display_blank(platform);
+            slicks_amiga_platform_show(platform,1);
+        } else if(slicks_amiga_platform_begin(platform,1)) result=-1;
     }
+    slicks_diag_record_results_closed();
     return result;
 }
 

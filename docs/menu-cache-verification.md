@@ -375,3 +375,48 @@ and emergency-warning close, require active ownership at close, and require
 the intermission owner gone with hardware active at return. The runner closed
 both emulators. This checks the injected constructor-failure retry/end branches,
 not arbitrary low-memory timing or the remaining results owners.
+
+## Post-race record-panel residency
+
+The record-panel constructor now uses the startup archive provider for fonts
+and icons. Record reads/date acquisition and writes remain explicit OS work.
+After a read-failure retry the load label releases ownership before I/O, and
+each save attempt does likewise. The panel's RAM restoration, emergency-warning
+close and final RAM cleanup no longer unconditionally end hardware ownership.
+Successful return rebuilds the race view and either switches it at blanking
+while active or acquires it if the preceding disk operation released ownership.
+
+`diag_records_resident.gdb`, included by the standings gate, forbids archive
+opening within the record owner, teardown during warning close/final cleanup,
+and record writes with hardware owned. It requires owned returns. The shared
+fixture does not instrument every inlined file-read site; those explicit read
+boundaries are source-audited and exercised by injected read failure/retry.
+
+Fresh host gates pass 25,272 original post-race qualification/insertion cases,
+192 original result waits, 216 records draw traces, both sets of 1,225 record
+storage fault cases, and 12 complete records-panel pixel/font comparisons.
+The pixel suite also passes its title-independent shared-renderer gates,
+including 32 championship cup frames; it is not proof of every live caller.
+
+The first two combined native launches exceeded the debugger's breakpoint
+capacity and stopped before gameplay. The fixture now uses one machine-entry
+breakpoint for platform teardown and omits the multi-location inlined file
+reader breakpoint. Those aborted launches are not passes.
+
+The first read-skip run reached restoration but failed the historical fixture's
+assumption that no save fault can follow a skipped first-track read. The pending
+one-shot write fault can be reached by a qualifying second-track record.
+The fixture now derives expected write-failure count from the actual original
+qualification result and still checks one insertion per successfully read
+track, two owned returns, and complete standings/statistics/restoration.
+
+Fresh native matrix, from `amiga/`, uses `SLICKS_DEBUG_WARP=1`,
+`FSUAE_RUN=.run/post-race-records-v1`, `./debug.sh '' diag_standings.gdb` and
+`SLICKS_RECORD_RECOVERY=retry`, `skip`, then `read-skip`. All three pass two
+race/result returns, injected read failure, the applicable write-failure route,
+three standings phases, profile statistics/persistence and restoration 31.
+The passing local logs are `tmp/records-resident-retry-final.log`,
+`tmp/records-resident-save-skip.log` and
+`tmp/records-resident-read-skip-recheck.log`. All runs were muted PAL A1200,
+2 MiB Chip/no Fast RAM, and their runner closed the emulators. This is a
+record-owner lifetime/recovery check, not a whole-game release or timing gate.
