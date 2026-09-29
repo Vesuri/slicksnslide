@@ -106,6 +106,36 @@ int main(void)
             ++navigation_cases;
         }
     printf("Original shop row navigation: %u selector/boundary comparisons pass\n",navigation_cases);
+    /* Caller-level sparse selection, not a painter fed a valid packed column.
+     * DOS keeps actual driver IDs in the caller but treats them as packed
+     * columns in 2c574. Expose the uninitialized result without using it as
+     * an inventory index or claiming its stale value is defined behavior. */
+    for(unsigned mask=4;mask<=5;++mask){
+        signed char roles[4]={0};unsigned count=0;
+        for(unsigned d=0;d<4;++d){roles[d]=(mask&(1U<<d))?-1:0;count+=roles[d]!=0;
+            word(u,ds+0x44c+2*d,roles[d]?d+1:0);}
+        check(uc_mem_write(u,ds+0x4bc6,roles,4));
+        unsigned char active=(unsigned char)count;check(uc_mem_write(u,ds+0x4c16,&active,1));
+        uint16_t cs=0x266c,dsreg=0x3cbf,ss=0x8000,sp=0xe000,bp=0xf000,ax;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&dsreg));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+        check(uc_emu_start(u,0x2cf50,0x2cf5b,0,1000));check(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if((signed char)ax!=(mask==4?2:0))abort();
+        word(u,0x8eff5,(unsigned char)ax);word(u,0x8effe,0);word(u,0x8eff3,0);
+        if(mask==5){check(uc_emu_start(u,0x2d03f,0x2d229,0,1000));}
+        unsigned column=readword(u,0x8eff5)&255;
+        if(column!=2 || column<count)abort();
+        for(unsigned sentinel=77;sentinel<=99;sentinel+=22){
+            check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+            word(u,0x8e000,0);word(u,0x8e002,0x7000);
+            const short args[]={2,0,-1,-1,0,137,211};
+            for(unsigned i=0;i<7;++i)word(u,0x8e004+2*i,args[i]);
+            word(u,0x8dffc,sentinel);
+            memset(&dos,0,sizeof dos);check(uc_emu_start(u,0x2c574,0x70000,0,100000));
+            check(uc_reg_read(u,UC_X86_REG_AX,&ax));if((ax&255)!=sentinel)abort();
+        }
+    }
+    puts("Original sparse shop caller: isolated third driver and first/third Right selection reach nonexistent column 2; painter returns both injected stale-stack bytes");
     for(unsigned trial=0;trial<4096;++trial) {
         struct SlicksSetupSession s={0};
         unsigned mask=1+trial%15,flags=(trial/15)%16;

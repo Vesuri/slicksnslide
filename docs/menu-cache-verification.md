@@ -1431,6 +1431,10 @@ coverage, and is not a performance benchmark. Those remain actionable.
 
 ## Shop selective-refresh caller audit (2026-09-29)
 
+Later caller-level resolution: see **Sparse shop caller undefined selection**
+below. The mismatch is an original undefined-result bug, not evidence that
+the native caller should blindly pass packed columns as actual drivers.
+
 The original row-navigation branches (`2d075` and `2d085`, stopping at
 `2d229`) now have 840 executable comparisons in `verify-shop-draw`: every
 row count 0–13, every valid row, four columns and both directions. A genuine
@@ -1450,6 +1454,33 @@ passing the native actual driver without checking would not reproduce those
 instructions. Horizontal navigation and transactions still need their
 selector/lifetime integration checks. No production behavior changed in this
 audit, and no target performance result is claimed.
+
+## Sparse shop caller undefined selection (2026-09-29)
+
+`verify-shop-draw` now executes the original caller before invoking the painter,
+rather than supplying a valid packed column directly. Two valid sparse profile
+layouts expose a defect: only driver 3 active, and drivers 1/3 active followed
+by Right. Initialization `2cf50..2cf5b` calls the original human-driver scan;
+Right `2d03f..2d229` also returns an actual driver index. Both routes produce
+index 2, which the painter `2c574` interprets as a packed column even though
+there are only one or two displayed columns.
+
+The painter initializes BP-1 and BP-3, but not its result at BP-2. No column
+matches, and `2c960` returns the untouched result byte. The test seeds that
+local with 77 and 99 in separate runs and observes each returned unchanged.
+It stops there: no transaction consumes those undefined indices. This is
+original-instruction evidence, not a DOSBox UI observation or permission to
+reproduce out-of-range inventory access.
+
+The existing native mapping keeps actual driver IDs for transactions and
+converts them to packed columns for drawing; its painter rejects unmatched
+columns with -1. No production mapping changed in this audit. The user has
+been asked whether to retain correct sparse mapping as an explicit compatibility
+fix or reject sparse shop setups. Native sparse navigation/purchase/publication
+coverage remains open pending that policy decision. Contiguous layouts remain
+covered by the existing original comparisons. `make verify-shop-draw` passes
+the two new sparse cases (two stale-result seeds each), 840 row-navigation
+cases, 4,096 painter comparisons and 512 background comparisons.
 
 ## Selective shop publication integration (2026-09-29)
 

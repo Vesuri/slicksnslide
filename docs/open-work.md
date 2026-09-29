@@ -46,7 +46,7 @@ Implementation and completed verification evidence are separate in
   actual full-screen replacements. Verify producer coverage and native pixels.
   Remaining publication coverage: additional Tracks storage/format
   failures, other Help owners,
-  shop sparse-selection caller mapping, purchase rejection boundaries and failures
+  shop sparse-selection policy/native coverage, purchase rejection boundaries and failures
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
@@ -55,8 +55,12 @@ Implementation and completed verification evidence are separate in
   read/format failure cases separate from those verified artifact checks.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
-  the original packed-column selector versus actual-driver indexing for
-  sparse participation and native insufficient-cash/capacity rejection. Two-human
+  native sparse participation after resolving the policy question, and native
+  insufficient-cash/capacity rejection. Original sparse caller execution now
+  proves it can select a nonexistent packed column and return an uninitialized
+  driver byte. Do not reproduce unsafe indexing; retaining the current correct
+  mapping versus explicitly rejecting sparse setups awaits the user's choice.
+  Two-human
   switching and empty-inventory sale no-redraw now have native coverage. Evidence
   and the row selector/boundary oracle are in menu-cache-verification.md.
   Registration archive-unavailable, null Help-surface and viewer-allocation
