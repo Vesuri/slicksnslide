@@ -1071,6 +1071,30 @@ all allocation sites, actual system-wide low-memory pressure, or an independent
 allocation-leak accounting measurement. Startup display-allocation failures
 remain open separately from demo preparation.
 
+### Race-view validation failure and retry (2026-09-29)
+
+`DEMOVIW` (`SLICKS_DEMO_LIFECYCLE_TEST=12`) exercises error 8 at the real
+race-view validation boundary. Only while the platform is inactive, the
+one-shot fixture changes one modulo bit in the newly built race copper list,
+runs the production validator, and restores the word before returning its
+failure. The invalid list is never installed. No allocation or global
+allocator behavior is changed.
+
+The native run passes: one error-8 dialog, cleared demo state, full
+configuration/playlist restoration, then a successful demo with two
+pixel-checked data views and normal return. There are two race-initialization
+calls because the rejected first preparation reaches `slicks_race_start`
+before view validation, but only the second attempt enters gameplay. The
+one-shot fault is consumed, no results or setup-save path runs, and final
+system restoration is 31. The muted emulator closed successfully.
+Logs: `tmp/demo-view-build.log`, `tmp/demo-view-native.log`.
+The same build also passes the normal clean demo-exit control (mode 11),
+with one start, two checked views, zero saves and final system restoration;
+its muted emulator closed. Log: `tmp/demo-view-control.log`.
+
+This proves rejection and recovery for this malformed inactive-list case,
+not every possible copper construction failure or startup allocation cleanup.
+
 ### Display ownership boundary audit
 
 `slicks_amiga_platform_create` allocates the bitmap storage, bitmap descriptors,

@@ -6,7 +6,7 @@ set $demo_done=0
 break show_race_load_error
 commands
   silent
-  if (demo_lifecycle_test!=6 && demo_lifecycle_test!=7 && demo_lifecycle_test!=9) || g_slicks_diag_race_error!=(demo_lifecycle_test==9?1:demo_lifecycle_test==6?2:6) || $demo_load_failures
+  if (demo_lifecycle_test!=6 && demo_lifecycle_test!=7 && demo_lifecycle_test!=9 && demo_lifecycle_test!=12) || g_slicks_diag_race_error!=(demo_lifecycle_test==12?8:demo_lifecycle_test==9?1:demo_lifecycle_test==6?2:6) || $demo_load_failures || g_slicks_diag_race_load_fault
     printf "DEMO_LIFECYCLE_LOAD_FAILED error=%u\n",g_slicks_diag_race_error
     quit 1
   end
@@ -71,9 +71,10 @@ break slicks_diag_demo_test_done
 commands
   silent
   set $demo_done=$demo_done+1
-  set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9)
-  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)
-  if g_slicks_demo_test_error || $demo_starts!=$expected_starts || g_slicks_demo_test_views!=2*$expected_starts || $demo_load_failures!=$failure_test
+  set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9 || demo_lifecycle_test==12)
+  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)+(demo_lifecycle_test==12)
+  set $expected_views=2*($expected_starts-(demo_lifecycle_test==12))
+  if g_slicks_demo_test_error || $demo_starts!=$expected_starts || g_slicks_demo_test_views!=$expected_views || $demo_load_failures!=$failure_test
     printf "DEMO_LIFECYCLE_FAILED error=%u starts=%u views=%u\n",g_slicks_demo_test_error,$demo_starts,g_slicks_demo_test_views
     quit 1
   end
@@ -114,9 +115,10 @@ commands
     printf "DEMO_SYSTEM_RESTORE_FAILED status=%u\n",g_slicks_diag_restore_status
     quit 1
   end
-  set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9)
-  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)
-  if g_slicks_demo_test_error || $demo_starts!=$expected_starts || g_slicks_demo_test_views!=2*$expected_starts || $demo_load_failures!=$failure_test
+  set $failure_test=(demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9 || demo_lifecycle_test==12)
+  set $expected_starts=2-$failure_test-(demo_lifecycle_test==10 || demo_lifecycle_test==11)+(demo_lifecycle_test==12)
+  set $expected_views=2*($expected_starts-(demo_lifecycle_test==12))
+  if g_slicks_demo_test_error || $demo_starts!=$expected_starts || g_slicks_demo_test_views!=$expected_views || $demo_load_failures!=$failure_test
     printf "DEMO_LIFECYCLE_EARLY_EXIT\n"
     quit 1
   end

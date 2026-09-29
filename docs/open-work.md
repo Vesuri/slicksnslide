@@ -84,8 +84,8 @@ Implementation and completed verification evidence are separate in
   FS-UAE instance, and the installed binary did not execute the Lua hook.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
-  Extend failed-demo preparation checks to race-view setup failure (copper
-  construction/validation, not allocation).
+  Race-view validation failure now has native error/restore/retry coverage;
+  startup display-allocation failures remain separate below.
   Clean and dirty exit, direct save retry, save-failure cancellation, demo re-entry and
   subsequent successful save have native coverage.
   Compare the complete return presentation against the

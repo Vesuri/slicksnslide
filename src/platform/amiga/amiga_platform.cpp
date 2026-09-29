@@ -41,6 +41,7 @@ static Bitmap *framework_bitmaps[SLICKS_AMIGA_VIEW_COUNT];
 static CopperList *framework_copper[SLICKS_AMIGA_VIEW_COUNT];
 static unsigned short palette_words[SLICKS_AMIGA_VIEW_COUNT][2][256];
 static unsigned char palette_valid[SLICKS_AMIGA_VIEW_COUNT];
+extern "C" unsigned char g_slicks_diag_race_load_fault;
 
 static unsigned char expand_vga_component(unsigned char value)
 {
@@ -278,6 +279,17 @@ int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,
         slicks_amiga_platform_wait_display_blank(platform);
     if (build_copper(view, vga_palette) != COPPER_LONGS - 1)
         return -1;
+    /* Native lifecycle fixture: reject an invalid, not-yet-installed race
+     * list through the real validator, then restore it before returning. */
+    if (view == 1 && !platform->active && g_slicks_diag_race_load_fault == 8) {
+        g_slicks_diag_race_load_fault = 0;
+        unsigned long *list = framework_copper[view]->data();
+        unsigned long saved = list[11];
+        list[11] ^= 1;
+        int result = validate_framework_view(view);
+        list[11] = saved;
+        return result;
+    }
     return validate_framework_view(view);
 }
 
