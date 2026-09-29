@@ -95,6 +95,10 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
 {
     static unsigned char palette[768];
     if(slicks_resource_archive_load(archive,create_fault(1)?"missing-shop-palette":"tuning.@p",palette,sizeof palette)!=sizeof palette) return 0;
+    if(g_slicks_diag_shop_create_fault>=6 && g_slicks_diag_shop_create_fault<=12) {
+        g_slicks_diag_surface_create_fault=g_slicks_diag_shop_create_fault-5;
+        g_slicks_diag_shop_create_fault=0;
+    }
     struct SlicksAmigaPlayerMenu *m=create_fault(2)?0:slicks_amiga_race_surface_create(archive,chunky,palette);
     unsigned char *resource=create_fault(3)?0:AllocMem(65536,MEMF_ANY);
     if(!m || !resource) goto failed;
@@ -127,15 +131,16 @@ int slicks_amiga_shop_check_create_failures(struct SlicksResourceArchive *archiv
     unsigned char *chunky,const struct SlicksShopContent *content)
 {
     g_slicks_shop_create_checks=0;
-    for(unsigned char stage=1;stage<=5;++stage){
+    for(unsigned char stage=1;stage<=12;++stage){
         struct SlicksShopMenu state;
         Forbid();
         g_slicks_shop_create_free_before=AvailMem(MEMF_ANY);
         g_slicks_diag_shop_create_fault=stage;
         struct SlicksAmigaPlayerMenu *m=slicks_amiga_shop_create(archive,chunky,content,&state);
-        int failed=m!=0 || g_slicks_diag_shop_create_fault!=0;
+        int failed=m!=0 || g_slicks_diag_shop_create_fault!=0 || g_slicks_diag_surface_create_fault!=0;
         slicks_amiga_player_menu_destroy(m);
         g_slicks_diag_shop_create_fault=0;
+        g_slicks_diag_surface_create_fault=0;
         g_slicks_shop_create_free_after=AvailMem(MEMF_ANY);
         Permit();
         if(failed || g_slicks_shop_create_free_before!=g_slicks_shop_create_free_after)return -1;

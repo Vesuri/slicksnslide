@@ -46,7 +46,7 @@ Implementation and completed verification evidence are separate in
   actual full-screen replacements. Verify producer coverage and native pixels.
   Remaining publication coverage: additional Tracks storage/format
   failures, other Help owners,
-  shop sparse-selection policy/native coverage and nested surface/font failure cases
+  shop sparse-selection policy/native coverage
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
@@ -66,11 +66,6 @@ Implementation and completed verification evidence are separate in
   native sparse participation after resolving the policy question. Native
   cash-below-price, item-limit and vehicle-carrying-capacity rejection now have
   unchanged-state/no-redraw/no-publication checks through race entry.
-  Five injected shop-constructor boundaries (palette, surface result, staging
-  allocation, background and icon) now recover all memory and allow a fresh
-  successful shop workflow. All five also pass the live GO/error-dismissal/
-  Players/retry-to-race path with unchanged session/configuration and complete
-  publication comparisons; nested helper failures remain separate.
   Original sparse caller execution now
   proves it can select a nonexistent packed column and return an uninitialized
   driver byte. Do not reproduce unsafe indexing; retaining the current correct

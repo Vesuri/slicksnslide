@@ -605,14 +605,21 @@ unsigned char slicks_amiga_menu_character(struct SlicksAmigaPlayerMenu *m,unsign
     unsigned mode=(m->key_modifiers&3?1:0)|(m->key_modifiers&4?2:0)|(m->key_modifiers&48?4:0);
     return m->key_characters[mode][raw];
 }
+unsigned char g_slicks_diag_surface_create_fault;
+static int surface_create_fault(unsigned char stage)
+{
+    if(g_slicks_diag_surface_create_fault!=stage) return 0;
+    g_slicks_diag_surface_create_fault=0;return 1;
+}
 struct SlicksAmigaPlayerMenu *slicks_amiga_help_surface_create(
     struct SlicksResourceArchive *archive,unsigned char *chunky,const unsigned char *palette)
 {
     if(!archive || !chunky || !palette) return 0;
-    struct SlicksAmigaPlayerMenu *m=AllocMem(sizeof *m,MEMF_ANY|MEMF_CLEAR);
-    unsigned char *resource=AllocMem(8192,MEMF_ANY);
+    struct SlicksAmigaPlayerMenu *m=surface_create_fault(1)?0:AllocMem(sizeof *m,MEMF_ANY|MEMF_CLEAR);
+    unsigned char *resource=surface_create_fault(2)?0:AllocMem(8192,MEMF_ANY);
     if(!m || !resource) goto failed;
-    long size=slicks_resource_archive_load(archive,"kirj.@f",resource,8192);
+    long size=slicks_resource_archive_load(archive,surface_create_fault(3)?"missing-surface-font":"kirj.@f",resource,8192);
+    if(surface_create_fault(4)) size=0;
     if(size<0 || slicks_decode_font_resource(resource,(unsigned long)size,m->fonts[0],sizeof m->fonts[0])<0) goto failed;
     for(unsigned i=0;i<768;++i) m->palette[i]=palette[i];
     m->renderer.fonts[0]=m->fonts[0];
@@ -630,8 +637,9 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_race_surface_create(
 {
     struct SlicksAmigaPlayerMenu *m=slicks_amiga_help_surface_create(archive,chunky,palette);
     if(!m) return 0;
-    unsigned char *resource=AllocMem(8192,MEMF_ANY);
-    long size=resource?slicks_resource_archive_load(archive,"pieni.@f",resource,8192):-1;
+    unsigned char *resource=surface_create_fault(5)?0:AllocMem(8192,MEMF_ANY);
+    long size=resource?slicks_resource_archive_load(archive,surface_create_fault(6)?"missing-surface-font":"pieni.@f",resource,8192):-1;
+    if(surface_create_fault(7)) size=0;
     int failed=size<0 || slicks_decode_font_resource(resource,(unsigned long)size,m->fonts[1],sizeof m->fonts[1])<0;
     if(resource) FreeMem(resource,8192);
     if(failed) { slicks_amiga_player_menu_destroy(m); return 0; }

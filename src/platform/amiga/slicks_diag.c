@@ -3982,11 +3982,11 @@ int main(void)
     unsigned char profile_dialog_failure_sent=0;
     unsigned char profile_dialog_fault=profile_dialog_failure_test && argv[8]=='L'?2:1;
     if(profile_dialog_failure_test) --argc;
-    /* SETUPS1..5 use the ordinary GO/error/Players/retry input path, with
+    /* SETUPS1..9/A..C use the ordinary GO/error/Players/retry input path, with
      * one shop-constructor boundary fault and a native Escape on reopening. */
     if(argc==7 && argv[0]=='S' && argv[1]=='E' && argv[2]=='T' && argv[3]=='U' &&
-       argv[4]=='P' && argv[5]=='S' && argv[6]>='1' && argv[6]<='5') {
-        shop_live_failure_test=(unsigned char)(argv[6]-'0');
+       argv[4]=='P' && argv[5]=='S' && ((argv[6]>='1' && argv[6]<='9') || (argv[6]>='A' && argv[6]<='C'))) {
+        shop_live_failure_test=(unsigned char)(argv[6]<='9'?argv[6]-'0':argv[6]-'A'+10);
         g_slicks_diag_shop_create_fault=shop_live_failure_test;
         configuration.options[0]=4;configuration.options[7]=1;configuration.options[4]=1000;
         configuration.selected_profile[0]=2;

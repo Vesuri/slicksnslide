@@ -1734,6 +1734,50 @@ bounds. Both use a confirmed default 4 KiB stack, stock-speed PAL 68020,
 checks, not normal-exit or recovery-file repair/resume checks. No production
 behavior changed, and no recovery artifact was deleted or overwritten.
 
+## Shop nested surface/font construction failures (2026-09-30)
+
+One-shot, normally zero diagnostic faults now exercise the actual shared
+Help/race-surface constructors called by the shop. They cover allocation of
+the surface, allocation of each font staging buffer, and resource-load and
+decode failure for each of kirj.@f and pieni.@f. Decode failures supply a zero
+resource length to the real decoder; no cached asset bytes are changed.
+Shop fault IDs 6..12 map to these seven nested boundaries. The existing 1..5
+outer-constructor cases remain unchanged.
+
+NATURALWF / `diag_shop_create_failures.gdb` checks all twelve cases under the
+existing memory-only Forbid bracket: each returns failure, consumes its
+one-shot fault, and restores exactly the same AvailMem total. It then runs
+the normal shop interaction and enters the race. Final-build run
+`tmp/standalone-release-5ppyb98l` passes all twelve, plus ten full-surface
+publication comparisons. An earlier run reached the same success markers but
+the host command requested a nonexistent marker; only the correctly invoked
+repeat is counted as the complete harness pass.
+
+The live GO/error-dismissal/Players/retry fixture also passes all seven cases:
+
+| Argument | Nested boundary | Native run suffix |
+| --- | --- | --- |
+| SETUPS6 | Surface allocation | `_7eknimp` |
+| SETUPS7 | First font staging allocation | `s58bvt3p` |
+| SETUPS8 | First font resource load | `4fo_fjfl` |
+| SETUPS9 | First font decode | `23myimst` |
+| SETUPSA | Second font staging allocation | `q70yxt62` |
+| SETUPSB | Second font resource load | `fxxherj8` |
+| SETUPSC | Second font decode | `69gtto0o` |
+
+Each directory is under `tmp/standalone-release-`. Each run reports shop
+preparation error 9, dismisses it, opens Players and successfully retries race
+entry. Session/configuration before/after bytes are identical; all four
+captured publications per run independently match all 64,000 chunky pixels.
+These use stock PAL A1200, 2 MiB Chip/no Fast and a confirmed default 4 KiB
+stack. Audio is muted and every owned emulator is closed. Build logs:
+`tmp/shop-nested-failures-build.log`, `tmp/shop-nested-live-build.log`.
+
+This closes the listed shop nested surface/font allocation/load/decode gap.
+No cleanup defect was found or normal-game behavior changed. Sparse-player
+selection policy remains separate; these race-entry gates do not prove later
+exit behavior or every shared constructor's other menu callers.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

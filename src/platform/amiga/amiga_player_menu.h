@@ -1,5 +1,7 @@
 #ifndef SLICKS_AMIGA_PLAYER_MENU_H
 #define SLICKS_AMIGA_PLAYER_MENU_H
+/* One-shot diagnostic boundaries in shared Help/race surface construction. */
+extern unsigned char g_slicks_diag_surface_create_fault;
 
 /* Call with AmigaOS available before any hardware-owned menu is opened. */
 int slicks_amiga_menu_keymap_init(void);
