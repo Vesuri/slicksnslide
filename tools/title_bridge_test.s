@@ -15,6 +15,7 @@ sui_title_menu:
 sgfx_title_pages:
 sgfx_title_crop:
 sui_title_step:
+sui_title_colours:
 sui_title_tail:
 sgfx_mode_setup:
 sgfx_chunky_asset_to_planar:

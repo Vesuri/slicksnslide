@@ -60,6 +60,8 @@
 extern void slicks_draw_title_registration(unsigned char *,const unsigned char *);
 extern void slicks_tick_title_registration(unsigned char *,const unsigned char *,const unsigned char *);
 extern void slicks_tick_title_colours(unsigned char *,const unsigned char *);
+extern unsigned short slicks_title_selected_color,slicks_title_third_color;
+extern unsigned char slicks_title_render_state[];
 extern void slicks_draw_title_background(unsigned char *,const unsigned char *,const unsigned char *);
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 
@@ -1015,6 +1017,46 @@ owner:
     /* Keep GCC from emitting a cross-section PC32 sibling jump, which the
      * HUNK converter cannot relocate. No extra hardware or rendering work. */
     __asm volatile("" ::: "memory");
+}
+
+static void title_pulse_bounds(void *p,short l,short t,short r,short b)
+{ *(struct SlicksTitleRect *)p=(struct SlicksTitleRect){l,t,r,b}; }
+
+/* A pulse changes foreground indices, not glyph geometry, bevels or status.
+ * Repaint the same glyph stores; keep the complete redraw for transitions and
+ * conservatively for translated labels overlapping the status overlay. */
+static void pulse_normal_title(struct SlicksAmigaPlatform *platform,
+    unsigned char *logical,unsigned char *chunky,const unsigned char *palette,
+    unsigned short selection)
+{
+    unsigned short previous=slicks_title_selected_color;
+    unsigned char owner=slicks_title_render_state[6];
+    slicks_tick_title_colours(logical,palette);
+    slicks_tick_title_registration(logical,registration.name,palette);
+    if(previous!=slicks_title_selected_color && selection<7 && selection!=4) {
+        const unsigned char *label=slicks_title_labels[selection];
+        short y=(short)(85+13*(selection>4?selection-1:selection));
+        struct SlicksTitleRect bounds={0};
+        struct SlicksChunkyUi ui={0,palette,title_pulse_bounds,&bounds};
+        slicks_font_text_dirty(&ui,slicks_title_font,label,160,y,1,5,
+            slicks_menu_measure(slicks_title_font,label),0);
+        if(bounds.left<244 && bounds.right>200 && bounds.top<140 && bounds.bottom>96) {
+            redraw_title_configuration(platform,logical,chunky,palette,selection,0,0,0);
+            return;
+        }
+        unsigned char saved=slicks_title_font[6];
+        slicks_title_font[6]=(unsigned char)slicks_title_selected_color;
+        slicks_title_font_text(logical,slicks_title_font,label,160,y,5,slicks_title_third_color);
+        /* Original full drawing ends with QUIT, selected only at row six. */
+        if(selection!=6) slicks_title_font[6]=saved;
+        slicks_title_dirty_add(&title_dirty,bounds.left,bounds.top,bounds.right,bounds.bottom);
+    }
+    if(registration.name[0] && owner!=slicks_title_render_state[6]) {
+        struct SlicksChunkyUi ui={0,palette,arcade_dirty,0};
+        slicks_font_text_dirty(&ui,slicks_title_small_font,registration.name,
+            310,190,1,2,slicks_menu_measure(slicks_title_small_font,registration.name),0);
+    }
+    publish_title_dirty(platform,logical,chunky);
 }
 
 static void present_menu_surface(struct SlicksAmigaPlatform *platform,struct SlicksAmigaPlayerMenu *menu)
@@ -4991,7 +5033,10 @@ int main(void)
             title_idle_reset=0;
             unsigned char have_key=(unsigned char)slicks_amiga_platform_poll_key(&platform,&code);
             unsigned short title_scan=have_key?amiga_raw_to_demo_scan(code,platform.key_shifts):0;
-            unsigned char idle_demo=(unsigned char)(title_owner &&
+            /* REGCHECKA's exhaustive display checks can exceed the idle
+             * deadline before one colour cycle. Keep this diagnostic on the
+             * title; normal runs and cadence-only REGCHECKU retain demos. */
+            unsigned char idle_demo=(unsigned char)(title_dirty_test!=3 && title_owner &&
                 slicks_title_demo_scan(0,title_now,title_idle_started)==0x58);
             if(!have_key && !idle_demo) break;
             if(idle_demo) {
@@ -6126,11 +6171,7 @@ int main(void)
                 g_slicks_title_timing_counters[n]=slicks_title_counter;
             }
             if(configuration.options[0]!=5) {
-                slicks_tick_title_colours(logical,source_palette);
-                /* The shared original tail advances even without a name. */
-                slicks_tick_title_registration(logical,registration.name,source_palette);
-                redraw_title_configuration(&platform,logical,chunky,source_palette,
-                    menu_selection,selected_vehicle,track_path,0);
+                pulse_normal_title(&platform,logical,chunky,source_palette,menu_selection);
             } else {
                 slicks_tick_title_registration(logical,registration.name,source_palette);
                 redraw_title_configuration(&platform,logical,chunky,source_palette,

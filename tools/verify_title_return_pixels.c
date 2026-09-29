@@ -29,7 +29,10 @@ static void format_summary(uc_engine *u,uint64_t address,uint32_t size,void *con
 
 int main(int argc,char **argv)
 {
-    if(argc!=2)return 2;
+    if(argc!=2 && argc!=3)return 2;
+    unsigned expected=2;
+    if(argc==3){char *end;unsigned long n=strtoul(argv[2],&end,10);
+        if(!*argv[2] || *end || !n || n>1000)return 2;expected=(unsigned)n;}
     static unsigned char runtime[300000],asset[70000],palette[768],background[64002],logical[262144],font[8192];
     FILE *f=fopen("disasm/runtime.bin","rb");if(!f)return 2;
     size_t bytes=fread(runtime,1,sizeof runtime,f);fclose(f);
@@ -75,7 +78,7 @@ int main(int argc,char **argv)
     check(uc_hook_add(u,&hook,UC_HOOK_INSN,font_port,&v,1,0,UC_X86_INS_OUT));
     check(uc_hook_add(u,&hook,UC_HOOK_CODE,format_summary,0,0x12943,0x12943));
     char path[1024],line[2048];snprintf(path,sizeof path,"%s/debug.log",argv[1]);
-    f=fopen(path,"r");if(!f)return 2;unsigned cases=0,registered=0;
+    f=fopen(path,"r");if(!f)return 2;unsigned cases=0,registered=0,previous_counter=0,previous_phase=0;
     while(fgets(line,sizeof line,f)){
         unsigned index,row,counter,phase,language=1;int selected,total,mode,weapons,inventory,roles[4],players=1,seconds=120,tracks=3;
         int fields=sscanf(line,"TITLE_RETURN_STATE %u %u %u %d %d %d %d %d %d %d %d %d %u %u %d %d %d",
@@ -83,6 +86,11 @@ int main(int argc,char **argv)
         /* Older captures explicitly rejected Arcade and non-English fixtures. */
         if(fields!=17 && !(fields==13 && mode>=0 && mode<5))continue;
         if(index!=cases || mode<0 || mode>5 || row>=7)abort();
+        /* A requested complete pulse cycle must not pass with duplicate
+         * debugger locations or missing colour steps. */
+        if(expected==65 && cases && (counter!=((previous_counter+4)&255) ||
+           phase!=(previous_phase==2000?0:previous_phase+1)))abort();
+        previous_counter=counter;previous_phase=phase;
         (void)menu_language_title(u,language>=1 && language<=8?language:1,(const unsigned char *)"menu1");
         word(u,0x3cbf0+0xf1a,players);word(u,0x3cbf0+0xfa,seconds);word(u,0x3cbf0+0x102,tracks);
         /* Startup's final font load leaves the shared alias at iso.@f.
@@ -116,6 +124,6 @@ int main(int argc,char **argv)
                 fprintf(stderr,"Title return %u mismatch at %u,%u DOS=%u native=%u\n",index,x,y,v.pixels[y*320+x],logical[(x&3)*65536+y*100+(x>>2)]);return 1;}
         ++cases;
     }
-    fclose(f);uc_close(u);if(cases!=2)return 1;
-    printf("Two live demo-return title compositions match all 64000 original pixels; registered=%u\n",registered);return 0;
+    fclose(f);uc_close(u);if(cases!=expected)return 1;
+    printf("%u live title compositions match all 64000 original pixels; registered=%u\n",cases,registered);return 0;
 }

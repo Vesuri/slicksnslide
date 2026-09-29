@@ -1,5 +1,6 @@
 	section	code
 	xdef	sui_title_step
+	xdef	sui_title_colours
 	xref	sutil_palette_nearest
 	xref	sgfx_title_crop
 
@@ -19,8 +20,15 @@
 ;      d2.b = fixed colour index for RGB 10,10,20
 ; Preserves: d3-d7/a0-a6
 sui_title_step:
+	bsr sui_title_colours
+	movem.l d0-d2,-(sp)
+	jsr sgfx_title_crop
+	movem.l (sp)+,d0-d2
+	rts
+
+; Same counter/palette state, without erasing already-correct static pixels.
+sui_title_colours:
 	movem.l	d3-d7/a0-a6,-(sp)
-	movea.l	a1,a5
 	movea.l	a2,a6
 
 	movea.l	a6,a1
@@ -59,9 +67,6 @@ sui_title_step:
 	jsr	sutil_palette_nearest
 	move.l	d0,d6
 	move.w	d6,(a4)
-
-	movea.l	a5,a1
-	jsr	sgfx_title_crop
 
 	move.l	d3,d0
 	move.l	d5,d1

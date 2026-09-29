@@ -1083,9 +1083,13 @@ static void run_title_ui_case(
     uint32_t native_stack = m68k_stack_base + m68k_stack_size / 2;
     check_uc("write UI A7",
              uc_reg_write(m68k, UC_M68K_REG_A7, &native_stack));
+    /* Return from the public entry, not the last RTS in its helper layout. */
+    uint32_t stop=m68k_code_base+(uint32_t)native_code_size;
+    const uint8_t return_pc[4]={stop>>24,stop>>16,stop>>8,stop};
+    check_uc("write UI return PC",uc_mem_write(m68k,native_stack,return_pc,4));
     check_uc("run m68k title UI",
              uc_emu_start(m68k, m68k_code_base + native_entry_offset,
-                          m68k_code_base + native_code_size - 2, 0, 0));
+                          stop, 0, 0));
 
     uint32_t native_outputs[3] = {0};
     check_uc("read native UI D0",

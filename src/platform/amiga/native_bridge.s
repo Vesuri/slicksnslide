@@ -14,6 +14,7 @@
 	xdef	slicks_prepare_title_frame
 	xref	sgfx_title_pages
 	xref	sui_title_step
+	xref	sui_title_colours
 	xref	sui_title_menu
 	xref	sui_draw_text
 	xref sui_draw_small_text
@@ -146,7 +147,7 @@ slicks_draw_title_pages:
 	rts
 
 ; Original 29779..297e8, once per visible normal-title update. The native
-; step also restores the label crop; the caller redraws before publication.
+; colour-only entry leaves static title pixels intact for glyph-only updates.
 ; C ABI: slicks_tick_title_colours(planes, palette)
 slicks_tick_title_colours:
 	movem.l d2-d7/a2-a6,-(sp)
@@ -157,7 +158,7 @@ slicks_tick_title_colours:
 	lea slicks_title_third_color,a4
 	moveq #100,d4
 	moveq #0,d7
-	jsr sui_title_step
+	jsr sui_title_colours
 	move.w d0,slicks_title_ordinary_color
 	move.w d1,slicks_title_selected_color
 	movem.l (sp)+,d2-d7/a2-a6

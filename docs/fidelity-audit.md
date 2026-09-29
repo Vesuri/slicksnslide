@@ -591,6 +591,53 @@ one helper. No production pacing policy changed in this measurement commit.
 Queued DOS publication, Arcade timing and arbitrary nested-menu transitions
 are not established by these mode-0 direct-path samples.
 
+### Colour-only native title publication (2026-09-30)
+
+The normal-title pulse now advances the original palette/counter calculation
+without restoring the menu crop. Only a changed selected-label foreground and
+changed registered-owner foreground report glyph bounds to the existing dirty
+rectangle publisher. Static labels, icons and counts remain intact. Selection
+and screen transitions retain complete original composition; labels whose
+bounds overlap the status overlay conservatively use that complete painter.
+No shadow framebuffer or pixel-difference scan drives production publication.
+
+The complete original title wrapper independently matches all 64,000 visible
+pixels in each of 65 consecutive snapshots, including counter wrap:
+unregistered English `tmp/standalone-release-s0q4pelb`, and registered Finnish
+`tmp/standalone-release-1pcxp6qj`. The latter includes the original owner-name
+pulse. Both native runs observe 72 colour steps and 19 selected-colour changes,
+one full initial publication, no display/chunky/logical mismatches and restore
+mask 31. Total publications are respectively 21 and 26. The keyfile, names and
+frame captures remain private ignored test data.
+
+`diag_title_pulse_pixels.gdb` captures distinct phases, and the original-wrapper
+verifier accepts an explicit expected snapshot count (default remains two demo
+returns). A 65-frame invocation additionally rejects missing/duplicate counter
+or phase steps. REGCHECKA suppresses automatic demo entry only in that diagnostic:
+its full-screen pixel audits otherwise exceed the idle deadline before a cycle
+finishes. Normal execution and timing-only REGCHECKU retain automatic demos.
+
+The graphics differential suite passes, including 256 title-step cases; its
+entry now executes through an explicit return address rather than assuming the
+last RTS in the binary is the public routine's return. The title font/bridge
+checks and 63 original full-screen/font/dirty-crop cases across all eight
+languages plus fallback also pass. These isolated label checks do not establish
+full pulse sequences on every selected row, translated overlap fallback, or
+nested-menu font-alias lifetime; those remain separate coverage work.
+
+Registered Finnish native transitions also pass (`tmp/standalone-release-lk5goe07`):
+all five normal modes, all three role states, both track-count states, 26 display
+checks, zero errors and restoration 31. An uninterrupted registered Finnish
+timing run (`tmp/standalone-release-h6a207n7`) measures 87 refreshes across 64
+intervals: 41 one-refresh and 23 two-refresh intervals, mean 27.188 ms / 36.78
+updates/s. Thus the first unregistered candidate's 20 ms result is not a claim
+that registered title animation always fits one refresh. Final-build unregistered
+confirmation (`tmp/standalone-release-qathcgdo`) again has all 64 intervals at
+one refresh, 20 ms / 50 updates/s, versus the parent baseline's 200 ms / 5.
+All target checks use
+stock PAL A1200, 2 MiB Chip/no Fast and a confirmed 4 KiB stack, with muted audio
+and owned emulators closed afterward.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused
