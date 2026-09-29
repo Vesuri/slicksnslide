@@ -480,3 +480,30 @@ scenario by mistake and failed the title-specific fixture; it is not counted
 as a workflow pass. Help still marks full-width text rows and restores the
 whole saved screen on close; this check establishes pixel correctness, not
 completion of its repaint-area reduction.
+
+## Help lifetime restoration bounds
+
+Help now records a bounded rectangle union over its complete modal lifetime,
+independently of the pending-publication list. Closing restores those blocks
+from the original full-page snapshot, then restores the parent's dirty callback
+and font state. Earlier pages remain covered after navigation and publication.
+The font adapter reports through the supplied UI callback so text participates
+in both lifetime tracking and pending publication. No framebuffer comparison or
+extra screen-sized storage is used. Existing full-width text bounds remain
+conservative and are still an open tightening item.
+
+`verify-help-dirty` checks empty/disjoint/overflow/reopen cases, full-surface
+restoration and callback/font ownership. `verify-help-pixels` passes 98 original
+page comparisons, 16 original viewer-entry comparisons and 1,166 text/pixel
+comparisons, including saved-screen restoration. `verify-help-refresh` passes
+3,024 original orchestration cases. The normal Amiga build passes.
+
+Muted native `SLICKS_HELP_MENU=4` / `diag_help_rectangles.gdb` passes the title
+two-open/close ownership gate and all four full-surface publication comparisons.
+`SLICKS_HELP_MENU=1` / `diag_nested_help_rectangles.gdb` passes Options chapter,
+link/history, close/reopen and system restoration, with all eight published
+surfaces matching chunky pixels. Its saved before/after surfaces match byte for
+byte. Close publications now cover (0,15)-(320,189), 55,680 pixels instead of
+64,000; further horizontal reduction is not claimed. Both runners closed their
+emulators. Local logs: `tmp/help-footprint-native.log` and
+`tmp/nested-help-footprint-native.log`.

@@ -49,7 +49,9 @@ Implementation and completed verification evidence are separate in
   pause/speed, shop, saved-game/recovery, intermission/results and registration.
   Audit full-width text callbacks (Help and standings), full-screen modal
   restores and direct row-converter bypasses separately from the shared
-  publisher. Do not infer whole-menu correctness from an Options smoke test.
+  publisher. Help now restores its lifetime painted bounds; title and nested
+  Options Help publication/return checks pass, but its full-width text bounds
+  still need tightening. Do not infer whole-menu correctness from these gates.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.

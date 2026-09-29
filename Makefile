@@ -1107,6 +1107,12 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 .PHONY: verify-title-status
 .PHONY: verify-title-dirty
 .PHONY: verify-menu-dirty
+.PHONY: verify-help-dirty
+build/verify_help_dirty: tools/verify_help_dirty.c $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-help-dirty: build/verify_help_dirty
+	build/verify_help_dirty
+
 build/verify_menu_dirty: tools/verify_menu_dirty.c src/ui/menu_dirty.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-menu-dirty: build/verify_menu_dirty

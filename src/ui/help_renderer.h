@@ -3,6 +3,7 @@
 #include "help_line.h"
 #include "chunky_ui.h"
 #include "saved_rectangle.h"
+#include "menu_dirty.h"
 
 struct SlicksHelpRenderer {
     struct SlicksChunkyUi ui;
@@ -12,8 +13,19 @@ struct SlicksHelpRenderer {
     short (*text)(void *,struct SlicksChunkyUi *,unsigned char *,const unsigned char *,short,short,signed char);
     void *context;
     struct SlicksSavedRectangle saved;
+    struct SlicksMenuRect painted[16];
+    unsigned short painted_count;
+    void (*parent_dirty)(void *,short,short,short,short);
+    void *parent_dirty_context;
     unsigned char old_colour,active;
 };
+static inline void slicks_help_renderer_dirty(void *context,short l,short t,short r,short b)
+{
+    struct SlicksHelpRenderer *renderer=context;
+    slicks_menu_dirty_add(renderer->painted,&renderer->painted_count,l,t,r,b);
+    if(renderer->parent_dirty)
+        renderer->parent_dirty(renderer->parent_dirty_context,l,t,r,b);
+}
 /* The original viewer saves the whole visible page before its first draw
  * and restores it and the font colour on exit. Storage is allocated while
  * AmigaOS is available; these operations perform no allocation or OS calls. */
@@ -23,6 +35,9 @@ static inline int slicks_help_renderer_open(struct SlicksHelpRenderer *r,
     if(!r || r->active || !r->font || !r->ui.pixels || !r->ui.palette ||
        !r->measure || !r->text || !saved || saved==r->ui.pixels || capacity<64000) return -1;
     if(slicks_save_rectangle(&r->saved,saved,capacity,&r->ui,0,0,320,200)) return -1;
+    r->painted_count=0;
+    r->parent_dirty=r->ui.dirty; r->parent_dirty_context=r->ui.dirty_context;
+    r->ui.dirty=slicks_help_renderer_dirty; r->ui.dirty_context=r;
     r->old_colour=r->font[6]; r->font[6]=1;
     r->style=(struct SlicksHelpStyle){0};
     r->style.left=20; r->style.top=15; r->style.right=300; r->style.bottom=185;
@@ -36,7 +51,14 @@ static inline int slicks_help_renderer_open(struct SlicksHelpRenderer *r,
 static inline int slicks_help_renderer_close(struct SlicksHelpRenderer *r)
 {
     if(!r || !r->active) return -1;
-    if(slicks_restore_rectangle(&r->ui,&r->saved,0,0,0,0,320,200)) return -1;
+    /* Keep the original full snapshot, but restore/publish only blocks this
+     * modal painted during its entire lifetime, including previous pages. */
+    r->ui.dirty=r->parent_dirty; r->ui.dirty_context=r->parent_dirty_context;
+    for(unsigned i=0;i<r->painted_count;++i) {
+        const struct SlicksMenuRect *p=&r->painted[i];
+        if(slicks_restore_rectangle(&r->ui,&r->saved,0,0,p->left,p->top,
+            p->right-p->left,p->bottom-p->top)) return -1;
+    }
     r->font[6]=r->old_colour; r->active=0; return 0;
 }
 static inline void slicks_help_renderer_colour(void *context,unsigned char colour)

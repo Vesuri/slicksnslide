@@ -27,7 +27,11 @@ static short help_font_call(struct HelpFontCpu *n,const unsigned char *font,cons
 static short help_measure(void *context,const unsigned char *font,const unsigned char *text,signed char spacing)
 { return help_font_call(context,font,text,0,0,0,spacing); }
 static short help_text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,const unsigned char *text,short x,short y,signed char spacing)
-{ return help_font_call(context,font,text,ui,x,y,spacing); }
+{
+    short advance=help_font_call(context,font,text,ui,x,y,spacing);
+    if(ui->dirty) ui->dirty(ui->dirty_context,0,y,320,(short)(y+font[2]));
+    return advance;
+}
 static unsigned be32(const unsigned char *p) { return (unsigned)p[0]<<24|(unsigned)p[1]<<16|(unsigned)p[2]<<8|p[3]; }
 struct ViewerResource { const unsigned char *source; unsigned size,loads; };
 static void viewer_chapter(uc_engine *u,uint64_t address,uint32_t size,void *context)

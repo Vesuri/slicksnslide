@@ -289,10 +289,11 @@ static short help_measure(void *context,const unsigned char *font,const unsigned
 static short help_text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,
     const unsigned char *string,short x,short y,signed char spacing)
 {
+    (void)context;
     short advance=slicks_help_text(ui->pixels,font,string,x,y,spacing);
     /* Help supplies single lines, including an optional final CR. Glyphs
      * clip VGA's invisible margins; conversion uses the existing row bounds. */
-    dirty(context,0,y,320,(short)(y+font[2]));
+    if(ui->dirty) ui->dirty(ui->dirty_context,0,y,320,(short)(y+font[2]));
     return advance;
 }
 int slicks_amiga_help_renderer_init(struct SlicksAmigaPlayerMenu *m,struct SlicksHelpRenderer *r)
