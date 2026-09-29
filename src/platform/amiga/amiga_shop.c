@@ -6,6 +6,14 @@
 #include "../../ui/help_text_dirty.h"
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
+static unsigned char shop_create_fault;
+volatile unsigned short g_slicks_shop_create_checks;
+volatile unsigned long g_slicks_shop_create_free_before,g_slicks_shop_create_free_after;
+static int create_fault(unsigned char stage)
+{
+    if(shop_create_fault!=stage)return 0;
+    shop_create_fault=0;return 1;
+}
 
 struct ShopPainter {
     struct SlicksAmigaPlayerMenu *menu;
@@ -50,7 +58,7 @@ static void sprite(void *p,short id,short left,short top)
     const char *name;
     if(id<13) { item_name[3]=(char)('0'+id/10);item_name[4]=(char)('0'+id%10);name=item_name; }
     else { unsigned car=id-13;car_name[5]=(char)('0'+car);name=car?car_name:"carimage16"; }
-    long size=slicks_resource_archive_load(s->archive,name,s->resource,65536);
+    long size=slicks_resource_archive_load(s->archive,create_fault(5)?"missing-shop-icon":name,s->resource,65536);
     unsigned char pixels[256];unsigned short width,height;
     if(size<0 || slicks_decode_menu_icon(s->resource,(unsigned long)size,s->menu->renderer.ui.palette,
         pixels,sizeof pixels,&width,&height) || left<0 || top<0 || left+width>320 || top+height>200) {
@@ -86,11 +94,11 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
     unsigned char *chunky,const struct SlicksShopContent *c,struct SlicksShopMenu *state)
 {
     static unsigned char palette[768];
-    if(slicks_resource_archive_load(archive,"tuning.@p",palette,sizeof palette)!=sizeof palette) return 0;
-    struct SlicksAmigaPlayerMenu *m=slicks_amiga_race_surface_create(archive,chunky,palette);
-    unsigned char *resource=AllocMem(65536,MEMF_ANY);
+    if(slicks_resource_archive_load(archive,create_fault(1)?"missing-shop-palette":"tuning.@p",palette,sizeof palette)!=sizeof palette) return 0;
+    struct SlicksAmigaPlayerMenu *m=create_fault(2)?0:slicks_amiga_race_surface_create(archive,chunky,palette);
+    unsigned char *resource=create_fault(3)?0:AllocMem(65536,MEMF_ANY);
     if(!m || !resource) goto failed;
-    long size=slicks_resource_archive_load(archive,"tuning.@I",resource,65536);
+    long size=slicks_resource_archive_load(archive,create_fault(4)?"missing-shop-background":"tuning.@I",resource,65536);
     unsigned short width,height;
     if(size<0 || slicks_decode_indexed_menu_icon(resource,(unsigned long)size,chunky,64000,
         &width,&height) || width!=320 || height!=200) goto failed;
@@ -110,4 +118,28 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
 failed:
     if(resource) FreeMem(resource,65536);
     slicks_amiga_player_menu_destroy(m); return 0;
+}
+
+/* Explicit diagnostic, with an already cached archive. Forbid only brackets
+ * memory-only construction/cleanup so other tasks cannot skew free totals.
+ * Interrupts remain enabled; no disk/device operations occur here. */
+int slicks_amiga_shop_check_create_failures(struct SlicksResourceArchive *archive,
+    unsigned char *chunky,const struct SlicksShopContent *content)
+{
+    g_slicks_shop_create_checks=0;
+    for(unsigned char stage=1;stage<=5;++stage){
+        struct SlicksShopMenu state;
+        Forbid();
+        g_slicks_shop_create_free_before=AvailMem(MEMF_ANY);
+        shop_create_fault=stage;
+        struct SlicksAmigaPlayerMenu *m=slicks_amiga_shop_create(archive,chunky,content,&state);
+        int failed=m!=0 || shop_create_fault!=0;
+        slicks_amiga_player_menu_destroy(m);
+        shop_create_fault=0;
+        g_slicks_shop_create_free_after=AvailMem(MEMF_ANY);
+        Permit();
+        if(failed || g_slicks_shop_create_free_before!=g_slicks_shop_create_free_after)return -1;
+        ++g_slicks_shop_create_checks;
+    }
+    return 0;
 }

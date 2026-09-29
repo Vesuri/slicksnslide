@@ -1455,6 +1455,31 @@ instructions. Horizontal navigation and transactions still need their
 selector/lifetime integration checks. No production behavior changed in this
 audit, and no target performance result is claimed.
 
+## Native shop constructor failure cleanup (2026-09-29)
+
+`NATURALWF` runs five one-shot constructor fault cases against the existing
+startup cache: unavailable palette, unavailable surface result, failed 64 KiB
+staging allocation, unavailable background and unavailable icon. The last
+case fails after partial painting. Every attempt must return NULL, consume
+its fault and recover its pre-attempt free-memory total. Brief `Forbid`/`Permit`
+bracketing prevents unrelated tasks skewing that accounting; interrupts remain
+enabled and the constructor reads only resident resources. The surface-result
+case is an injected boundary failure, not proof of all nested font/allocation
+failures or physical memory exhaustion.
+
+After those failures the normal constructor and `NATURALW` input sequence run.
+The target passes the existing two-human selection, purchase/sale, Help-return,
+draw-count, inventory and race-entry gates. All ten shared publications match
+the complete chunky surfaces. No failed construction is published; the fresh
+successful constructor reloads its background from the cache.
+
+Evidence: `tmp/standalone-release-r_6b8kkl`, stripped binary on stock PAL 68020,
+2 MiB/no Fast, default 4 KiB stack; build `tmp/shop-create-failures-build.log`.
+The owned muted emulator was closed. This closes the five named cleanup
+boundaries, not live error-notice dismissal/retry, nested surface/font failure
+coverage, or the separate sparse-player policy question. No production cleanup
+fix was needed.
+
 ## Native shop purchase rejection boundaries (2026-09-29)
 
 Explicit `NATURALWX/Y/Z` fixtures set up the first visible weapon before shop

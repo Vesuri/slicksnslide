@@ -29,6 +29,13 @@ end
 break enter_prepared_race
 commands
   silent
+  if !$_isvoid($shop_fault_expected)
+    if g_slicks_shop_create_checks!=$shop_fault_expected || g_slicks_shop_create_free_before!=g_slicks_shop_create_free_after
+      printf "SHOP_CREATE_CLEANUP_FAILED\n"
+      quit 1
+    end
+    printf "SHOP_CREATE_FAILURE_CLEANUP_OK checks=%u\n",g_slicks_shop_create_checks
+  end
   if g_slicks_shop_test_phase != 4 || g_slicks_shop_help_phase != 2 || !$shop_second_driver
     printf "SHOP_INPUT_FAILED\n"
     quit 1
