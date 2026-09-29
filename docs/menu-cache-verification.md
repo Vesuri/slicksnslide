@@ -507,3 +507,28 @@ byte. Close publications now cover (0,15)-(320,189), 55,680 pixels instead of
 64,000; further horizontal reduction is not claimed. Both runners closed their
 emulators. Local logs: `tmp/help-footprint-native.log` and
 `tmp/nested-help-footprint-native.log`.
+
+## Help horizontal text bounds
+
+The Help font adapter no longer marks whole rows. Its bounds helper follows
+individual glyph positions, including glyph-zero versus missing-character
+advance, signed spacing, ten-pixel tabs relative to the anchor, line breaks,
+the 1,000-character renderer limit and visible clipping. It deliberately does
+not infer the painted extent from whole-string measured width or final advance;
+negative spacing and last-glyph overhang make those insufficient. Text bounds
+feed both pending publication and the modal lifetime restore list.
+
+The host font gate now records actual native 68020 framebuffer stores and
+requires all stores to lie within the reported bounds, including writes that
+leave an existing pixel unchanged. A narrow-glyph assertion rejects a fallback
+to whole-row reporting. The final gate covers 2,684 strings, including 140
+spacing/tab/newline/screen-edge cases, and retains the 98 original page,
+16 viewer-entry and 1,166 original line/pixel comparisons. All pass.
+
+The normal build and fresh muted Options-Help chapter/history/reopen native
+workflow pass. All eight published surfaces compare exactly, and saved menu
+before/after bytes match. The observed Help region is now (16,15)-(304,189),
+50,112 converted pixels, including close. Local logs:
+`tmp/help-text-bounds-host-final.log` and `tmp/help-tight-bounds-native.log`.
+The runner closed the emulator. Other Help owners/failure paths remain in
+the publication audit rather than being inferred from this workflow.

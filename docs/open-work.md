@@ -47,11 +47,12 @@ Implementation and completed verification evidence are separate in
   Remaining publication coverage: title transitions/pulse, Players nested
   picker/editor/name/colour dialogs, Controllers, Tracks/list/info, Help,
   pause/speed, shop, saved-game/recovery, intermission/results and registration.
-  Audit full-width text callbacks (Help and standings), full-screen modal
+  Audit remaining full-width text callbacks (standings), full-screen modal
   restores and direct row-converter bypasses separately from the shared
   publisher. Help now restores its lifetime painted bounds; title and nested
-  Options Help publication/return checks pass, but its full-width text bounds
-  still need tightening. Do not infer whole-menu correctness from these gates.
+  Options Help publication/return checks pass with glyph-derived horizontal
+  bounds. Extend coverage to the other Help owners and failure paths.
+  Do not infer whole-menu correctness from these gates.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.

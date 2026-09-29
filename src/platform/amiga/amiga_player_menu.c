@@ -4,6 +4,7 @@
 #include <proto/keymap.h>
 #include "amiga_player_menu.h"
 #include "../../ui/font_resource.h"
+#include "../../ui/help_text_dirty.h"
 #include "../../ui/menu_bitmap.h"
 #include "../../ui/menu_icon.h"
 #include "../../ui/profile_delete_prompt.h"
@@ -291,9 +292,7 @@ static short help_text(void *context,struct SlicksChunkyUi *ui,unsigned char *fo
 {
     (void)context;
     short advance=slicks_help_text(ui->pixels,font,string,x,y,spacing);
-    /* Help supplies single lines, including an optional final CR. Glyphs
-     * clip VGA's invisible margins; conversion uses the existing row bounds. */
-    if(ui->dirty) ui->dirty(ui->dirty_context,0,y,320,(short)(y+font[2]));
+    slicks_help_text_dirty(ui,font,string,x,y,spacing);
     return advance;
 }
 int slicks_amiga_help_renderer_init(struct SlicksAmigaPlayerMenu *m,struct SlicksHelpRenderer *r)

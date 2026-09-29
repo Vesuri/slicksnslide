@@ -3,6 +3,23 @@
 #undef main
 #include "../src/ui/help_renderer.h"
 #include "../src/ui/help_viewer.h"
+#include "../src/ui/help_text_dirty.h"
+
+static unsigned char font_writes[64000],reported[64000];
+static unsigned bound_checks;
+static void font_write(uc_engine *u,uc_mem_type type,uint64_t address,int size,int64_t value,void *context)
+{
+    (void)u;(void)type;(void)value;(void)context;
+    for(int i=0;i<size;++i) {
+        if(address+i<0x100000 || address+i>=0x100000+64000) abort();
+        font_writes[address+i-0x100000]=1;
+    }
+}
+static void report_bounds(void *context,short l,short t,short r,short b)
+{
+    (void)context;
+    for(int y=t;y<b;++y) for(int x=l;x<r;++x) reported[y*320+x]=1;
+}
 
 struct HelpFontCpu { uc_engine *cpu; unsigned size,measure,text; };
 static short help_font_call(struct HelpFontCpu *n,const unsigned char *font,const unsigned char *text,
@@ -11,6 +28,7 @@ static short help_font_call(struct HelpFontCpu *n,const unsigned char *font,cons
     uc_engine *m=n->cpu;
     check(uc_mem_write(m,0x50000,font,n->size)); check(uc_mem_write(m,0x60000,text,strlen((const char *)text)+1));
     if(ui) check(uc_mem_write(m,0x100000,ui->pixels,64000));
+    memset(font_writes,0,sizeof font_writes);
     uint32_t args[7]={0x380000,0x50000,0x60000,(unsigned short)spacing,0,0,0};
     unsigned count=4;
     if(ui) { count=7; args[1]=0x100000; args[2]=0x50000; args[3]=0x60000;
@@ -21,7 +39,16 @@ static short help_font_call(struct HelpFontCpu *n,const unsigned char *font,cons
     check(uc_emu_start(m,ui?n->text:n->measure,0x380000,0,1000000));
     check(uc_reg_read(m,UC_M68K_REG_PC,&pc)); check(uc_reg_read(m,UC_M68K_REG_A7,&sp)); check(uc_reg_read(m,UC_M68K_REG_D0,&result));
     if(pc!=0x380000 || sp!=0x300004) abort();
-    if(ui) check(uc_mem_read(m,0x100000,ui->pixels,64000));
+    if(ui) {
+        check(uc_mem_read(m,0x100000,ui->pixels,64000));
+        memset(reported,0,sizeof reported);
+        struct SlicksChunkyUi bounds={0};bounds.dirty=report_bounds;
+        slicks_help_text_dirty(&bounds,font,text,x,y,spacing);
+        for(unsigned p=0;p<64000;++p) if(font_writes[p] && !reported[p]) {
+            fprintf(stderr,"Help bounds miss native store at %u,%u\n",p%320,p/320);abort();
+        }
+        ++bound_checks;
+    }
     return (short)result;
 }
 static short help_measure(void *context,const unsigned char *font,const unsigned char *text,signed char spacing)
@@ -29,7 +56,7 @@ static short help_measure(void *context,const unsigned char *font,const unsigned
 static short help_text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,const unsigned char *text,short x,short y,signed char spacing)
 {
     short advance=help_font_call(context,font,text,ui,x,y,spacing);
-    if(ui->dirty) ui->dirty(ui->dirty_context,0,y,320,(short)(y+font[2]));
+    slicks_help_text_dirty(ui,font,text,x,y,spacing);
     return advance;
 }
 static unsigned be32(const unsigned char *p) { return (unsigned)p[0]<<24|(unsigned)p[1]<<16|(unsigned)p[2]<<8|p[3]; }
@@ -207,6 +234,22 @@ int main(void)
     struct HelpFontCpu n={0}; n.size=(unsigned)font_size; n.measure=be32(code+12); n.text=be32(code+16);
     check(uc_open(UC_ARCH_M68K,UC_MODE_BIG_ENDIAN,&n.cpu)); check(uc_ctl_set_cpu_model(n.cpu,UC_CPU_M68K_M68020));
     check(uc_mem_map(n.cpu,0,0x400000,UC_PROT_ALL)); check(uc_mem_write(n.cpu,0,code,code_size));
+    uc_hook font_hook;
+    check(uc_hook_add(n.cpu,&font_hook,UC_HOOK_MEM_WRITE,font_write,0,0x100000,0x100000+63999));
+    const short edge_x[]={-10,0,17,310,319},edge_y[]={-3,0,190,199};
+    const signed char edge_spacing[]={-128,-10,-1,0,1,10,127};
+    struct SlicksChunkyUi edge_ui={pixels,palette,0,0};
+    memcpy(pixels,base,sizeof pixels);
+    (void)help_font_call(&n,font,(const unsigned char *)"A",&edge_ui,20,20,1);
+    unsigned single_glyph_area=0;
+    for(unsigned p=0;p<64000;++p) single_glyph_area+=reported[p];
+    if(!single_glyph_area || single_glyph_area>=320) abort();
+    const unsigned char edge_text[]={ 'A',8,'B',207,'C',13,'D',10,'E',255,0 };
+    for(unsigned ix=0;ix<5;++ix) for(unsigned iy=0;iy<4;++iy)
+        for(unsigned is=0;is<7;++is) {
+            memcpy(pixels,base,sizeof pixels);
+            (void)help_font_call(&n,font,edge_text,&edge_ui,edge_x[ix],edge_y[iy],edge_spacing[is]);
+        }
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
     check(uc_mem_write(u,0x10100,runtime,runtime_size));
     struct Vga v={0}; uc_hook hooks[2];
@@ -257,6 +300,7 @@ int main(void)
     }
     verify_pages(u,&v,&n,help,(unsigned)help_size,base,palette,font,pixels);
     verify_viewer_entry(u,&v,&n,help,(unsigned)help_size,base,palette,font,pixels);
+    printf("Help dirty bounds cover all native stores in %u strings\n",bound_checks);
     check(uc_close(u)); check(uc_close(n.cpu));
     printf("Original help pixels: %u full-frame/font comparisons against native 68020 text and measurement pass\n",cases); return 0;
 }
