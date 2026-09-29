@@ -52,8 +52,9 @@ Implementation and completed verification evidence are separate in
   intermission/results error routes.
   A real SLICKS.TRK Open failure (directory at the file path) now has native
   warning/dismissal/race-entry publication coverage, one startup load and no
-  archive reopen/display teardown while the Tracks menu is active. Keep
-  Read/Close failures and other malformed inputs separate from that check.
+  archive reopen/display teardown while the Tracks menu is active. Controlled
+  Read/Close failures now also have native cached-warning, unchanged-playlist,
+  publication and race-entry coverage; other malformed inputs remain separate.
   Normal Tracks Help now has link/history/close/reopen publication coverage,
   exact restoration for both closes, no archive reopen/display teardown across
   the guarded visits, and normal system exit. Other Help owner/page/language

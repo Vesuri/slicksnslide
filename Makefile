@@ -552,6 +552,9 @@ build/verify_track_list_storage: tools/verify_track_list_storage.c tools/verify_
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-track-list-storage: build/verify_track_list_storage
 	build/verify_track_list_storage
+
+build/track_list_test_file: tools/track_list_test_file.c src/game/track_lists.h src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 build/verify_track_lists: tools/verify_track_lists.c src/game/track_lists.h src/game/track_playlist.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-track-lists: build/verify_track_lists

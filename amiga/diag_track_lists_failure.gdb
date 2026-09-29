@@ -15,6 +15,12 @@ commands
     quit 1
   end
   set $warning = $warning+1
+  if !$_isvoid($expected_track_fault)
+    if g_slicks_diag_track_read_fault || g_slicks_diag_track_read_reached!=$expected_track_fault || track_list_cache.view.bytes || g_slicks_track_lists_load.io_error!=219
+      printf "TRACK_LIST_INJECTED_IO_STATE_FAILED\n"
+      quit 1
+    end
+  end
   if $expected_load==1 && !g_slicks_track_lists_load.io_error
     printf "TRACK_LIST_MISSING_IO_ERROR\n"
     quit 1

@@ -9,6 +9,7 @@
 #include "../../game/track_records.h"
 #include "../../ui/screen_capture.h"
 unsigned char g_slicks_diag_backup_protect;
+unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
 
 static void failure(struct SlicksSetupStorageReport *r,const char *path,LONG error)
 {
@@ -158,6 +159,14 @@ static long read_file(struct SlicksSetupLoadReport *r,const char *path,
     unsigned long at=0;
     while(at<capacity) {
         LONG got=Read(file,buffer+at,(LONG)(capacity-at));
+#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+        /* Armed immediately before the isolated track-list startup load.
+         * Real data reaches staging first; none may reach the cached view. */
+        if(g_slicks_diag_track_read_fault==1 && got>0) {
+            g_slicks_diag_track_read_fault=0;g_slicks_diag_track_read_reached=1;
+            got=-1;SetIoErr(ERROR_SEEK_ERROR);
+        }
+#endif
         if(got<0) {
             r->result=SLICKS_SETUP_LOAD_IO_ERROR; r->io_error=IoErr(); break;
         }
@@ -170,7 +179,15 @@ static long read_file(struct SlicksSetupLoadReport *r,const char *path,
         if(got<0) { r->result=SLICKS_SETUP_LOAD_IO_ERROR; r->io_error=IoErr(); }
         else if(got) r->result=SLICKS_SETUP_LOAD_INVALID;
     }
-    if(!Close(file) && r->result==SLICKS_SETUP_LOADED) {
+    LONG closed=Close(file);
+#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+    /* Always close the actual handle, even when simulating a failed result. */
+    if(g_slicks_diag_track_read_fault==2) {
+        g_slicks_diag_track_read_fault=0;g_slicks_diag_track_read_reached=2;
+        closed=0;SetIoErr(ERROR_SEEK_ERROR);
+    }
+#endif
+    if(!closed && r->result==SLICKS_SETUP_LOADED) {
         r->result=SLICKS_SETUP_LOAD_IO_ERROR; r->io_error=IoErr();
     }
     if(r->result!=SLICKS_SETUP_LOADED) { r->path=path; return -2; }

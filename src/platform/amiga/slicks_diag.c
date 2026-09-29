@@ -4077,6 +4077,11 @@ int main(void)
         argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='P');
     tracks_test|=track_scroll_test;
     unsigned char tracks_test_stage=0;
+    unsigned char track_read_failure_test=0;
+    if(argc==7 && argv[0]=='T' && argv[1]=='R' && argv[2]=='A' &&
+       argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && (argv[6]=='Q' || argv[6]=='C')) {
+        tracks_test=1;track_read_failure_test=argv[6]=='Q'?1:2;
+    }
     unsigned char track_info_test=(unsigned char)(tracks_test && argc==7 && (argv[6]=='I' || argv[6]=='J' || argv[6]=='K'));
     unsigned char track_info_fault_test=(unsigned char)(track_info_test && argv[6]=='K'),track_info_fault_stage=1;
     unsigned char track_info_failure_test=(unsigned char)(track_info_test && argv[6]=='J'),track_info_failure_stage=0;
@@ -4401,6 +4406,7 @@ int main(void)
     slicks_resource_archive_close(&archive);
     if(!menu_cache) goto cleanup;
     g_slicks_menu_cache_bytes=slicks_resource_cache_bytes(menu_cache);
+    g_slicks_diag_track_read_fault=track_read_failure_test;
     slicks_amiga_track_list_cache_refresh(&track_list_cache);
     if(championship_scan_test==1) g_slicks_diag_saved_lock_failure=1;
     if(championship_scan_test==2) g_slicks_diag_saved_next_failure=1;

@@ -974,6 +974,45 @@ and cache needed no fix for this route. This closes normal Tracks Help
 link/history/reopen publication and lifetime coverage, not every Help owner,
 language, page-scroll route or failure boundary.
 
+## Tracks controlled Read/Close failures (2026-09-30)
+
+Explicit TRACKSQ/TRACKSC diagnostic input arms a one-shot fault immediately
+before the startup track-list cache load. The former substitutes a failed
+result after a real Read has populated staging; the latter substitutes a
+failed Close result after actually closing the handle. Both use error 219
+and the existing production rejection/cleanup branches. Normal launches leave
+the fault controls zero. These are controlled result injections, not claims
+that the filesystem naturally returned either failure.
+
+`tools/track_list_test_file.c` creates a fresh valid one-list/one-track file
+using the production encoder, validates it and refuses to overwrite an
+existing file. Each native run uses its own installation and this input.
+`diag_track_lists_readclose_rectangles.gdb` requires the armed fault to be
+consumed, its matching boundary to be reached, and no cached list bytes to
+be published. The shared warning gate checks I/O result 1/error 219 and
+preservation of the original one-track playlist through dismissal/race entry.
+The existing guards require exactly one startup list load and prohibit asset
+archive reopen or platform teardown while the Tracks menu exists.
+
+| Injected boundary | Native run under `tmp/standalone-release-` |
+| --- | --- |
+| Read after staging data | `tqj7mcfj` |
+| Close after actual handle closure | `x42mp0g5` |
+
+Both runs pass on stock PAL A1200, 2 MiB Chip/no Fast and confirmed default
+4 KiB stack. Each of twelve captured menu publications independently decodes
+to all 64,000 authoritative chunky pixels. Both runs are muted and their
+emulators closed automatically. They terminate at verified race entry, not
+at a claimed normal post-race exit.
+
+The shared storage host regressions also pass: 361 single/double track-list
+save faults plus load/close/allocation/truncation/cache-retention cases,
+254 setup-load checks, 1,485 saved-game transaction faults and 2,310 saved-game
+I/O/truncation cases. Logs: `tmp/track-readclose-host.log` and
+`tmp/track-readclose-build.log`. No normal-game failure-handling defect was
+found; this closes the native Read/Close warning/publication gap, separately
+from the real Open failure and remaining malformed-input checks.
+
 ## Tracks real startup Open failure (2026-09-30)
 
 `diag_track_lists_io_rectangles.gdb`, using TRACKSR on an isolated installation

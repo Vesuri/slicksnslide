@@ -5,6 +5,8 @@
 #include "../../game/setup_storage.h"
 #include "../../game/track_lists.h"
 #include "../../game/saved_game.h"
+/* Explicit TRACKSQ/TRACKSC diagnostics only; zero during normal launches. */
+extern unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
 
 struct SlicksSetupStorageReport {
     enum SlicksSetupSaveResult result;
