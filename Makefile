@@ -306,7 +306,7 @@ verify-intermission-menu: build/verify_intermission_menu
 	build/verify_intermission_menu
 
 .PHONY: verify-intermission-draw
-build/verify_intermission_draw: tools/verify_intermission_draw.c tools/verify_profile_setup.c src/ui/intermission_draw.h | build
+build/verify_intermission_draw: tools/verify_intermission_draw.c tools/verify_profile_setup.c tools/host_archive.h src/ui/intermission_draw.h src/ui/language_table.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-intermission-draw: build/verify_intermission_draw

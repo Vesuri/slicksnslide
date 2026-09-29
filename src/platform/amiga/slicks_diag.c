@@ -2845,8 +2845,7 @@ retry:
         short selected=g_slicks_setup_session.players.selected[i];
         if(content.roles[i] && (selected<0 || selected>=g_slicks_profiles.count)) goto unavailable;
         content.names[i]=content.roles[i]?g_slicks_profiles.names[selected]:0;
-        content.labels[i]=slicks_language_lookup(language,used,slicks_original_intermission_keys[i],
-            slicks_original_intermission_keys[i]);
+        content.labels[i]=slicks_intermission_resolve_label(language,used,i,slicks_original_intermission_keys[i]);
     }
     short fastest=29999;
     for(unsigned i=0;i<4;++i) if((signed int)fastest>content.laps[i]) fastest=(short)(unsigned short)content.laps[i];

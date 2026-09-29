@@ -155,6 +155,10 @@ Implementation and completed verification evidence are separate in
   `menuN` keys at startup, retaining the hidden fifth row; all supplied
   translations have original-command, full-pixel/font and dirty-crop coverage.
   Keep remaining caller/lifetime/input routes distinct from these painter checks.
+  Intermission action rows now use original `nexttrack`/`mainmenu` keys rather
+  than their uppercase fallback strings, with all-language command and pixel
+  comparisons. The direct language-wrapper caller inventory is in fidelity-audit.md;
+  remaining native lifetime/error routes are not implied complete by that inventory.
   The zero-selector chooser is connected with original first-line labels,
   clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
   reaches the selected table and restores the system. Real input.device events,

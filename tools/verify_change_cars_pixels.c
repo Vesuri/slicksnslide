@@ -82,7 +82,11 @@ static void verify_intermission_pixels(const unsigned char *runtime,unsigned lon
     clock_raw[1]=0xb1; clock_raw[2]=clock_resource[5]; clock_raw[4]=clock_resource[7];
     memcpy(clock_raw+6,clock_resource+8,(size_t)clock_size-8);
     unsigned char *pixels=n->pixels; unsigned frames=0;
-    for(unsigned mask=1;mask<16;++mask) {
+    /* Keep every original participation-mask case; add translated action
+     * rows with four drivers. All count/language combinations are covered
+     * independently by verify-intermission-draw. */
+    for(unsigned language=0;language<=8;++language) for(unsigned mask=1;mask<16;++mask) {
+        if(language && mask!=15)continue;
         uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
         check(uc_mem_write(u,0x10100,runtime,runtime_size));
         struct Vga v={0}; memcpy(v.pixels,base,64000); memcpy(pixels,base,64000); font[6]=71;
@@ -98,7 +102,12 @@ static void verify_intermission_pixels(const unsigned char *runtime,unsigned lon
         word(u,0x3cbf0+0x1d7b,100); word(u,0x3cbf0+0x1d87,0);
         word(u,0x3cbf0+0x1d8d,0); word(u,0x3cbf0+0x1d8f,200);
         word(u,0x3cbf0+0x1d91,0); word(u,0x3cbf0+0x1d93,79);
-        word(u,0x3cbf0+0x1722,0); word(u,0x3cbf0+0x1724,0);
+        unsigned char resource[2000],table[2000];unsigned used=0;
+        if(language){char name[10];if(slicks_language_resource(name,language))abort();
+            long size=host_archive_load("ref/SLICKS.000",name,resource,sizeof resource);
+            if(size<=0 || slicks_language_table_load(resource,(unsigned)size,table,sizeof table,&used))abort();
+            check(uc_mem_write(u,0x58000,table,used));}
+        word(u,0x3cbf0+0x1722,0); word(u,0x3cbf0+0x1724,language?0x5800:0);
         word(u,0x3cbf0+0x628,0); word(u,0x3cbf0+0x62a,0); word(u,0x3cbf0+0x62c,0x6900);
         for(unsigned i=0;i<10;++i) {
             check(uc_mem_write(u,0x70000+2048*i,raw[i],raw_size[i]));
@@ -112,7 +121,8 @@ static void verify_intermission_pixels(const unsigned char *runtime,unsigned lon
             c.roles[i]=(mask&(1U<<i))?(i&1?-1:1):0; count+=c.roles[i]!=0;
             c.vehicles[i]=(signed char)((mask+i*3)%10); c.points[i]=(short)(i==0?-32768:i==1?-1:mask*173+i*7);
             c.laps[i]=i&1?100:200; c.names[i]=(const unsigned char *)"DRIVER";
-            c.labels[i]=data+(data[0x7c2+4*i]|data[0x7c3+4*i]<<8);
+            c.labels[i]=slicks_intermission_resolve_label(language?table:0,used,i,
+                data+(data[0x7c2+4*i]|data[0x7c3+4*i]<<8));
             word(u,0x3cbf0+0x44c+2*i,i); check(uc_mem_write(u,0x3cbf0+0x36aa+21*i,"DRIVER",7));
             word(u,0x3cbf0+0x6826+2*i,(unsigned short)c.points[i]);
             word(u,0x3cbf0+0x4c06+4*i,c.laps[i]); word(u,0x3cbf0+0x4c08+4*i,0);

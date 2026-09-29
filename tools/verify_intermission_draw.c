@@ -2,6 +2,7 @@
 #include "verify_profile_setup.c"
 #undef main
 #include "../src/ui/intermission_draw.h"
+#include "host_archive.h"
 static void name_row(void *p,const unsigned char *name,short x,short y,unsigned char flags)
 { menu_text(p,0,name,x,y,flags); }
 static void fastest_row(void *p,short x,short y) { menu_sprite(p,-1,x,y); }
@@ -69,8 +70,16 @@ static void verify_actions(uc_engine *u,struct MenuDrawTrace *dos,const unsigned
     word(u,0x3cbf0+0x1722,0); word(u,0x3cbf0+0x1724,0);
     const unsigned char *data=runtime+0x3cbf0-0x10100,*labels[4];
     check(uc_mem_write(u,0x8eed8,data+0x7c2,16));
-    for(unsigned i=0;i<4;++i) labels[i]=data+(data[0x7c2+4*i]|data[0x7c3+4*i]<<8);
     unsigned cases=0;
+    for(unsigned language=0;language<=8;++language){
+    unsigned char resource[2000],table[2000];unsigned used=0;
+    if(language){char name[10];if(slicks_language_resource(name,language))abort();
+        long size=host_archive_load("ref/SLICKS.000",name,resource,sizeof resource);
+        if(size<=0 || slicks_language_table_load(resource,(unsigned)size,table,sizeof table,&used))abort();
+        check(uc_mem_write(u,0x70000,table,used));}
+    word(u,0x3cbf0+0x1722,0);word(u,0x3cbf0+0x1724,language?0x7000:0);
+    for(unsigned i=0;i<4;++i) labels[i]=slicks_intermission_resolve_label(language?table:0,used,i,
+        data+(data[0x7c2+4*i]|data[0x7c3+4*i]<<8));
     for(unsigned count=1;count<=4;++count) for(unsigned selected=0;selected<4;++selected)
     for(int redraw=-1;redraw<=1;++redraw) for(unsigned saved=0;saved<2;++saved) {
         struct SlicksIntermissionMenu m={(signed char)selected,(signed char)redraw,0,0};
@@ -91,6 +100,7 @@ static void verify_actions(uc_engine *u,struct MenuDrawTrace *dos,const unsigned
             fprintf(stderr,"intermission actions mismatch count=%u selected=%u redraw=%d saved=%u\n",count,selected,redraw,saved); exit(1);
         }
         ++cases;
+    }
     }
     printf("Original intermission action rows: %u restore/highlight/label/redraw comparisons pass\n",cases);
     cases=0;

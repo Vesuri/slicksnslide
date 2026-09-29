@@ -2,6 +2,17 @@
 #define SLICKS_INTERMISSION_DRAW_H
 #include "intermission_menu.h"
 #include "player_menu_draw.h"
+#include "language_table.h"
+
+/* Original 2467f/246a2 translate only the two visible action rows, using
+ * separate lowercase keys and the original English strings as fallback. */
+static inline const unsigned char *slicks_intermission_resolve_label(
+    const unsigned char *table,unsigned used,unsigned row,const unsigned char *fallback)
+{
+    if(row<2 || row>3) return fallback;
+    return slicks_language_lookup(table,used,
+        (const unsigned char *)(row==2?"nexttrack":"mainmenu"),fallback);
+}
 
 /* Original 2453a..245bb: repaint current vehicles after Change Cars. */
 static inline void slicks_intermission_car_rows(struct SlicksIntermissionMenu *m,

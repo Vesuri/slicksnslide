@@ -283,6 +283,51 @@ equivalent check observes all seven label pointers inside the resident table
 at each assembly-menu entry. Both owned muted emulators are closed. This is
 one native language/navigation route, not exhaustive keyboard/lifetime coverage.
 
+### F15 intermission action keys and direct caller inventory (2026-09-29)
+
+Original `2467f`/`246a2` use `nexttrack`/`mainmenu` with the original English
+action strings as fallback. The native owner looked up those uppercase display
+strings instead, silently falling back in every supplied language. It now uses
+`slicks_intermission_resolve_label` for the two visible rows; hidden rows retain
+their original strings. The existing copied-label ownership and cached resource
+load are unchanged.
+
+`verify-intermission-draw` passes 864 action-row command/state comparisons
+across eight tables plus fallback, four driver counts, four selections, three
+redraw states and both saved-background states. Driver/header/car comparisons
+also pass. The real-DOS/native-font pixel gate passes 115 composition cases:
+the existing 75 all-participation-mask cases plus opening and four selection
+redraws for each of eight translations with four drivers. This preserves the
+existing mask coverage without multiplying unrelated mask and language cases.
+Change Cars opening/closing and redraw regression checks also pass.
+
+Native `OPTIONSTI` with a saved language-2 configuration passes the real
+constructor-label comparison, nine repeated-edit inputs, unchanged profile
+bytes, random-state checks, correct second-race vehicles, two rewards and
+restoration 31. All 54 menu publications match every chunky pixel; existing
+resident-navigation guards prohibit archive opening and display release.
+Evidence: `tmp/standalone-release-ize5pe7h`, using the stripped binary, stock
+PAL 68020, 2 MiB/no Fast and default 4 KiB stack. Build:
+`tmp/intermission-language-build.log`. The preceding run
+`tmp/standalone-release-8ivozr0w` stopped at the label check because the installed
+GDB lacks Python; the passing gate uses only supported read-only commands.
+Both owned muted emulators were closed.
+
+The identified direct far-call sites into the original language wrappers now
+have the following production bindings (this is not a claim about every
+indirect entry or every native input/error route):
+
+| Original call sites | Consumer | Current binding/evidence |
+| --- | --- | --- |
+| `1e62b` | Pause rows | Selected table and original keys; existing pause pixel oracle covers eight languages. |
+| `2467f`, `246a2` | Intermission actions | Correct lowercase keys and English fallback; command and pixel checks above. |
+| `26f2e`, `284d7`, `28f08` | Tracks, Players, Options headings | Resident lookup; heading corrections and comparisons documented above. |
+| `298fc` | Ordinary title rows | Resident `menuN` lookup; commands, pixels and dirty crop checked. |
+| `29c82`, `29eae`, `29ee3` | Arcade labels/summary | Selected table with original fallback; 1,296 pixel/font cases. |
+
+Automatic negative-selector policy and native caller/transition coverage remain
+open; this inventory does not close the whole-port fidelity audit.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title
