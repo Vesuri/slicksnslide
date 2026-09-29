@@ -36,6 +36,8 @@ struct SlicksAmigaTrackLists {
 extern unsigned char g_slicks_diag_list_alloc_fault;
 struct SlicksAmigaTrackInfo {
     unsigned char saved[64000],preview[64*40],palette[768],font_colours[2];
+    struct SlicksMenuRect painted[16];
+    unsigned short painted_count;
     unsigned long updates;
     unsigned short phase;
 };

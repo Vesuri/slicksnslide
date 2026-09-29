@@ -532,3 +532,30 @@ before/after bytes match. The observed Help region is now (16,15)-(304,189),
 `tmp/help-text-bounds-host-final.log` and `tmp/help-tight-bounds-native.log`.
 The runner closed the emulator. Other Help owners/failure paths remain in
 the publication audit rather than being inferred from this workflow.
+
+## Tracks publication and Track Information restoration
+
+Baseline shared-publication captures pass nine Tracks navigation/reopen/race
+surfaces and fifteen Track Information open/animate/close/reopen surfaces.
+Track Information now retains painter-reported lifetime bounds, including
+preview shimmer, independently of pending dirty-list clears. Close detaches
+the owner before restoring/reporting those blocks from the saved menu, so it
+does not mutate the list being traversed. It no longer restores all 64,000
+pixels unconditionally.
+
+The normal build passes. Fresh `SLICKS_TRACK_MENU=6` with
+`diag_track_info_rectangles.gdb` passes all fifteen full-surface comparisons;
+saved before/after menus match byte-for-byte. Its close region is
+(64,15)-(320,200), 47,360 pixels. `SLICKS_TRACK_MENU=8` with
+`diag_track_info_faults.gdb` passes five allocation/resource fault dismissals,
+retry/reopen/race and no-teardown guards; all five restored menus match the
+baseline. These faults precede drawing; they do not prove arbitrary failures
+after painting has begun. Both muted runners closed their emulators.
+
+Host track-info, preview-failure, preview-shimmer and preview-pixels gates
+pass: 195 tracks, 16 signed-coordinate/format cases, ten resource-failure
+cases, 1,024 shimmer/RNG comparisons and 228 scaler/painter-bound comparisons.
+An initial host invocation used the nonexistent `verify-track-info-pixels`
+target; the corrected gate uses `verify-track-preview-pixels`.
+Local logs: `tmp/tracks-rectangles.log`, `tmp/track-info-bounds-native.log`,
+`tmp/track-info-bounds-faults.log`, `tmp/track-info-bounds-host-final.log`.

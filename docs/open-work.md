@@ -53,6 +53,10 @@ Implementation and completed verification evidence are separate in
   Options Help publication/return checks pass with glyph-derived horizontal
   bounds. Extend coverage to the other Help owners and failure paths.
   Do not infer whole-menu correctness from these gates.
+  Main Tracks and Track Information now have complete publication comparisons
+  for their existing navigation/animation fixtures. Track Information closes
+  restore lifetime bounds; five pre-draw allocation/resource failure returns
+  also pass. Track-list dialogs and wider selection/scrolling coverage remain.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.

@@ -39,6 +39,9 @@ static void dirty(void *context,short left,short top,short right,short bottom)
 {
     struct SlicksAmigaPlayerMenu *m=context;
     slicks_menu_dirty_add(m->dirty,&m->dirty_count,left,top,right,bottom);
+    if(m->track_info)
+        slicks_menu_dirty_add(m->track_info->painted,&m->track_info->painted_count,
+            left,top,right,bottom);
 }
 static int records_text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,
     const unsigned char *string,short x,short y,unsigned char flags,unsigned char highlight)
@@ -222,9 +225,18 @@ void slicks_amiga_track_info_close(struct SlicksAmigaPlayerMenu *m)
 {
     if(!m || !m->track_info) return;
     struct SlicksAmigaTrackInfo *d=m->track_info;
-    for(unsigned long i=0;i<64000;++i) m->renderer.ui.pixels[i]=d->saved[i];
+    /* Detach before reporting restores so they cannot modify the lifetime
+     * list being traversed. Failed partial opens use the same bounds. */
+    m->track_info=0;
+    for(unsigned i=0;i<d->painted_count;++i) {
+        const struct SlicksMenuRect *r=&d->painted[i];
+        for(unsigned y=r->top;y<r->bottom;++y)
+            for(unsigned x=r->left;x<r->right;++x)
+                m->renderer.ui.pixels[mult320[y]+x]=d->saved[mult320[y]+x];
+        dirty(m,r->left,r->top,r->right,r->bottom);
+    }
     for(unsigned i=0;i<2;++i) m->fonts[i][6]=d->font_colours[i];
-    dirty(m,0,0,320,200); FreeMem(d,sizeof *d); m->track_info=0;
+    FreeMem(d,sizeof *d);
 }
 int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,
     const unsigned char *dat,unsigned long dat_size,const unsigned char *track,unsigned long track_size,
