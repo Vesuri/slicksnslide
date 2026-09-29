@@ -72,6 +72,10 @@ Implementation and completed verification evidence are separate in
 - Recheck save/edit fixtures which previously assumed the extra intermission
   rows. The hidden Save Game cancel/name/save/exit sequence is covered;
   recheck load/edit entry routes without restoring invented visible rows.
+  The original title-owner reachability check cannot select Load Game; exposing
+  it as an extension is awaiting the user's choice. Audit other original entry
+  points separately. Move repeated-save/edit testing to a genuine intermission
+  so it does not depend on the obsolete load fixture.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 

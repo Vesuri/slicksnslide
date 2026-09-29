@@ -147,6 +147,31 @@ FSUAE_RUN=.run/title-input-audit ./debug.sh '' diag_title_transitions.gdb`.
 The run was muted and its emulator exited; local evidence is
 `tmp/title-input-native.log`.
 
+## Hidden Load Game entry audit
+
+The supplied runtime contains the title's row-4 Load handler at `2a51e`, calling
+`1987:40c4` (`1d934`). That routine invokes the saved-file chooser and selected
+file loader; its existence does not establish a reachable menu entry. The title
+starts with selection zero (`2a2be`). Its eight shortcut table entries select
+exit, row activation, Help, F9 race start or F12 demo, not Load directly.
+
+`verify-title-navigation` now computes closure over original-instruction mode
+navigation (`2a25b`) and action mapping (`2a28f`), starting row zero in all six
+modes, allowing all 256 scans, and permitting Options to return any mode with
+the caller selection unchanged. It checks the actual shortcut table as well.
+34 states / 17,152 transitions are reached; none selects row/action 4. This is
+a title-owner boundary proof, not whole-program or runtime-patch reachability.
+Independent exhaustive helper comparisons still pass (17,920 normal navigation,
+51,200 mode-navigation and 655,360 action-map cases).
+
+The former CHAMPLOAD/CHAMPEDIT sequence of four Downs then Enter relied on the
+removed port-only row; it cannot be counted as current native resume evidence.
+Do not fix it by inserting that row or injecting selection 4 and claiming a
+faithful user route. An intentional accessibility extension requires the user's
+choice; other possible original entry points remain an audit question. Repeated
+save/overwrite/delete testing can instead begin at a real intermission without
+depending on this unresolved Load entry.
+
 ## F06 correction and checks
 
 Removed the production exposed-row policy and the owner-side Up override.

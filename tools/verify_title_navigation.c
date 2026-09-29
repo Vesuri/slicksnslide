@@ -77,6 +77,61 @@ int main(void)
         }
         ++action_cases;
     }
+    /* Reachable title selections, not arbitrary injected rows. Start at the
+     * original title-entry row zero in every mode. Permit Options to return
+     * any mode while preserving its caller's selection, and feed every scan
+     * through the original mode-navigation routine. Count/player edits cannot
+     * affect selection routing; use valid values for those independent fields.
+     * This is a title-owner boundary proof, not whole-program reachability. */
+    /* Pin the actual shortcut table used by 2a3ac so activation scans in the
+     * traversal cannot silently drift from the supplied executable. */
+    const unsigned short shortcut_scans[]={1,0x1c,0x1d,0x39,0x3b,0x43,0x44,0x58};
+    const unsigned long shortcut_targets[]={0x2a562,0x2a4cc,0x2a4cc,0x2a4cc,
+        0x2a3cc,0x2a4c5,0x2a562,0x2a3db};
+    for(unsigned i=0;i<8;++i)
+        if(readword(u,0x2a61e + 2*i)!=shortcut_scans[i] ||
+           0x266c0UL+readword(u,0x2a62e + 2*i)!=shortcut_targets[i]) {
+            fprintf(stderr,"Original title shortcut table changed\n");return 1;
+        }
+    unsigned char reached[6][7]={{0}};
+    for(unsigned mode=0;mode<6;++mode) reached[mode][0]=1;
+    unsigned changed=1,reachable_cases=0,states=0;
+    while(changed) {
+        changed=0;
+        for(unsigned mode=0;mode<6;++mode) for(unsigned row=0;row<7;++row) {
+            if(!reached[mode][row]) continue;
+            for(unsigned scan=0;scan<256;++scan) {
+                uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xf000,ax;
+                check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));
+                check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+                word(u,0x8f000,0);word(u,0x8f002,0x9000);
+                word(u,0x8f004,scan);word(u,0x8f006,0);word(u,0x8f008,0x7000);
+                word(u,0x70000,row);word(u,0x3cbf0+0x90,100);
+                word(u,0x3cbf0+0x92,mode);word(u,0x3cbf0+0x4da8,195);
+                word(u,0x3cbf0+0xf1a,2);
+                check(uc_emu_start(u,0x2a25b,0x90000,0,400));
+                unsigned next_row=readword(u,0x70000),next_mode=readword(u,0x3cbf0+0x92);
+                if(next_mode>=6 || next_row>=7 || next_row==4) {
+                    fprintf(stderr,"Unexpected reachable title state mode=%u row=%u scan=%u -> %u/%u\n",
+                        mode,row,scan,next_mode,next_row);return 1;
+                }
+                if(!reached[next_mode][next_row]) {reached[next_mode][next_row]=1;changed=1;}
+                /* Execute original action mapping too; Arcade row 1 is Options. */
+                check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+                word(u,0x8f004,next_row);
+                check(uc_emu_start(u,0x2a28f,0x90000,0,100));
+                check(uc_reg_read(u,UC_X86_REG_AX,&ax));
+                if(ax==4) {fprintf(stderr,"Reachable Load Game title action\n");return 1;}
+                if(ax==3 && (scan==0x1c || scan==0x1d || scan==0x39))
+                    for(unsigned returned_mode=0;returned_mode<6;++returned_mode)
+                        if(!reached[returned_mode][next_row]) {reached[returned_mode][next_row]=1;changed=1;}
+                ++reachable_cases;
+            }
+        }
+    }
+    for(unsigned mode=0;mode<6;++mode) for(unsigned row=0;row<7;++row) states+=reached[mode][row];
+    printf("Original title reachability: %u states, %u scan transitions; hidden Load row/action unreachable within audited owner boundaries\n",
+        states,reachable_cases);
     uc_close(u);
     printf("Original title navigation: %u input/selection/count/mode/refresh comparisons pass\n",cases);
     printf("Original title mode dispatch: %u navigation and %u action-map comparisons pass\n",mode_cases,action_cases);
