@@ -3409,11 +3409,9 @@ int main(void)
     unsigned char *sample_resource = 0;
     unsigned long title_checksum = 0;
     unsigned long title_display_checksum = 0;
-    unsigned char left_was_down = 0;
     unsigned char auto_race;
     unsigned char original_setup = 0;
     unsigned char restore_test;
-    unsigned char race_prepared = 0;
     unsigned char shadow_fixture = 0;
     unsigned char jump_track_test = 0;
     short previous_jump_state[SLICKS_RACE_CAR_COUNT] = {0, 0, 0, 0};
@@ -3949,7 +3947,6 @@ int main(void)
                          track_path, race_palette, selected_vehicle,
                          &diagnostic_configuration,original_setup?&g_slicks_setup_session:0,1) != 0)
             goto cleanup;
-        race_prepared = 1;
         if (argc > 0 && ((const char *)argv)[0] == 'R')
             slicks_race_set_laps(race, 1);
     }
@@ -4174,7 +4171,6 @@ int main(void)
         (continuous_diagnostics || (g_slicks_diag_profile_all && g_slicks_diag_profile_all!=2)));
     for (;;) {
         unsigned short code;
-        unsigned char left_down;
         if(registration_test && title_dirty_test) {
             static const unsigned char keys[]={0x4d,0x4d,0x4f,0x4e,0x4c,0x4c,0x45};
             static const unsigned char transition_keys[]={
@@ -4359,7 +4355,7 @@ int main(void)
                         if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,1)) goto cleanup;
                         continue;
                     }
-                    race_load_prompt=race_load_retry=0; race_prepared=1;
+                    race_load_prompt=race_load_retry=0;
                     slicks_race_set_laps(race,selected_laps);
                     if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
                     g_slicks_diag_ready=1;
@@ -4465,7 +4461,7 @@ int main(void)
                         if(prepare_race(&platform,logical,chunky,mode_state,race,
                             selected_track_path,race_palette,selected_vehicle,
                             &configuration,&g_slicks_setup_session,0)) {
-                            race_prepared=0; race_load_prompt=race_load_retry=1;
+                            race_load_prompt=race_load_retry=1;
                             if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,1)) goto cleanup;
                             if(sequence_failure_test || shop_transition_test==2) {
                                 platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
@@ -4493,7 +4489,6 @@ int main(void)
                     if(!platform.active && slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
-                    race_prepared = 0;
                     if(completion_return_test || shop_transition_test || (sequence_test && !pause_transition_test)) {
                         /* Complete the natural-race diagnostic with normal
                          * title Escape input, then verify system restoration. */
@@ -5048,7 +5043,7 @@ int main(void)
                     if(prepare_status) {
                         shop_track_position=previous_shop_position;
                         g_slicks_setup_session=previous;
-                        race_prepared=0; race_load_prompt=1; race_load_retry=0;
+                        race_load_prompt=1; race_load_retry=0;
                         if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,0)) goto cleanup;
                         continue;
                     }
@@ -5057,7 +5052,6 @@ int main(void)
                     g_slicks_track_playlist.count=game.track_count;
                     playlist_position=(unsigned short)game.next_track;
                     selected_track=(unsigned short)track_selection[playlist_position];
-                    race_prepared=1;
                     slicks_race_set_laps(race,selected_laps);
                     if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
                     g_slicks_diag_ready=1;
@@ -5088,7 +5082,7 @@ int main(void)
                         /* This is a native platform error, not invented DOS
                          * gameplay. Keep setup alive so files/controllers can
                          * be corrected and GO retried from the actual menus. */
-                        race_prepared=0; race_load_prompt=1; race_load_retry=0;
+                        race_load_prompt=1; race_load_retry=0;
                         if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,0)) goto cleanup;
                         if(setup_failure_test) {
                             static const unsigned char keys[]={0x45,0x4d,0x44,0x45,0x4c,0x44};
@@ -5098,7 +5092,6 @@ int main(void)
                         }
                         continue;
                     }
-                    race_prepared = 1;
                     playlist_position = 0;
                     slicks_race_set_laps(race, selected_laps);
                     if (slicks_amiga_platform_begin(&platform, 1) != 0)
@@ -5392,74 +5385,8 @@ int main(void)
                 while(count--) platform.keys[platform.key_head++]=delta<0?0x4c:0x4d;
             }
         }
-        left_down = (unsigned char)slicks_amiga_platform_left_mouse();
-        if (!save_prompt && !g_slicks_diag_ingame && left_down && !left_was_down) {
-            unsigned short action = slicks_dispatch_title_key(0x1c);
-            unsigned short action_selection=(unsigned short)slicks_title_action_selection(configuration.options[0],(short)menu_selection);
-            if(g_slicks_player_menu || g_slicks_options_menu || g_slicks_track_menu || g_slicks_title_help || g_slicks_title_help_warning) {
-                action=0; /* Original player menu is keyboard-driven. */
-            } else if(action==2 && menu_selection==5) {
-                if(open_title_help(&platform,logical,chunky,source_palette,slicks_title_help_topic(action,menu_selection))) goto cleanup;
-                action=0;
-            } else if(action==2 && action_selection==1 && original_setup) {
-                if(open_player_menu(&platform,chunky,&configuration,&player_menu_state)) goto cleanup;
-                action=0;
-            } else if (service_menu_open) {
-                unsigned short change = slicks_service_menu_key(
-                    &service_selection, &configuration.options[9], &configuration.options[10], 0x1c);
-                if (change == 2) {
-                    service_menu_open = 0;
-                    make_title_surface(logical, title_frame, source_palette);
-                    redraw_title_configuration(&platform, logical, chunky,
-                        source_palette, menu_selection, selected_vehicle,
-                        track_names[selected_track], selected_laps);
-                } else {
-                    setup_dirty=1;
-                    redraw_service_options(&platform, logical, chunky,
-                        service_selection, configuration.options[9], configuration.options[10]);
-                }
-                action = 0;
-            } else if (action == 2 && action_selection == 3) {
-                if(original_setup) {
-                    if(open_options_menu(&platform,chunky,source_palette,&configuration)) goto cleanup;
-                    action=0;
-                } else {
-                    if(configuration.options[0]!=4) setup_dirty=1;
-                    configuration.options[0]=4; /* Legacy service diagnostic only. */
-                    service_menu_open = 1;
-                    redraw_service_options(&platform, logical, chunky,
-                        service_selection, configuration.options[9], configuration.options[10]);
-                    action = 0;
-                }
-            }
-            if (action == 1 || (action==2 && menu_selection==6)) {
-                exit_requested=1;
-            }
-            if (action == 2 && menu_selection == 0) {
-                if (!race_prepared) {
-                    g_slicks_diag_ready = 0;
-                    slicks_amiga_platform_end(&platform);
-                    make_track_path(selected_track_path,
-                                    track_names[selected_track]);
-                    track_path = selected_track_path;
-                    if (prepare_race(&platform, logical, chunky, mode_state,
-                                     race, track_path, race_palette, selected_vehicle,
-                                     &configuration,original_setup?&g_slicks_setup_session:0,1) != 0)
-                        goto cleanup;
-                    race_prepared = 1;
-                    playlist_position = 0;
-                    slicks_race_set_laps(race, selected_laps);
-                    if (slicks_amiga_platform_begin(&platform, 1) != 0)
-                        goto cleanup;
-                    g_slicks_diag_ready = 1;
-                }
-                enter_prepared_race(&platform, logical, race);
-                start_race_engines(&audio,race,&platform);
-                g_slicks_diag_engine_sample_block =
-                    audio.engine_sample_block;
-            }
-        }
-        left_was_down = left_down;
+        /* Original title input (36ce0) reads keyboard scans, not mouse
+         * buttons. Do not introduce a second, incomplete activation path. */
         if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_info) {
             slicks_amiga_track_info_tick(g_slicks_track_menu,&g_slicks_setup_session.random_state);
             present_menu_surface(&platform,g_slicks_track_menu);

@@ -1,6 +1,6 @@
 #ifndef SLICKS_TITLE_HELP_H
 #define SLICKS_TITLE_HELP_H
-/* The title presents Load at 4, Read This at 5 and Quit at 6. Original
+/* The title hides Load at 4, presents Read This at 5 and Quit at 6. Original
  * Read This calls 2a096 with DS:1436 ("reg"); F1 at 2a3cc passes DS:11d0
  * (empty topic). Resolve even the empty topic through the original index;
  * it can name an anchor and is not equivalent to the viewer's F1 body. */

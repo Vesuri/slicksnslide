@@ -20,6 +20,22 @@ int main(void)
         unsigned char original[21]; check(uc_mem_read(u,pointer,original,sizeof original));
         if(!memchr(original,0,sizeof original) || strcmp((const char *)original,(const char *)topic)) abort();
     }
-    check(uc_close(u)); puts("Original title Help: F1 and Read This topic arguments match; unrelated actions excluded");
+    /* The title caller passes 2 to the keyboard-repeat reader at 36ce0.
+     * Exercise every make/break/idle scan through its actual instructions.
+     * No BIOS/mouse callback is stubbed: this reader only uses the keyboard
+     * latch and BIOS tick count. Stop immediately before its far return. */
+    for(unsigned scan=0;scan<256;++scan) {
+        regs(u,0);
+        uint16_t cs=0x2e0f,ax;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+        word(u,0x8ef06,2);
+        word(u,0x3cbf0+0x1714,scan);
+        word(u,0x3cbf0+0x174e,0);
+        word(u,0x46c,100); word(u,0x46e,0);
+        check(uc_emu_start(u,0x36ce0,0x36d64,0,100));
+        check(uc_reg_read(u,UC_X86_REG_AX,&ax));
+        if((ax&255)!=(scan<128?scan:0)) abort();
+    }
+    check(uc_close(u)); puts("Original title Help topics and all 256 keyboard-reader scans match");
     return 0;
 }

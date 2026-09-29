@@ -19,11 +19,41 @@ and a production-screen comparison establish different things.
 | F08 | Title-loop animation coverage is incomplete | Normal selected-label pulse now advances through the translated original routine every visible title update. Arcade and wall-clock cadence/reference comparison remain unverified; see the new native cycle evidence below. |
 | F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
 | F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. Native integration and original full-screen renderer comparisons pass. Caller/transition font-alias lifetime, shortcut and mouse coverage remain to be completed. |
+| F11 | Added mouse-click title activation | Native code dispatched Enter on a left-button edge through a second, incomplete owner path. Removed: original `36ce0..36d64`, called by the title at `2a376`, reads the keyboard scan latch and repeat timer, not mouse buttons. |
+| F12 | Missing title F9 and demo routes | The dispatcher returns actions 4 and 5, but the native title owner ignores them. Original F9 jumps to the result-99 case; F12 and the title idle timeout enter `2a3db` demo setup, backing up configuration and selecting a random track with four computer profiles. These are not ordinary GO. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
 selection/startup consumer before changing it. Track catalogue sorting, limits,
 shortcut routing and platform error screens need the same caller-level check.
+
+## Title input caller audit
+
+Removed the separate left-mouse activation branch and its otherwise-unused
+`race_prepared` latch. This branch bypassed the keyboard GO playlist/error
+handling and did not handle Tracks at all. Keyboard activation and the common
+race preparation remain unchanged. The original reader uses DS:1714 and the
+BIOS tick counter; the scan latch's instruction-listing writers are its reset,
+explicit scan setter and keyboard interrupt/init routines. The title calls
+the repeat reader with argument 2 and contains no mouse polling route.
+
+`make verify-title-help` now executes that original reader for all 256 byte
+scan values, in addition to comparing actual Help topic arguments. Make scans
+below 128 are returned; break/idle values return zero. This does not establish
+the port's keyboard repeat cadence or implement the newly identified F12
+demo lifecycle. The original dispatch table at CS:3f5e maps scan 43 to
+`2a4c5` and scan 58 to `2a3db`; title elapsed time above 20000 also supplies
+scan 58. Demo setup saves selected profiles and configuration, chooses a
+random track and substitutes four computer profiles; the next title entry
+restores saved state when DS:1148 is set. Caller implementation is still open.
+
+After removing mouse activation, the native `REGCHECKT` title-transition run
+passes modes=31, roles=7, counts=3, checks=33, errors=0, restore=31. The
+normal keyboard paths remain functional. Reproduction from `amiga/`:
+`SLICKS_REGISTRATION_TEST=5 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/title-input-audit ./debug.sh '' diag_title_transitions.gdb`.
+The run was muted and its emulator exited; local evidence is
+`tmp/title-input-native.log`.
 
 ## F06 correction and checks
 
