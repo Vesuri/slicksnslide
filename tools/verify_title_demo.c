@@ -12,6 +12,52 @@ static void key_boundary(uc_engine *u,uint64_t address,uint32_t size,void *opaqu
         check(uc_emu_stop(u));
 }
 
+struct DemoBranch { unsigned start,taken,fallthrough,predicate; };
+static void demo_branch_stop(uc_engine *u,uint64_t address,uint32_t size,void *opaque)
+{
+    (void)size;
+    const struct DemoBranch *b=opaque;
+    if(address==b->taken || address==b->fallthrough) check(uc_emu_stop(u));
+}
+/* Reader inventory from the original instruction image. Stop before either
+ * branch's side effects: this proves flag classification, not those callees. */
+static unsigned verify_demo_consumers(uc_engine *u)
+{
+    static const struct DemoBranch branches[]={
+        {0x19db0,0x19dbd,0x19db8,0}, {0x1b540,0x1b562,0x1b547,1},
+        {0x1b562,0x1b58f,0x1b56a,0}, {0x25067,0x25074,0x2506f,2},
+        {0x25316,0x2532a,0x2531d,1}, {0x25552,0x2555c,0x25559,3},
+        {0x25c05,0x25c11,0x25c0c,1}, {0x25d76,0x25d8e,0x25d7d,1},
+        {0x25eaa,0x25eb4,0x25eb1,3}, {0x26175,0x26185,0x2617c,1},
+        {0x26304,0x26348,0x2630c,4}
+    };
+    unsigned cases=0;
+    for(unsigned i=0;i<sizeof branches/sizeof branches[0];++i) {
+        const struct DemoBranch *b=&branches[i]; uc_hook hook;
+        check(uc_hook_add(u,&hook,UC_HOOK_CODE,demo_branch_stop,(void *)b,1,0));
+        for(unsigned flag=0;flag<256;++flag) {
+            regs(u,0); uint16_t cs=0x1987,ip;
+            check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+            unsigned char byte=(unsigned char)flag;
+            check(uc_mem_write(u,0x3cbf0+0x459,&byte,1));
+            check(uc_emu_start(u,b->start,0x90000,0,20));
+            check(uc_reg_read(u,UC_X86_REG_CS,&cs));
+            check(uc_reg_read(u,UC_X86_REG_IP,&ip));
+            int signed_flag=(signed char)flag;
+            int taken=b->predicate==0?signed_flag>=0:b->predicate==1?flag!=0:
+                b->predicate==2?signed_flag>0:b->predicate==3?flag==0:signed_flag<=0;
+            unsigned expected=taken?b->taken:b->fallthrough;
+            if(16U*cs+ip!=expected) {
+                fprintf(stderr,"Demo consumer %x flag=%u reached %x expected %x\n",
+                    b->start,flag,16U*cs+ip,expected);abort();
+            }
+            ++cases;
+        }
+        check(uc_hook_del(u,hook));
+    }
+    return cases;
+}
+
 static void compare(uc_engine *u,const struct SlicksConfiguration *config,
     const struct SlicksTrackPlaylist *playlist,unsigned long seed)
 {
@@ -116,6 +162,7 @@ int main(void)
         if(readword(u,0x8eff2)!=slicks_title_demo_scan(scan,now,times[start]))abort();
         ++timer_cases;
     }
-    check(uc_close(u));printf("Original demo setup/restore: %u state pairs; atomic guards; %u key cases; %u timer cases pass\n",cases,keys,timer_cases);
+    unsigned consumers=verify_demo_consumers(u);
+    check(uc_close(u));printf("Original demo setup/restore: %u state pairs; atomic guards; %u key cases; %u timer cases; %u consumer branches pass\n",cases,keys,timer_cases,consumers);
     return 0;
 }

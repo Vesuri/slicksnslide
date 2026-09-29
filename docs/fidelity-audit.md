@@ -79,6 +79,49 @@ rendered frames are the same thing, or use a >=20,000 comparison. The
 existing demo setup/restore and race-key tests still pass. No live timer or
 demo-return test has passed yet; production remains unchanged by this helper.
 
+### Demo consumer branch inventory
+
+`verify-title-demo` now executes eleven additional original flag readers for
+all 256 byte values (2,816 branch comparisons). It stops before either branch's
+side effects, so these are classification proofs, not completed native demo
+integration or proofs of the called functions. Addresses below are linear
+addresses in the loaded runtime, with DS:0459 as the tested byte.
+
+| Reader | Branch condition | Taken boundary | Other boundary |
+| --- | --- | --- | --- |
+| 19db0 | signed flag >= 0 | 19dbd | 19db8 |
+| 1b540 | flag != 0 | 1b562 | 1b547 |
+| 1b562 | signed flag >= 0 | 1b58f | 1b56a |
+| 25067 | signed flag > 0 | 25074 | 2506f |
+| 25316 | flag != 0 | 2532a | 2531d |
+| 25552 | flag == 0 | 2555c | 25559 |
+| 25c05 | flag != 0 | 25c11 | 25c0c |
+| 25d76 | flag != 0 | 25d8e | 25d7d |
+| 25eaa | flag == 0 | 25eb4 | 25eb1 |
+| 26175 | flag != 0 | 26185 | 2617c |
+| 26304 | signed flag <= 0 | 26348 | 2630c |
+
+In particular, 25552's nonzero route jumps to 259dd, bypassing the post-track
+award block already identified in the completion audit. The reads at 25067 and
+26304 distinguish positive mode from negative idle demo; converting the flag
+to a boolean would erase this distinction. The earlier 23f65 race-key oracle
+remains separate and passes along with 960 setup/restore pairs and 36,864 idle
+timer comparisons. Log: `tmp/demo-consumer-branches.log`. No native runtime
+behavior was changed and no emulator was launched for this host comparison.
+
+### Title cadence: additional static boundaries
+
+Original title loop 2a344 pushes 10 into 19878, which calls runtime 14be6;
+that routine polls 14b97 against a computed time target. Rendering reaches
+29ff3's call to 3b09c with two zero arguments. The display routine either queues
+its register update through DS:1da3 when DS:1d9b==1, or directly polls VGA
+status at 3b162 and 3b175 before its attribute-register write. The latter loop
+tests vertical retrace bit 3. This is evidence that title cadence depends on
+both a runtime delay and display publication, not just colour-counter updates.
+The native full-cycle tests do not measure those PC timing boundaries. DOS
+clock calibration, queue/interrupt mode and wall-clock comparison remain open;
+no new pacing policy is inferred from this static inspection.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

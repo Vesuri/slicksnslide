@@ -67,7 +67,9 @@ Implementation and completed verification evidence are separate in
   the isolated original demo setup/restore helper now passes 960 paired
   original-instruction comparisons, but is not connected to the live owner.
   Audit the signed demo flag's race input, AI, results and persistence consumers
-  before enabling it; the setup profile IDs precede Arcade selection override.
+  before enabling it; eleven additional original readers now have exhaustive
+  byte-flag branch checks, but their native side-effect wiring remains open.
+  The setup profile IDs precede Arcade selection override.
   The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
   into production. Preserve F11/F12's exceptional track-data views; they are
   not exit keys or file captures. Their native display route remains missing.
