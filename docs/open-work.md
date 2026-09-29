@@ -152,8 +152,10 @@ Implementation and completed verification evidence are separate in
   Enter-at-GO and Down/Down/F9 now reach the correctly selected race mode in
   all six saved modes on the stripped binary, including Arcade's Settings row.
   Keep other starting rows and remaining demo routes separate from that matrix. Normal
-  title F1 and ignored-F2 navigation now have a current-build native check;
-  extend caller coverage to other modes/rows without adding an F2 title action.
+  title F1 and ignored-F2 navigation now have a current-build native check.
+  Arcade now also has both-row F1/ignored-F2 coverage, exact Help background
+  restoration and cached, retained-display visits. Extend remaining caller
+  coverage without adding an F2 title action.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
   The registered English Arcade Options-return title now matches every pixel
   of the original complete wrapper, with native display and race-handoff

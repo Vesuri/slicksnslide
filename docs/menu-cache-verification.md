@@ -1778,6 +1778,27 @@ No cleanup defect was found or normal-game behavior changed. Sparse-player
 selection policy remains separate; these race-entry gates do not prove later
 exit behavior or every shared constructor's other menu callers.
 
+## Arcade title Help on both rows (2026-09-30)
+
+The explicit HELPA diagnostic uses an actual saved mode-5, English
+configuration and queues ignored F2, F1, Escape, Down, ignored F2, F1,
+Escape, Escape. `diag_arcade_help_rectangles.gdb` checks that the two Help
+opens originate from rows 0 and 1 respectively, both use the original empty
+topic anchor (chapter 9589/page 0), and both close with the platform active.
+Archive reopen and platform teardown are forbidden from the first open
+through the second close. Normal exit must restore system status 31.
+
+Run `tmp/standalone-release-txnsodh4` passes on stock PAL A1200, 2 MiB
+Chip/no Fast RAM, with a confirmed default 4 KiB stack. All four captured
+publications independently decode to the complete 64,000-pixel chunky
+surface. Both saved-background/closed-surface pairs compare byte-identically.
+The muted emulator was closed by the harness. Build log:
+`tmp/arcade-help-build.log`.
+
+This adds diagnostic routing only; it changes no normal-game behavior.
+It covers these two English Arcade Help visits, not other languages, Help
+pages, or every title input route.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

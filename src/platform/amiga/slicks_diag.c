@@ -4074,8 +4074,9 @@ int main(void)
     unsigned char track_info_fault_test=(unsigned char)(track_info_test && argv[6]=='K'),track_info_fault_stage=1;
     unsigned char track_info_failure_test=(unsigned char)(track_info_test && argv[6]=='J'),track_info_failure_stage=0;
     unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test);
-    unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
-    unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
+    unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && (argv[4]=='F' || argv[4]=='A'))) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
+    unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='F'),title_help_failure_stage=0;
+    unsigned char title_help_arcade_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='A');
     if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
        argv[4]=='L' && argv[5]>='0' && argv[5]<='9') {
         title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]=='9'?0:argv[5]-'0');
@@ -4498,6 +4499,12 @@ int main(void)
         for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
         platform.key_head=sizeof keys;
         if(title_help_failure_test) platform.key_head=0;
+        if(title_help_arcade_test) {
+            /* F2 is ignored on both Arcade rows; F1 opens ordinary Help. */
+            static const unsigned char arcade_keys[]={0x51,0x50,0x45,0x4d,0x51,0x50,0x45,0x45};
+            for(unsigned i=0;i<sizeof arcade_keys;++i) platform.keys[i]=arcade_keys[i];
+            platform.key_head=sizeof arcade_keys;
+        }
     }
     if(help_test) {
         static const unsigned char keys[]={0x4d,0x4d,0x4d,0x44,0x50,0x4d,0x44,0x41,0x45,0x50,0x45,0x45,0x45};
