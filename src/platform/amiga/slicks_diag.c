@@ -2662,7 +2662,7 @@ static int intermission_retry_notice(struct SlicksAmigaPlatform *platform,struct
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     platform->key_tail=platform->key_head;
     slicks_diag_intermission_retry();
-    if(diagnostic) { platform->key_tail=0; platform->keys[0]=0x44; platform->key_head=1; }
+    if(diagnostic) { platform->key_tail=0; platform->keys[0]=diagnostic==4?0x45:0x44; platform->key_head=1; }
     for(;;) {
         unsigned short raw;
         slicks_amiga_platform_wait_vblank(platform);
@@ -2673,7 +2673,6 @@ static int intermission_retry_notice(struct SlicksAmigaPlatform *platform,struct
         }
     }
 done:
-    slicks_amiga_platform_end(platform);
     if(slicks_amiga_emergency_warning_close()) result=-1;
     return result;
 }
@@ -2699,7 +2698,7 @@ static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRa
     int result=-1; unsigned used=0,test_step=0;
     struct SlicksIntermissionContent content={.track_index=position,.track_total=total,
         .track_name=next_name,.slash=(const unsigned char *)"/"};
-    if(diagnostic==3) g_slicks_diag_intermission_fault=3;
+    if(diagnostic==3 || diagnostic==4) g_slicks_diag_intermission_fault=3;
 retry:
     slicks_amiga_platform_end(platform);
     /* Synchronous menu owner; keep decode staging off the default 4K stack. */
@@ -3635,8 +3634,8 @@ int main(void)
     unsigned char failure_injected=0;
     unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L'));
     if(record_recovery_test) { g_slicks_diag_record_faults=3; g_slicks_diag_record_skip=argv[8]=='S'?1:argv[8]=='L'?2:0; }
-    unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J'));
-    unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]=='J');
+    unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K'));
+    unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='K'?2:1):0);
     mode_transition_test=(unsigned char)(argc==9 && argv[0]=='O' && argv[1]=='P' &&
         argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S' &&
         argv[7]=='T' && argv[8]>='0' && argv[8]<='5');
@@ -4467,7 +4466,7 @@ int main(void)
                         make_track_path(next_path,(const char *)next_name);
                         int choice=run_intermission(&platform,race,chunky,race_palette,next_path,next_name,
                             (short)playlist_position,(short)slicks_arcade_track_count(configuration.options[0],
-                                configuration.options[14],(short)g_slicks_track_playlist.count),shop_transition_test==4?0:shop_transition_test?1:intermission_retry_test?3:intermission_live_test?2:sequence_test,
+                                configuration.options[14],(short)g_slicks_track_playlist.count),shop_transition_test==4?0:shop_transition_test?1:intermission_retry_test?intermission_retry_test+2:intermission_live_test?2:sequence_test,
                             track_names,track_count);
                         if(choice<0) goto cleanup;
                         advance=(unsigned char)(choice==1);
@@ -4521,7 +4520,7 @@ int main(void)
                     if(!platform.active && slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
-                    if(completion_return_test || shop_transition_test || (sequence_test && !pause_transition_test)) {
+                    if(completion_return_test || shop_transition_test || intermission_retry_test==2 || (sequence_test && !pause_transition_test)) {
                         /* Complete the natural-race diagnostic with normal
                          * title Escape input, then verify system restoration. */
                         platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;

@@ -346,3 +346,32 @@ Fresh host gates pass original intermission initialization/action/draw/prepare
 and Change Cars input comparisons, plus the composition/lifetime harnesses
 (the latter use stub assets and are not independent pixel evidence). No
 selection, rendering or reward policy was changed by this return-path edit.
+
+## Intermission recovery warning return
+
+The allocation-free retry notice no longer releases hardware before restoring
+its saved pixels. Retry's existing `retry:` disk boundary still releases before
+loading track data; End Match returns through RAM-only cleanup and the owned
+race view. The diagnostic-only OPTIONSTK route selects Escape at the same
+injected constructor failure that OPTIONSTJ retries, then exits through title
+Escape instead of launching another race.
+
+Fresh muted A1200/2 MiB gates use `SLICKS_DEBUG_WARP=1` and
+`FSUAE_RUN=.run/pause-transitions-v1`:
+
+- `SLICKS_INTERMISSION_LIVE=2 ./debug.sh '' diag_intermission_retry.gdb`:
+  one failed-open warning, successful retry, second track/race, rewards exactly
+  once per race, and restoration 31. `retry.before` and `retry.after` session
+  snapshots compare byte-for-byte. Local log `tmp/intermission-recovery-retry.log`
+  ends with `NATIVE_PAUSE_SKIP_END_TWO_RACES_REWARDS_ONCE_OK`.
+- `SLICKS_INTERMISSION_LIVE=3 ./debug.sh '' diag_intermission_skip.gdb`:
+  one warning, one owned intermission return, no successful modal open or second
+  race load, one reward, and title-Escape exit with restoration 31 and no forced
+  exit. `tmp/intermission-recovery-skip.log` reports
+  `NATIVE_INTERMISSION_FAILED_OPEN_END_MATCH_EXIT_OK`.
+
+Both share a guard rejecting platform teardown between the warning checkpoint
+and emergency-warning close, require active ownership at close, and require
+the intermission owner gone with hardware active at return. The runner closed
+both emulators. This checks the injected constructor-failure retry/end branches,
+not arbitrary low-memory timing or the remaining results owners.

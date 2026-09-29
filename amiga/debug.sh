@@ -116,6 +116,8 @@ elif [ "${SLICKS_CHAMPIONSHIP:-}" = fail ]; then
 elif [ -n "${SLICKS_PROFILE_DIALOG_FAILURE:-}" ]; then
   case "$SLICKS_PROFILE_DIALOG_FAILURE" in NF|NL|CF|CL) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERS%s\n' "$SLICKS_PROFILE_DIALOG_FAILURE" > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_INTERMISSION_LIVE:-0}" = 3 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSTK\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_INTERMISSION_LIVE:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSTJ\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_INTERMISSION_LIVE:-0}" = 1 ]; then
