@@ -1,5 +1,44 @@
 # Development release audit
 
+## 2026-09-30 — current WHDLoad regression
+
+The stripped executable built from 1d293e2 passes fresh isolated WHDLoad
+checks after the menu/cache/title changes. The production, race-test and
+exit-test slaves were rebuilt; the latter two supply diagnostic arguments
+only and are not release payloads. The original publisher ZIP supplies data
+inside each private installation. No registration key is used.
+
+| Workflow | Local run directory under tmp/ | Result |
+| --- | --- | --- |
+| Production startup, PRELOAD | `whdload-test-fqrar8aj` | Reads original data and reaches the automatic demo before the timed stop. |
+| Race, PRELOAD | `whdload-test-ivto1r7s` | Reads original archive/DAT and reaches racing before the timed stop. |
+| Normal REGCHECK exit | `whdload-test-qo7ialx2` | WHDLoad reports Return OK; host completion marker passes. |
+| Race, no PRELOAD | `whdload-test-yfidkue9` | Live reads of original archive/DAT pass and execution reaches the intentional timed stop. |
+
+Actual AGA copper/bitmap decoding from the startup dump shows the title and
+a DEMO-labelled track/HUD; the race dump shows BASIC with updated timers and
+effects. This is inspection of native output, not a DOS-frame substitute or
+pixel-fidelity oracle. Timed runs intentionally end in WHDLoad's DEBUG dump;
+only the separate quit case proves normal return.
+
+Configuration: PAL A1200, 68020, 2 MiB Chip plus 4 MiB Fast, A600 Kickstart
+40.063 with matching RTB, locally installed WHDLoad. This retains the existing
+WHDLoad memory requirement; it does not claim no-Fast standalone memory limits
+or a 4 KiB WHDLoad execution stack. Each run used muted host audio and closed
+its emulator. No source/game/ROM/key/dump material was added to Git.
+
+Executable: `tmp/whdload-current-JKq1eh/Slicks`, SHA256
+`5f4be6edb92f9ac488c6ae130c8d8983d7a90d3903fe9d3a51057b52a3f79c97`.
+Companion ELF SHA256:
+`19503a7fd07e3790aed93d768fcab61b03c017de29b5136bc67a3a4ee2ec8f7d`.
+Slave build log: `tmp/whdload-current-build.log`. Reproduction uses the
+documented `tools/test_whdload.py` modes, `--exe` pointing at that stripped
+binary, `--ticks 5000 --seconds 180`, and `--no-preload` for the final case.
+
+This renews the listed WHDLoad workflows for this build. Installer/archive
+refresh, unresolved saved-game entry validation and remaining fidelity work
+are still open; the existing distribution archive was not replaced or uploaded.
+
 ## 2026-09-29 — startup display allocation cleanup
 
 The explicit `DISPMEM` diagnostic tests all ten allocation sites in
