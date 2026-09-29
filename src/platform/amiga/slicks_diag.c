@@ -1351,7 +1351,7 @@ static int open_title_help(struct SlicksAmigaPlatform *platform,unsigned char *l
     if(!result && !help_fail_surface)
         g_slicks_title_help=slicks_amiga_help_surface_create(&archive,chunky,palette);
     help_fail_surface=0;
-    result=g_slicks_title_help?slicks_amiga_help_open(g_slicks_title_help,&archive,topic):-1;
+    result=g_slicks_title_help?slicks_amiga_title_help_open(g_slicks_title_help,&archive,topic):-1;
     slicks_resource_archive_close(&archive);
     if(result) {
         slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;

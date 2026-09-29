@@ -59,6 +59,10 @@ commands
   if $closed != 2 || !$m->help || !$m->help->renderer.active || $m->help_warning
     quit 1
   end
+  if $m->help->renderer.saved.pixels == &$m->saved[0]
+    printf "NESTED_HELP_ALIASES_PARENT_BACKING\n"
+    quit 1
+  end
   set $opened = $opened+1
   continue
 end

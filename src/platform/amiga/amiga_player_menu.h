@@ -250,6 +250,7 @@ int slicks_amiga_controllers_capture_prompt(struct SlicksAmigaPlayerMenu *,const
 int slicks_amiga_controllers_close(struct SlicksAmigaPlayerMenu *);
 int slicks_amiga_help_renderer_init(struct SlicksAmigaPlayerMenu *,struct SlicksHelpRenderer *);
 int slicks_amiga_help_open(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,const unsigned char *);
+int slicks_amiga_title_help_open(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,const unsigned char *);
 int slicks_amiga_help_close(struct SlicksAmigaPlayerMenu *);
 int slicks_amiga_message_open(struct SlicksAmigaPlayerMenu *,const unsigned char *,unsigned char);
 int slicks_amiga_message_close(struct SlicksAmigaPlayerMenu *);

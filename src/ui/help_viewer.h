@@ -6,7 +6,7 @@ struct SlicksHelpViewer {
     struct SlicksHelpRenderer renderer;
     struct SlicksHelpNavigation navigation;
     struct SlicksHelpIndexInfo info;
-    unsigned char source[16384],index[8192],chapter[16384],header_storage[20][200],saved[64000];
+    unsigned char source[16384],index[8192],chapter[16384],header_storage[20][200];
     const unsigned char *headers[20];
     unsigned source_size,chapter_length;
     unsigned long loaded_chapter;
@@ -37,7 +37,9 @@ static inline int slicks_help_viewer_refresh(struct SlicksHelpViewer *v)
     }
     return -1;
 }
-static inline int slicks_help_viewer_open(struct SlicksHelpViewer *v,const unsigned char *topic,short country)
+/* Backing storage belongs to the caller and must outlive the viewer. */
+static inline int slicks_help_viewer_open(struct SlicksHelpViewer *v,const unsigned char *topic,short country,
+    unsigned char *saved,unsigned capacity)
 {
     if(!v || !topic || v->source_size>sizeof v->source ||
        slicks_help_build_index(v->source,v->source_size,v->index,sizeof v->index,&v->info)) return -1;
@@ -48,7 +50,7 @@ static inline int slicks_help_viewer_open(struct SlicksHelpViewer *v,const unsig
         if(slicks_help_preprocess(v->header_storage[h],200)) return -1;
         v->headers[h]=v->header_storage[h];
     }
-    if(slicks_help_renderer_open(&v->renderer,v->saved,sizeof v->saved,country)) return -1;
+    if(slicks_help_renderer_open(&v->renderer,saved,capacity,country)) return -1;
     slicks_help_navigation_init(&v->navigation);
     v->chapter[0]=0;
     /* The original first draws only headers, establishing language/options

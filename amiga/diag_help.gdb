@@ -18,10 +18,10 @@ commands
     set $initial = $v->navigation.chapter
     if g_slicks_options_menu
       dump binary memory .run/help-menu-v1/help.chunky $v->renderer.ui.pixels $v->renderer.ui.pixels+64000
-      dump binary memory .run/help-menu-v1/before.chunky $v->saved $v->saved+64000
+      dump binary memory .run/help-menu-v1/before.chunky $v->renderer.saved.pixels $v->renderer.saved.pixels+64000
     else
       dump binary memory .run/help-players-v1/help.chunky $v->renderer.ui.pixels $v->renderer.ui.pixels+64000
-      dump binary memory .run/help-players-v1/before.chunky $v->saved $v->saved+64000
+      dump binary memory .run/help-players-v1/before.chunky $v->renderer.saved.pixels $v->renderer.saved.pixels+64000
       dump binary memory .run/help-players-v1/help.palette $v->renderer.ui.palette $v->renderer.ui.palette+768
     end
   end

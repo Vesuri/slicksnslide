@@ -86,6 +86,10 @@ commands
   if !g_slicks_title_help || !g_slicks_title_help->help || !g_slicks_title_help->help->renderer.active
     quit 1
   end
+  if g_slicks_title_help->help->renderer.saved.pixels != &g_slicks_title_help->saved[0]
+    printf "TITLE_HELP_BACKING_NOT_BORROWED\n"
+    quit 1
+  end
   set $opened = $opened+1
   continue
 end

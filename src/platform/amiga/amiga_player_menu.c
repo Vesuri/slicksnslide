@@ -498,7 +498,11 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
         FreeMem(m->track_lists,sizeof *m->track_lists);
     }
     if(m->message) FreeMem(m->message,sizeof *m->message);
-    if(m->help) FreeMem(m->help,sizeof *m->help);
+    if(m->help) {
+        unsigned char *saved=m->help->renderer.saved.pixels;
+        if(saved && saved!=m->saved) FreeMem(saved,64000);
+        FreeMem(m->help,sizeof *m->help);
+    }
     if(m->controllers_dialog) FreeMem(m->controllers_dialog,sizeof *m->controllers_dialog);
     if(m->race_menu) FreeMem(m->race_menu,sizeof *m->race_menu);
     if(m->colour_dialog) FreeMem(m->colour_dialog,sizeof *m->colour_dialog);
@@ -646,25 +650,39 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_intermission_surface_create(
     }
     return m;
 }
-int slicks_amiga_help_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,const unsigned char *topic)
+static int help_open_backing(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,
+    const unsigned char *topic,unsigned char borrow)
 {
     if(!m || m->help || !archive || !topic || prepare_keymap(m)) return -1;
     struct SlicksHelpViewer *v=g_slicks_diag_help_fail_allocation?0:AllocMem(sizeof *v,MEMF_ANY|MEMF_CLEAR);
     g_slicks_diag_help_fail_allocation=0;
     if(!v) return -1;
+    unsigned char *saved=borrow?m->saved:AllocMem(64000,MEMF_ANY);
+    if(!saved) { FreeMem(v,sizeof *v); return -1; }
     long size=slicks_resource_archive_load(archive,"HELP.TXT",v->source,sizeof v->source);
-    if(size<0 || slicks_amiga_help_renderer_init(m,&v->renderer)) { FreeMem(v,sizeof *v); return -1; }
+    if(size<0 || slicks_amiga_help_renderer_init(m,&v->renderer)) goto failed;
     v->source_size=(unsigned)size;
-    if(slicks_help_viewer_open(v,topic,0)) {
+    if(slicks_help_viewer_open(v,topic,0,saved,64000)) {
         if(v->renderer.active) slicks_help_renderer_close(&v->renderer);
-        FreeMem(v,sizeof *v); return -1;
+        goto failed;
     }
     m->help=v; return 0;
+failed:
+    if(!borrow) FreeMem(saved,64000);
+    FreeMem(v,sizeof *v); return -1;
 }
+int slicks_amiga_help_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,const unsigned char *topic)
+{ return help_open_backing(m,archive,topic,0); }
+/* Only a fresh title Help surface: its parent save-under has no owner.
+ * Nested Help (Players, Tracks, shop, pause, etc.) must retain separate storage. */
+int slicks_amiga_title_help_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,const unsigned char *topic)
+{ return help_open_backing(m,archive,topic,1); }
 int slicks_amiga_help_close(struct SlicksAmigaPlayerMenu *m)
 {
     if(!m || !m->help) return -1;
     int result=slicks_help_renderer_close(&m->help->renderer);
+    unsigned char *saved=m->help->renderer.saved.pixels;
+    if(saved && saved!=m->saved) FreeMem(saved,64000);
     FreeMem(m->help,sizeof *m->help); m->help=0; return result;
 }
 static short picker_measure(void *context,const unsigned char *font,const unsigned char *s)

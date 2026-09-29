@@ -83,6 +83,7 @@ static void verify_viewer_entry(uc_engine *u,struct Vga *v,struct HelpFontCpu *f
     unsigned char *palette,unsigned char *font,unsigned char *pixels)
 {
     static struct SlicksHelpViewer native;
+    static unsigned char saved[64000];
     struct ViewerResource resource={help,help_size,0}; uc_hook hook;
     check(uc_hook_add(u,&hook,UC_HOOK_CODE,viewer_chapter,&resource,0x32048,0x32048));
     const char *topics[]={"","options","players","tracks","reg","missing","FI_OPTIONS","main"};
@@ -94,7 +95,7 @@ static void verify_viewer_entry(uc_engine *u,struct Vga *v,struct HelpFontCpu *f
         r->measure=help_measure; r->text=help_text;
         memcpy(pixels,base,64000); memcpy(v->pixels,base,64000); font[6]=71;
         check(uc_mem_write(u,0x60000,font,font_cpu->size));
-        if(slicks_help_viewer_open(&native,(const unsigned char *)topics[topic],country?358:0)) abort();
+        if(slicks_help_viewer_open(&native,(const unsigned char *)topics[topic],country?358:0,saved,sizeof saved)) abort();
         /* Resource builder/reader have independent original-code gates.
          * Supply their results, but run original header-first drawing,
          * topic resolution, chapter/page refresh and arrow composition. */

@@ -15,7 +15,7 @@ commands
     if $initial_page < 1
       quit 1
     end
-    dump binary memory .run/help-pages-v1/before.chunky $v->saved $v->saved+64000
+    dump binary memory .run/help-pages-v1/before.chunky $v->renderer.saved.pixels $v->renderer.saved.pixels+64000
   end
   if $ready == 2 && ($v->navigation.chapter != $initial_chapter || $v->navigation.page != $initial_page-1)
     quit 1

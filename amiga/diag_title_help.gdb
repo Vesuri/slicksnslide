@@ -15,7 +15,7 @@ commands
     if $v->navigation.chapter != 353 || $v->navigation.page != 0
       quit 1
     end
-    dump binary memory .run/title-help-v1/before.chunky $v->saved $v->saved+64000
+    dump binary memory .run/title-help-v1/before.chunky $v->renderer.saved.pixels $v->renderer.saved.pixels+64000
     dump binary memory .run/title-help-v1/read.chunky $pixels $pixels+64000
     dump binary memory .run/title-help-v1/help.palette $v->renderer.ui.palette $v->renderer.ui.palette+768
   else

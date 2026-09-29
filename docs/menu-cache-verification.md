@@ -1164,3 +1164,34 @@ successful navigation/reopen test or proof of a regression's origin. Logs:
 `tmp/title-help-dirty-final.log`, `tmp/title-help-dirty-probe.log`. The muted
 runners closed their emulators. The fixture intentionally still fails at the
 unmet recovery gate; it has not been weakened to call this a complete pass.
+
+## Title Help backing ownership and recovery repair (2026-09-29)
+
+The viewer no longer embeds a second 64,000-byte save-under array. Its caller
+supplies the backing buffer. Only the fresh title Help surface lends its
+otherwise-unused `saved` array; it has no parent menu image to preserve.
+Players/Tracks/Options/shop/pause and other nested owners allocate separate
+backing, freed on open failure, ordinary close or owner destruction. This
+reduces title Help peak storage by 64,000 bytes and the viewer allocation from
+110,088 to 46,088 bytes; it does not discard resident resources or change
+rendered pixels. Nested Help still uses the same total payload, split into
+two allocations, and must never alias its parent's backing.
+
+`make verify-help-pixels verify-help-refresh` passes: 98 original Help page
+comparisons, 16 topic/language entry comparisons, 1,166 renderer comparisons,
+2,684 dirty-text coverage checks and 3,024 refresh/state cases. The native
+build passes. The previously failing title recovery sequence now completes
+all five opens, four warnings, two successful viewer entries and final system
+restoration 31 on 2 MiB/no Fast RAM (`tmp/help-backing-native.log`).
+The repeat with an explicit borrowed-pointer assertion also passes
+(`tmp/help-backing-title-final.log`). All debug runners were muted and closed
+their own emulators.
+
+Nested Players Help also passes missing-resource/allocation-failure recovery,
+successful retry/close and restoration 31 (`tmp/help-backing-nested.log`).
+Its fixture explicitly rejects a viewer backing pointer equal to the parent
+buffer. Both warning returns restore the prior chunky surface byte-for-byte;
+all seven shared publications independently decode to all 64,000 chunky
+pixels. The title's six fallback publications also still decode correctly.
+These close the identified title allocation failure, not the broader release
+memory/stack gates or every remaining Help owner.
