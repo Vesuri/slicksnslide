@@ -47,9 +47,10 @@ Implementation and completed verification evidence are separate in
   Remaining publication coverage: additional Tracks storage/format
   failures, other Help owners,
   shop refresh selectors/driver changes/failures, remaining saved-game recovery,
-  intermission/results error routes and registration malformed Help navigation.
+  intermission/results error routes.
   Registration archive-unavailable, null Help-surface and viewer-allocation
-  failures now have native publication/return coverage.
+  failures and malformed Help navigation now have native publication/return
+  coverage, with their bounded fault cases recorded in the evidence document.
   Title timing, shortcuts and demo fidelity remain separate open items below.
   Audit remaining full-width text callbacks, full-screen modal
   restores and direct row-converter bypasses separately from the shared

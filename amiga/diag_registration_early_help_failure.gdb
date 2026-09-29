@@ -16,11 +16,18 @@ end
 break registration_help_unavailable
 commands
   silent
-  if registration_help_test!=4 && registration_help_test!=5
+  if registration_help_test!=4 && registration_help_test!=5 && registration_help_test!=6
     quit 1
   end
   set $owned=1
-  dump binary memory .run/registration-early/before.chunky $pixels $pixels+64000
+  continue
+end
+break slicks_diag_registration_screen_ready
+commands
+  silent
+  if g_slicks_registration_screen==2
+    dump binary memory .run/registration-early/before.chunky $pixels $pixels+64000
+  end
   continue
 end
 break *slicks_amiga_platform_end

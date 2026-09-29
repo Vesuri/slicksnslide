@@ -3210,6 +3210,11 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     if(!m) goto unavailable;
     if(registration_help_test==3) g_slicks_diag_help_fail_allocation=1;
     if(open_help(p,m,slicks_registration_help_topic)) goto done;
+    if(registration_help_test==6) {
+        if(!m->help || !m->help->chapter_length) goto done;
+        /* Exercise the real parser failure on the next navigation redraw. */
+        m->help->chapter[0]=0;
+    }
     if(registration_help_test) {
         static const unsigned char keys[]={0x4d,0xcd,0x4c,0xcc,0x45,0xc5};
         championship_test_keys(p,keys,sizeof keys);
@@ -3222,7 +3227,11 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
             if(m->help_warning) { result=0;goto done; }
             struct SlicksAmigaHelpKey key=slicks_amiga_help_key((unsigned char)raw,character);
             if(!(key.ascii || key.scan)) continue;
-            if(slicks_help_viewer_key(m->help,key.ascii,key.scan)) goto done;
+            if(slicks_help_viewer_key(m->help,key.ascii,key.scan)) {
+                if(slicks_amiga_help_close(m)) goto done;
+                present_menu_surface(p,m);
+                goto unavailable;
+            }
             if(m->help->navigation.done) { result=0;goto done; }
             present_menu_surface(p,m);
         }
@@ -3754,10 +3763,10 @@ int main(void)
        argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
         display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
     }
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
-        else if(argc==9) registration_help_test=argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
+        else if(argc==9) registration_help_test=argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic state, never a normal-game override.

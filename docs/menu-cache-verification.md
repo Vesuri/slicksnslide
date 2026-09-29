@@ -1380,6 +1380,33 @@ These fixtures simulate the unavailable cache/null surface boundaries; they
 do not exhaust every partial allocation inside surface creation. Malformed
 Help navigation remains a separate open route.
 
+## Registration Help navigation error recovery (2026-09-29)
+
+A Help parser/rendering error during registration navigation previously
+returned an error after closing the viewer, without publishing its restored
+background, and aborted the exit presentation. The owner now closes the
+viewer, publishes its accumulated restoration bounds, and enters the
+allocation-free warning path before continuing normal exit presentation.
+
+`REGCHECKJ` first opens the real registration Help topic, corrupts one byte
+in the viewer's private chapter buffer, then sends the ordinary Down event.
+The actual parser rejects the redraw; its return value is not patched.
+The native failure/return fixture now captures the reference background at
+the registration-screen checkpoint, before Help opens, rather than at warning
+entry. All three final surfaces (warning and both restored bitmaps) match
+all 64,000 chunky pixels; the final background matches that original reference
+byte-for-byte. The warning retains the display and avoids full-row conversion.
+Normal exit reaches restoration mask 31 on the stripped binary with a
+confirmed 4 KiB stack, stock-speed PAL 68020 and 2 MiB Chip/no Fast.
+
+Evidence: `tmp/standalone-release-dc64f6ji`; build:
+`tmp/registration-malformed-build.log`. This tests the common error-return
+route using one malformed chapter, not exhaustive malformed-document fuzzing.
+The test alters only the private viewer copy, never the archive or cache.
+Normal registration Help also passes on this build
+(`tmp/standalone-release-gqbvgpxh`). Both runs were muted and their emulators
+closed.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from
