@@ -848,6 +848,37 @@ entries and 1,040 VBI ticks after the last navigation input; the keyboard run
 recorded zero automatic entries. All three host suites passed. Both muted
 emulators exited and were closed.
 
+## Idle timing across Options and nested Help (2026-09-29)
+
+`DEMO MNU` (command-line spelling `DEMOMNU`, debug selector
+`SLICKS_DEMO_LIFECYCLE_TEST=3`) navigates from the title into Options and its
+F1 Help using ordinary queued keys. It leaves Help open for 1,100 PAL VBI
+ticks, closes it, leaves Options open for another 1,100 ticks, then returns
+to the title. It requires both owners to remain present without a demo during
+the waits. After title return it verifies the full new idle interval before
+disk loading, then exercises both demo data views and key return. A bounded
+watchdog rejects unexpected race entry or failure to reach a menu stage.
+
+Two complete repetitions pass: four long menu waits, two automatic entries,
+four track-data views, exact configuration/playlist restoration, displayed
+pixel comparisons and normal system cleanup. The last post-menu idle wait
+was 1,021 VBI ticks; the original-style quantized elapsed value was 21,000 ms.
+Logs: `tmp/demo-menu-idle-build.log`, `tmp/demo-menu-idle-native.log`.
+The muted emulator exited and was closed. These asynchronous Options/Help
+owners do not establish coverage of synchronous modal-call returns.
+
+### Loading presentation follow-up
+
+Direct instruction inspection at `1b488..1b4e9` confirms two calls to the
+original tint service `34654` before the caption: rectangle arguments
+`(118,95,218,115)` with RGB `(20,20,20)` and percentage 50, then
+`(110,90,210,110)` with RGB `(35,35,60)` and percentage 75. At
+`1b4ec..1b519` the caller chooses the nearest `(60,60,40)` palette entry and
+sets font DS:0680's colour. The signed-flag caption selection follows at
+`1b540..1b58f`, centered at `(160,97)`. Thus the open loading presentation
+work includes both background remaps and their lifetime, not only the text.
+This inspection is not native implementation or a pixel-verification claim.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

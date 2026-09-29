@@ -64,9 +64,10 @@ Implementation and completed verification evidence are separate in
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:
-  implement the original loading caption and its font/colour lifetime.
-  Extend idle-timer coverage to long nested-menu visits and synchronous modal
-  returns; ordinary navigation reset and repeated automatic entry are covered.
+  implement the original loading caption, both background tint rectangles and
+  their font/colour/display lifetime.
+  Extend idle-timer coverage to synchronous modal returns; long Options/Help
+  visits, ordinary navigation reset and repeated automatic entry are covered.
   Verify natural completion, failed preparation and program-exit/save-failure
   restoration, and compare the complete return presentation against the
   original saved-image/title sequence. Keep finish-event rewards distinct from

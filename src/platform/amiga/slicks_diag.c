@@ -97,6 +97,7 @@ static unsigned char demo_render_only;
 static unsigned char demo_lifecycle_test,demo_test_stage,demo_test_round;
 volatile unsigned char g_slicks_demo_test_error,g_slicks_demo_test_views;
 volatile unsigned char g_slicks_demo_idle_entries;
+volatile unsigned char g_slicks_demo_menu_waits;
 static unsigned long demo_idle_input_at;
 volatile unsigned long g_slicks_demo_idle_wait_frames;
 __attribute__((noinline)) void slicks_diag_demo_test_done(void) { __asm__ volatile("" ::: "memory"); }
@@ -3647,6 +3648,10 @@ int main(void)
        argv[4]=='I' && argv[5]=='D' && argv[6]=='L') {
         demo_lifecycle_test=2;argc=0;argv="";
     }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='M' && argv[5]=='N' && argv[6]=='U') {
+        demo_lifecycle_test=3;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -4342,6 +4347,11 @@ int main(void)
             static struct SlicksConfiguration before;
             static short playlist_before[256];static unsigned short count_before;
             static unsigned long idle_test_started;
+            static unsigned long menu_wait_started;
+            if(demo_test_stage>=8 && demo_test_stage<=12 &&
+                (g_slicks_diag_ingame || platform.vblank_count-idle_test_started>10000)) {
+                g_slicks_demo_test_error=9;slicks_diag_demo_test_done();goto cleanup;
+            }
             if(!demo_test_stage && !g_slicks_diag_ingame) {
                 before=configuration;count_before=g_slicks_track_playlist.count;
                 for(unsigned i=0;i<256;++i) playlist_before[i]=track_selection[i];
@@ -4354,6 +4364,33 @@ int main(void)
                     platform.key_head=0;demo_test_stage=6;
                     idle_test_started=platform.vblank_count;
                 }
+                if(demo_lifecycle_test==3) {
+                    static const unsigned char menu_keys[]={0x4d,0x4d,0x4d,0x44};
+                    for(unsigned i=0;i<sizeof menu_keys;++i) platform.keys[i]=menu_keys[i];
+                    platform.key_head=sizeof menu_keys;demo_test_stage=8;
+                    idle_test_started=platform.vblank_count;
+                }
+            } else if(demo_test_stage==8 && g_slicks_options_menu) {
+                platform.key_tail=0;platform.keys[0]=0x50;platform.key_head=1;
+                demo_test_stage=9;
+            } else if(demo_test_stage==9 && g_slicks_options_menu && g_slicks_options_menu->help) {
+                menu_wait_started=platform.vblank_count;demo_test_stage=10;
+            } else if(demo_test_stage==10 && platform.vblank_count-menu_wait_started>=1100) {
+                if(!g_slicks_options_menu || !g_slicks_options_menu->help || title_demo.active) {
+                    g_slicks_demo_test_error=10;slicks_diag_demo_test_done();goto cleanup;
+                }
+                ++g_slicks_demo_menu_waits;
+                platform.key_tail=0;platform.keys[0]=0x45;platform.key_head=1;
+                menu_wait_started=platform.vblank_count;demo_test_stage=11;
+            } else if(demo_test_stage==11 && platform.vblank_count-menu_wait_started>=1100) {
+                if(!g_slicks_options_menu || g_slicks_options_menu->help || title_demo.active) {
+                    g_slicks_demo_test_error=11;slicks_diag_demo_test_done();goto cleanup;
+                }
+                ++g_slicks_demo_menu_waits;
+                platform.key_tail=0;platform.keys[0]=0x45;platform.key_head=1;
+                demo_test_stage=12;
+            } else if(demo_test_stage==12 && !g_slicks_options_menu) {
+                demo_idle_input_at=platform.vblank_count;demo_test_stage=7;
             } else if(demo_test_stage==6 &&
                 platform.vblank_count-idle_test_started>=500) {
                 /* Real ten-second wait, then ordinary navigation must restart
@@ -4596,7 +4633,7 @@ int main(void)
             if(idle_demo) {
                 /* Original replaces even a simultaneous scan when overdue. */
                 title_scan=0x58;code=0x100;
-                if(demo_lifecycle_test==2) {
+                if(demo_lifecycle_test>=2) {
                     ++g_slicks_demo_idle_entries;
                     g_slicks_demo_idle_wait_frames=platform.vblank_count-demo_idle_input_at;
                     if(g_slicks_demo_idle_wait_frames<1000 || title_now-title_idle_started!=21000)
