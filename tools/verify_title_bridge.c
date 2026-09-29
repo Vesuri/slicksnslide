@@ -118,6 +118,25 @@ int main(int argc,char **argv)
            (reg(uc,UC_M68K_REG_D5)&65535)!=colour || (reg(uc,UC_M68K_REG_D6)&65535)!=256) return 1;
     }
     puts("Arcade title font bridge: 2048 font/flags/shadow argument cases pass");
+    put32(uc,0x90004,0x70000);
+    run(uc,be32(code+44),be32(code+48));
+    if(reg(uc,UC_M68K_REG_A0)!=0x70000 ||
+       reg(uc,UC_M68K_REG_A1)!=be32(code+52) ||
+       reg(uc,UC_M68K_REG_A2)!=be32(code+56) ||
+       reg(uc,UC_M68K_REG_A3)!=be32(code+60)) {
+        fputs("Title owner state-only bridge mismatch\n",stderr);return 1;
+    }
+    const int saved[]={UC_M68K_REG_D2,UC_M68K_REG_D3,UC_M68K_REG_D4,
+        UC_M68K_REG_D5,UC_M68K_REG_D6,UC_M68K_REG_D7,UC_M68K_REG_A2,
+        UC_M68K_REG_A3,UC_M68K_REG_A4,UC_M68K_REG_A5,UC_M68K_REG_A6};
+    for(unsigned i=0;i<sizeof saved/sizeof *saved;++i){
+        unsigned value=0x12340000+i;check(uc_reg_write(uc,saved[i],&value));
+    }
+    run(uc,be32(code+44),0x80000);
+    for(unsigned i=0;i<sizeof saved/sizeof *saved;++i)
+        if(reg(uc,saved[i])!=0x12340000+i)return 1;
+    if(reg(uc,UC_M68K_REG_A7)!=0x90004)return 1;
+    puts("Title owner state-only bridge: palette/state arguments and GCC register/stack preservation pass");
     uc_close(uc);
     puts("Title GCC bridge: 65536 dispatch and 512 text/selection argument cases pass");
     return 0;

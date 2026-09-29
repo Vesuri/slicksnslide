@@ -638,6 +638,36 @@ All target checks use
 stock PAL A1200, 2 MiB Chip/no Fast and a confirmed 4 KiB stack, with muted audio
 and owned emulators closed afterward.
 
+### Retain unchanged registered-owner glyphs (2026-09-30)
+
+The ordinary pulse now calls a state-only GCC bridge to the unchanged original
+`sui_title_tail`, then draws the owner name only if its palette index changed.
+Previously the dirty publisher correctly skipped unchanged owner pixels, but
+the logical-buffer font renderer still rewrote them on every pulse. Complete
+title/transition painting and the Arcade path remain unconditional; phase and
+palette state advance even when no name is registered.
+
+The new bridge independently verifies the palette/state arguments, all eleven
+GCC callee-saved registers and return-stack balance. Registered Finnish capture
+`tmp/standalone-release-ai47dazc` passes 72 pulse steps, 26 complete display
+checks, zero pixel errors, one initial full publication and restoration 31.
+All 65 consecutive captured compositions match every original DOS pixel,
+including the owner text (`verify_title_return_pixels RUN 65`).
+
+Fail-fast timing `tmp/standalone-release-whx73u44` measures 72 refreshes across
+64 intervals: 56 one-refresh and eight two-refresh intervals, mean 22.500 ms /
+44.44 title updates/s. The same registered Finnish fixture on parent aa49025
+took 87 refreshes, 27.188 ms. This is less redundant menu painting, not a
+gameplay-performance change or proof that every registered pulse fits 20 ms.
+
+Registered Finnish transition regression `tmp/standalone-release-4u2w8jxj`
+passes all five normal modes, three role states and both track-count states,
+with 26 display comparisons, zero errors and restoration 31. Final uninterrupted
+timing `tmp/standalone-release-j0j7hwro` reproduces exactly 72 refreshes over
+64 intervals (56 one-refresh/eight two-refresh). These muted native runs use
+stock PAL A1200, 2 MiB Chip/no Fast and the confirmed 4 KiB stack. All owned
+emulators were closed; no private registration data was added to the repository.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

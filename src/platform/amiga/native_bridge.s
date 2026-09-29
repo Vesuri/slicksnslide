@@ -4,6 +4,7 @@
 	xdef	slicks_draw_title_text
 	xdef slicks_draw_title_registration
 	xdef slicks_tick_title_registration
+	xdef slicks_advance_title_registration
 	xdef slicks_draw_title_status_text
 	xdef slicks_tick_title_colours
 	xdef slicks_title_font_text
@@ -190,6 +191,18 @@ slicks_draw_title_menu_selection:
 ; registered-name anchor (310,190), small font, flags=2, no forced shadow.
 ; C ABI: slicks_tick_title_registration(planes, text, palette).
 ; Advance the original colour pulse only while the title is visible.
+; C ABI: slicks_advance_title_registration(palette), state-only for a retained
+; normal title. Full/Arcade callers keep their unconditional painter below.
+slicks_advance_title_registration:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 48(sp),a0
+	lea slicks_title_render_state,a1
+	lea slicks_title_fallback_color,a2
+	lea slicks_title_phase,a3
+	jsr sui_title_tail
+	movem.l (sp)+,d2-d7/a2-a6
+	rts
+
 slicks_tick_title_registration:
 	movem.l d2-d7/a2-a6,-(sp)
 	movea.l 56(sp),a0

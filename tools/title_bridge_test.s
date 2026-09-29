@@ -5,6 +5,8 @@
 	dc.l slicks_draw_title_status_text,sui_font_string_planar
 	dc.l sui_draw_text
 	dc.l slicks_title_font_text
+	dc.l slicks_advance_title_registration,sui_title_tail
+	dc.l slicks_title_render_state,slicks_title_fallback_color,slicks_title_phase
 	include "src/platform/amiga/native_bridge.s"
 	include "src/ui/sui_title_dispatch.s"
 	include "src/ui/sui_text.s"

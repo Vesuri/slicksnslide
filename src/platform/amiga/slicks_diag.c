@@ -59,6 +59,7 @@
 #include "../../ui/menu_bitmap.h"
 extern void slicks_draw_title_registration(unsigned char *,const unsigned char *);
 extern void slicks_tick_title_registration(unsigned char *,const unsigned char *,const unsigned char *);
+extern void slicks_advance_title_registration(const unsigned char *);
 extern void slicks_tick_title_colours(unsigned char *,const unsigned char *);
 extern unsigned short slicks_title_selected_color,slicks_title_third_color;
 extern unsigned char slicks_title_render_state[];
@@ -1032,7 +1033,7 @@ static void pulse_normal_title(struct SlicksAmigaPlatform *platform,
     unsigned short previous=slicks_title_selected_color;
     unsigned char owner=slicks_title_render_state[6];
     slicks_tick_title_colours(logical,palette);
-    slicks_tick_title_registration(logical,registration.name,palette);
+    slicks_advance_title_registration(palette);
     if(previous!=slicks_title_selected_color && selection<7 && selection!=4) {
         const unsigned char *label=slicks_title_labels[selection];
         short y=(short)(85+13*(selection>4?selection-1:selection));
@@ -1052,6 +1053,7 @@ static void pulse_normal_title(struct SlicksAmigaPlatform *platform,
         slicks_title_dirty_add(&title_dirty,bounds.left,bounds.top,bounds.right,bounds.bottom);
     }
     if(registration.name[0] && owner!=slicks_title_render_state[6]) {
+        slicks_draw_title_registration(logical,registration.name);
         struct SlicksChunkyUi ui={0,palette,arcade_dirty,0};
         slicks_font_text_dirty(&ui,slicks_title_small_font,registration.name,
             310,190,1,2,slicks_menu_measure(slicks_title_small_font,registration.name),0);

@@ -98,7 +98,7 @@ Implementation and completed verification evidence are separate in
   restoration/redrawing/publication and now passes
   65 consecutive original-wrapper pixel comparisons in unregistered English
   and registered Finnish, plus native display and normal-mode transition checks.
-  Registered Finnish timing still averages 27.188 ms, with 23 of 64 intervals
+  Registered Finnish timing still averages 22.500 ms, with eight of 64 intervals
   taking two refreshes. Extend pulse coverage to other rows and translated-label
   status overlaps and address remaining title-pulse cost separately.
   This is menu fidelity/publication work,
