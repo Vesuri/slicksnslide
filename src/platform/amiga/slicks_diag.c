@@ -3167,13 +3167,47 @@ static short registration_wait(struct SlicksAmigaPlatform *p)
     }
     return -1;
 }
+void __attribute__((noinline)) slicks_diag_registration_warning_ready(void) { __asm__ volatile("" ::: "memory"); }
+static int registration_help_unavailable(struct SlicksAmigaPlatform *p,unsigned char *chunky,
+    const unsigned char *palette)
+{
+    struct SlicksMenuRect bounds;
+    if(slicks_amiga_emergency_warning_open(chunky,palette,slicks_title_small_font,
+        (const unsigned char *)"HELP UNAVAILABLE - PRESS A KEY")) return -1;
+    int result=-1;
+    if(slicks_amiga_emergency_warning_bounds(&bounds)) goto done;
+    bounds.left=(short)(bounds.left&~15);
+    bounds.right=(short)((bounds.right+15)&~15);
+    /* Both views already contain the registration image; publish only the
+     * warning in view 0, then restore that same rectangle on dismissal. */
+    slicks_amiga_platform_wait_display_blank(p);
+    slicks_chunky_rect_to_amiga(chunky,p->views[0].bitmap,bounds.left,bounds.top,bounds.right,bounds.bottom,0);
+    if(slicks_amiga_platform_set_view(p,0,palette) || show_menu(p)) goto done;
+    slicks_diag_registration_warning_ready();
+    if(registration_help_test) {
+        static const unsigned char keys[]={0x44,0xc4};
+        championship_test_keys(p,keys,sizeof keys);
+    }
+    while(!g_slicks_diag_force_exit) {
+        unsigned short key;slicks_amiga_platform_wait_vblank(p);
+        while(slicks_amiga_platform_poll_key(p,&key))
+            if(!(key&128)) { result=0;goto done; }
+    }
+done:
+    if(slicks_amiga_emergency_warning_close()) return -1;
+    if(!result) {
+        slicks_amiga_platform_wait_display_blank(p);
+        slicks_chunky_rect_to_amiga(chunky,p->views[0].bitmap,bounds.left,bounds.top,bounds.right,bounds.bottom,0);
+    }
+    return result;
+}
 static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *chunky,
     const unsigned char *palette)
 {
     struct SlicksResourceArchive a={0};struct SlicksAmigaPlayerMenu *m=0;int result=-1;
-    if(slicks_resource_archive_cached(&a,menu_cache)) goto done;
-    m=slicks_amiga_help_surface_create(&a,chunky,palette);
-    if(!m) goto done;
+    if(slicks_resource_archive_cached(&a,registration_help_test==4?0:menu_cache)) goto unavailable;
+    if(registration_help_test!=5) m=slicks_amiga_help_surface_create(&a,chunky,palette);
+    if(!m) goto unavailable;
     if(registration_help_test==3) g_slicks_diag_help_fail_allocation=1;
     if(open_help(p,m,slicks_registration_help_topic)) goto done;
     if(registration_help_test) {
@@ -3193,6 +3227,9 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
             present_menu_surface(p,m);
         }
     }
+    goto done;
+unavailable:
+    result=registration_help_unavailable(p,chunky,palette);
 done:
     if(m && m->help && slicks_amiga_help_close(m)) result=-1;
     if(m && m->help_warning && slicks_amiga_help_warning_close(m)) result=-1;
@@ -3717,10 +3754,10 @@ int main(void)
        argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
         display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
     }
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
-        else if(argc==9) registration_help_test=argv[8]=='G'?3:argv[8]=='Y'?1:2;
+        else if(argc==9) registration_help_test=argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic state, never a normal-game override.

@@ -179,6 +179,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
 int slicks_amiga_warning_open(struct SlicksAmigaPlayerMenu *,const unsigned char *message);
 int slicks_amiga_emergency_warning_open(unsigned char *,const unsigned char *,unsigned char *,const unsigned char *);
 int slicks_amiga_emergency_warning_close(void);
+int slicks_amiga_emergency_warning_bounds(struct SlicksMenuRect *);
 extern unsigned char g_slicks_diag_controllers_fault;
 int slicks_amiga_help_warning_open(struct SlicksAmigaPlayerMenu *);
 int slicks_amiga_help_warning_close(struct SlicksAmigaPlayerMenu *);

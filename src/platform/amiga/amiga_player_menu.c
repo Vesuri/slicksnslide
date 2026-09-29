@@ -724,6 +724,14 @@ int slicks_amiga_emergency_warning_close(void)
     if(help_warning_owner || !help_warning.renderer.active) return -1;
     return slicks_message_dialog_close(&help_warning.renderer);
 }
+int slicks_amiga_emergency_warning_bounds(struct SlicksMenuRect *bounds)
+{
+    const struct SlicksMessageDialog *d=&help_warning.renderer;
+    if(!bounds || help_warning_owner || !d->active) return -1;
+    *bounds=(struct SlicksMenuRect){d->left,d->top,
+        (short)(d->left+d->original.width),(short)(d->top+d->original.height)};
+    return 0;
+}
 int slicks_amiga_warning_open(struct SlicksAmigaPlayerMenu *m,const unsigned char *message)
 {
     if(!m || !message || help_warning_owner || help_warning.renderer.active || m->help || m->help_warning) return -1;

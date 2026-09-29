@@ -1343,6 +1343,43 @@ This covers a real Lock failure and its cached menu route, not a partial
 `ExNext` failure, repairing an externally damaged directory while running,
 or the separately unresolved Load Game entry route.
 
+## Registration Help failures before viewer creation (2026-09-29)
+
+Previously an unavailable cached archive or failure to create the Help surface
+returned an error immediately from registration Help, aborting the remaining
+exit presentation. These native platform failures now show the existing
+allocation-free emergency warning with the resident small font. The warning
+retains display ownership, restores its saved rectangle on acknowledgement,
+and allows normal exit presentation to continue. This is native error recovery,
+not a claim that this error text occurs in the DOS original.
+
+Both registration bitmaps already contain the exit image. Only the warning
+rectangle in view 0 is converted on opening and closing, with X bounds expanded
+to the converter's 16-pixel block boundary. The emergency dialog exposes its
+saved rectangle through a checked read-only bounds accessor; it does not add
+another screen buffer or allocate memory to report the failure.
+
+Explicit keyless fixtures `REGCHECKH` (unavailable cache) and `REGCHECKI`
+(null surface result) exercise the production recovery. They pass on the
+current stripped executable, stock-speed PAL 68020, 2 MiB Chip/no Fast and
+confirmed 4 KiB stack. Each requires one warning/return, no display teardown
+or full-row converter while the warning owns the display, continuation to
+the optional-image attempt, and system restoration 31. All three captured
+surfaces per case (visible warning and both restored bitmaps) match all 64,000
+chunky pixels. The pre-warning and restored images compare byte-for-byte.
+
+Passing runs: `tmp/standalone-release-blqk6ose` (archive) and
+`tmp/standalone-release-de_ctecy` (surface). Normal registration Help also
+passes on this build: `tmp/standalone-release-zk_92it3`.
+Build: `tmp/registration-early-final-build.log`. All runs were muted and
+their emulators closed. An earlier unaligned publication passed lifecycle
+checks but failed the independent pixel comparison; it was corrected before
+acceptance and is not passing display evidence.
+
+These fixtures simulate the unavailable cache/null surface boundaries; they
+do not exhaust every partial allocation inside surface creation. Malformed
+Help navigation remains a separate open route.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from
