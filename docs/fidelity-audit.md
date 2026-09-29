@@ -49,6 +49,23 @@ subsequently applies the ordinary Arcade override. Do not replace that caller
 chain with a guessed all-computer native setup. No emulator or release build
 was needed for this isolated comparison, and no live-demo pass is claimed.
 
+The race-loop key boundary `23f65..23ff8` now has 65,536 independent
+original-instruction comparisons, covering every demo-flag byte and keyboard
+scan byte. Negative DS:0459 exits on scans below 128 except F11/F12 (57/58).
+Positive flag values take a different delay/dispatch path; zero uses ordinary
+dispatch. Release/idle scans do not exit. `slicks_title_demo_exit_key` records
+that exact classification, but is not yet wired into the native race owner.
+The oracle stops at the diagnostic, positive-mode delay, ordinary dispatch
+and exit boundaries; it does not substitute the conditional instructions.
+
+F11/F12 are not file captures: their branch loops across 320x190 pixels,
+reading original `1b089` and writing through `3b55:000e`. F11 reads the
+material byte shifted right by three; F12 combines two-bit packed data with
+the material byte's low three bits. Near-call disassembly at `23fad` must
+honour 16-bit IP wrap: the target is `1b089`, not linear `2b089`. Their native
+display route remains unimplemented/unverified. The earlier conversational
+description as a screen capture was incorrect.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

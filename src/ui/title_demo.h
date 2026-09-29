@@ -12,6 +12,13 @@ struct SlicksTitleDemo {
     unsigned char active;
 };
 
+/* Original 23f65..23ff8. A negative flag denotes the title's idle demo;
+ * positive values belong to a separate mode. F11/F12 take a pixel-view
+ * diagnostic branch, not the demo exit. Keyboard release/idle scans remain
+ * >=128, as returned by the original keyboard latch. */
+static inline int slicks_title_demo_exit_key(signed char flag,short scan)
+{ return flag<0 && scan<128 && scan!=0x57 && scan!=0x58; }
+
 /* Original 2a3db..2a4c9. The selected profiles here are the pre-selection
  * inputs: the subsequent original Arcade override is a separate stage. */
 static inline int slicks_title_demo_begin(struct SlicksTitleDemo *demo,

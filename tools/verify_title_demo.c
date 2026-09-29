@@ -3,6 +3,15 @@
 #undef main
 #include "../src/ui/title_demo.h"
 
+static void key_boundary(uc_engine *u,uint64_t address,uint32_t size,void *opaque)
+{
+    (void)size;(void)opaque;
+    /* Stop at pixel diagnostic, other-mode delay, normal dispatch or exit.
+     * No callback is executed/replaced; these are classification boundaries. */
+    if(address==0x23f87 || address==0x23ff1 || address==0x23ff9 || address==0x240fc)
+        check(uc_emu_stop(u));
+}
+
 static void compare(uc_engine *u,const struct SlicksConfiguration *config,
     const struct SlicksTrackPlaylist *playlist,unsigned long seed)
 {
@@ -79,6 +88,18 @@ int main(void)
     slicks_title_demo_restore(&demo,&config,&playlist,&refresh);
     if(memcmp(&config,&before,sizeof config) || tracks[0]!=123 || tracks[1]!=456 ||
         selection!=6 || seed!=1234 || playlist.count || refresh!=71 || demo.active)abort();
-    check(uc_close(u));printf("Original demo setup/restore: %u complete option/profile/playlist/RNG pairs pass; native guards atomic\n",cases);
+    uc_hook hook;check(uc_hook_add(u,&hook,UC_HOOK_CODE,key_boundary,0,0x23f65,0x240fc));
+    unsigned keys=0;
+    for(unsigned flag=0;flag<256;++flag)for(unsigned scan=0;scan<256;++scan) {
+        regs(u,0);uint16_t cs=0x1987;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+        word(u,0x3cbf0+0x459,flag);word(u,0x8ef8c,scan);
+        unsigned char result=0;check(uc_mem_write(u,0x8efc9,&result,1));
+        check(uc_emu_start(u,0x23f65,0x24100,0,100));
+        check(uc_mem_read(u,0x8efc9,&result,1));
+        if(result!=slicks_title_demo_exit_key((signed char)flag,(short)scan))abort();
+        ++keys;
+    }
+    check(uc_close(u));printf("Original demo setup/restore: %u complete option/profile/playlist/RNG pairs pass; native guards atomic; %u demo-key cases pass\n",cases,keys);
     return 0;
 }

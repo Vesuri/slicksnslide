@@ -52,6 +52,9 @@ Implementation and completed verification evidence are separate in
   original-instruction comparisons, but is not connected to the live owner.
   Audit the signed demo flag's race input, AI, results and persistence consumers
   before enabling it; the setup profile IDs precede Arcade selection override.
+  The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
+  into production. Preserve F11/F12's exceptional track-data views; they are
+  not exit keys or file captures. Their native display route remains missing.
   do not merely map them to ordinary GO. The added mouse activation path
   has been removed following the original keyboard-reader audit.
   F9 now reaches normal race preparation independently of the highlighted row.
