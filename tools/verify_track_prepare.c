@@ -132,6 +132,8 @@ int main(void)
     check(uc_mem_read(u,0x3cbf0+0x129d,footer,sizeof footer));
     const unsigned percentages[]={66,0,50,100,127,128,255};
     const short totals[]={0,1,22,23,195,256}; unsigned cases=0,redraw_cases=0;
+    for(unsigned language=0;language<=8;++language){
+    const unsigned char *heading=menu_language_title(u,language,title);
     for(unsigned p=0;p<sizeof percentages/sizeof percentages[0];++p)
     for(unsigned t=0;t<sizeof totals/sizeof totals[0];++t) {
         memcpy(pixels,base,sizeof pixels); memcpy(v.pixels,base,sizeof base);
@@ -148,7 +150,7 @@ int main(void)
         renderer.text=renderer_text; renderer.context=&n; renderer.saved=saved;
         struct SlicksTrackRenderer track_renderer;
         if(slicks_track_renderer_init(&track_renderer,&renderer,(unsigned char)percentages[p],pixel_track_name,0) ||
-           slicks_track_renderer_prepare(&track_renderer,title,footer,totals[t],(unsigned char)percentages[p]) ||
+           slicks_track_renderer_prepare(&track_renderer,heading,footer,totals[t],(unsigned char)percentages[p]) ||
            memcmp(saved,pixels,sizeof saved)) abort();
         uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xeb00,bp=0xf000,ip;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
@@ -167,7 +169,8 @@ int main(void)
             if(memcmp(source,fonts[f],sizes[f])) { fprintf(stderr,"Font %u mismatch\n",f); return 1; }
         }
         ++cases;
-        if(!p) redraw_cases+=verify_track_redraw(u,&v,&renderer,totals[t],runtime+0x3cbf0-0x10100);
+        if(!p && !language) redraw_cases+=verify_track_redraw(u,&v,&renderer,totals[t],runtime+0x3cbf0-0x10100);
+    }
     }
     check(uc_close(u)); check(uc_close(n.cpu));
     printf("Original Tracks preparation: %u full-screen/font comparisons, actual assets and DOS/68020 text, scrollbar boundary and signed tint percentages pass\n",cases);

@@ -149,6 +149,11 @@ Implementation and completed verification evidence are separate in
   Arcade painter pixels/font state now match original lookup and drawing code
   for all eight language tables plus missing-table fallback; other menu callers
   and target-side per-language selection coverage remain separate.
+  Tracks, Players and Options heading callers now resolve the original keys
+  through the resident table instead of painting the untranslated key; retain
+  remaining title-row and other label-caller audit scope. The ordinary title
+  painter still hardcodes six English labels where original `298fc` resolves
+  the constructed `menuN` key; connect that lookup and verify its pixel bounds.
   The zero-selector chooser is connected with original first-line labels,
   clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
   reaches the selected table and restores the system. Real input.device events,

@@ -1496,7 +1496,8 @@ static int open_track_menu(struct SlicksAmigaPlatform *platform,unsigned char *c
     struct SlicksResourceArchive archive={0};
     if(slicks_resource_archive_cached(&archive,menu_cache)) return -1;
     g_slicks_track_menu=slicks_amiga_track_menu_create(&archive,chunky,
-        slicks_original_track_title,slicks_original_track_footer,total,slicks_original_players_footer_percent,
+        slicks_language_lookup(title_language,title_language_used,slicks_original_track_title,slicks_original_track_title),
+        slicks_original_track_footer,total,slicks_original_players_footer_percent,
         &g_slicks_track_renderer,native_track_name,names);
     slicks_resource_archive_close(&archive);
     if(!g_slicks_track_menu) return -1;
@@ -1596,7 +1597,8 @@ static int open_options_menu(struct SlicksAmigaPlatform *platform,unsigned char 
     struct SlicksResourceArchive archive={0};
     if(slicks_resource_archive_cached(&archive,menu_cache)) return -1;
     g_slicks_options_menu=slicks_amiga_options_menu_create(&archive,chunky,palette,
-        slicks_original_options_title,&g_slicks_options_renderer);
+        slicks_language_lookup(title_language,title_language_used,slicks_original_options_title,slicks_original_options_title),
+        &g_slicks_options_renderer);
     slicks_resource_archive_close(&archive);
     if(!g_slicks_options_menu) return -1;
     g_slicks_options_state=(struct SlicksOptionsMenu){0,0,0,-1}; g_slicks_options_action=0;
@@ -1636,7 +1638,8 @@ static int open_player_menu(struct SlicksAmigaPlatform *platform,unsigned char *
         slicks_original_players_edit,slicks_original_players_delete,slicks_original_players_exit}};
     if(slicks_resource_archive_cached(&archive,menu_cache)) return -1;
     g_slicks_player_menu=slicks_amiga_player_menu_create(&archive,chunky,
-        slicks_original_players_title,slicks_original_players_footer,
+        slicks_language_lookup(title_language,title_language_used,slicks_original_players_title,slicks_original_players_title),
+        slicks_original_players_footer,
         slicks_original_players_footer_percent,&labels);
     slicks_resource_archive_close(&archive);
     if(!g_slicks_player_menu) return -1;

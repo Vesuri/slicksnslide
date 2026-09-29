@@ -718,6 +718,7 @@ verify-menu-restore: build/verify_menu_restore
 	build/verify_menu_restore
 
 .PHONY: verify-palette-remap
+build/verify_palette_remap: src/ui/language_table.h
 .PHONY: verify-track-prepare
 build/verify_track_prepare: tools/verify_track_prepare.c tools/verify_palette_remap.c src/ui/track_menu_prepare.h $(wildcard src/ui/*.h) tools/host_archive.h src/graphics/row_offsets.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@

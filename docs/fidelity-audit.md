@@ -214,6 +214,40 @@ No production rendering change was required. This closes that painter's
 translated-label comparison, not target-side selection of every language,
 other menu callers, font-alias lifetime or automatic startup language policy.
 
+### F15 translated menu headings (2026-09-29)
+
+Original callers `26f2e`, `284d7` and `28f08` resolve the `tracks`, `players`
+and `settings` keys through `36227`. The native Tracks, Players and Options
+owners instead passed those raw extracted keys to their painters. These
+three production calls now resolve the heading through the startup-resident
+language table, preserving the original key fallback. No resource reads,
+new allocations or display teardown are introduced by the lookup.
+
+The Players preparation comparison passes 36 full-screen cases (all eight
+tables and no-table fallback, four tint percentages), executing original
+lookup and painting against actual native 68020 font rendering.
+Tracks preparation also passes 378 full-screen/font-state comparisons across
+all eight tables plus fallback, six track-count boundaries and seven tint
+percentages; its existing 168 sequential redraw comparisons still pass.
+Options preparation passes all nine table/fallback cases, including the saved
+background and small-font state. Its 324 sequential renderer comparisons and
+the surrounding list/name/message/colour/controller regression suite pass.
+Commands: `make verify-palette-remap verify-track-prepare verify-list-pixels`.
+Native `OPTIONS` on an isolated saved-language-2 installation passes entry,
+editing, return, reopening and race handoff with the stripped executable,
+stock PAL 68020, 2 MiB/no Fast and default 4 KiB stack. The stronger
+`diag_options_language.gdb` gate also checks the real constructor heading
+pointer lies inside the resident language table on both entries. Its ten
+publications match every chunky pixel after C2P.
+
+Native evidence: `tmp/standalone-release-ha9uz8t8`; earlier publication-only
+run: `tmp/standalone-release-fs79fd0j`. Build:
+`tmp/menu-heading-language-build.log`. Both muted emulators were closed.
+An intermediate harness invocation lacked the sourced environment and stopped
+on missing `KICKSTART` before launching; it is not a test result.
+This does not establish all native per-language menu/input routes or close
+the remaining title-row localization audit.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title

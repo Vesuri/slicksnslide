@@ -12,12 +12,29 @@
 #include "../src/ui/menu_bitmap.h"
 #include "../src/ui/menu_icon.h"
 #include "host_archive.h"
+#include "../src/ui/language_table.h"
 static void check(uc_err e)
 { if(e) { fprintf(stderr,"%s\n",uc_strerror(e)); exit(1); } }
 static void word(uc_engine *u,unsigned at,unsigned value)
 { unsigned char bytes[2]={value,value>>8}; check(uc_mem_write(u,at,bytes,2)); }
 static unsigned getword(uc_engine *u,unsigned at)
 { unsigned char b[2]; check(uc_mem_read(u,at,b,2)); return b[0]|b[1]<<8; }
+/* The decoder has a separate original-instruction oracle. These painting
+ * checks run real DOS lookup code over its independently verified output. */
+static const unsigned char *menu_language_title(uc_engine *u,unsigned language,
+    const unsigned char *key)
+{
+    static unsigned char table[2000];unsigned used=0;
+    if(language){
+        unsigned char resource[2000];char name[10];
+        if(slicks_language_resource(name,language))abort();
+        long size=host_archive_load("ref/SLICKS.000",name,resource,sizeof resource);
+        if(size<=0 || slicks_language_table_load(resource,(unsigned)size,table,sizeof table,&used))abort();
+        check(uc_mem_write(u,0x58000,table,used));
+    }
+    word(u,0x3cbf0+0x1722,0);word(u,0x3cbf0+0x1724,language?0x5800:0);
+    return slicks_language_lookup(language?table:0,used,key,key);
+}
 struct Vga { unsigned char pixels[64000]; unsigned read_plane,write_plane,mask;
     unsigned allow_margin; unsigned char margin[16000]; };
 static void select_plane(uc_engine *u,uint64_t address,uint32_t size,void *context)
@@ -361,6 +378,8 @@ static void verify_prepare_pixels(uc_engine *u)
     unsigned char title[128],footer[128];
     check(uc_mem_read(u,0x3cbf0+0x1365,title,sizeof title)); check(uc_mem_read(u,0x3cbf0+0x136d,footer,sizeof footer));
     const unsigned percentages[]={66,0,50,100};
+    for(unsigned language=0;language<=8;++language){
+    const unsigned char *heading=menu_language_title(u,language,title);
     for(unsigned test=0;test<4;++test) {
         memcpy(native,base,sizeof native); memcpy(v.pixels,base,sizeof base);
         for(unsigned i=0;i<3;++i) {
@@ -375,7 +394,7 @@ static void verify_prepare_pixels(uc_engine *u)
         renderer.ui=(struct SlicksChunkyUi){native,palette,0,0}; renderer.saved=saved;
         for(unsigned i=0;i<3;++i) renderer.fonts[i]=n.fonts[i];
         renderer.text=renderer_text; renderer.context=&n;
-        if(slicks_player_renderer_prepare(&renderer,title,footer,(unsigned char)percentages[test]) ||
+        if(slicks_player_renderer_prepare(&renderer,heading,footer,(unsigned char)percentages[test]) ||
            memcmp(saved,native,sizeof saved)) abort();
         uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xebb0,bp=0xf000,ip;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
@@ -390,10 +409,11 @@ static void verify_prepare_pixels(uc_engine *u)
             for(unsigned i=0;i<64000;++i) if(native[i]!=v.pixels[i]) { fprintf(stderr,"pixel %u,%u native=%u DOS=%u\n",i%320,i/320,native[i],v.pixels[i]); break; }
             exit(1);
         }
-        if(!test) verify_dynamic(u,&v,&renderer);
+        if(!test && !language) verify_dynamic(u,&v,&renderer);
+    }
     }
     for(unsigned i=0;i<3;++i) check(uc_hook_del(u,hooks[i])); check(uc_close(n.cpu));
-    puts("Original player-menu preparation: 4 full-screen comparisons using actual players.bmp and real DOS/68020 text rasterizers pass");
+    puts("Original player-menu preparation: 36 full-screen comparisons across eight languages and fallback using actual players.bmp and real DOS/68020 text rasterizers pass");
 }
 int main(int argc,char **argv)
 {

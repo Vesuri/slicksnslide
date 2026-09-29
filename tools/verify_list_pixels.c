@@ -296,18 +296,20 @@ static void verify_options_pixels(const unsigned char *runtime,size_t runtime_si
     long small_size=loaded<0?-1:slicks_decode_font_resource(resource,(unsigned long)loaded,small_font,sizeof small_font);
     if(small_size<0) abort();
     surface.fonts[1]=small_font; n->fonts[1]=small_font; n->sizes[1]=(unsigned)small_size;
+    for(unsigned language=0;language<=8;++language){
     memcpy(pixels,base,64000); memcpy(v.pixels,base,64000);
     check(uc_mem_write(u,0x62000,small_font,(size_t)small_size));
     word(u,0x3cbf0+0x688,0); word(u,0x3cbf0+0x68a,0x6200);
-    word(u,0x3cbf0+0x1722,0); word(u,0x3cbf0+0x1724,0);
+    const unsigned char *heading=menu_language_title(u,language,runtime+0x3cbf0-0x10100+0x13ca);
     cs=0x266c; sp=0xeb00;
     check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_SP,&sp));
     name_run(u,0x28e7f,0x28f43);
-    if(slicks_options_renderer_prepare(&renderer,runtime+0x3cbf0-0x10100+0x13ca)) abort();
+    if(slicks_options_renderer_prepare(&renderer,heading)) abort();
     check(uc_mem_read(u,0x62000,resource,(size_t)small_size));
     if(memcmp(pixels,v.pixels,64000) || memcmp(saved,v.pixels,64000) ||
         memcmp(resource,small_font,(size_t)small_size)) {
         fputs("Options preparation pixel/font mismatch\n",stderr); exit(1);
+    }
     }
     n->fonts[1]=0; n->sizes[1]=0;
     check(uc_close(u)); options_font_cpu=0;
