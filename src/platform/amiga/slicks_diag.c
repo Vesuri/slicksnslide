@@ -846,6 +846,7 @@ static struct SlicksTitleDirty title_dirty;
 volatile unsigned long g_slicks_title_full_publications,g_slicks_title_partial_publications;
 volatile unsigned long g_slicks_title_last_pixels;
 static unsigned char title_dirty_test;
+unsigned char g_slicks_diag_title_pulse_row;
 volatile unsigned short g_slicks_title_timing_count;
 volatile unsigned long g_slicks_title_timing_vblanks[65];
 volatile unsigned char g_slicks_title_timing_counters[65];
@@ -3898,6 +3899,12 @@ int main(void)
        argv[4]=='V' && argv[5]=='I' && argv[6]=='W') {
         demo_lifecycle_test=12;argc=0;argv="";
     }
+    /* Optional ordinary-title pulse row; navigate with real Down events. */
+    if(argc==10 && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+       argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' &&
+       argv[7]=='K' && argv[8]=='A' && argv[9]>='0' && argv[9]<='6' && argv[9]!='4') {
+        g_slicks_diag_title_pulse_row=(unsigned char)(argv[9]-'0');argc=9;
+    }
     if(argc==7 && argv[0]=='D' && argv[1]=='I' && argv[2]=='S' && argv[3]=='P' &&
        argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
         display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
@@ -4847,7 +4854,13 @@ int main(void)
                 } else if(at==sizeof arcade_keys) registration_test=0;
                 else {championship_test_keys(&platform,&arcade_keys[at],1);++registration_test;}
             } else if(title_dirty_test==3 || title_dirty_test==6) {
-                if(++registration_test==74) {g_slicks_diag_force_exit=1;registration_test=0;}
+                unsigned steps=g_slicks_diag_title_pulse_row;
+                if(steps>4)--steps; /* The original hides Load Game. */
+                if(at<steps) {
+                    static const unsigned char down=0x4d;
+                    championship_test_keys(&platform,&down,1);
+                }
+                if(++registration_test==74+steps) {g_slicks_diag_force_exit=1;registration_test=0;}
             } else if(title_dirty_test==2) {
                 if(at==sizeof transition_keys) {
                     /* Rendering/input fixture only: do not save its edits. */

@@ -668,6 +668,37 @@ timing `tmp/standalone-release-j0j7hwro` reproduces exactly 72 refreshes over
 stock PAL A1200, 2 MiB Chip/no Fast and the confirmed 4 KiB stack. All owned
 emulators were closed; no private registration data was added to the repository.
 
+### Non-GO title pulse capture (2026-09-30)
+
+`REGCHECKA[ROW]` extends the explicit pulse diagnostic to ordinary visible
+rows 0, 1, 2, 3, 5 and 6. It sends normal Down events, skips the original
+hidden Load Game row, then leaves enough updates for a complete colour cycle.
+The capture waits for the requested row before recording its 65 consecutive
+compositions. This adds diagnostic input only, not a normal-game override.
+
+Saved Finnish, unregistered Options (row 3) passes in
+`tmp/standalone-release-xwc_zoge`: 75 pulse ticks, 21 selected-colour changes,
+27 complete native display checks, zero errors and system restoration 31.
+Every pixel in all 65 consecutive captured frames matches the original DOS
+title wrapper. The only complete title redraw at the selected row is its
+navigation entry; this case exercises selective glyph pulses, not the
+translated-label/status-overlap fallback. Other rows and that fallback remain
+separate coverage requirements.
+
+The first run (`tmp/standalone-release-3py1i1pb`) also matched all 65 original
+frames but failed the old diagnostic assertion that startup has exactly one
+full publication. The actual saved trial date legitimately triggers a
+registration-screen replacement at startup. The assertion now captures the
+initial full-publication count on the first pulse and requires it to remain
+unchanged through exit, preserving the prohibition on full-screen pulse
+updates without assuming which startup screens appeared. The successful
+repeat starts and ends at two full publications.
+
+Both runs use stock PAL A1200, 2 MiB Chip/no Fast, confirmed default 4 KiB
+stack, muted audio and automatic emulator cleanup. Build log:
+`tmp/title-pulse-rows-build.log`. These debugger-stopped checks are not timing
+measurements and do not change the recorded cadence results.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused
