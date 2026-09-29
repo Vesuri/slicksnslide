@@ -12,6 +12,24 @@ import subprocess
 import tempfile
 import time
 ROOT=Path(__file__).resolve().parents[1]
+def load_checks(path, active=()):
+    """Resolve diagnostic includes before moving GDB into its isolated cwd."""
+    import shlex
+    path=Path(path).resolve()
+    if path in active:
+        raise ValueError('Recursive diagnostic source: '+str(path))
+    lines=[]
+    for line in path.read_text().splitlines(keepends=True):
+        if line.lstrip().startswith('source '):
+            words=shlex.split(line,comments=True)
+            if len(words)!=2 or words[1].startswith('-') or '$' in words[1]:
+                raise ValueError('Unsupported diagnostic source: '+line.strip())
+            lines.append(load_checks(path.parent/words[1],active+(path,)))
+            lines.append('\n')
+        else:
+            lines.append(line)
+    return ''.join(lines)
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('installed',type=Path)
@@ -64,7 +82,7 @@ end
 printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
 '''
         if args.checks:
-            checks=args.checks.resolve().read_text()
+            checks=load_checks(args.checks)
             # Existing checks dump only beneath .run; isolate those outputs.
             import re
             for name in re.findall(r'dump binary memory (\.run/\S+)',checks):
