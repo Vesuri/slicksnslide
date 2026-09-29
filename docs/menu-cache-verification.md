@@ -1266,3 +1266,25 @@ claim archive/surface allocation failures, malformed navigation, or new
 registered-key coverage. The normal case's captures are preserved under
 `.run/menu-rectangles-registration-help-current`; failure captures use
 `.run/menu-rectangles`.
+
+## Registered title-owner bounds (2026-09-29)
+
+The owner-name pulse previously dirtied the full `(0,190)..(320,200)` strip.
+It now uses the shared glyph-aware bounds walker with the actual small font,
+right-aligned anchor `(310,190)`, spacing 1 and flags 2, matching the native
+registration text bridge. The owner name is fixed during a session, so no
+old-name erasure rectangle is needed. Full-screen replacements still publish
+the full screen; this changes ordinary title repaint bounds only.
+
+The independent bounds suite passes (`tmp/title-owner-host.log`). A muted
+registered REGCHECKT run passes 29 bounded owner publications and 33 complete
+logical/chunky/bitplane comparisons, with zero display errors and restoration
+mask 31 (`tmp/title-owner-native.log`). The diagnostic rejects full-width
+bottom-strip rectangles for this supplied name while checking ordinary modes,
+roles and count-edit coverage. Very long names may legitimately clip across
+the whole width; that is not prohibited by production code.
+
+The explicit private key fixture remains ignored, and no key/owner contents
+or registered framebuffer dumps were logged. The emulator exited and closed.
+Build log: `tmp/title-owner-build.log`. This closes this one over-wide callback,
+not the remaining whole-menu dirty-region audit.

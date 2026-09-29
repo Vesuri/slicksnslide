@@ -877,6 +877,7 @@ static int show_race_load_error(struct SlicksAmigaPlatform *platform,
 
 static void arcade_dirty(void *p,short l,short t,short r,short b)
 {(void)p;slicks_title_dirty_add(&title_dirty,l,t,r,b);}
+extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 static void arcade_text(void *p,unsigned char *logical,const unsigned char *font,
     const unsigned char *text,short x,short y,unsigned short flags,unsigned short shadow)
 {(void)p;slicks_title_font_text(logical,font,text,x,y,flags,shadow);__asm volatile("" ::: "memory");}
@@ -960,7 +961,9 @@ static void redraw_title_configuration(
 owner:
     if(registration.name[0]) {
         slicks_draw_title_registration(logical,registration.name);
-        slicks_title_dirty_add(&title_dirty,0,190,320,200);
+        struct SlicksChunkyUi bounds={0,palette,arcade_dirty,0};
+        slicks_font_text_dirty(&bounds,slicks_title_small_font,registration.name,
+            310,190,1,2,slicks_menu_measure(slicks_title_small_font,registration.name),0);
     }
     publish_title_dirty(platform,logical,chunky);
     /* Keep GCC from emitting a cross-section PC32 sibling jump, which the

@@ -53,7 +53,9 @@ Implementation and completed verification evidence are separate in
   Title timing, shortcuts and demo fidelity remain separate open items below.
   Audit remaining full-width text callbacks, full-screen modal
   restores and direct row-converter bypasses separately from the shared
-  publisher. Extend failure-path coverage where only normal transitions have
+  publisher. The registered title-owner pulse now uses verified glyph bounds;
+  other callbacks still need their own caller coverage.
+  Extend failure-path coverage where only normal transitions have
   been checked. Completed publication and restoration evidence is kept in
   [menu-cache-verification.md](menu-cache-verification.md); do not infer
   whole-menu correctness from a subset of its fixtures.
