@@ -1558,6 +1558,28 @@ to its startup producer; it does not prove native reconstructed pixels match
 the saved image. The remaining comparison must use the prepared background
 and subsequent title draws, not an assumed pre-demo framebuffer snapshot.
 
+## Registered and unregistered title-wrapper returns (2026-09-30)
+
+The live return oracle now executes `29f2c..29fef`, including original mode
+dispatch, the ordinary renderer and the registered-owner pulse/text suffix.
+It stops before the VGA start-address publication; no pixel drawing is mocked.
+The fixture captures the native owner phase and owner name separately, keeping
+the latter in ignored local files rather than the diagnostic log. The phase
+is used as input, so this remains a composition check, not wall-clock cadence.
+
+Two registered returns pass in `tmp/standalone-release-krnbxjuh`, using the
+user-authorized private keyfile in an isolated ignored install. Both captured
+owner strings are nonempty; the checker reports `registered=2` without printing
+their contents. The original wrapper matches every visible pixel, including
+the owner-name placement/colour, at captured phases 2 and 5. The no-key
+regression `tmp/standalone-release-zc85g0kk` also matches both returns and
+reports `registered=0`. Both runs complete the two-demo/four-view lifecycle,
+configuration/playlist restoration and normal system restoration on the
+stripped binary, stock PAL 68020, 2 MiB Chip/no Fast and confirmed 4 KiB stack.
+All muted emulators were closed. No production change was needed; neither the
+keyfile nor owner dumps are tracked. Arcade, other language/font-lifetime,
+natural-deadline and cadence coverage remain separate.
+
 ## F14: prepare the original title background once
 
 ### Live ordinary-title return composition (2026-09-30)

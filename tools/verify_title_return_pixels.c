@@ -55,14 +55,19 @@ int main(int argc,char **argv)
     check(uc_hook_add(u,&hook,UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE,vga_access,&v,0xa0000,0xaffff));
     check(uc_hook_add(u,&hook,UC_HOOK_INSN,font_port,&v,1,0,UC_X86_INS_OUT));
     char path[1024],line[2048];snprintf(path,sizeof path,"%s/debug.log",argv[1]);
-    f=fopen(path,"r");if(!f)return 2;unsigned cases=0;
+    f=fopen(path,"r");if(!f)return 2;unsigned cases=0,registered=0;
     while(fgets(line,sizeof line,f)){
-        unsigned index,row,counter;int selected,total,mode,weapons,inventory,roles[4];
-        if(sscanf(line,"TITLE_RETURN_STATE %u %u %u %d %d %d %d %d %d %d %d %d",
-            &index,&row,&counter,&selected,&total,&mode,&weapons,&inventory,&roles[0],&roles[1],&roles[2],&roles[3])!=12)continue;
+        unsigned index,row,counter,phase;int selected,total,mode,weapons,inventory,roles[4];
+        if(sscanf(line,"TITLE_RETURN_STATE %u %u %u %d %d %d %d %d %d %d %d %d %u",
+            &index,&row,&counter,&selected,&total,&mode,&weapons,&inventory,&roles[0],&roles[1],&roles[2],&roles[3],&phase)!=13)continue;
         if(index!=cases || mode<0 || mode>=5 || row>=7)abort();
         snprintf(path,sizeof path,"%s/.run/title-return/%u.bin",argv[1],index);
         FILE *snapshot=fopen(path,"rb");if(!snapshot || fread(logical,1,sizeof logical,snapshot)!=sizeof logical)abort();fclose(snapshot);
+        unsigned char owner[61];snprintf(path,sizeof path,"%s/.run/title-return/%u.owner",argv[1],index);
+        snapshot=fopen(path,"rb");if(!snapshot || fread(owner,1,sizeof owner,snapshot)!=sizeof owner || !memchr(owner,0,sizeof owner))abort();fclose(snapshot);
+        registered+=owner[0]!=0;
+        check(uc_mem_write(u,0x3cbf0+0x62f,owner,sizeof owner));
+        if(phase>2000)abort();word(u,0x3cbf0+0x1144,phase?phase-1:2000);
         for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
             v.pixels[y*320+x]=background[2+(x&3)*16000+y*80+(x>>2)];
         const unsigned flags[]={0,10,1,11,0};
@@ -75,13 +80,15 @@ int main(int argc,char **argv)
         uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xf000;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
         word(u,0x8f000,0);word(u,0x8f002,0x9000);word(u,0x8f004,row);
-        check(uc_emu_start(u,0x29753,0x90000,0,3000000));
-        uint16_t ip;check(uc_reg_read(u,UC_X86_REG_IP,&ip));if(ip)abort();
+        /* Include the original owner-name pulse/text; stop only before the
+         * VGA start-address publication, which cannot affect logical pixels. */
+        check(uc_emu_start(u,0x29f2c,0x29fef,0,3000000));
+        uint16_t ip;check(uc_reg_read(u,UC_X86_REG_IP,&ip));if(ip!=0x29fef-0x266c0)abort();
         for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
             if(v.pixels[y*320+x]!=logical[(x&3)*65536+y*100+(x>>2)]){
                 fprintf(stderr,"Title return %u mismatch at %u,%u DOS=%u native=%u\n",index,x,y,v.pixels[y*320+x],logical[(x&3)*65536+y*100+(x>>2)]);return 1;}
         ++cases;
     }
     fclose(f);uc_close(u);if(cases!=2)return 1;
-    puts("Two live demo-return title compositions match all 64000 original pixels");return 0;
+    printf("Two live demo-return title compositions match all 64000 original pixels; registered=%u\n",registered);return 0;
 }
