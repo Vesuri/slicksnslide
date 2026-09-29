@@ -785,6 +785,23 @@ production shortcut behavior changed.
 
 ## Approved Amiga demo shortcut adapter (2026-09-29)
 
+### Ordinary GO/F9 native entry regression
+
+`STARTGO` and `STARTF9` are explicit native-input fixtures, excluded from the
+automatic-race path. The former queues Enter at the initial GO selection;
+the latter queues Down, Down, F9. Both use the ordinary original-setup title
+owner and require exactly one race start, nonempty driver selection, no demo
+state or race error, and arrival at an in-game frame checkpoint.
+`diag_title_start.gdb` performs read-only checks; no race state is injected.
+
+Current stripped-binary runs pass: `tmp/standalone-release-mn6wl4sy` (GO)
+and `tmp/standalone-release-vk0mmaav` (F9). Both use a confirmed default 4 KiB
+stack, stock-speed PAL 68020, 2 MiB Chip/no Fast. Their muted emulators were
+closed. Build evidence: `tmp/title-start-build.log`. These are bounded entry
+regressions, not normal-exit checks or all-mode/all-row/mouse coverage. The
+existing original-instruction F9 table oracle remains the independent
+shortcut-semantics check; these fixtures cover the live platform integration.
+
 Shift+F1 and Shift+F2 map to original F11/F12 in the title/demo scan
 adapter. Physical driving bindings and text entry retain their old mapping.
 The keyboard interrupt snapshots both Shift keys into each queued event;

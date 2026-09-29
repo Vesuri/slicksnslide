@@ -3943,6 +3943,9 @@ int main(void)
     unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test);
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
+    unsigned char title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
+        argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
+        (argv[5]=='G' && argv[6]=='O'?1:argv[5]=='F' && argv[6]=='9'?2:0):0);
     shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');
     if((argc==9 || shop_resume_test) && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
         championship_test=(unsigned char)(argv[5]=='S'?(argv[8]=='F'?6:1):argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
@@ -3954,7 +3957,7 @@ int main(void)
     championship_cleanup_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='B');
     if(championship_cleanup_test) { championship_test=6; g_slicks_diag_backup_protect=1; }
     if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
-    original_setup=(unsigned char)(!argc || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
+    original_setup=(unsigned char)(!argc || title_start_test || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
         struct DateStamp now;
         DateStamp(&now);
@@ -4142,7 +4145,7 @@ int main(void)
         configuration.options[9]=configuration.options[10]=0;
         g_slicks_diag_target_frame = 3600;
     }
-    auto_race = (unsigned char)(argc > 0 && !natural_results_test && !championship_test && !restore_test && !service_menu_test && !player_menu_test && !options_test && !setup_reload_test && !title_help_test && !tracks_test);
+    auto_race = (unsigned char)(argc > 0 && !title_start_test && !natural_results_test && !championship_test && !restore_test && !service_menu_test && !player_menu_test && !options_test && !setup_reload_test && !title_help_test && !tracks_test);
     if(argc>0 && argv[0]=='W') {
         weapon_hud_fixture=1;
         g_slicks_diag_audit_bitmap=1;
@@ -4324,6 +4327,14 @@ int main(void)
                 0x1b,0x1f,0x1a,0x3f,0x1d,0x4d,0x3d,0x4c,0x1d,0x45,0x44};
             for(unsigned i=0;i<sizeof scroll_keys;++i) platform.keys[i]=scroll_keys[i];
             platform.key_head=sizeof scroll_keys;
+        }
+    }
+    if(title_start_test) {
+        platform.key_tail=0;
+        if(title_start_test==1) { platform.keys[0]=0x44; platform.key_head=1; }
+        else {
+            platform.keys[0]=0x4d; platform.keys[1]=0x4d;
+            platform.keys[2]=0x58; platform.key_head=3;
         }
     }
     if(title_help_test) {
