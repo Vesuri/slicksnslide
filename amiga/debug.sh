@@ -101,6 +101,8 @@ elif [ "${SLICKS_RECORD_RECOVERY:-}" = skip ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSBS\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_RECORD_RECOVERY:-}" = read-skip ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSBL\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_CHAMPIONSHIP:-}" = delete-fail ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVD\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = save ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVE\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = save-fail ]; then

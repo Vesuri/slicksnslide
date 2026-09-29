@@ -103,10 +103,9 @@ Implementation and completed verification evidence are separate in
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
   Extend native saved-game cache coverage to enumeration I/O failures and
-  remaining recovery cases (including post-save backup cleanup failures and
-  blocked deletion).
+  remaining recovery cases (including post-save backup cleanup failures).
   Creation, overwrite/delete, cancellation, read-only save failure,
-  catalogue overflow and pre-existing `.new`/`.bak` save obstructions have
+  catalogue overflow, blocked/read-only deletion and pre-existing `.new`/`.bak` save obstructions have
   real-intermission coverage.
   Startup snapshots and
   explicit transaction refresh are implemented for SLICKS.TRK and saved-game

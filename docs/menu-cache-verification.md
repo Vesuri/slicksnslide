@@ -1082,3 +1082,35 @@ The muted runner closed its emulator. Log: `tmp/saved-backup-native.log`.
 This covers refusal to overwrite a pre-existing backup, not a failure to
 remove a backup after committing a successful save. That later failure and
 blocked deletion remain separate open cases.
+
+## Blocked and read-only saved-game deletion (2026-09-29)
+
+`SLICKS_CHAMPIONSHIP=delete-fail` (`CHAMPSAVD`) uses the real first-intermission
+Save entry and native raw input: select Delete, confirm Y, dismiss the failure
+warning, then cancel the reopened picker and return to title/exit. The new
+diagnostic branch is not used during ordinary play. Its four-phase guard
+rejects unexpected dialogs rather than feeding further keys into them.
+
+Two isolated filesystem cases pass with `SLICKS_DEBUG_WARP=1` and
+`diag_saved_delete_failure_rectangles.gdb`:
+
+- `.run/saved-delete-blocked-v1`: synthetic `E2E.SSS` and `E2E.SSS.bak`;
+  the recovery guard refuses deletion and preserves both files byte-for-byte.
+- `.run/saved-delete-readonly-v1`, with `SLICKS_DEBUG_READ_ONLY=1`: the same
+  primary file without `.new`/`.bak`; the actual filesystem deletion fails
+  and preserves it. No recovery sidecar is created.
+
+The primary's contents are `Synthetic primary save; the deletion test must
+preserve this file.` plus newline; the backup uses `Synthetic backup; the
+deletion test must preserve this file.` plus newline. They are deliberately
+synthetic, local-only fixtures; deletion never parses a save payload.
+
+Each run checks one deletion attempt, the confirmation and failure notices,
+two picker presentations, refreshed one-entry catalogue, one owned return and
+system restoration 31. All 22 publications per run match all chunky pixels.
+The runners are muted and close their emulators. Logs:
+`tmp/saved-delete-blocked.log`, `tmp/saved-delete-readonly.log`.
+`make verify-saved-files verify-saved-file-dialog` also passes native catalogue,
+fault/recovery/requester tests and 262,144 original action/result comparisons
+(`tmp/saved-delete-host.log`). Post-save backup cleanup failure and native
+enumeration I/O failure remain separate work.

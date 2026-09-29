@@ -964,6 +964,7 @@ struct SlicksAmigaPlayerMenu *g_slicks_diag_saved_menu;
 volatile unsigned short g_slicks_diag_saved_phase;
 static unsigned char championship_test,championship_test_stage,championship_picker_count;
 static unsigned char championship_dialog_step;
+static unsigned char championship_delete_test;
 void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
 void __attribute__((noinline)) slicks_diag_saved_closed(void) { __asm__ volatile("" ::: "memory"); }
 static void championship_test_keys(struct SlicksAmigaPlatform *p,const unsigned char *keys,unsigned count)
@@ -976,6 +977,17 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
 {
     slicks_diag_saved_ready();
     if(!championship_test) return;
+    if(championship_delete_test) {
+        static const unsigned char phases[]={1,3,3,1};
+        static const unsigned char keys[][3]={{0x42,0x44,0},{0x15,0,0},
+            {0x44,0,0},{0x45,0x59,0x45}};
+        static const unsigned char counts[]={2,1,1,3};
+        unsigned step=championship_dialog_step++;
+        if(step>=sizeof phases || phases[step]!=g_slicks_diag_saved_phase) {
+            g_slicks_diag_force_exit=1; return;
+        }
+        championship_test_keys(p,keys[step],counts[step]); return;
+    }
     if(championship_test==3) {
         /* Real first intermission: cancel a name, create TEMP,
          * cancel/accept overwrite of E2E, cancel/accept deletion of TEMP.
@@ -3735,6 +3747,8 @@ int main(void)
     shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');
     if((argc==9 || shop_resume_test) && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
         championship_test=(unsigned char)(argv[5]=='S'?(argv[8]=='F'?6:1):argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
+    championship_delete_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='D');
+    if(championship_delete_test) championship_test=6;
     if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
