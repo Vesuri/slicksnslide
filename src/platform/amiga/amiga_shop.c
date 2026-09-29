@@ -3,7 +3,9 @@
 #include "amiga_shop.h"
 #include "../../ui/menu_icon.h"
 #include "../../ui/menu_background.h"
+#include "../../ui/help_text_dirty.h"
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
+extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 
 struct ShopPainter {
     struct SlicksAmigaPlayerMenu *menu;
@@ -16,8 +18,8 @@ static void label(void *p,unsigned font,const unsigned char *s,short x,short y,u
     struct SlicksAmigaPlayerMenu *m=((struct ShopPainter *)p)->menu;
     /* REGISTER! uses the original shadow flag. */
     slicks_records_text(m->renderer.ui.pixels,m->fonts[font],s,x,y,flags,0);
-    if(m->renderer.ui.dirty) m->renderer.ui.dirty(m->renderer.ui.dirty_context,
-        0,y,320,(short)(y+m->fonts[font][2]+1));
+    slicks_font_text_dirty(&m->renderer.ui,m->fonts[font],s,x,y,1,flags,
+        slicks_menu_measure(m->fonts[font],s),0);
     __asm__ volatile("" ::: "memory");
 }
 static void number(void *p,unsigned font,short value,short x,short y,unsigned char flags)
@@ -56,6 +58,9 @@ static void sprite(void *p,short id,short left,short top)
     }
     for(unsigned y=0;y<height;++y) for(unsigned x=0;x<width;++x)
         if(pixels[y*width+x]) s->menu->renderer.ui.pixels[mult320[top+y]+left+x]=pixels[y*width+x];
+    if(s->menu->renderer.ui.dirty)
+        s->menu->renderer.ui.dirty(s->menu->renderer.ui.dirty_context,
+            left,top,(short)(left+width),(short)(top+height));
 }
 static struct SlicksShopDrawOps draw_ops(struct ShopPainter *p)
 { return (struct SlicksShopDrawOps){{restore,bevel,sprite,label,p},number,rectangle}; }
@@ -65,7 +70,7 @@ int slicks_amiga_shop_draw(struct SlicksAmigaPlayerMenu *m,const struct SlicksSh
 {
     struct ShopPainter painter={.menu=m};
     struct SlicksShopDrawOps ops=draw_ops(&painter);
-    restore(&painter,0,0,0,0,320,200);
+    slicks_amiga_player_menu_restore(m);
     signed char column=0;
     for(unsigned d=0;d<4 && (int)d<state->driver;++d) column+=c->session->players.selected[d]!=0;
     if(slicks_draw_shop_values(c->session,c->rules,c->extra,column,state->row,-1,-1,state->count,
@@ -95,6 +100,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
     if(slicks_draw_shop_background(c,state->count,&ops) || m->error) goto failed;
     /* Original 2cf21 saves the fully decorated screen, not the raw image. */
     for(unsigned i=0;i<64000;++i) m->saved[i]=chunky[i];
+    m->saved_dirty_count=0; m->track_saved_dirty=1;
     FreeMem(resource,65536);resource=0;
     if(slicks_amiga_shop_draw(m,c,state)) goto failed;
     return m;

@@ -745,3 +745,31 @@ into the existing checkpoint. A palette assertion initially read an unreliable
 optimized caller argument; it now reads the live menu's palette copy. Neither
 failed test is counted as verification. These checks cover this championship
 route, not all remaining intermission/results/error owners or release gates.
+
+## Shop painted-region restoration
+
+The shop value painter restored the complete decorated background on every
+input. It now restores its accumulated painted rectangles, using the existing
+menu save-under tracking. The snapshot is enabled only after static composition
+is saved. Help writes participate in the same lifetime tracking, so returning
+from Help restores all affected pixels, then subsequent value updates return
+to their smaller bounds. Labels use glyph/alignment bounds with the original
+(1,0) shadow; static icon painting now reports its own rectangle too.
+
+The muted `SLICKS_NATURAL_RESULTS=shop` / `diag_shop_rectangles.gdb` control and
+changed runs each produce seven publications. All seven resulting chunky
+frames are byte-identical to the control, and every complete bitplane decode
+matches its chunky surface. The baseline converted the full screen each time;
+the changed ordinary value updates cover (80,10)-(272,118) and
+(112,122)-(160,133), totaling 21,264 pixels. Help and its return have appropriately
+larger bounds; initial shop entry still initializes the full bitmap.
+Cash, purchased/sold inventory, Help open/close and race inventory handoff pass.
+The fixture captures the surface pointer at the native function entry instead
+of using an unreliable optimized local in the caller.
+
+Host checks pass 5,184 native text-store coverage cases for both shadow modes,
+168 complete original shop pixel comparisons and the original shop drawing
+oracle. Logs: `tmp/shop-bounds-control.log`, `tmp/shop-bounds-native.log`,
+`tmp/shop-bounds-host.log`, `tmp/shop-bounds-build.log`. Both runners closed their
+emulators. This closes the unconditional full-screen restore, not the remaining
+audit of refresh selectors, all driver/row transitions or failure paths.

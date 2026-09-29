@@ -1,3 +1,9 @@
+break *slicks_amiga_shop_draw
+commands
+  silent
+  set $shop_surface = *(struct SlicksAmigaPlayerMenu **)($sp+4)
+  continue
+end
 break slicks_diag_shop_ready
 commands
   silent
@@ -9,10 +15,8 @@ commands
   end
   printf "\n"
   if !g_slicks_shop_test_phase
-    up
-    dump binary memory .run/shop/screen.chunky m->renderer.ui.pixels m->renderer.ui.pixels+64000
-    dump binary memory .run/shop/screen.palette m->palette m->palette+768
-    down
+    dump binary memory .run/shop/screen.chunky $shop_surface->renderer.ui.pixels $shop_surface->renderer.ui.pixels+64000
+    dump binary memory .run/shop/screen.palette $shop_surface->palette $shop_surface->palette+768
   end
   continue
 end

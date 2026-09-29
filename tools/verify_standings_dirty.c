@@ -25,7 +25,8 @@ int main(void)
     const short xs[]={-10,0,17,86,98,160,233,310,319};
     const short ys[]={-3,0,92,122,190,199};
     unsigned cases=0;
-    for(unsigned t=0;t<6;++t) for(unsigned ix=0;ix<9;++ix)
+    for(unsigned shadow_y=0;shadow_y<2;++shadow_y)
+      for(unsigned t=0;t<6;++t) for(unsigned ix=0;ix<9;++ix)
         for(unsigned iy=0;iy<6;++iy) for(unsigned flags=0;flags<8;++flags) {
             short width=help_font_call(&n,font,texts[t],0,0,0,1);
             unsigned char bytes[32];
@@ -38,12 +39,12 @@ int main(void)
             check(uc_reg_write(n.cpu,UC_M68K_REG_A7,&sp));
             check(uc_mem_write(n.cpu,sp,bytes,sizeof bytes));
             memset(font_writes,0,sizeof font_writes);
-            check(uc_emu_start(n.cpu,be32(code+24),0x380000,0,1000000));
+            check(uc_emu_start(n.cpu,be32(code+(shadow_y?24:20)),0x380000,0,1000000));
             check(uc_reg_read(n.cpu,UC_M68K_REG_PC,&pc));
             if(pc!=0x380000) abort();
             memset(reported,0,sizeof reported);
             struct SlicksChunkyUi ui={0}; ui.dirty=report_bounds;
-            slicks_font_text_dirty(&ui,font,texts[t],xs[ix],ys[iy],1,flags,width,1);
+            slicks_font_text_dirty(&ui,font,texts[t],xs[ix],ys[iy],1,flags,width,shadow_y);
             unsigned area=0;
             for(unsigned p=0;p<64000;++p) {
                 area+=reported[p];
@@ -56,6 +57,6 @@ int main(void)
             ++cases;
         }
     check(uc_close(n.cpu));
-    printf("Standings dirty bounds cover all native stores in %u strings, including alignment, shadow, tabs, newlines and clipping\n",cases);
+    printf("Standings/shop dirty bounds cover all native stores in %u strings, including alignment, both shadows, tabs, newlines and clipping\n",cases);
     return 0;
 }
