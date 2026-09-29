@@ -1191,7 +1191,7 @@ static int profile_dialog_warning(struct SlicksAmigaPlatform *platform,unsigned 
     slicks_diag_profile_dialog_failed();
     if(diagnostic) {
         /* Dismiss and retry through normal input, preserving queued typing. */
-        unsigned char keys[15]; unsigned count=0;
+        unsigned short keys[15]; unsigned count=0;
         while(platform->key_tail!=platform->key_head) {
             if(count==13) return -1;
             keys[count++]=platform->keys[platform->key_tail];
@@ -5092,7 +5092,7 @@ int main(void)
                     continue;
                 }
                 unsigned short action = slicks_dispatch_title_key(
-                    amiga_raw_to_dos_scan(code));
+                    amiga_raw_to_demo_scan(code,platform.key_shifts));
                 unsigned short action_selection=(unsigned short)slicks_title_action_selection(configuration.options[0],(short)menu_selection);
                 const unsigned char *help_topic=slicks_title_help_topic(action,action_selection);
                 if(help_topic) {

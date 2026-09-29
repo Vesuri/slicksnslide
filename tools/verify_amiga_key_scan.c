@@ -43,6 +43,37 @@ int main(void)
     for(unsigned raw=0;raw<128;++raw)
         if(amiga_raw_to_dos_scan(raw)!=amiga_raw_to_dos_scan(raw|128)) return 1;
     if(amiga_raw_to_dos_scan(0x66) || amiga_raw_to_dos_scan(0x67) || amiga_raw_to_dos_scan(0x7f)) return 1;
+    for(unsigned shifts=0;shifts<4;++shifts) for(unsigned raw=0;raw<256;++raw) {
+        unsigned key=raw&127;
+        unsigned expected=key==0x60 || key==0x61?0x80:shifts && key==0x50?0x57:
+            shifts && key==0x51?0x58:amiga_raw_to_dos_scan(raw);
+        if(amiga_raw_to_demo_scan(raw,shifts)!=expected) return 1;
+        unsigned char held=(unsigned char)shifts;
+        unsigned short event=slicks_amiga_key_event(raw,&held);
+        unsigned wanted=shifts;
+        if(key==0x60 || key==0x61) {
+            unsigned bit=1U<<(key-0x60);
+            wanted=raw&128?wanted&~bit:wanted|bit;
+        }
+        if(held!=wanted || event!=(raw|(wanted<<8))) return 1;
+    }
+    /* Both shifts, release either, then both: delayed consumption must use
+     * each event's snapshot rather than the producer's final state. */
+    {
+        static const unsigned char raw[]={0x60,0x61,0xe0,0x51,0xd1,0xe1,0x51};
+        static const unsigned char wanted[]={1,3,2,2,2,0,0};
+        unsigned short queued[sizeof raw]; unsigned char held=0;
+        for(unsigned i=0;i<sizeof raw;++i) queued[i]=slicks_amiga_key_event(raw[i],&held);
+        if(held) return 1;
+        for(unsigned i=0;i<sizeof raw;++i)
+            if((queued[i]&255)!=raw[i] || (queued[i]>>8)!=wanted[i]) return 1;
+        if(amiga_raw_to_demo_scan(queued[3]&255,queued[3]>>8)!=0x58 ||
+           amiga_raw_to_demo_scan(queued[6]&255,queued[6]>>8)!=0x3c) return 1;
+        (void)slicks_amiga_key_event(0x60,&held);
+        (void)slicks_amiga_key_event(0xe0,&held); /* Dropped by a full queue. */
+        if(slicks_amiga_key_event(0x50,&held)!=0x50) return 1;
+    }
+    puts("Amiga demo keys: 1024 mapping/modifier cases, delayed queue and dropped-release recovery pass");
     for(unsigned raw=0;raw<256;++raw) {
         unsigned key=raw&127;
         unsigned expected=key==0x1a?0x49:key==0x1b?0x51:amiga_raw_to_dos_scan(raw);

@@ -659,6 +659,25 @@ without debugger writes. This is explicitly renderer
 coverage, not a claim that F12/idle entry, configuration restoration, input,
 rewards, results or persistence have been integrated. Those remain open.
 
+## Approved Amiga demo shortcut adapter (2026-09-29)
+
+Shift+F1 and Shift+F2 map to original F11/F12 in the title/demo scan
+adapter. Physical driving bindings and text entry retain their old mapping.
+The keyboard interrupt snapshots both Shift keys into each queued event;
+polling exposes the event-time state even if Shift has already been released.
+The producer updates that state even when the queue drops a release, so later
+events cannot inherit a stuck modifier. Synthetic diagnostic events have zero
+modifiers. Shift itself maps to the non-command scan 0x80 in this adapter,
+allowing the chord without making Shift alone a demo-exit command.
+
+The title dispatcher now uses the adapter. F12's actual start action and the
+demo race's view/exit consumers still require lifecycle integration; this
+change does not enable or certify those routes. `make verify-amiga-key-scan`
+passes 1,024 modifier/mapping combinations, delayed consumption with both
+Shift keys, dropped-release recovery, and the existing Help/page-key/physical
+binding regressions. The Amiga build passes. Native input/lifecycle coverage
+remains part of the live demo work.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

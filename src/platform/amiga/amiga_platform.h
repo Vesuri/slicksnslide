@@ -27,7 +27,9 @@ struct SlicksAmigaPlatform {
     volatile unsigned long vblank_count;
     volatile unsigned char key_head;
     volatile unsigned char key_tail;
-    volatile unsigned char keys[16];
+    volatile unsigned short keys[16]; /* Raw byte plus event-time Shift bits. */
+    unsigned char keyboard_shifts; /* Interrupt producer state. */
+    unsigned char key_shifts; /* Modifiers of the last polled event. */
     unsigned short saved_dma;
     unsigned short saved_interrupts;
     unsigned char active;

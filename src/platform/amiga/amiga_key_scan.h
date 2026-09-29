@@ -34,6 +34,34 @@ static inline unsigned short amiga_raw_to_menu_scan(unsigned short raw)
     return amiga_raw_to_dos_scan(raw);
 }
 
+/* Snapshot modifiers when the interrupt receives each event. A queued F2
+ * press must retain Shift even if its release arrives before we poll it.
+ * Update the producer state even when a full queue drops the event. */
+static inline unsigned short slicks_amiga_key_event(unsigned char raw,
+    unsigned char *shifts)
+{
+    unsigned key=raw&127;
+    if(key==0x60 || key==0x61) {
+        unsigned char bit=(unsigned char)(1U<<(key-0x60));
+        if(raw&128) *shifts&=(unsigned char)~bit;
+        else *shifts|=bit;
+    }
+    return (unsigned short)(raw|((unsigned short)*shifts<<8));
+}
+
+/* User-approved title/demo shortcuts, not physical driving bindings or
+ * text input. As above, the caller handles the release bit. */
+static inline unsigned short amiga_raw_to_demo_scan(unsigned short raw,
+    unsigned char shifts)
+{
+    unsigned key=raw&127;
+    /* Shift is part of the chord, not an ordinary demo-exit key. */
+    if(key==0x60 || key==0x61) return 0x80;
+    if(shifts && (key==0x50 || key==0x51))
+        return (unsigned short)(0x57+key-0x50);
+    return amiga_raw_to_dos_scan(raw);
+}
+
 struct SlicksAmigaHelpKey { unsigned char ascii,scan; };
 /* Page aliases take precedence over their printable keymap characters in
  * Help, which has no text entry. Other characters stay keymapped. */

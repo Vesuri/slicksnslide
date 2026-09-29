@@ -137,7 +137,8 @@ obj/slicks_diag.o: $(REPO)/src/platform/amiga/slicks_diag.c $(REPO)/src/gen/setu
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/amiga_platform.o: $(REPO)/src/platform/amiga/amiga_platform.cpp \
-		$(REPO)/src/platform/amiga/amiga_platform.h | obj
+        $(REPO)/src/platform/amiga/amiga_platform.h \
+        $(REPO)/src/platform/amiga/amiga_key_scan.h | obj
 	$(CC) $(CPPFLAGS) -c -o $@ $<
 
 obj/framework_runtime.o: $(REPO)/src/platform/amiga/framework_runtime.cpp | obj

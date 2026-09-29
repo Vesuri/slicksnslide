@@ -11,6 +11,7 @@
 #include <resources/cia.h>
 
 #include "amiga_platform.h"
+#include "amiga_key_scan.h"
 #include "amiga_joystick.h"
 #include "amiga_audio.h"
 #include "copper_palette.h"
@@ -143,9 +144,10 @@ static unsigned long keyboard_handler(void)
     code = (unsigned char)((code >> 1) | (code << 7));
     if (!platform)
         return 0;
+    unsigned short event=slicks_amiga_key_event(code,&platform->keyboard_shifts);
     next = (unsigned char)((platform->key_head + 1) & 15);
     if (next != platform->key_tail) {
-        platform->keys[platform->key_head] = code;
+        platform->keys[platform->key_head] = event;
         platform->key_head = next;
     }
     return 0;
@@ -153,6 +155,8 @@ static unsigned long keyboard_handler(void)
 
 static int keyboard_begin(struct SlicksAmigaPlatform *platform)
 {
+    /* Releases while AmigaOS owns the keyboard are not delivered to us. */
+    platform->keyboard_shifts=0;
     platform->ciaa_base = OpenResource((CONST_STRPTR)CIAANAME);
     if (!platform->ciaa_base)
         return -1;
@@ -392,7 +396,9 @@ int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
     if (!platform || !raw || platform->key_tail == platform->key_head)
         return 0;
     tail = platform->key_tail;
-    *raw = platform->keys[tail];
+    unsigned short event=platform->keys[tail];
+    *raw = event&255;
+    platform->key_shifts=(unsigned char)(event>>8);
     platform->key_tail = (unsigned char)((tail + 1) & 15);
     return 1;
 }

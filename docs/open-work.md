@@ -95,8 +95,9 @@ Implementation and completed verification evidence are separate in
   not exit keys or file captures. The isolated track-data renderer is verified
   against the original complete pixel loops; its live flag/input gating,
   publication and return route remain missing.
-  Use the user-approved Shift+F1/Shift+F2 aliases for original F11/F12 on the
-  Amiga keyboard; ordinary F1/F2 and driving bindings must remain unchanged.
+  Connect the approved Shift+F1/Shift+F2 adapter to live demo controls and
+  verify the actual input sequence. Event-time Shift tracking and title
+  dispatch are implemented; ordinary F1/F2 and driving bindings are unchanged.
   The idle scan replacement passes 36,864 original timer-boundary cases.
   Live integration must use elapsed time, not rendered-frame count, preserve
   the strict >20,000 ms test and reset the timer after original input routes.
