@@ -841,6 +841,26 @@ completion, idle activation, loading-caption fidelity, all failure/exit paths
 or exact saved-image/title return presentation. Those remain explicit open
 work; the live return currently reconstructs the title from resident assets.
 
+## Title modal idle-reset dependency (source audit, 2026-09-29)
+
+The remaining synchronous-title-modal timing check is tied to the unresolved
+Load Game route, not a separate reachable title dialog that needs a new test
+mode. The title dispatch opens Players, Tracks, Options and Help as persistent
+owners and returns to the main event loop; `title_owner` excludes all of them
+and disarms `title_idle_active`. Their nested dialogs therefore execute while
+the title is already disarmed. Exit does not return to an idle title; successful
+GO/F9 preparation enters gameplay, and preparation failure installs the
+separate load-error owner, also excluded from `title_owner`.
+
+The title's `menu_selection==4` branch is the blocking saved-game dialog.
+On cancellation it redraws the title and continues the event loop. The
+activating scan sets `title_idle_reset` before dispatch, and the next title
+iteration consumes that flag using the then-current VBI time, rather than
+the pre-dialog timestamp. This is source-level evidence of the intended
+reset, not a native long-dialog pass: the original title navigation cannot
+currently reach that row. Its timed cancellation check belongs with resolving
+Load entry. No extra menu row or test-only forced selection was added.
+
 ## Automatic title demo timing (2026-09-29)
 
 The live title owner now calls the independently verified elapsed-time scan

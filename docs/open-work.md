@@ -85,8 +85,10 @@ Implementation and completed verification evidence are separate in
   A short manual visual check has been requested; `diag_loading_io_visual.gdb`
   pauses after 50 OS-serviced refreshes. Desktop capture did not expose this
   FS-UAE instance, and the installed binary did not execute the Lua hook.
-  Extend idle-timer coverage to synchronous modal returns; long Options/Help
-  visits, ordinary navigation reset and repeated automatic entry are covered.
+  Long Options/Help visits, ordinary navigation reset and repeated automatic
+  entry have idle-timer coverage. The remaining synchronous title-dialog
+  return check depends on resolving the Load Game entry below; do not invent
+  a reachable title row solely to exercise it.
   Race-view validation failure has native error/restore/retry coverage;
   startup display-allocation cleanup is verified separately below.
   Clean and dirty exit, direct save retry, save-failure cancellation, demo re-entry and
@@ -123,6 +125,8 @@ Implementation and completed verification evidence are separate in
   intermission; load/rejection fixtures still need their entry route resolved.
   `CHAMPLOAD` still queues the obsolete four-Down title selection and cannot
   serve as a release gate until that route is resolved; do not repeat it as-is.
+  Once a valid Load entry is established, include a long picker/notice visit
+  followed by cancellation and verify the full idle interval restarts on return.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 
