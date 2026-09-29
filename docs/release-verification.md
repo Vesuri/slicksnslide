@@ -1,5 +1,32 @@
 # Development release audit
 
+## 2026-09-29 — current title/menu default-stack regression
+
+The current ELF was converted directly to a stripped HUNK and installed in
+a fresh private original-data directory, without overwriting `dist/` or an
+existing release candidate. This includes the prepared-title background fix
+and tight registered-owner bounds. Executable SHA256:
+`9e78a66e4dbedaa31f9f57795075071b8fad0d6d606df25a46d37bfe63784f8f`.
+Companion ELF SHA256:
+`f7f021b4fcc69ce11eb8d49cabc997eaae231d77c2a4612037f4872b4e48f817`.
+
+All three runs confirm a 4096-byte task stack at entry, with no Stack command,
+on PAL A1200/68020 real speed, 2 MiB Chip and zero Fast RAM:
+
+- Normal active title: `tmp/standalone-release-xzvybrv3`.
+- Options edit, close, reopen and race handoff:
+  `tmp/standalone-release-pjvfrrlc`.
+- Unmodified demo entry, both track-data views, restoration of configuration
+  and playlist, zero setup saves, and normal system-restoring exit:
+  `tmp/standalone-release-33y84fv3`.
+
+The installation is `tmp/release-current-PH0gjX`; it contains copied original
+data, not private registration material. Runs were muted and the harness
+closed each owned emulator. Title and Options fixtures stop at their stated
+checkpoints; only the demo fixture proves normal exit here. These are bounded
+stack/memory regressions, not exhaustive high-water measurements, renewed
+WHDLoad/installer validation, or completion of the remaining release gates.
+
 ## 2026-09-28 — display-end publication pacing
 
 Supersedes the VBlank-at-loop-entry limiter below. Simulation and chunky
