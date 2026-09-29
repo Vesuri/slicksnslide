@@ -3721,11 +3721,14 @@ int main(void)
     unsigned char options_test_stage=0;
     unsigned char tracks_test=(unsigned char)((argc==6 || (argc==7 && (argv[6]=='L' || argv[6]=='R' || argv[6]=='D' || argv[6]=='F' || argv[6]=='I' || argv[6]=='J' || argv[6]=='K' || argv[6]=='M' || argv[6]=='N'))) && argv[0]=='T' && argv[1]=='R' &&
         argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S');
+    unsigned char track_scroll_test=(unsigned char)(argc==7 && argv[0]=='T' && argv[1]=='R' &&
+        argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='P');
+    tracks_test|=track_scroll_test;
     unsigned char tracks_test_stage=0;
     unsigned char track_info_test=(unsigned char)(tracks_test && argc==7 && (argv[6]=='I' || argv[6]=='J' || argv[6]=='K'));
     unsigned char track_info_fault_test=(unsigned char)(track_info_test && argv[6]=='K'),track_info_fault_stage=1;
     unsigned char track_info_failure_test=(unsigned char)(track_info_test && argv[6]=='J'),track_info_failure_stage=0;
-    unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test);
+    unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test);
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
     shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');
@@ -4089,6 +4092,12 @@ int main(void)
         if(track_info_test) { platform.keys[3]=0x51; platform.key_head=4; }
         if(track_info_failure_test) platform.key_head=3;
         if(track_info_fault_test) g_slicks_diag_track_info_fault=1;
+        if(track_scroll_test) {
+            static const unsigned char scroll_keys[]={0x4d,0x4d,0x44,
+                0x1b,0x1f,0x1a,0x3f,0x1d,0x4d,0x3d,0x4c,0x1d,0x45,0x44};
+            for(unsigned i=0;i<sizeof scroll_keys;++i) platform.keys[i]=scroll_keys[i];
+            platform.key_head=sizeof scroll_keys;
+        }
     }
     if(title_help_test) {
         static const unsigned char keys[]={0x4d,0x4d,0x4d,0x4d,0x44,0x45,0x50,0x45,0x4d,0x44};

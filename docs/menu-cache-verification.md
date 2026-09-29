@@ -978,3 +978,28 @@ original complete drawing/font-state comparisons. Native logs are
 `tmp/profile-scroll-native.log`. Captures are local-only. The muted A1200
 runner closed its emulator. This is picker scrolling/publication coverage,
 not a claim about every Players dialog or the remaining whole-port audit.
+
+## Tracks paging and boundary restoration (2026-09-29)
+
+`SLICKS_TRACK_MENU=11` / `TRACKSP`, with
+`diag_track_scroll_rectangles.gdb`, drives the real Tracks owner through
+both bracket and keypad page aliases, End/Home, attempted movement beyond
+each endpoint, close and reopen. The original 195-track catalogue reaches
+cursor 194/top 173 and restores that position on reopening. All eleven owner
+checkpoints pass; the complete playlist is byte-identical before and after.
+The initial fixture incorrectly assumed a sorted playlist; the final fixture
+captures and compares the actual ordering instead of changing game state.
+
+All nine shared publications decode to all 64,000 chunky pixels. Seven
+ordinary redraws use three rectangles `(176,3)..(240,13)`,
+`(112,29)..(224,129)` and `(0,10)..(80,192)`: 26,400 pixels, not 64,000.
+The two screen entries initialize the full bitmap. Clamped Up/Down at the
+first/last entry cause no publication. The title between closing and reopening
+uses its separate title publisher and is not counted by this fixture.
+
+`make verify-track-menu verify-track-menu-draw` passes 62,720 original
+navigation/state/action comparisons and 392 original full drawing-command,
+text/order/state comparisons. Native evidence is
+`tmp/track-scroll-native.log`, host results `tmp/track-scroll-host.log`;
+captures and playlist snapshots remain local-only. The muted debug runner
+closed its emulator. Other storage/format failures remain separate open work.
