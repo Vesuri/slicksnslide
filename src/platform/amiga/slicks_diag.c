@@ -1938,7 +1938,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         platform->key_tail=0; platform->keys[0]=0x45; platform->key_head=1;
     }
     if(shop_test) {
-        static const unsigned char keys[]={0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
+        static const unsigned char keys[]={0x20,0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
         if(g_slicks_diag_weapon_case) {
             unsigned n=0;
@@ -1973,7 +1973,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             if(m->help) {
                 if(slicks_help_viewer_key(m->help,scan==1?27:0,scan)) goto done;
                 if(m->help->navigation.done) {
-                    if(slicks_amiga_help_close(m) || slicks_amiga_shop_draw(m,&c,&state)) goto done;
+                    if(slicks_amiga_help_close(m)) goto done;
                     if(shop_test) g_slicks_shop_help_phase=2;
                     present_menu_surface(platform,m);
                     if(show_menu(platform)) goto done;
@@ -2007,7 +2007,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                     session->players.participation[d],session->players.vehicle[d],it,c.extra);
                 if(shop_test) { ++g_slicks_shop_test_phase; slicks_diag_shop_ready(); }
             }
-            if(action!=SLICKS_SHOP_HELP && action!=SLICKS_SHOP_CAPTURE) {
+            if(action==SLICKS_SHOP_REDRAW || action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
                 if(slicks_amiga_shop_draw(m,&c,&state)) goto done;
                 present_menu_surface(platform,m);
             }

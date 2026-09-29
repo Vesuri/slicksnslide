@@ -1,7 +1,9 @@
+set $shop_draws=0
 break *slicks_amiga_shop_draw
 commands
   silent
   set $shop_surface = *(struct SlicksAmigaPlayerMenu **)($sp+4)
+  set $shop_draws=$shop_draws+1
   continue
 end
 break slicks_diag_shop_ready
@@ -25,6 +27,10 @@ commands
   silent
   if g_slicks_shop_test_phase != 3 || g_slicks_shop_help_phase != 2
     printf "SHOP_INPUT_FAILED\n"
+    quit 1
+  end
+  if $shop_draws!=5
+    printf "SHOP_REDUNDANT_OR_MISSING_DRAW count=%u\n",$shop_draws
     quit 1
   end
   if g_slicks_setup_session.cash[0] != 891 || g_slicks_setup_session.inventory[0][5] != 5 || race->weapon_inventory[0][5] != 5 || race->selected_weapon[0] != 0 || !race->weapons_enabled

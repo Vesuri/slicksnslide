@@ -64,6 +64,24 @@ int main(void)
     unsigned char exit_label[64];check(uc_mem_read(u,ds+0x1523,exit_label,64));
     word(u,ds+0x680,0x100);word(u,ds+0x682,0x6000);word(u,ds+0x684,0x200);word(u,ds+0x686,0x6000);
     unsigned cases=0;
+    /* The original input loop skips the painter when neither refresh
+       selector is set, including ignored keys and a restored Help view. */
+    {
+        uint16_t cs=0x266c,ss=0x8000,sp=0xe000,bp=0xf000,ip;
+        check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+        check(uc_reg_write(u,UC_X86_REG_SS,&ss));
+        check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+        check(uc_reg_write(u,UC_X86_REG_BP,&bp));
+        word(u,0x8eff3,0);
+        memset(&dos,0,sizeof dos);
+        check(uc_emu_start(u,0x2cf6d,0x2cfcc,0,100));
+        check(uc_reg_read(u,UC_X86_REG_IP,&ip));
+        if(ip!=0x690c || dos.count) {
+            fprintf(stderr,"Shop zero-refresh branch failed ip=%04x calls=%u\n",ip,dos.count);
+            return 1;
+        }
+        puts("Original shop zero-refresh branch skips painting");
+    }
     for(unsigned trial=0;trial<4096;++trial) {
         struct SlicksSetupSession s={0};
         unsigned mask=1+trial%15,flags=(trial/15)%16;

@@ -1407,6 +1407,28 @@ Normal registration Help also passes on this build
 (`tmp/standalone-release-gqbvgpxh`). Both runs were muted and their emulators
 closed.
 
+## Shop no-op and Help-return publication (2026-09-29)
+
+The production shop now redraws values only for redraw, buy and sell actions.
+Ignored input and exit do not redraw; closing Help publishes its saved-image
+restoration without repainting the shop over it. The original loop at
+`2cf6d` skips to `2cfcc` when both refresh selectors are zero; the
+original-instruction shop verifier now executes and checks that branch.
+Its 4,096 dynamic and 512 background command/font comparisons also pass.
+
+The native fixture inserts an ignored A key before its capture, buy/sell,
+Help and exit sequence and requires exactly five shop draws: initial creation,
+post-computer purchases, two buys and one sell. The stripped-binary run
+`tmp/standalone-release-_w7jo_l8` reaches `SHOP_RACE_ENTRY_OK`, with the
+expected cash, inventory, selected weapon and Help return state. All six
+recorded publications match all 64,000 chunky pixels. This is a race-entry
+gate, not a normal-exit gate. It used a confirmed default 4 KiB stack,
+stock-speed PAL 68020, 2 MiB Chip RAM and no Fast RAM; the muted emulator
+was closed. Build evidence is `tmp/shop-noop-build.log`.
+
+This does not finish driver/row-specific refresh selectors or shop failure
+coverage, and is not a performance benchmark. Those remain actionable.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

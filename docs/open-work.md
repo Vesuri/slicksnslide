@@ -46,7 +46,9 @@ Implementation and completed verification evidence are separate in
   actual full-screen replacements. Verify producer coverage and native pixels.
   Remaining publication coverage: additional Tracks storage/format
   failures, other Help owners,
-  shop refresh selectors/driver changes/failures, remaining saved-game recovery,
+  shop driver/row-specific refresh selectors and driver changes/failures
+  (ignored-key and Help-return redundant draws are removed and verified),
+  remaining saved-game recovery,
   intermission/results error routes.
   Registration archive-unavailable, null Help-surface and viewer-allocation
   failures and malformed Help navigation now have native publication/return
