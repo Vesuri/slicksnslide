@@ -5,6 +5,8 @@
 #include <proto/exec.h>
 #endif
 #include "amiga_saved_files.h"
+unsigned char g_slicks_diag_saved_lock_failure;
+long g_slicks_diag_saved_lock_error;
 int slicks_saved_file_path(char path[13],const unsigned char *name)
 {
     unsigned n=0;
@@ -37,7 +39,12 @@ int slicks_amiga_saved_files(unsigned char names[40][9])
 {
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr; process->pr_WindowPtr=(APTR)-1;
-    BPTR lock=Lock((CONST_STRPTR)"",ACCESS_READ);
+    /* Explicit native fixture only: traverse a regular asset as a directory
+     * so AmigaDOS itself rejects Lock, rather than fabricating an I/O result. */
+    unsigned char fail_lock=g_slicks_diag_saved_lock_failure;
+    g_slicks_diag_saved_lock_failure=0;
+    BPTR lock=Lock((CONST_STRPTR)(fail_lock?"SLICKS.000/scan-failure":""),ACCESS_READ);
+    if(fail_lock) g_slicks_diag_saved_lock_error=lock?0:IoErr();
     int count=0,result=-1;
     struct FileInfoBlock info __attribute__((aligned(4)));
     if(!lock || !Examine(lock,&info)) goto done;

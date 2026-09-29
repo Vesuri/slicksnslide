@@ -1314,6 +1314,35 @@ the checkpoint; this is not a normal-exit check. Other owners of the shared
 callback still require their own workflow/error coverage. No speedup or
 reduction in merged rectangle area is claimed from this run.
 
+## Saved catalogue directory-lock failure (2026-09-29)
+
+`CHAMPSAVX` selects a one-shot native catalogue fault before the startup
+snapshot. The scanner calls real AmigaDOS `Lock` on
+`SLICKS.000/scan-failure`, traversing a regular original asset as a directory;
+no file is created, renamed or modified and no return value is fabricated.
+Unlike the earlier probe that examined a file lock as a directory and saw an
+empty catalogue, this operation fails at Lock with error 212 (wrong type).
+Normal launches continue to lock the current directory.
+
+The current stripped binary passes on stock-speed PAL 68020, 2 MiB Chip/no
+Fast and confirmed 4 KiB stack. After a genuine first intermission, the Save
+owner observes the cached error and displays `CANNOT READ SAVED GAMES`.
+The diagnostic requires one enumeration, fault consumption, restoration of
+the process requester pointer, no save call, retained display ownership at
+warning/return, and normal system-restoring exit (mask 31).
+
+All 19 captured menu publications match all 64,000 chunky pixels using the
+independent planar decoder. Warning and restoration each publish only
+`(80,96)..(240,110)`. Evidence:
+`tmp/standalone-release-e468y0bq`, with captures beneath
+`.run/menu-rectangles`; build and host regression logs:
+`tmp/saved-scan-build.log`, `tmp/saved-scan-host.log`.
+The debug run was muted and its emulator closed.
+
+This covers a real Lock failure and its cached menu route, not a partial
+`ExNext` failure, repairing an externally damaged directory while running,
+or the separately unresolved Load Game entry route.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from
