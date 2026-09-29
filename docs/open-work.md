@@ -64,8 +64,11 @@ Implementation and completed verification evidence are separate in
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:
-  implement the original loading caption, both background tint rectangles and
-  their font/colour/display lifetime.
+  connect the original loading painter to race preparation, including filename
+  caption construction, the actual caller font alias and display lifetime.
+  Its isolated drawing oracle is in `verify-loading-pixels`; this is not live
+  integration. The current platform-end disk boundary restores the OS display,
+  so merely drawing before that call does not preserve the loading screen.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
   Verify natural completion, failed preparation and program-exit/save-failure

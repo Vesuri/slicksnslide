@@ -879,6 +879,35 @@ sets font DS:0680's colour. The signed-flag caption selection follows at
 work includes both background remaps and their lifetime, not only the text.
 This inspection is not native implementation or a pixel-verification claim.
 
+## Loading painter original/68020 comparison (2026-09-29)
+
+`src/ui/loading_presentation.h` reproduces the complete ordered drawing
+sequence at `1b488..1b58f`: both background tint rectangles, nearest-colour
+selection, font colour mutation and centered ordinary/demo caption. Positive
+flags suppress only the text; the tints and font mutation still occur.
+The owner must provide its actual font, live palette and original labels.
+
+`verify-loading-pixels` executes the original tint-table lookup/remap and
+font routines, adapting only VGA accesses. The native side uses the shared
+chunky tint renderer and actual 68020 font code with the original `kirj.@f`
+asset. It compares all 64,000 pixels and the complete font state. Original
+filename/suffix construction executes too, but its result is supplied across
+the native renderer boundary: this does not validate native filename assembly.
+
+The initial exhaustive run passed all 256 flag bytes with two palette/pixel
+patterns (512 comparisons; `tmp/loading-pixels.log`). The committed bounded
+fixture covers flags 0, 1, 127, 128 and 255 on both patterns and additionally
+requires the original CPU to reach the exact endpoint. Exhaustive signed-flag
+branch coverage remains in `verify-title-demo`. Final combined results are
+in `tmp/loading-pixels-final.log`.
+
+This is an isolated painter, not live loading-screen completion. Native race
+preparation currently ends hardware ownership and restores the AmigaOS view
+before disk loading; drawing this panel just before that would immediately
+erase it. Live integration still needs the display lifetime, actual font
+alias and filename construction resolved and verified. No emulator was
+started or release executable replaced for this host/CPU-oracle work.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
