@@ -1558,6 +1558,47 @@ to its startup producer; it does not prove native reconstructed pixels match
 the saved image. The remaining comparison must use the prepared background
 and subsequent title draws, not an assumed pre-demo framebuffer snapshot.
 
+## Natural completion and saved Arcade configurations (2026-09-30)
+
+`DEMOEND` now passes the complete return-pixel oracle as well as the native
+natural-deadline/lifecycle gate. Run `tmp/standalone-release-l7da5yyx` reaches
+two natural returns at frames 2,121/2,485, clocks 3,861/4,524 and deadlines
+3,859/4,523. No exit key is injected. Both ordinary unregistered English
+return images match all 64,000 pixels of the original complete title wrapper;
+normal system restoration passes.
+
+The oracle now also records saved language, Arcade player count and seconds/
+tracks settings, executes the original Arcade dispatch, and checks registered
+Arcade returns. The only additional substituted boundary is libc formatting
+of one/two integer player/summary strings; palette selection, cropping, font
+mutation, drawing and language lookup execute original instructions. Direct
+startup/demo-return cases use the independently established final-loaded iso
+font alias; arbitrary nested-menu alias lifetime is not inferred from them.
+
+`title_return_test_config` creates a fresh original-format CFG using the
+production codec and refuses to overwrite an existing file. Saved mode 5,
+language 1 passes two registered returns in `tmp/standalone-release-xzsl2n9_`;
+saved mode 5, language 2 passes in `tmp/standalone-release-beim7w56`. Both
+run the normal configuration loader, retain one Arcade player and the saved
+30-second/three-track settings, and match all 64,000 pixels on both returns.
+The private keyfile, configurations and owner/pixel dumps remain ignored.
+All three runs use the stripped binary, confirmed 4 KiB stack, stock PAL
+68020 and 2 MiB Chip/no Fast, and finish the full restoration gate.
+
+The final fixture captures selection by its named debug parameter at the
+shared redraw entry, including Arcade. A trial using a fixed stack offset
+(`tmp/standalone-release-477c2zt1`) failed the oracle because GCC's constprop
+clone had changed the private ABI; it is not pixel-match evidence. Corrected
+Finnish Arcade rerun `tmp/standalone-release-t8d83o_d` passes both full-screen
+comparisons and normal restoration. GDB emitted nonfatal symtab warnings, but
+recorded both named selections as zero and reached the completion gate.
+The CFG helper's overwrite rejection was checked separately: exit 2 and an
+unchanged file hash. All owned muted emulators were closed.
+
+These tests cover direct returns at selection zero, not all keyboard routes,
+other player-count selections, animation wall-clock cadence or loading
+scanout. Separate isolated Arcade oracles cover the other drawing parameters.
+
 ## Registered and unregistered title-wrapper returns (2026-09-30)
 
 The live return oracle now executes `29f2c..29fef`, including original mode

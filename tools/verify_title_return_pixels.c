@@ -1,11 +1,31 @@
-/* Compare live native return snapshots with the original complete ordinary
- * title renderer. No drawing calls are replaced by command mocks. Prepared
+/* Compare live native return snapshots with the original complete title
+ * wrapper and its ordinary/Arcade renderers. No drawing calls are mocked. Prepared
  * background/decoded-font helpers have separate original-instruction oracles. */
 #define main palette_verifier_main
 #include "verify_palette_remap.c"
 #undef main
 #include "../src/ui/title_background.h"
 #include "../src/ui/menu_icon.h"
+
+/* Arcade's libc formatting boundary; all rendering and lookup run DOS code. */
+static void format_summary(uc_engine *u,uint64_t address,uint32_t size,void *context)
+{
+    (void)address;(void)size;(void)context;uint16_t ss,sp,ip,cs;
+    check(uc_reg_read(u,UC_X86_REG_SS,&ss));check(uc_reg_read(u,UC_X86_REG_SP,&sp));
+    unsigned s=ss*16U+sp;char format[64],out[96];
+    check(uc_mem_read(u,getword(u,s+8)+16U*getword(u,s+10),format,sizeof format));format[63]=0;
+    /* These are the original one/two-integer player and summary formats,
+     * not arbitrary target strings accepted as host printf programs. */
+    unsigned conversions=0;
+    for(unsigned i=0;format[i];++i)if(format[i]=='%'){
+        if(format[++i]!='d' || ++conversions>2)abort();
+    }
+    if(!conversions)abort();
+    int n=snprintf(out,sizeof out,format,(short)getword(u,s+12),(short)getword(u,s+14));
+    if(n<0 || n>=96)abort();check(uc_mem_write(u,getword(u,s+4)+16U*getword(u,s+6),out,n+1));
+    ip=getword(u,s);cs=getword(u,s+2);sp+=4;
+    check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_IP,&ip));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+}
 
 int main(int argc,char **argv)
 {
@@ -47,20 +67,27 @@ int main(int argc,char **argv)
         check(uc_mem_write(u,0x68000+0x100*i,packed,sizeof packed));
         word(u,0x3cbf0+slots[i],0x100*i);word(u,0x3cbf0+slots[i]+2,0x6800);
     }
-    (void)menu_language_title(u,1,(const unsigned char *)"menu1");
     word(u,0x3cbf0+0x1d7b,100);word(u,0x3cbf0+0x1d87,0);word(u,0x3cbf0+0x1d89,0);
     word(u,0x3cbf0+0x1d8d,0);word(u,0x3cbf0+0x1d8f,200);word(u,0x3cbf0+0x1d91,0);word(u,0x3cbf0+0x1d93,79);
     word(u,0x3cbf0+0x1604,1);word(u,0x3cbf0+0x1602,1);word(u,0x3cbf0+0x15fe,10);
     struct Vga v={0};uc_hook hook;
     check(uc_hook_add(u,&hook,UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE,vga_access,&v,0xa0000,0xaffff));
     check(uc_hook_add(u,&hook,UC_HOOK_INSN,font_port,&v,1,0,UC_X86_INS_OUT));
+    check(uc_hook_add(u,&hook,UC_HOOK_CODE,format_summary,0,0x12943,0x12943));
     char path[1024],line[2048];snprintf(path,sizeof path,"%s/debug.log",argv[1]);
     f=fopen(path,"r");if(!f)return 2;unsigned cases=0,registered=0;
     while(fgets(line,sizeof line,f)){
-        unsigned index,row,counter,phase;int selected,total,mode,weapons,inventory,roles[4];
-        if(sscanf(line,"TITLE_RETURN_STATE %u %u %u %d %d %d %d %d %d %d %d %d %u",
-            &index,&row,&counter,&selected,&total,&mode,&weapons,&inventory,&roles[0],&roles[1],&roles[2],&roles[3],&phase)!=13)continue;
-        if(index!=cases || mode<0 || mode>=5 || row>=7)abort();
+        unsigned index,row,counter,phase,language=1;int selected,total,mode,weapons,inventory,roles[4],players=1,seconds=120,tracks=3;
+        int fields=sscanf(line,"TITLE_RETURN_STATE %u %u %u %d %d %d %d %d %d %d %d %d %u %u %d %d %d",
+            &index,&row,&counter,&selected,&total,&mode,&weapons,&inventory,&roles[0],&roles[1],&roles[2],&roles[3],&phase,&language,&players,&seconds,&tracks);
+        /* Older captures explicitly rejected Arcade and non-English fixtures. */
+        if(fields!=17 && !(fields==13 && mode>=0 && mode<5))continue;
+        if(index!=cases || mode<0 || mode>5 || row>=7)abort();
+        (void)menu_language_title(u,language>=1 && language<=8?language:1,(const unsigned char *)"menu1");
+        word(u,0x3cbf0+0xf1a,players);word(u,0x3cbf0+0xfa,seconds);word(u,0x3cbf0+0x102,tracks);
+        /* Startup's final font load leaves the shared alias at iso.@f.
+         * This checks direct demo returns, not arbitrary nested-menu lifetime. */
+        word(u,0x3cbf0+0x6bd4,0x4000);word(u,0x3cbf0+0x6bd6,0x6000);
         snprintf(path,sizeof path,"%s/.run/title-return/%u.bin",argv[1],index);
         FILE *snapshot=fopen(path,"rb");if(!snapshot || fread(logical,1,sizeof logical,snapshot)!=sizeof logical)abort();fclose(snapshot);
         unsigned char owner[61];snprintf(path,sizeof path,"%s/.run/title-return/%u.owner",argv[1],index);
@@ -70,7 +97,7 @@ int main(int argc,char **argv)
         if(phase>2000)abort();word(u,0x3cbf0+0x1144,phase?phase-1:2000);
         for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
             v.pixels[y*320+x]=background[2+(x&3)*16000+y*80+(x>>2)];
-        const unsigned flags[]={0,10,1,11,0};
+        const unsigned flags[]={0,10,1,11,0,0};
         word(u,0x3cbf0+0x90,selected);word(u,0x3cbf0+0x4da8,total);word(u,0x3cbf0+0x92,mode);
         word(u,0x3cbf0+0x3020,mode==4?weapons:flags[mode]&2);
         word(u,0x3cbf0+0x3022,mode==4?inventory:flags[mode]&1);

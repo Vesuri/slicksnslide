@@ -115,11 +115,15 @@ Implementation and completed verification evidence are separate in
   startup display-allocation cleanup is verified separately below.
   Clean and dirty exit, direct save retry, save-failure cancellation, demo re-entry and
   subsequent successful save have native coverage.
-  Extend the complete return-presentation comparison to Arcade,
-  natural-deadline and other language/font-lifetime cases. Two distinct ordinary
+  Extend caller/font-lifetime coverage beyond the direct demo-return fixtures.
+  Two distinct ordinary
   English keyboard-demo returns in each registration state now match every
   logical pixel of the original complete title wrapper, including icons,
   counters and the registered-owner name/pulse.
+  Ordinary natural-deadline returns and registered Arcade keyboard returns
+  in English and Finnish also match all logical pixels. Keep animation cadence,
+  nested-menu font-alias lifetime and remaining input routes separate from
+  these complete-composition passes.
   DS:4c1c is captured from the prepared
   startup background before subsequent text/menu draws, not immediately before
   a demo; use that producer when constructing the pixel comparison.

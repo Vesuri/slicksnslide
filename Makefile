@@ -1193,6 +1193,10 @@ verify-title-navigation: build/verify_title_navigation
 	build/verify_title_navigation
 
 .PHONY: verify-title-return-pixels
+build/title_return_test_config: tools/title_return_test_config.c src/gen/setup_defaults.h src/game/configuration.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+
 build/verify_title_return_pixels: tools/verify_title_return_pixels.c tools/verify_palette_remap.c tools/host_archive.h src/ui/title_background.h src/ui/menu_icon.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
