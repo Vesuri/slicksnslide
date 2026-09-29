@@ -74,8 +74,8 @@ Implementation and completed verification evidence are separate in
   recheck load/edit entry routes without restoring invented visible rows.
   The original title-owner reachability check cannot select Load Game; exposing
   it as an extension is awaiting the user's choice. Audit other original entry
-  points separately. Move repeated-save/edit testing to a genuine intermission
-  so it does not depend on the obsolete load fixture.
+  points separately. Repeated-save/edit testing now uses a genuine first
+  intermission; load/rejection fixtures still need their entry route resolved.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 
@@ -84,8 +84,9 @@ Implementation and completed verification evidence are separate in
   keyboard snapshot are implemented; title Help, Options, Players, Controllers,
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
-  Extend native saved-game cache coverage to overwrite/delete/failure flows
-  once their original entry-route fixtures are repaired. Startup snapshots and
+  Extend native saved-game cache coverage to failure flows; successful creation,
+  overwrite/delete and cancellation now have real-intermission coverage.
+  Startup snapshots and
   explicit transaction refresh are implemented for SLICKS.TRK and saved-game
   names; external repairs currently require
   restarting, not hidden rereads on navigation. Track-information and its

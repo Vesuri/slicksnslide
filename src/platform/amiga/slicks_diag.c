@@ -974,7 +974,7 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
     slicks_diag_saved_ready();
     if(!championship_test) return;
     if(championship_test==3) {
-        /* Fresh resume, second intermission: cancel a name, create TEMP,
+        /* Real first intermission: cancel a name, create TEMP,
          * cancel/accept overwrite of E2E, cancel/accept deletion of TEMP.
          * Only ordinary keys; catalogue inspection chooses a visible row. */
         static const unsigned char phases[]={1,1,2,1,2,3,1,3,1,3,3,1,3,1,3,1};
@@ -4011,7 +4011,9 @@ int main(void)
     slicks_diag_frame_ready();
     if(championship_test) {
         static const unsigned char save[]={0x4d,0x4d,0x44},load[]={0x4d,0x4d,0x4d,0x4d,0x44};
-        championship_test_keys(&platform,championship_test==1?save:load,championship_test==1?3:5);
+        unsigned char start_new=(unsigned char)(championship_test==1 || championship_test==3);
+        if(championship_test==3) championship_dialog_step=1; /* Skip obsolete Load dialog phase. */
+        championship_test_keys(&platform,start_new?save:load,start_new?3:5);
     }
     if(setup_reload_test || natural_results_test) {
         platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
@@ -4242,7 +4244,7 @@ int main(void)
             } else if(shop_transition_phase==2 && shop_track_position && race->frame_count>=100) {key=0x59;shop_transition_phase=3;}
             if(key) championship_test_keys(&platform,&key,1);
         }
-        if(championship_test==1 && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
+        if((championship_test==1 || championship_test==3) && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
             static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,0x4f,0x44,0x4d,0x44,0x4d,0x44,0x45,0x4c,0x4c,0x44};
             championship_test_keys(&platform,keys,sizeof keys); championship_test_stage=1;
         }

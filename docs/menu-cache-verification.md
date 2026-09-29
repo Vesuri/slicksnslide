@@ -267,3 +267,30 @@ FSUAE_RUN=.run/championship-return ./debug.sh '' diag_championship_save.gdb`.
 Local log `tmp/saved-return-native.log` ends with the native save/exit pass;
 the muted emulator exited. Fatal constructor/cleanup paths and original Load
 entry still require broader coverage, not inferred from this save-only test.
+
+## Repeated save/edit through the real intermission
+
+CHAMPEDIT no longer starts by trying to select the hidden title Load row.
+It follows the same ordinary title/Tracks/GO keys as CHAMPSAVE, advances through
+the existing between-race key route, and enters the original hidden Save action
+at the first intermission. Only the obsolete initial Load-dialog phase is
+skipped in the diagnostic key sequencer; production menus/storage are unchanged.
+
+`diag_championship_edit.gdb` requires a new game, track index zero, three selected
+tracks and the 15 subsequent modal phases. It checks the shared hardware/I/O
+boundaries and cached name/enumeration counts at every phase. Starting with
+one generated E2E.SSS, the sequence cancels name entry, creates TEMP, cancels
+and accepts overwrite of E2E, cancels and accepts deletion of TEMP, then exits.
+Enumeration stays at one until TEMP creation, rises to two after creation,
+three after overwrite, and four after deletion. Names change 1→2→1. No cancelled
+operation triggers enumeration. Exit restores the system with status 31 and
+does not trigger the diagnostic force-exit fallback.
+
+Reproduce after the CHAMPSAVE fixture in the same isolated directory:
+`SLICKS_CHAMPIONSHIP=edit SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/championship-return ./debug.sh '' diag_championship_edit.gdb`.
+Local `tmp/saved-edit-native.log` reports
+`NATIVE_CHAMPIONSHIP_RESAVE_OVERWRITE_DELETE_CANCEL_OK`. E2E.SSS remains (196
+bytes); only the generated TEMP.SSS was deleted. The muted runner closed its
+emulator. This replaces the stale entry assumption for edit testing, not the
+still-unresolved Load/resume/rejection fixtures or save-failure coverage.
