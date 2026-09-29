@@ -41,7 +41,7 @@
 #include "../../ui/profile_actions.h"
 #include "../../ui/title_help.h"
 #include "../../ui/title_navigation.h"
-#include "../../ui/arcade_title_draw.h"
+#include "../../ui/arcade_title_painter.h"
 #include "../../ui/language_table.h"
 #include "resource_archive.h"
 #include "menu_resources.h"
@@ -850,50 +850,11 @@ static int show_race_load_error(struct SlicksAmigaPlatform *platform,
     slicks_diag_race_load_failed(); return 0;
 }
 
-struct ArcadeTitleSurface {unsigned char *logical;struct SlicksChunkyUi ui;};
-static unsigned char *arcade_font(unsigned id)
-{ return id==0?slicks_title_small_font:id==1?title_arcade_font:slicks_title_font; }
-static unsigned char arcade_nearest(void *p,unsigned char r,unsigned char g,unsigned char b)
-{return slicks_ui_nearest(&((struct ArcadeTitleSurface *)p)->ui,r,g,b);}
-static void arcade_colour(void *p,unsigned font,unsigned char colour)
-{(void)p;arcade_font(font)[6]=colour;}
-static void arcade_shadow(void *p,unsigned char colour)
-{(void)p;slicks_title_third_color=colour;}
-static void arcade_restore(void *p,short x,short y,short width,short height)
-{
-    struct ArcadeTitleSurface *s=p;x&=(short)~3;width&=(short)~3;
-    for(unsigned dy=(unsigned)y;dy<(unsigned)(y+height);++dy)
-        for(unsigned dx=(unsigned)x;dx<(unsigned)(x+width);++dx)
-            s->logical[(dx&3)*65536UL+dy*100+(dx>>2)]=
-                slicks_title_background[2+(dx&3)*16000UL+dy*80+(dx>>2)];
-    slicks_title_dirty_add(&title_dirty,x,y,(short)(x+width),(short)(y+height));
-}
-static void arcade_rectangle(void *p,short l,short t,short r,short b,unsigned char colour)
-{
-    struct ArcadeTitleSurface *s=p;
-    for(unsigned y=(unsigned)t;y<(unsigned)b;++y)for(unsigned x=(unsigned)l;x<(unsigned)r;++x)
-        s->logical[(x&3)*65536UL+y*100+(x>>2)]=colour;
-    slicks_title_dirty_add(&title_dirty,l,t,r,b);
-}
-static void arcade_text(void *p,unsigned font,unsigned id,short x,short y,unsigned char flags)
-{
-    struct ArcadeTitleSurface *s=p;unsigned char buffer[96];const unsigned char *text;
-    if(id==0 || id==5) text=slicks_language_lookup(title_language,title_language_used,
-        (const unsigned char *)(id?"settings":"players"),(const unsigned char *)(id?"SETTINGS":"PLAYERS"));
-    else {
-        short values[2]={(short)id,0};const unsigned char *format=(const unsigned char *)"%dP";
-        if(id==6) {
-            values[0]=title_configuration->options[13];values[1]=title_configuration->options[14];
-            format=slicks_language_lookup(title_language,title_language_used,
-                (const unsigned char *)"arcade.settingstext",(const unsigned char *)"%d SECS\n%d TRACKS");
-        }
-        if(slicks_arcade_title_format(buffer,sizeof buffer,format,values,id==6?2:1)) {
-            g_slicks_diag_force_exit=1;return;
-        }
-        text=buffer;
-    }
-    slicks_title_font_text(s->logical,arcade_font(font),text,x,y,flags,slicks_title_third_color);
-}
+static void arcade_dirty(void *p,short l,short t,short r,short b)
+{(void)p;slicks_title_dirty_add(&title_dirty,l,t,r,b);}
+static void arcade_text(void *p,unsigned char *logical,const unsigned char *font,
+    const unsigned char *text,short x,short y,unsigned short flags,unsigned short shadow)
+{(void)p;slicks_title_font_text(logical,font,text,x,y,flags,shadow);__asm volatile("" ::: "memory");}
 static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
@@ -910,11 +871,17 @@ static void redraw_title_configuration(
             if(setup_resources.override_count>=1 && setup_resources.override_count<=4)
                 g_slicks_title_arcade_counts|=1U<<(setup_resources.override_count-1);
         }
-        struct ArcadeTitleSurface surface={logical,{.palette=palette}};
-        const struct SlicksArcadeTitleDrawOps ops={arcade_nearest,arcade_colour,arcade_shadow,
-            arcade_restore,arcade_rectangle,arcade_text,&surface};
-        slicks_arcade_title_draw(&slicks_title_counter,&title_arcade_refresh,(unsigned char)selection,
-            setup_resources.override_count,(const signed char (*)[6])slicks_original_fallback_colours,&ops);
+        struct SlicksArcadeTitlePainter painter={.logical=logical,
+            .fonts={slicks_title_small_font,title_arcade_font,slicks_title_font,slicks_title_font},
+            .background=slicks_title_background,.palette=palette,
+            .players=slicks_language_lookup(title_language,title_language_used,(const unsigned char *)"players",(const unsigned char *)"PLAYERS"),
+            .settings=slicks_language_lookup(title_language,title_language_used,(const unsigned char *)"settings",(const unsigned char *)"SETTINGS"),
+            .summary=slicks_language_lookup(title_language,title_language_used,(const unsigned char *)"arcade.settingstext",(const unsigned char *)"%d SECS\n%d TRACKS"),
+            .seconds=title_configuration->options[13],.tracks=title_configuration->options[14],
+            .text=arcade_text,.dirty=arcade_dirty};
+        if(slicks_arcade_title_paint(&painter,&slicks_title_counter,&title_arcade_refresh,(unsigned char)selection,
+            setup_resources.override_count,(const signed char (*)[6])slicks_original_fallback_colours)) g_slicks_diag_force_exit=1;
+        slicks_title_third_color=painter.shadow;
         goto owner;
     }
     slicks_title_dirty_add(&title_dirty,200,96,244,140);

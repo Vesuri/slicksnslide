@@ -18,7 +18,7 @@ and a production-screen comparison establish different things.
 | F07 | Menu transitions briefly expose AmigaOS | Menu owners end/begin hardware takeover around disk reads and even RAM-only close/redraw transitions. The separate resident-assets inventory covers the dependencies. |
 | F08 | Title-loop animation coverage is incomplete | Normal selected-label pulse now advances through the translated original routine every visible title update. Arcade and wall-clock cadence/reference comparison remain unverified; see the new native cycle evidence below. |
 | F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
-| F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. The separate native renderer and arrow/action routing are now connected; original full-screen pixel, font-alias lifetime, shortcut and mouse coverage remain to be completed. |
+| F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. Native integration and original full-screen renderer comparisons pass. Caller/transition font-alias lifetime, shortcut and mouse coverage remain to be completed. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
@@ -253,6 +253,31 @@ audits, zero pixel errors and restoration 31
 (`tmp/arcade-title-normal-regression.log`). Arcade initialization now uses a
 background-only bridge: it must not advance the ordinary title counter before
 executing its own renderer. The shared owner-name tail still advances once.
+
+`make verify-arcade-title-pixels` now passes 144 complete 320x200 and
+complete-font-state comparisons. This runs original `29afa..29f2b`, including
+real DOS palette selection, crop, rectangles and font painters, against the
+same `arcade_title_painter.h` used in production and the actual 68020 planar
+font-string bridge/glyph implementation. Both sides use the supplied title
+artwork, palette and all three fonts, not captured pixels. Cases cover both
+rows, all four player counts, pulse edges/wrap and clean/dirty status crops;
+all three last-loaded-font aliases are exercised. Only language lookup and
+libc formatting are oracle boundaries. The separate original-command gate
+and formatting/bridge tests remain applicable. Local log:
+`tmp/arcade-title-pixels.log`.
+The refactored production binding passes the stock-A1200 REGCHECKB gate
+again: counts=15, draws=30, checks=45, errors=0, one Options return, one
+correct race start and restoration=31 (`tmp/arcade-painter-native.log`).
+The owned muted emulator exited normally.
+
+Font startup verification now executes through the third font slot and
+confirms kirj/pieni/iso load order. Each complete original font-loader run
+also checks DS:6bd4/6bd6 against the returned allocation. The direct-call
+inventory in the supplied normalized listing contains the three startup
+loader calls; the known direct alias writes occur in that loader. This
+supports the initial iso alias but does not replace caller/transition tracing
+for the remaining lifetime audit. Pixel comparisons deliberately cover all
+three aliases instead of assuming this lifetime requirement away.
 
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |

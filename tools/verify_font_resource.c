@@ -36,11 +36,11 @@ static void verify_startup_font(uc_engine *u)
     uc_hook hook; check(uc_hook_add(u,&hook,UC_HOOK_CODE,startup_font,0,0x2fc0c,0x2fc0c));
     check(uc_reg_write(u,UC_X86_REG_CS,&cs)); check(uc_reg_write(u,UC_X86_REG_DS,&ds));
     check(uc_reg_write(u,UC_X86_REG_SS,&ss)); check(uc_reg_write(u,UC_X86_REG_SP,&sp));
-    check(uc_emu_start(u,0x19dd8,0x19e16,0,1000));
-    if(startup_fonts!=2 || get(u,0x3cbf0+0x680) || get(u,0x3cbf0+0x682)!=0x5000 ||
-       get(u,0x3cbf0+0x686)!=0x5100) abort();
+    check(uc_emu_start(u,0x19dd8,0x19e2b,0,1000));
+    if(startup_fonts!=3 || get(u,0x3cbf0+0x680) || get(u,0x3cbf0+0x682)!=0x5000 ||
+       get(u,0x3cbf0+0x686)!=0x5100 || get(u,0x3cbf0+0x688) || get(u,0x3cbf0+0x68a)!=0x5200) abort();
     check(uc_hook_del(u,hook));
-    puts("Original startup selects the production HUD font into DS:0680; the sequential help font has a distinct slot");
+    puts("Original startup loads kirj/pieni/iso in order into DS:0680/0684/0688");
 }
 static void io(uc_engine *u,uint64_t address,uint32_t size,void *context)
 {
@@ -78,7 +78,8 @@ int main(void)
         check(uc_reg_read(u,UC_X86_REG_IP,&ip)); check(uc_reg_read(u,UC_X86_REG_SP,&sp));
         check(uc_reg_read(u,UC_X86_REG_AX,&ax)); check(uc_reg_read(u,UC_X86_REG_DX,&dx));
         check(uc_mem_read(u,0x50000,original,sizeof original));
-        if(ip || sp!=0xf004 || ax || dx!=0x5000 || cursor!=length || output>(long)allocated || memcmp(native,original,sizeof native)) {
+        if(ip || sp!=0xf004 || ax || dx!=0x5000 || get(u,0x3cbf0+0x6bd4)!=ax ||
+           get(u,0x3cbf0+0x6bd6)!=dx || cursor!=length || output>(long)allocated || memcmp(native,original,sizeof native)) {
             fprintf(stderr,"Font resource mismatch %s output=%ld allocation=%u consumed=%u\n",names[test],output,allocated,cursor); return 1;
         }
         if(test<2) {

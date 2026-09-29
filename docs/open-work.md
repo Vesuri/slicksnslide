@@ -46,11 +46,12 @@ Implementation and completed verification evidence are separate in
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
   remaining title shortcuts and mouse routes against original callers.
-  Finish F10's original full-screen pixel comparison, font-alias lifetime and
-  input-route audit. The separate Arcade renderer, original arrow/action
+  Finish F10's caller/transition font-alias lifetime and input-route audit.
+  The Arcade body now passes original full-screen and font-state comparisons.
+  The separate Arcade renderer, original arrow/action
   routing and mutable DS:0f1a player override are connected; native Options
-  round-trip and two-human/two-computer race handoff pass. Command/bridge and
-  native buffer-agreement tests are not an original full-screen comparison.
+  round-trip and two-human/two-computer race handoff pass. Isolated rendering
+  comparisons do not establish remaining caller and mouse/shortcut coverage.
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
 - Recheck save/edit fixtures which previously assumed the extra intermission
