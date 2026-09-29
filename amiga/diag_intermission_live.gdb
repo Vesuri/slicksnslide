@@ -3,10 +3,42 @@ set $starts = 0
 set $inputs = 0
 set $opened = 0
 set $awards = 0
+set $resident = 0
+set $closed = 0
+break slicks_amiga_platform_end
+commands
+  silent
+  if $resident
+    printf "INTERMISSION_RAM_RETURN_TEARDOWN\n"
+    quit 1
+  end
+  continue
+end
+break slicks_resource_archive_open
+commands
+  silent
+  if $resident
+    printf "INTERMISSION_RAM_NAVIGATION_ARCHIVE_READ\n"
+    quit 1
+  end
+  continue
+end
+break slicks_diag_intermission_closed
+commands
+  silent
+  if !$resident || !g_slicks_diag_profile_platform->active || g_slicks_diag_intermission_menu
+    printf "INTERMISSION_RETURN_OWNERSHIP_FAILED\n"
+    quit 1
+  end
+  set $resident = 0
+  set $closed = $closed+1
+  continue
+end
 break slicks_diag_intermission_checkpoint
 commands
   silent
   set $opened = $opened+1
+  set $resident = 1
   set $m = g_slicks_diag_intermission_menu
   set $p = &g_slicks_setup_session.players
   if $opened != 1 || !$m || !$m->intermission || $starts != 1 || $awards != 1 || $p->count < 2
@@ -101,7 +133,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $loads != 2 || $starts != 2 || $awards != 2 || $inputs != 9 || $opened != 1 || g_slicks_diag_restore_status != 0x1f
+  if $loads != 2 || $starts != 2 || $awards != 2 || $inputs != 9 || $opened != 1 || $closed != 1 || g_slicks_diag_restore_status != 0x1f
     printf "INTERMISSION_LIVE_FAILED loads=%u starts=%u awards=%u inputs=%u\n", $loads, $starts, $awards, $inputs
     quit 1
   end

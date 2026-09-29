@@ -94,7 +94,9 @@ Implementation and completed verification evidence are separate in
   warning close and RAM-only track-list chooser input now retain hardware
   ownership. Saved-game picker-to-name, notice closes and RAM-only returns also
   retain ownership. Verify the existing cached Load-owner transition after its
-  entry route is resolved; migrate results/return and remaining RAM-only owners.
+  entry route is resolved; migrate results and remaining RAM-only owners.
+  The normal intermission return now retains hardware ownership; cover its
+  retry/skip cleanup alongside the broader release gates.
   Shop and registration Help
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown

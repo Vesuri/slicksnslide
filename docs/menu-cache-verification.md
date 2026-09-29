@@ -321,3 +321,28 @@ Host regressions also pass: saved-file cache/path/delete checks, 1,485 save
 faults, 2,310 load/truncation cases and 262,144 original saved-file caller
 comparisons. Native recovery-artifact/enumeration-failure and Load-entry coverage
 remain separate; a write-protection test does not establish those branches.
+
+## Intermission return without OS teardown
+
+Normal intermission cleanup now releases its RAM-owned objects and switches
+back to the race copper list at display blanking without ending/restarting
+hardware ownership. If an explicit preceding boundary left it inactive, it
+still acquires the race view. The caller retains its explicit release before
+next-track preparation. Fatal paths reach the outer cleanup; retry/skip native
+coverage still needs refreshing for this lifetime change.
+
+The extended `diag_intermission_live.gdb` guards from the first live intermission
+checkpoint through its closed checkpoint against platform teardown and archive
+opening. It requires the modal object gone and ownership active at return.
+Fresh `SLICKS_INTERMISSION_LIVE=1 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/intermission-live-v1 ./debug.sh '' diag_intermission_live.gdb`
+passes all nine Change Cars inputs, two race starts with the exact edited
+vehicles, unchanged RNG, one reward per race and restoration 31. Profile
+snapshots before/after compare byte-for-byte. The muted emulator exited;
+local log `tmp/intermission-return-native.log` ends with
+`NATIVE_INTERMISSION_REPEATED_EDITS_SECOND_RACE_OK`.
+
+Fresh host gates pass original intermission initialization/action/draw/prepare
+and Change Cars input comparisons, plus the composition/lifetime harnesses
+(the latter use stub assets and are not independent pixel evidence). No
+selection, rendering or reward policy was changed by this return-path edit.

@@ -2687,6 +2687,7 @@ static void intermission_test_key(struct SlicksAmigaPlatform *platform,unsigned 
         platform->key_tail=0; platform->keys[0]=0x58; platform->key_head=1;
     }
 }
+__attribute__((noinline)) void slicks_diag_intermission_closed(void) { __asm__ volatile("" ::: "memory"); }
 static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
     unsigned char *chunky,const unsigned char *palette,const char *next_path,
     const unsigned char *next_name,short position,short total,unsigned char diagnostic,
@@ -2804,13 +2805,18 @@ unavailable:
     result=intermission_retry_notice(platform,race,chunky,palette,diagnostic);
     if(result==1) { result=-1; goto retry; }
 done:
-    slicks_amiga_platform_end(platform);
     slicks_amiga_player_menu_destroy(m); g_slicks_diag_intermission_menu=0;
     slicks_resource_archive_close(&archive);
     if(dat) FreeMem(dat,65536);
     if(track) FreeMem(track,8192);
     if(language) FreeMem(language,2048);
-    if(result>=0 && slicks_amiga_platform_begin(platform,1)) result=-1;
+    if(result>=0) {
+        if(platform->active) {
+            slicks_amiga_platform_wait_display_blank(platform);
+            slicks_amiga_platform_show(platform,1);
+        } else if(slicks_amiga_platform_begin(platform,1)) result=-1;
+    }
+    slicks_diag_intermission_closed();
     return result;
 }
 
