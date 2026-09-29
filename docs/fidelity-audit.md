@@ -1020,6 +1020,36 @@ allocation failures, all malformed assets, or production program-exit/save
 failure. The latter remain separate open checks. Diagnostic implicit-save
 suppression remains in force, so this is not an end-to-end persistence test.
 
+## Demo program exit and save-failure cancellation (2026-09-29)
+
+`DEMOSAV` (`SLICKS_DEMO_LIFECYCLE_TEST=8`) makes a real Options volume edit
+using normal menu input, then enters a demo and exercises both track-data
+views. It requests program exit through the native exit-request route rather
+than injecting a demo-return key. At each setup-store entry, the debugger
+compares the entire configuration with the pre-demo snapshot and requires
+the temporary demo state to have been cleared.
+
+The first save encounters an AmigaDOS-created `SLICKS.CFG.new` directory
+obstruction in the isolated test disk. The real failure dialog appears;
+ordinary Escape cancels it. The fixture checks full configuration and playlist
+restoration, enters another demo, checks both views again, and exits. The
+second save succeeds. It reopens the actual 142-byte configuration file and
+compares every byte with the normal serialization of the pre-demo settings.
+This is disk readback, not a fresh-process reload test. Only the obstruction
+created by this fixture is removed; original assets are untouched.
+
+The muted native run passes: two starts, four verified views, two save calls,
+one save failure, successful file readback and final OS restoration mask 31.
+The emulator exited and was closed. Logs: `tmp/demo-save-build.log` and
+`tmp/demo-save-native.log`. An initial fixture expectation incorrectly assumed
+a volume step of one; it was corrected to the original option table's step
+of five. No production option behavior was changed.
+
+This closes the bounded dirty-exit/failure-cancel/re-entry/success sequence,
+not clean exit, direct retry, allocation failures or exact saved-image return
+presentation. The shared lifecycle audit now also requires its completion
+checkpoint before accepting system restoration, rejecting early exits.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

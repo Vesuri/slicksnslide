@@ -101,6 +101,8 @@ volatile unsigned char g_slicks_demo_menu_waits;
 volatile unsigned long g_slicks_loading_io_bytes,g_slicks_loading_io_hash;
 volatile unsigned char g_slicks_loading_io_checks;
 volatile unsigned char g_slicks_demo_natural_returns;
+const struct SlicksConfiguration *g_slicks_demo_expected_configuration;
+volatile unsigned char g_slicks_demo_saved_roundtrip;
 volatile unsigned long g_slicks_demo_return_frames[2],g_slicks_demo_return_clocks[2],g_slicks_demo_return_deadlines[2];
 static unsigned long demo_idle_input_at;
 volatile unsigned long g_slicks_demo_idle_wait_frames;
@@ -3672,6 +3674,10 @@ int main(void)
        argv[4]=='H' && argv[5]=='U' && argv[6]=='D') {
         demo_lifecycle_test=7;argc=0;argv="";
     }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='S' && argv[5]=='A' && argv[6]=='V') {
+        demo_lifecycle_test=8;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -4371,11 +4377,20 @@ int main(void)
             static short playlist_before[256];static unsigned short count_before;
             static unsigned long idle_test_started;
             static unsigned long menu_wait_started;
+            static unsigned char save_edit_done;
             if(demo_test_stage>=8 && demo_test_stage<=12 &&
                 (g_slicks_diag_ingame || platform.vblank_count-idle_test_started>10000)) {
                 g_slicks_demo_test_error=9;slicks_diag_demo_test_done();goto cleanup;
             }
             if(!demo_test_stage && !g_slicks_diag_ingame) {
+                if(demo_lifecycle_test==8 && !save_edit_done) {
+                    /* Make a real Options edit, not a forced dirty flag. */
+                    static const unsigned char edit_keys[]={0x4d,0x4d,0x4d,0x44,0x4d,0x3d,0x4e,0x45};
+                    platform.key_tail=0;
+                    for(unsigned i=0;i<sizeof edit_keys;++i) platform.keys[i]=edit_keys[i];
+                    platform.key_head=sizeof edit_keys;save_edit_done=1;demo_test_stage=13;
+                    continue;
+                }
                 if(demo_lifecycle_test==4) {
                     unsigned long before_bitmap=checksum_bitmap(platform.views[0].bitmap);
                     if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
@@ -4405,6 +4420,7 @@ int main(void)
                     ++g_slicks_loading_io_checks;
                 }
                 before=configuration;count_before=g_slicks_track_playlist.count;
+                g_slicks_demo_expected_configuration=&before;
                 for(unsigned i=0;i<256;++i) playlist_before[i]=track_selection[i];
                 static const unsigned char keys[]={0x60,0x51,0xd1,0xe0};
                 unsigned char shifts=0;platform.key_tail=0;
@@ -4421,6 +4437,14 @@ int main(void)
                     platform.key_head=sizeof menu_keys;demo_test_stage=8;
                     idle_test_started=platform.vblank_count;
                 }
+            } else if(demo_test_stage==13 && !g_slicks_options_menu) {
+                if(configuration.options[1]!=slicks_original_option_specs[1].minimum+
+                    slicks_original_option_specs[1].step || !g_slicks_options_state.dirty) {
+                    g_slicks_demo_test_error=17;slicks_diag_demo_test_done();goto cleanup;
+                }
+                demo_test_stage=0;
+            } else if(demo_lifecycle_test==8 && demo_test_stage==4 && save_prompt) {
+                platform.key_tail=0;platform.keys[0]=0x45;platform.key_head=1;
             } else if(demo_test_stage==8 && g_slicks_options_menu) {
                 platform.key_tail=0;platform.keys[0]=0x50;platform.key_head=1;
                 demo_test_stage=9;
@@ -4469,11 +4493,12 @@ int main(void)
                 unsigned count=4;
                 if(demo_test_stage==2) {keys[1]=0x51;keys[2]=0xd1;}
                 if(demo_test_stage==3) {keys[0]=0x33;count=demo_lifecycle_test==5?0:1;}
+                if(demo_test_stage==3 && demo_lifecycle_test==8) {count=0;exit_requested=1;}
                 unsigned char shifts=0;platform.key_tail=0;
                 for(unsigned i=0;i<count;++i)
                     platform.keys[i]=slicks_amiga_key_event(keys[i],&shifts);
                 platform.key_head=(unsigned char)count;++demo_test_stage;
-            } else if(demo_test_stage==4 && !g_slicks_diag_ingame) {
+            } else if(demo_test_stage==4 && !g_slicks_diag_ingame && !save_prompt) {
                 const unsigned char *actual=(const unsigned char *)&configuration;
                 const unsigned char *expected=(const unsigned char *)&before;
                 for(unsigned i=0;i<sizeof before;++i)
@@ -4585,11 +4610,11 @@ int main(void)
                 restore_demo_configuration(&configuration,race,(unsigned char)g_slicks_diag_ingame);
                 selected_track=demo_track;selected_vehicle=demo_vehicle;selected_laps=demo_laps;
             }
-            /* Diagnostic modes never write setup files implicitly. The normal
-             * original caller saves on program exit, not on every modal close. */
-            if(demo_lifecycle_test || (argc && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
+            /* Only explicit persistence fixtures use this transaction.
+             * The normal caller saves on exit, not on every modal close. */
+            if((demo_lifecycle_test && demo_lifecycle_test!=8) || (argc && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
             slicks_amiga_platform_end(&platform);
-            if(persistence_test && (argv[7]=='T' || argv[7]=='V') && !failure_injected) {
+            if(((persistence_test && (argv[7]=='T' || argv[7]=='V')) || demo_lifecycle_test==8) && !failure_injected) {
                 /* Isolated diagnostic fault, using AmigaDOS throughout so
                  * emulator host-directory caching cannot affect recovery. */
                 BPTR obstruction=CreateDir((CONST_STRPTR)"SLICKS.CFG.new");
@@ -4600,6 +4625,16 @@ int main(void)
                 SLICKS_AMIGA_CONFIG_SIGNATURE);
             slicks_diag_setup_saved();
             if(g_slicks_setup_save_report.result==SLICKS_SETUP_SAVED) {
+                if(demo_lifecycle_test==8) {
+                    unsigned char disk[142],expected[142];
+                    if(demo_test_round!=1 || load_plain_file("SLICKS.CFG",disk,sizeof disk)!=142 ||
+                       slicks_save_configuration(g_slicks_demo_expected_configuration,expected,sizeof expected,
+                           SLICKS_AMIGA_CONFIG_SIGNATURE)!=142) {
+                        g_slicks_demo_test_error=18;slicks_diag_demo_test_done();goto cleanup;
+                    }
+                    for(unsigned i=0;i<sizeof disk;++i) if(disk[i]!=expected[i]) g_slicks_demo_test_error=19;
+                    g_slicks_demo_saved_roundtrip=1;slicks_diag_demo_test_done();
+                }
                 setup_dirty=0; result=0; goto cleanup;
             }
             /* Keep live settings and ownership on failure. This platform
