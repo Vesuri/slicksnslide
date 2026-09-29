@@ -1195,3 +1195,28 @@ all seven shared publications independently decode to all 64,000 chunky
 pixels. The title's six fallback publications also still decode correctly.
 These close the identified title allocation failure, not the broader release
 memory/stack gates or every remaining Help owner.
+
+## Setup-save failure cancellation retains takeover (2026-09-29)
+
+Escape from the setup-save warning used to restore AmigaOS and immediately
+take over again while releasing modal objects and rebuilding the resident
+title. There is no I/O in that cancellation branch. It now retains ownership
+and uses `show_menu`, with a full title publication because the error screen
+is being replaced. Actual save attempts remain explicit disk boundaries.
+
+`SLICKS_PLAYER_MENU=12`, `diag_setup_cancel.gdb`, in fresh isolated
+`.run/setup-cancel-owned-v2` passes the full create/edit/fail/cancel/reopen/save
+sequence on 2 MiB/no Fast RAM. The guard counts **function entries**, not
+optimized source locations: between warning and cancelled checkpoint the only
+teardown is the diagnostic's deliberate removal of its CFG.new obstruction.
+There is none for cancellation. Profile and setup-session snapshots before
+and after Escape are byte-identical; ABC remains selected after reopening
+Players, the second save succeeds and system restoration is 31.
+Log: `tmp/setup-cancel-owned-detail.log`. An earlier source-line breakpoint
+overcounted calls (`tmp/setup-cancel-owned.log`); the entry trace resolves it.
+Restarting that same isolated disk with `SLICKS_SETUP_RELOAD=1` and
+`diag_setup_cancel_reload.gdb` passes the persisted configuration/profile
+load and race handoff: selected ABC, vehicle, six colour endpoints and all
+four participation/vehicle assignments match (`tmp/setup-cancel-owned-reload.log`).
+Both runners are muted and close their emulators. No ordinary-launch save
+files were touched.

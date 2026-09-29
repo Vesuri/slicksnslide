@@ -4493,8 +4493,8 @@ int main(void)
                 } else if(code==0x45) {
                     save_prompt=0;
                     /* Return to the title even when the exit request originated
-                     * inside a modal or race. Edited profile data stays alive. */
-                    slicks_amiga_platform_end(&platform);
+                     * inside a modal or race. Edited profile data stays alive.
+                     * All assets are resident; retain hardware ownership. */
                     slicks_amiga_player_menu_destroy(g_slicks_player_menu); g_slicks_player_menu=0;
                     slicks_amiga_player_menu_destroy(g_slicks_options_menu); g_slicks_options_menu=0;
                     slicks_amiga_player_menu_destroy(g_slicks_track_menu); g_slicks_track_menu=0;
@@ -4506,7 +4506,7 @@ int main(void)
                     make_title_surface(logical,title_frame,source_palette);
                     redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
                         selected_vehicle,track_names[selected_track],selected_laps);
-                    if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                    if(show_menu(&platform)) goto cleanup;
                     slicks_diag_setup_save_cancelled();
                 }
                 continue;

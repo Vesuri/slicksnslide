@@ -3,6 +3,14 @@ set $failed = 0
 set $cancelled = 0
 set $reopened = 0
 set $saved = 0
+set $ends = 0
+break *slicks_amiga_platform_end
+commands
+  silent
+  set $ends = $ends+1
+  printf "SETUP_PLATFORM_END %u\n",$ends
+  continue
+end
 break slicks_amiga_store_setup
 commands
   silent
@@ -36,11 +44,18 @@ commands
   dump binary memory .run/setup-cancel-v1/failed-profiles.bin &g_slicks_profiles &g_slicks_profiles+1
   dump binary memory .run/setup-cancel-v1/failed-session.bin &g_slicks_setup_session &g_slicks_setup_session+1
   set $failed = 1
+  set $failure_ends = $ends
   continue
 end
 break slicks_diag_setup_save_cancelled
 commands
   silent
+  # The diagnostic removes its CFG.new obstruction once after the warning.
+  # Cancellation itself must not restore the OS a second time.
+  if $ends != $failure_ends+1
+    printf "SAVE_CANCEL_UNEXPECTED_TEARDOWN ends=%u at_failure=%u\n",$ends,$failure_ends
+    quit 1
+  end
   if !$failed || $attempts != 1 || !g_slicks_diag_profile_platform->active || g_slicks_player_menu || g_slicks_options_menu || g_slicks_title_help || g_slicks_options_renderer.surface || g_slicks_options_configuration
     quit 1
   end
