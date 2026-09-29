@@ -57,6 +57,6 @@ int main(void)
             ++cases;
         }
     check(uc_close(n.cpu));
-    printf("Standings/shop dirty bounds cover all native stores in %u strings, including alignment, both shadows, tabs, newlines and clipping\n",cases);
+    printf("Standings/shop/records dirty bounds cover all native stores in %u strings, including alignment, both shadows, tabs, newlines and clipping\n",cases);
     return 0;
 }

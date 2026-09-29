@@ -48,17 +48,13 @@ static void dirty(void *context,short left,short top,short right,short bottom)
 static int records_text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,
     const unsigned char *string,short x,short y,unsigned char flags,unsigned char highlight)
 {
-    short width=slicks_menu_measure(font,string),left=x;
-    if((flags&3)==1) left=(short)(left-width/2);
-    else if((flags&3)==2) left=(short)(left-width);
-    /* Records contain single-line strings. The original shadow adds one
-     * pixel to the right; include it in producer-reported dirty bounds. */
+    (void)context;
+    short width=slicks_menu_measure(font,string);
     if(width<0 || y<0 || y+font[2]>200) return -1;
     slicks_records_text(ui->pixels,font,string,x,y,flags,highlight);
-    short right=(short)(left+width+((flags&4)!=0));
-    if(left<0) left=0;
-    if(right>320) right=320;
-    if(left<right) dirty(context,left,y,right,(short)(y+font[2]));
+    /* Match actual glyph stores, including tabs/newlines in profile names,
+     * glyph-zero advances and the records bridge's horizontal shadow. */
+    slicks_font_text_dirty(ui,font,string,x,y,1,flags,width,0);
     return 0;
 }
 static int records_icon(void *context,struct SlicksChunkyUi *ui,short id,short x,short y)

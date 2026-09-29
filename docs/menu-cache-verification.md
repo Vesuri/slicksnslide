@@ -1034,3 +1034,28 @@ All three patched runs passed both return-image checks and the final native
 standings/statistics/restoration gate (two returns each, restoration 31).
 All were muted and their Slicks emulators exited; no other project's emulator
 was stopped.
+
+## Records text producer bounds (2026-09-29)
+
+The platform records-text callback now uses `slicks_font_text_dirty`, with
+the records bridge's horizontal-only shadow, instead of deriving a single
+line's bounds from measured string width. This preserves painting and existing
+input validation, but accounts for actual glyph advances, glyph zero,
+tabs/newlines and clipping. It also removes a second independent bounds
+implementation. Ordinary-record screenshots had not demonstrated a missing
+pixel; this is producer-coverage hardening, not a claim that all reported
+menu artifacts had this cause.
+
+`make verify-standings-dirty` passes 5,184 native-store coverage cases for
+both records and standings shadow variants. `make verify-track-records-pixels`
+passes twelve original records-panel and twelve Track Information surround
+full-screen/font comparisons, plus its shared-renderer gates. Logs:
+`tmp/records-glyph-bounds-stores.log` and
+`tmp/records-glyph-bounds-host.log`.
+
+Live validation uses `SLICKS_TRACK_MENU=6`, `SLICKS_DEBUG_WARP=1`,
+`FSUAE_RUN=.run/track-info-v1` and `diag_track_info_rectangles.gdb`.
+All fifteen publications match all chunky pixels; the before/after dialog
+background is byte-identical. Two open/animate/close cycles, font restoration,
+unchanged selection and the subsequent race entry pass. The muted runner
+exited. Native log: `tmp/records-glyph-bounds-native.log`.
