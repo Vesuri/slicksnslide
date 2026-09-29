@@ -44,26 +44,16 @@ Implementation and completed verification evidence are separate in
   only the covered blocks. Check ordinary selection changes, nested dialogs,
   restoration, scrolling and transitions; reserve full-screen conversion for
   actual full-screen replacements. Verify producer coverage and native pixels.
-  Remaining publication coverage: title transitions/pulse, Players nested
-  picker/editor/name/colour dialogs, Controllers, Tracks/list/info, Help,
-  pause/speed, shop, saved-game/recovery, intermission/results and registration.
+  Remaining publication coverage: title transitions/pulse, remaining Players
+  picker/Help paths, wider Tracks scrolling and storage/format failures,
+  other Help owners, pause/speed, shop, saved-game/recovery,
+  intermission/results and registration.
   Audit remaining full-width text callbacks (standings), full-screen modal
   restores and direct row-converter bypasses separately from the shared
-  publisher. Help now restores its lifetime painted bounds; title and nested
-  Options Help publication/return checks pass with glyph-derived horizontal
-  bounds. Extend coverage to the other Help owners and failure paths.
-  Do not infer whole-menu correctness from these gates.
-  Players name/colour create/edit/accept/cancel/reopen and profile-delete
-  cancel/confirm publications now pass; their prepared-background returns use
-  lifetime painter bounds. Extend remaining picker/controller/failure routes.
-  Main Tracks and Track Information now have complete publication comparisons
-  for their existing navigation/animation fixtures. Track Information closes
-  restore lifetime bounds; five pre-draw allocation/resource failure returns
-  also pass. Track-list save/name/cancel/delete/reopen publication checks now
-  pass. Large-list End/cancel/reopen/load and both picker/index allocation
-  failures now have complete native publication comparisons. Extend scrolling
-  and remaining storage/format failure paths rather than inferring exhaustive
-  coverage from those fixtures.
+  publisher. Extend failure-path coverage where only normal transitions have
+  been checked. Completed publication and restoration evidence is kept in
+  [menu-cache-verification.md](menu-cache-verification.md); do not infer
+  whole-menu correctness from a subset of its fixtures.
 - **Whole-port fidelity audit is active and incomplete.** Use the coverage
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.

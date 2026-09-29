@@ -656,3 +656,24 @@ coverage steps, 108 original editor and 104 original Players full-frame
 comparisons and four original preparation comparisons. The normal build
 passes. These runs do not establish all remaining picker/controller/failure
 routes or the outstanding full release gate.
+
+## Controllers and profile-dialog failure publications
+
+Fresh muted `SLICKS_OPTIONS_MENU=2` with `diag_controllers_rectangles.gdb`
+passes all 38 complete bitplane/chunky comparisons and its existing capture,
+reserved-key rejection, defaults, reopen and re-edit assertions. Its final
+close publishes (96,78)-(304,162); no new renderer change was needed.
+Log: `tmp/controllers-rectangles.log`.
+
+`SLICKS_PROFILE_DIALOG_FAILURE=NF/NL/CF/CL` with the corresponding
+`diag_name_failure_rectangles.gdb` / `diag_colour_failure_rectangles.gdb`
+passes 30/30/44/44 complete publication comparisons. These cover allocation
+and post-paint failure for each child, warning dismissal with the parent editor
+retained, successful retry, and the original create/edit/accept/cancel/reopen
+assertions. In all four runs, captured screen and profile bytes before the
+failure and after warning dismissal match exactly. Logs:
+`tmp/profile-failure-rectangles-{NF,NL,CF,CL}.log`.
+
+All five runners closed their emulators. These are 2 MiB A1200 publication and
+modal-lifetime checks; they do not close other menu owners, manual joystick
+testing or the release-validation gate.
