@@ -1135,6 +1135,25 @@ This establishes the startup binding and painter consumption, not absence
 of later alias writes, menu-transition font-state changes, or live loading
 screen display lifetime. Those integration checks remain open.
 
+## Saved title image: capture provenance (2026-09-29)
+
+Instruction inspection narrows the pending return-pixel comparison. Startup
+`261c3..261e0` restores image handle 1, then `261e8..2623d` applies the two
+title-panel tints. After setting the small-font colour, `26270..26290` calls
+the image-capture routine `34db0` with origin (0,0) and dimensions from
+DS:1d63/1d65, and stores its returned handle in DS:4c1c. The text call at
+`26293..262b5` occurs afterward. Thus this observed capture is a prepared
+startup background, not a snapshot of the animated title immediately before
+entering a demo.
+
+The title refresh routine `296cd` passes that same handle and DS:05b8's
+destination buffer to `3528a`, then publishes the buffer to the two video
+destinations at `2970d` and `29732`. The already-tested nonzero-demo return
+branch restores DS:4c1c through `34f15`. This connects the known return handle
+to its startup producer; it does not prove native reconstructed pixels match
+the saved image. The remaining comparison must use the prepared background
+and subsequent title draws, not an assumed pre-demo framebuffer snapshot.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
