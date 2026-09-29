@@ -817,6 +817,37 @@ completion, idle activation, loading-caption fidelity, all failure/exit paths
 or exact saved-image/title return presentation. Those remain explicit open
 work; the live return currently reconstructs the title from resident assets.
 
+## Automatic title demo timing (2026-09-29)
+
+The live title owner now calls the independently verified elapsed-time scan
+replacement. Time comes from PAL VBI interrupts, quantized to whole seconds,
+not title updates or rendering throughput. The first eligible elapsed value
+is 21,000 ms; an overdue scan replaces simultaneous input as in the original.
+No AmigaOS clock call or display teardown is needed. Non-title owners disarm
+the interval; re-entry and the tail after handled title input restart it,
+including return from a synchronous modal. Gameplay does not perform the
+clock division. This is a PAL-target clock adapter, not a promise of matching
+the DOS machine's wall-clock epoch or fractional-second phase.
+
+The `DEMOIDL` native fixture (`SLICKS_DEMO_LIFECYCLE_TEST=2` with
+`diag_demo_lifecycle.gdb`) waits ten real emulated seconds, sends an ordinary
+Down key, then waits for automatic entry, twice. It does not inject a time
+value or directly request a demo. At entry, before disk loading, it requires
+at least 1,000 VBI ticks since that input and exactly 21,000 quantized
+milliseconds since the owner reset. Each race then exercises both data views
+and key return with the same full configuration, playlist and displayed-pixel
+checks as the keyboard fixture. Long nested-menu/synchronous-modal waits
+remain separate coverage work, not implied by this navigation test.
+
+Build and native logs: `tmp/demo-idle-build.log`, `tmp/demo-idle-native.log`;
+keyboard regression: `tmp/demo-idle-keyboard.log`. Independent title-demo,
+title-navigation and Amiga-key-scan suites: `tmp/demo-idle-host.log`.
+Both native runs passed two starts/four views, exact configuration/playlist
+restoration and normal system cleanup. The idle run recorded two automatic
+entries and 1,040 VBI ticks after the last navigation input; the keyboard run
+recorded zero automatic entries. All three host suites passed. Both muted
+emulators exited and were closed.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

@@ -36,6 +36,12 @@ commands
     quit 1
   end
   printf "DEMO_LIFECYCLE_OK starts=%u views=%u configuration_and_playlist_restored=1\n",$demo_starts,g_slicks_demo_test_views
+  if demo_lifecycle_test==2 && g_slicks_demo_idle_entries!=2
+    printf "DEMO_IDLE_FAILED entries=%u\n",g_slicks_demo_idle_entries
+    quit 1
+  end
+  printf "DEMO_IDLE_ENTRIES %u\n",g_slicks_demo_idle_entries
+  printf "DEMO_IDLE_WAIT_AFTER_INPUT_FRAMES %lu\n",g_slicks_demo_idle_wait_frames
   continue
 end
 break slicks_diag_system_restored

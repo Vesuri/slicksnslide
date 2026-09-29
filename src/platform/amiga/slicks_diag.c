@@ -96,6 +96,9 @@ static struct SlicksTitleDemo title_demo;
 static unsigned char demo_render_only;
 static unsigned char demo_lifecycle_test,demo_test_stage,demo_test_round;
 volatile unsigned char g_slicks_demo_test_error,g_slicks_demo_test_views;
+volatile unsigned char g_slicks_demo_idle_entries;
+static unsigned long demo_idle_input_at;
+volatile unsigned long g_slicks_demo_idle_wait_frames;
 __attribute__((noinline)) void slicks_diag_demo_test_done(void) { __asm__ volatile("" ::: "memory"); }
 extern unsigned char slicks_title_counter;
 extern unsigned short slicks_title_third_color;
@@ -3556,6 +3559,8 @@ int main(void)
     unsigned short track_count;
     unsigned short selected_laps = 4;
     unsigned short demo_track=0,demo_vehicle=0,demo_laps=0;
+    unsigned long title_idle_started=0;
+    unsigned char title_idle_active=0,title_idle_reset=0;
     struct SlicksConfiguration configuration = slicks_original_configuration;
     unsigned char setup_dirty=0,exit_requested=0,save_prompt=0,right_was_down=0;
     unsigned char registration_presentation=0;
@@ -3637,6 +3642,10 @@ int main(void)
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
        argv[4]=='F' && argv[5]=='1' && argv[6]=='2') {
         demo_lifecycle_test=1;argc=0;argv="";
+    }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='I' && argv[5]=='D' && argv[6]=='L') {
+        demo_lifecycle_test=2;argc=0;argv="";
     }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
@@ -4332,6 +4341,7 @@ int main(void)
         if(demo_lifecycle_test && platform.key_head==platform.key_tail) {
             static struct SlicksConfiguration before;
             static short playlist_before[256];static unsigned short count_before;
+            static unsigned long idle_test_started;
             if(!demo_test_stage && !g_slicks_diag_ingame) {
                 before=configuration;count_before=g_slicks_track_playlist.count;
                 for(unsigned i=0;i<256;++i) playlist_before[i]=track_selection[i];
@@ -4340,6 +4350,21 @@ int main(void)
                 for(unsigned i=0;i<sizeof keys;++i)
                     platform.keys[i]=slicks_amiga_key_event(keys[i],&shifts);
                 platform.key_head=sizeof keys;demo_test_stage=1;
+                if(demo_lifecycle_test==2) {
+                    platform.key_head=0;demo_test_stage=6;
+                    idle_test_started=platform.vblank_count;
+                }
+            } else if(demo_test_stage==6 &&
+                platform.vblank_count-idle_test_started>=500) {
+                /* Real ten-second wait, then ordinary navigation must restart
+                 * the idle clock. No clock or elapsed-state injection. */
+                platform.key_tail=0;platform.keys[0]=0x4d;platform.key_head=1;
+                demo_idle_input_at=platform.vblank_count;
+                demo_test_stage=7;
+            } else if(demo_test_stage==7 && g_slicks_diag_ingame) {
+                if(platform.vblank_count-idle_test_started<1500)
+                    g_slicks_demo_test_error=7;
+                demo_test_stage=1;
             } else if(demo_test_stage>=1 && demo_test_stage<=3 &&
                 g_slicks_diag_ingame && race->frame_count>=10) {
                 if(!title_demo.active || race->demo_flag!=-1 || race->race_mode!=5 ||
@@ -4548,7 +4573,37 @@ int main(void)
             platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
             ++sequence_returns;
         }
-        while (slicks_amiga_platform_poll_key(&platform, &code)) {
+        for (;;) {
+            unsigned char title_owner=(unsigned char)(original_setup &&
+                !g_slicks_diag_ingame && !save_prompt && !race_load_prompt &&
+                !service_menu_open && !g_slicks_player_menu && !g_slicks_options_menu &&
+                !g_slicks_track_menu && !g_slicks_title_help &&
+                !g_slicks_title_help_warning && !g_slicks_diag_saved_menu);
+            /* PAL interrupt time advances independently of rendered updates.
+             * Quantize to whole seconds like DOS time()*1000. Ownership entry
+             * and the tail after input/modal handling restart the interval. */
+            unsigned long title_now=title_owner?(platform.vblank_count/50UL)*1000UL:0;
+            if(!title_owner) title_idle_active=0;
+            else if(!title_idle_active || title_idle_reset) {
+                title_idle_started=title_now;title_idle_active=1;
+            }
+            title_idle_reset=0;
+            unsigned char have_key=(unsigned char)slicks_amiga_platform_poll_key(&platform,&code);
+            unsigned short title_scan=have_key?amiga_raw_to_demo_scan(code,platform.key_shifts):0;
+            unsigned char idle_demo=(unsigned char)(title_owner &&
+                slicks_title_demo_scan(0,title_now,title_idle_started)==0x58);
+            if(!have_key && !idle_demo) break;
+            if(idle_demo) {
+                /* Original replaces even a simultaneous scan when overdue. */
+                title_scan=0x58;code=0x100;
+                if(demo_lifecycle_test==2) {
+                    ++g_slicks_demo_idle_entries;
+                    g_slicks_demo_idle_wait_frames=platform.vblank_count-demo_idle_input_at;
+                    if(g_slicks_demo_idle_wait_frames<1000 || title_now-title_idle_started!=21000)
+                        g_slicks_demo_test_error=8;
+                }
+            }
+            if(title_owner && title_scan) title_idle_reset=1;
             if(race_load_prompt) {
                 if(code==0x44 && race_load_retry) {
                     /* Retry only preparation: rewards, selection refresh and
@@ -5213,7 +5268,7 @@ int main(void)
                     continue;
                 }
                 unsigned short action = slicks_dispatch_title_key(
-                    amiga_raw_to_demo_scan(code,platform.key_shifts));
+                    title_scan);
                 unsigned short action_selection=(unsigned short)slicks_title_action_selection(configuration.options[0],(short)menu_selection);
                 const unsigned char *help_topic=slicks_title_help_topic(action,action_selection);
                 if(help_topic) {
