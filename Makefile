@@ -625,7 +625,7 @@ verify-help-pixels: build/verify_help_pixels build/font_string_test.bin
 .PHONY: verify-standings-dirty
 .PHONY: verify-track-data-view
 .PHONY: verify-demo-overlay
-build/verify_demo_overlay: tools/verify_demo_overlay.c tools/verify_options_menu.c | build
+build/verify_demo_overlay: tools/verify_demo_overlay.c tools/verify_options_menu.c src/ui/demo_overlay.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-demo-overlay: build/verify_demo_overlay
 	build/verify_demo_overlay

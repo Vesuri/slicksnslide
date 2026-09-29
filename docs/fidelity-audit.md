@@ -107,6 +107,18 @@ classification, but full native loading-caption lifetime remains unverified.
 Both captions/overlay must be included in live demo integration rather than
 merely selecting computer profiles and suppressing result screens.
 
+`src/ui/demo_overlay.h` now implements the two-pass overlay with explicit
+palette, font-colour and text callbacks. It returns whether it replaced the
+ordinary Arcade overlay, takes the caller-owned original label/font, and
+does not invent a new shadow mode or restore font colour that the original
+left changed. `verify-demo-overlay` compares the complete ordered callback
+trace directly with the original trace in all 768 cases, not just with a
+second handwritten expected sequence. Log:
+`tmp/demo-overlay-native-oracle.log`. The helper is not yet called by the
+race owner; live font binding, dirty publication, screenshot comparison and
+demo-return integration remain open. No emulator/build replacement was
+needed for this isolated host/original comparison.
+
 The idle scan replacement `2a387..2a39c` now passes 36,864 original-instruction
 comparisons: all byte scans, twelve initial timestamps and twelve elapsed
 boundaries including 19,999/20,000/20,001 ms, second boundaries, 16-bit carry,
