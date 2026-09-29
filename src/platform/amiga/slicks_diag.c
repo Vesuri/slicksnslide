@@ -2090,7 +2090,9 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     navigation = (struct SlicksTrackNavigation *)
         AllocMem(sizeof(*navigation), MEMF_ANY);
     car_resource = (unsigned char *)AllocMem(128UL, MEMF_ANY);
-    font_resource = (unsigned char *)AllocMem(2048UL, MEMF_ANY);
+    /* Exercise partial-allocation cleanup without exhausting system memory. */
+    if(g_slicks_diag_race_load_fault==1) g_slicks_diag_race_load_fault=0;
+    else font_resource = (unsigned char *)AllocMem(2048UL, MEMF_ANY);
     if (!dat || !track || !arena || !navigation || !car_resource ||
         !font_resource) {
         g_slicks_diag_race_error = 1;
@@ -3678,6 +3680,10 @@ int main(void)
        argv[4]=='S' && argv[5]=='A' && argv[6]=='V') {
         demo_lifecycle_test=8;argc=0;argv="";
     }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
+        demo_lifecycle_test=9;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -4477,10 +4483,10 @@ int main(void)
                 if(platform.vblank_count-idle_test_started<1500)
                     g_slicks_demo_test_error=7;
                 demo_test_stage=1;
-            } else if((demo_lifecycle_test==6 || demo_lifecycle_test==7) && !demo_test_round &&
+            } else if((demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9) && !demo_test_round &&
                 demo_test_stage==1 && race_load_prompt) {
                 if(title_demo.active || race->demo_flag ||
-                    g_slicks_diag_race_error!=(demo_lifecycle_test==6?2:6)) {
+                    g_slicks_diag_race_error!=(demo_lifecycle_test==9?1:demo_lifecycle_test==6?2:6)) {
                     g_slicks_demo_test_error=16;slicks_diag_demo_test_done();goto cleanup;
                 }
                 platform.key_tail=0;platform.keys[0]=0x44;platform.key_head=1;
@@ -5525,8 +5531,8 @@ int main(void)
                     track_path = selected_track_path;
                     /* Existing real loader failure boundaries; only the first
                      * diagnostic attempt fails. The next uses real resources. */
-                    if((demo_lifecycle_test==6 || demo_lifecycle_test==7) && !demo_test_round)
-                        g_slicks_diag_race_load_fault=demo_lifecycle_test==6?2:6;
+                    if((demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9) && !demo_test_round)
+                        g_slicks_diag_race_load_fault=demo_lifecycle_test==9?1:demo_lifecycle_test==6?2:6;
                     if (prepare_race(&platform, logical, chunky, mode_state,
                                      race, track_path, race_palette, selected_vehicle,
                                      &configuration,original_setup?&g_slicks_setup_session:0,1) != 0) {

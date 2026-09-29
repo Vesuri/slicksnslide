@@ -1050,6 +1050,25 @@ not clean exit, direct retry, allocation failures or exact saved-image return
 presentation. The shared lifecycle audit now also requires its completion
 checkpoint before accepting system restoration, rejecting early exits.
 
+## Demo temporary-allocation failure and retry (2026-09-29)
+
+`DEMOMEM` (`SLICKS_DEMO_LIFECYCLE_TEST=9`) simulates a null final temporary
+font-buffer allocation after the other five preparation buffers have been
+allocated. It does not deliberately exhaust system memory or alter allocator
+behavior globally. The ordinary null-buffer check enters the production
+cleanup path, which releases the earlier buffers and restores setup state.
+
+The native lifecycle fixture passes: one error-1 preparation failure, complete
+configuration and playlist restoration, then one successful demo with two
+pixel-checked track-data views and normal key return. Final system restoration
+is 31; the debugger reaches `DEMO_LIFECYCLE_EXIT_OK` and exits successfully.
+The run was muted and its emulator was closed. Build and native logs are
+`tmp/demo-allocation-build.log` and `tmp/demo-allocation-native.log`.
+
+This verifies recovery from the simulated temporary-allocation failure, not
+all allocation sites, actual system-wide low-memory pressure, or an independent
+allocation-leak accounting measurement. Display-allocation failures remain open.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
