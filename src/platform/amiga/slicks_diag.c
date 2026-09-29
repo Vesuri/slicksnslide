@@ -1362,7 +1362,8 @@ static int open_title_help(struct SlicksAmigaPlatform *platform,unsigned char *l
             title_help_saved[at++]=logical[y*100UL+(x>>2)+((x&3)<<16)];
         clear_title_rectangle(logical,20,90,300,112);
         slicks_draw_title_text(logical,"HELP UNAVAILABLE - PRESS A KEY",160,96,15);
-        slicks_convert_to_amiga(logical,chunky,platform->views[0].bitmap);
+        slicks_title_dirty_add(&title_dirty,20,90,300,112);
+        publish_title_dirty(platform,logical,chunky);
         g_slicks_title_help_warning=1;
         if(show_menu(platform)) return -1;
         slicks_diag_help_failed(); return 0;
@@ -4629,11 +4630,11 @@ int main(void)
                     continue;
                 if(g_slicks_title_help_warning) {
                     if(raw>=0x60 || !amiga_raw_to_dos_scan(code)) continue;
-                    slicks_amiga_platform_wait_display_blank(&platform);
                     unsigned at=0;
                     for(unsigned y=90;y<112;++y) for(unsigned x=20;x<300;++x)
                         logical[y*100UL+(x>>2)+((x&3)<<16)]=title_help_saved[at++];
-                    slicks_convert_to_amiga(logical,chunky,platform.views[0].bitmap);
+                    slicks_title_dirty_add(&title_dirty,20,90,300,112);
+                    publish_title_dirty(&platform,logical,chunky);
                     g_slicks_title_help_warning=0;
                     if(show_menu(&platform)) goto cleanup;
                     slicks_diag_help_warning_closed(); continue;

@@ -1137,3 +1137,30 @@ After removing the probe, the normal executable was rebuilt and the genuine
 41-file overflow fixture passed again (`count=-2`, one warning/return/race,
 restoration 31). All 19 publications match their chunky pixels. Log:
 `tmp/enumeration-probe-restored-overflow.log`. The runner closed its emulator.
+
+## Title Help warning bounded publication (2026-09-29)
+
+The allocation-independent title warning previously called the full-screen
+converter both when drawn and when its saved background was restored. Both
+calls now use painter-reported `(20,90)..(300,112)` bounds through the shared
+title publisher: block alignment yields `(16,90)..(304,112)`, 6,336 pixels
+instead of 64,000. No framebuffer comparison/shadow is used to find damage.
+
+The native build succeeds. In `SLICKS_HELP_MENU=6`, the archive, surface and
+viewer failure warnings each open and close with exactly 6,336 published
+pixels. `diag_title_help_failure.gdb` captures those six publications under
+`.run/title-help-publications`; `tools/check_menu_publications.py` independently
+decodes all 64,000 pixels of each and finds no chunky/bitplane mismatches.
+Per-call before/after captures for warnings 1 and 2 are byte-identical. The
+first call's full-surface comparison differs outside the warning near the
+animated title label, so it is not claimed as an exact full-background pass.
+
+**The complete recovery gate does not pass.** The subsequent ordinary Help
+open fails the real 110,088-byte viewer allocation on the 2 MiB/no-Fast-RAM
+configuration. A temporary instruction-boundary probe observed AllocMem
+returning null; the keymap was ready and the injected allocation-failure flag
+was clear. That probe was removed. This exposes release-memory work, not a
+successful navigation/reopen test or proof of a regression's origin. Logs:
+`tmp/title-help-dirty-final.log`, `tmp/title-help-dirty-probe.log`. The muted
+runners closed their emulators. The fixture intentionally still fails at the
+unmet recovery gate; it has not been weakened to call this a complete pass.

@@ -141,6 +141,11 @@ Implementation and completed verification evidence are separate in
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.
+  **Confirmed release-memory failure:** the title Help failure/recovery fixture
+  reaches its three fallback-warning closes, then an ordinary Help open fails
+  the 110,088-byte viewer allocation on 2 MiB/no Fast RAM. Resolve allocation
+  ownership/peak memory and rerun the complete native recovery/navigation gate;
+  the six bounded fallback publications alone do not close this item.
 
 ## Remaining performance work
 
