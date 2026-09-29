@@ -842,6 +842,9 @@ static struct SlicksTitleDirty title_dirty;
 volatile unsigned long g_slicks_title_full_publications,g_slicks_title_partial_publications;
 volatile unsigned long g_slicks_title_last_pixels;
 static unsigned char title_dirty_test;
+volatile unsigned short g_slicks_title_timing_count;
+volatile unsigned long g_slicks_title_timing_vblanks[65];
+volatile unsigned char g_slicks_title_timing_counters[65];
 volatile unsigned long g_slicks_title_dirty_checks,g_slicks_title_dirty_errors;
 volatile unsigned short g_slicks_title_seen_modes,g_slicks_title_seen_roles,g_slicks_title_seen_counts;
 volatile unsigned short g_slicks_title_arcade_counts,g_slicks_title_arcade_draws;
@@ -864,7 +867,7 @@ static void publish_title_dirty(struct SlicksAmigaPlatform *p,
     if(pixels==64000) ++g_slicks_title_full_publications;
     else ++g_slicks_title_partial_publications;
     title_dirty.count=0;
-    if(title_dirty_test) {
+    if(title_dirty_test && title_dirty_test!=6) {
         const struct BitMap *bitmap=p->views[0].bitmap;
         for(unsigned y=0;y<200;++y) for(unsigned x=0;x<320;++x) {
             unsigned colour=0;
@@ -3854,9 +3857,9 @@ int main(void)
        argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
         display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
     }
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
-        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
+        if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:argv[8]=='C'?5:6;
         else if(argc==9) registration_help_test=argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
@@ -4787,7 +4790,7 @@ int main(void)
                     championship_test_keys(&platform,&f9,1);registration_test=0;
                 } else if(at==sizeof arcade_keys) registration_test=0;
                 else {championship_test_keys(&platform,&arcade_keys[at],1);++registration_test;}
-            } else if(title_dirty_test==3) {
+            } else if(title_dirty_test==3 || title_dirty_test==6) {
                 if(++registration_test==74) {g_slicks_diag_force_exit=1;registration_test=0;}
             } else if(title_dirty_test==2) {
                 if(at==sizeof transition_keys) {
@@ -6117,6 +6120,11 @@ int main(void)
            !race_load_prompt && !service_menu_open && !g_slicks_player_menu &&
            !g_slicks_options_menu && !g_slicks_track_menu && !g_slicks_title_help &&
            !g_slicks_diag_saved_menu) {
+            if(title_dirty_test==6 && g_slicks_title_timing_count<65) {
+                unsigned n=g_slicks_title_timing_count++;
+                g_slicks_title_timing_vblanks[n]=platform.vblank_count;
+                g_slicks_title_timing_counters[n]=slicks_title_counter;
+            }
             if(configuration.options[0]!=5) {
                 slicks_tick_title_colours(logical,source_palette);
                 /* The shared original tail advances even without a name. */

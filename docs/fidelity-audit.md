@@ -548,6 +548,49 @@ The native full-cycle tests do not measure those PC timing boundaries. DOS
 clock calibration, queue/interrupt mode and wall-clock comparison remain open;
 no new pacing policy is inferred from this static inspection.
 
+### Measured title cadence (2026-09-30)
+
+The local DOS reference patch `dosbox-x-slicks-title-timing.patch` samples
+PIC emulated milliseconds at the original complete-title entry, with pulse,
+owner phase, mode and queued-publication flag. `SLICKS_TITLE_TIMING=1` enables
+128 read-only samples; `SLICKS_TITLE_TIMING_ONLY=1` skips unrelated per-instruction
+trace collection. It does not change emulated game code, keys or timers.
+
+Fresh isolated mode-0 runs, without input, both use the direct publication
+path (DS:1d9b=0). After excluding the first entry/setup interval:
+
+| DOSBox fixed cycles | Mean update interval | Min / median / max (ms) |
+| --- | --- | --- |
+| 12,000 | 55.008 ms (18.18/s) | 43.933 / 54.921 / 65.909 |
+| 100,000 | 17.958 ms (55.69/s) | 10.981 / 21.968 / 21.971 |
+
+Each result covers 126 intervals. Every pulse step is four. Logs are
+`tmp/title-timing-pc-BzD8Zs/title-timing.log` and
+`tmp/title-timing-fast-pc-0baMFk/title-timing.log`; the faster run uses
+timing-only collection. Build logs: `tmp/title-timing-dosbox-build.log` and
+`tmp/title-timing-only-dosbox-build.log`. These are emulated-time measurements,
+not host wall time or a claim that DOSBox cycles equal a physical CPU MHz.
+They establish CPU-dependent title cadence, not a universal fixed DOS rate.
+
+Native `REGCHECKU` stores 65 VBI-counter samples in RAM and skips the costly
+full-frame comparison diagnostics. `diag_title_timing.gdb` reads them only
+at normal cleanup; there are no in-loop debugger stops. On the stock PAL
+A1200 every one of 64 intervals is ten refreshes: 200 ms / 5 updates per
+second. Pulse progression and restoration mask 31 pass, with zero full-frame
+diagnostic checks. Run `tmp/standalone-release-2v6ho3ni` uses the stripped
+binary, 2 MiB Chip/no Fast and a confirmed 4 KiB stack. Build log:
+`tmp/title-timing-native-build.log`. `tools/summarize_title_timing.py` validates
+and summarizes both trace formats. All owned muted emulators were closed.
+
+The normal native pulse path currently restores and redraws the whole label
+crop and status area before dirty publication, including unchanged labels,
+icons and counts. Restricting pulse redraw to actual changed glyphs is a
+concrete next menu-rendering candidate. Its contribution must be measured and
+pixel-verified; the 200 ms total alone does not attribute all cost to C2P or
+one helper. No production pacing policy changed in this measurement commit.
+Queued DOS publication, Arcade timing and arbitrary nested-menu transitions
+are not established by these mode-0 direct-path samples.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

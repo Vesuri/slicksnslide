@@ -93,6 +93,14 @@ Implementation and completed verification evidence are separate in
   Do not claim feature completeness from isolated or historical passes.
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
+  newly measured slow normal-title path: 64 uninterrupted stock-A1200 intervals
+  are each 200 ms without pixel diagnostics; DOS mode-0 reference means are
+  55.008 ms at 12,000 cycles and 17.958 ms at 100,000 cycles. The original is
+  CPU-dependent, so do not invent a universal DOS update rate. Measure and
+  eliminate redundant restoration/redrawing/publication of unchanged labels,
+  status icons and counts during colour-only pulses, preserving pixel output
+  and selection/transition behavior. This is menu fidelity/publication work,
+  not a resumption of the paused gameplay optimization backlog. Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:
   connect the original loading painter and verified filename/suffix builder to
   race preparation, including the actual caller font alias and display lifetime.

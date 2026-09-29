@@ -1,0 +1,17 @@
+diff --git a/src/cpu/core_normal_286.cpp b/src/cpu/core_normal_286.cpp
+--- a/src/cpu/core_normal_286.cpp
++++ b/src/cpu/core_normal_286.cpp
+@@ -910,1 +910,13 @@
+ 	const auto offset = static_cast<uint32_t>(address - slicks_runtime_base);
++	if (offset == 0x19e2c && std::getenv("SLICKS_TITLE_TIMING")) {
++		static unsigned samples = 0;
++		if (samples < 128) {
++			const auto data = SegPhys(ds);
++			LOG_MSG("SLICKS_TITLE_TIMING sample=%u ms=%.6f counter=%u phase=%u mode=%u queued=%u",
++			        samples++, static_cast<double>(PIC_FullIndex()),
++			        mem_readb(data+0x6b4e), mem_readw(data+0x1144),
++			        mem_readw(data+0x92), mem_readw(data+0x1d9b));
++		}
++	}
++	static const bool timing_only = std::getenv("SLICKS_TITLE_TIMING_ONLY") != nullptr;
++	if (timing_only) return;
