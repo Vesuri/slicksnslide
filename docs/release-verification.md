@@ -2,6 +2,27 @@
 
 ## 2026-09-29 — current title/menu default-stack regression
 
+Two further workflows pass on the same stripped binary and hardware settings
+below, both with a confirmed 4096-byte entry stack and normal system restoration:
+
+- Options-owned Help navigation, history return, close and reopen:
+  `tmp/standalone-release-cdyjoeo9`. Five ready checkpoints and two closes pass;
+  the complete 64,000-byte saved background and final restored chunky image
+  compare identically.
+- Championship save from a genuine first intermission, including picker
+  cancellation/re-entry, name acceptance, catalogue refresh and exit:
+  `tmp/standalone-release-z_axl9an`. The shared resident-display assertions
+  are expanded by the standalone harness and execute in this run.
+
+The subsequent `CHAMPLOAD` run (`tmp/standalone-release-8y29uof8`) is **not a
+pass**. Inspection showed its startup input still sends four Down keys and
+Enter to the obsolete title Load Game row; it never reached the saved-game
+picker or resume checkpoint. The debugger was stopped and the harness closed
+its emulator. Do not rerun this fixture as a release gate until its original
+entry route is resolved. No before/after championship-state comparison or
+fresh-process resume is established by this batch, and no invented menu row
+was reinstated. The private fixture contains the test save for later checks.
+
 Current-build full-frame racing audits also pass 600 updates each on F1
 (`tmp/standalone-release-cl_xj10f`, 32 actors, 2,068 marks), CITY
 (`tmp/standalone-release-o6qr7np5`, 18 actors, 1,480 marks), and WHACKO

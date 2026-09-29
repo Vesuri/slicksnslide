@@ -116,6 +116,8 @@ Implementation and completed verification evidence are separate in
   it as an extension is awaiting the user's choice. Audit other original entry
   points separately. Repeated-save/edit testing now uses a genuine first
   intermission; load/rejection fixtures still need their entry route resolved.
+  `CHAMPLOAD` still queues the obsolete four-Down title selection and cannot
+  serve as a release gate until that route is resolved; do not repeat it as-is.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 
@@ -148,7 +150,8 @@ Implementation and completed verification evidence are separate in
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.
-  Current stripped-binary title, Options-to-race and clean demo-exit gates
+  Current stripped-binary title, Options-to-race, Options Help navigation,
+  intermission championship save/exit and clean demo-exit gates
   plus 600-update F1/CITY/WHACKO full-frame display audits pass with a
   confirmed 4 KiB stack; the other release workflows still need
   current-build coverage (see release-verification.md).
