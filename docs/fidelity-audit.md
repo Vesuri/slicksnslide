@@ -968,6 +968,32 @@ earlier checkpoint run completed (`tmp/loading-io-visual.log` was subsequently
 reused by the failed Lua capture attempt); neither run establishes visible
 scanout. All emulators started for these attempts were closed.
 
+## Natural demo completion and title return (2026-09-29)
+
+`DEMOEND` / `SLICKS_DEMO_LIFECYCLE_TEST=5` starts demos through the ordinary
+Shift+F2 title route, exercises both track-data views, then injects no exit
+key. The native game must reach its real completion condition; only the
+production automatic-return route may leave the race. The fixture captures
+frame count, game clock and deadline before the return reset and rejects
+an early return, a nonexpired deadline or a 15,000-update overrun.
+
+Two natural returns pass: frames 2,523/2,115, clocks 4,593/3,850 and deadlines
+4,591/3,848. Both restore the entire configuration and all playlist slots;
+four data views pass the existing full displayed-pixel comparisons. Normal
+results and setup-save calls remain excluded by the lifecycle audit, and the
+final OS restoration mask is 31. Debug runs are muted; the emulator exited
+and was closed. Build/native logs: `tmp/demo-natural-build.log` and
+`tmp/demo-natural-native.log`.
+
+Independent regressions also pass: 6,480 original composed completion
+sequences with 55,296 line crossings across all six modes, active masks and
+finish orders, plus 1,024 original/native demo-return reset cases
+(`tmp/demo-natural-host.log`). These establish the bounded natural deadline
+route, not pixel identity of the reconstructed return screen or production
+program-exit/save-failure handling. Diagnostic modes intentionally suppress
+implicit setup saves; their absence here is not proof of every persistence
+caller. Those remaining checks stay in the actionable list.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

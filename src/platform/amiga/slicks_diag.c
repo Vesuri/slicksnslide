@@ -100,6 +100,8 @@ volatile unsigned char g_slicks_demo_idle_entries;
 volatile unsigned char g_slicks_demo_menu_waits;
 volatile unsigned long g_slicks_loading_io_bytes,g_slicks_loading_io_hash;
 volatile unsigned char g_slicks_loading_io_checks;
+volatile unsigned char g_slicks_demo_natural_returns;
+volatile unsigned long g_slicks_demo_return_frames[2],g_slicks_demo_return_clocks[2],g_slicks_demo_return_deadlines[2];
 static unsigned long demo_idle_input_at;
 volatile unsigned long g_slicks_demo_idle_wait_frames;
 __attribute__((noinline)) void slicks_diag_demo_test_done(void) { __asm__ volatile("" ::: "memory"); }
@@ -3658,6 +3660,10 @@ int main(void)
        argv[4]=='I' && argv[5]=='O' && argv[6]=='S') {
         demo_lifecycle_test=4;argc=0;argv="";
     }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='E' && argv[5]=='N' && argv[6]=='D') {
+        demo_lifecycle_test=5;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -4350,6 +4356,9 @@ int main(void)
     for (;;) {
         unsigned short code;
         if(demo_lifecycle_test && platform.key_head==platform.key_tail) {
+            if(demo_lifecycle_test==5 && g_slicks_diag_ingame && race->frame_count>15000) {
+                g_slicks_demo_test_error=14;slicks_diag_demo_test_done();goto cleanup;
+            }
             static struct SlicksConfiguration before;
             static short playlist_before[256];static unsigned short count_before;
             static unsigned long idle_test_started;
@@ -4443,7 +4452,7 @@ int main(void)
                 unsigned char keys[4]={0x60,0x50,0xd0,0xe0};
                 unsigned count=4;
                 if(demo_test_stage==2) {keys[1]=0x51;keys[2]=0xd1;}
-                if(demo_test_stage==3) {keys[0]=0x33;count=1;}
+                if(demo_test_stage==3) {keys[0]=0x33;count=demo_lifecycle_test==5?0:1;}
                 unsigned char shifts=0;platform.key_tail=0;
                 for(unsigned i=0;i<count;++i)
                     platform.keys[i]=slicks_amiga_key_event(keys[i],&shifts);
@@ -4761,6 +4770,17 @@ int main(void)
                         continue;
                     }
                     if(!slicks_title_demo_exit_key(race->demo_flag,scan)) continue;
+                    if(demo_lifecycle_test==5) {
+                        unsigned n=g_slicks_demo_natural_returns;
+                        if(!race->race_complete || n>=2 || race->frame_count<=10 ||
+                            !slicks_finish_expired(race->game_clock_ticks,race->finish_deadline)) {
+                            g_slicks_demo_test_error=15;slicks_diag_demo_test_done();goto cleanup;
+                        }
+                        g_slicks_demo_return_frames[n]=race->frame_count;
+                        g_slicks_demo_return_clocks[n]=race->game_clock_ticks;
+                        g_slicks_demo_return_deadlines[n]=race->finish_deadline;
+                        ++g_slicks_demo_natural_returns;
+                    }
                     slicks_amiga_platform_wait_display_blank(&platform);
                     slicks_amiga_audio_stop(&audio);
                     restore_demo_configuration(&configuration,race,1);

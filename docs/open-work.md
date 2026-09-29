@@ -77,13 +77,14 @@ Implementation and completed verification evidence are separate in
   FS-UAE instance, and the installed binary did not execute the Lua hook.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
-  Verify natural completion, failed preparation and program-exit/save-failure
+  Verify failed preparation and program-exit/save-failure
   restoration, and compare the complete return presentation against the
   original saved-image/title sequence. Keep finish-event rewards distinct from
   the later skipped track/results branch; do not rewind the shared RNG.
-  Keyboard entry, track-data views and repeated key return are integrated;
+  Keyboard entry, track-data views, repeated key return and natural deadline
+  return are integrated;
   their bounded native verification is recorded in fidelity-audit.md, not
-  proof of natural completion or all persistence/error routes. Extend normal
+  proof of all persistence/error routes or exact return presentation. Extend normal
   F1/F2 and GO/F9 integration regressions alongside the remaining demo routes.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
   The Arcade body now passes original full-screen and font-state comparisons.

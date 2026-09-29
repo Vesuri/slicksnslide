@@ -52,6 +52,11 @@ commands
     quit 1
   end
   printf "LOADING_IO checks=%u bytes=%lu hash=%lu\n",g_slicks_loading_io_checks,g_slicks_loading_io_bytes,g_slicks_loading_io_hash
+  if demo_lifecycle_test==5 && g_slicks_demo_natural_returns!=2
+    printf "DEMO_NATURAL_FAILED returns=%u\n",g_slicks_demo_natural_returns
+    quit 1
+  end
+  printf "DEMO_NATURAL returns=%u frames=%lu,%lu clocks=%lu,%lu deadlines=%lu,%lu\n",g_slicks_demo_natural_returns,g_slicks_demo_return_frames[0],g_slicks_demo_return_frames[1],g_slicks_demo_return_clocks[0],g_slicks_demo_return_clocks[1],g_slicks_demo_return_deadlines[0],g_slicks_demo_return_deadlines[1]
   continue
 end
 break slicks_diag_system_restored
