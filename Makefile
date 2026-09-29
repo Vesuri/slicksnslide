@@ -1121,6 +1121,13 @@ build/verify_title_navigation: tools/verify_title_navigation.c tools/verify_opti
 verify-title-navigation: build/verify_title_navigation
 	build/verify_title_navigation
 
+.PHONY: verify-arcade-title
+build/verify_arcade_title: tools/verify_arcade_title.c tools/verify_arcade_hud.c src/ui/arcade_title_draw.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+verify-arcade-title: build/verify_arcade_title
+	build/verify_arcade_title
+
 build/title_menu.elf: tools/title_menu_test.s src/ui/sui_title_menu.s Makefile
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Felf -I. -o build/title_menu.o $<

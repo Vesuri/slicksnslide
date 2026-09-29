@@ -204,6 +204,27 @@ for each of ten modes (655,360 action mappings), alongside 17,920 existing
 normal-title cases. Production integration must accompany the two-row Arcade
 renderer, not silently apply these controls to the ordinary six-row display.
 
+The complete Arcade drawing orchestration at `29afa..29f2b` is now
+translated in `arcade_title_draw.h`. `make verify-arcade-title` compares
+12,288 complete command streams against the original instructions: every
+byte-counter value, three selection bytes, eight player-count edges and
+both clean/invalidated status regions. It checks palette queries, font-colour
+writes, shadow colour, both background crops, all four player boxes, all
+seven text commands, and counter/refresh outputs. Signed colour endpoint
+averages include negative and wrapping byte inputs. Font loading, language
+lookup, formatting and primitive pixel painters remain explicit test
+boundaries; this is not a full-screen pixel comparison or production proof.
+
+Integration details recovered from callers: DS:0684 is the resident
+`pieni.@f` heading font, DS:0688 is `iso.@f` for player numbers and the
+two-line settings summary. The summary consumes DS:00fa/0102 (options
+13/14). Preserve the distinct DS:6bd4 last-loaded-font alias used immediately
+before the settings heading; do not silently treat that write as targeting
+the following text call's font. The original 1..4 override must be mutable
+in both profile selection and race-palette preparation, which still use the
+initial exported constant in production. Native renderer, input integration,
+localization/formatting and full-screen comparisons remain open.
+
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |
 | Startup/title/registration/exit | registration and title verification | Whole title composition, real state changes, both registration states, input and animation; missing optional order image remains unverified. |
