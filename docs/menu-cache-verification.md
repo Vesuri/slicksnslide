@@ -1220,3 +1220,20 @@ load and race handoff: selected ABC, vehicle, six colour endpoints and all
 four participation/vehicle assignments match (`tmp/setup-cancel-owned-reload.log`).
 Both runners are muted and close their emulators. No ordinary-launch save
 files were touched.
+
+## Title Read This/F1 publication and lifetime gate (2026-09-29)
+
+`SLICKS_HELP_MENU=4` with `diag_title_help_rectangles.gdb` combines the actual
+native title input route with shared publication captures and guards against
+display teardown or archive reopening while the title Help owner exists.
+Read This resolves to original chapter 353/page 0; title F1's empty topic
+resolves to chapter 9589/page 0, not the in-viewer Contents action. Both open
+and close successfully, and final system restoration is 31.
+
+All four publications are `(16,15)..(304,189)`, 50,112 pixels rather than
+64,000. `tools/check_menu_publications.py` independently decodes each complete
+bitmap and matches all chunky pixels. Both `after-read.chunky` and
+`after-f1.chunky` match `before.chunky` byte-for-byte. The isolated runner
+`.run/title-help-v1` is muted and closes its emulator. Log:
+`tmp/title-help-rectangles-current.log`. This checks normal title Help; it
+does not cover registration Help or every nested owner/error route.
