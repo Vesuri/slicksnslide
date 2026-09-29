@@ -1289,6 +1289,31 @@ or registered framebuffer dumps were logged. The emulator exited and closed.
 Build log: `tmp/title-owner-build.log`. This closes this one over-wide callback,
 not the remaining whole-menu dirty-region audit.
 
+## Ordinary menu text uses glyph bounds (2026-09-29)
+
+The shared `amiga_player_menu.c` text callback now reports bounds through
+`slicks_font_text_dirty`, matching the other font adapters. Its native drawing,
+alignment, single-line validation and no-shadow policy are unchanged. Measured
+string advance still determines alignment, but no longer substitutes for the
+actual glyph footprint when publishing dirty pixels.
+
+`verify-standings-dirty` now also executes the ordinary `slicks_menu_text`
+bridge, alongside records and standings, and checks every native store against
+the reported bounds: 7,776 cases pass, including glyph zero, alignment,
+spacing controls, clipping and both shadow forms. This bridge-level suite is
+broader than the ordinary callback's accepted single-line/no-shadow inputs.
+Log: `tmp/menu-text-bounds-host.log`; build: `tmp/menu-text-bounds-build.log`.
+
+The current stripped executable passes the Players-menu six-draw sequence
+(Down, C, Right, Left, Up) on a stock-speed 68020, 2 MiB Chip/no Fast and
+confirmed 4 KiB stack. All six published bitmaps match all 64,000 chunky
+pixels using the independent planar decoder. Evidence:
+`tmp/standalone-release-3ujchf78`, with captures in its
+`.run/menu-rectangles`. The muted emulator was closed by the harness after
+the checkpoint; this is not a normal-exit check. Other owners of the shared
+callback still require their own workflow/error coverage. No speedup or
+reduction in merged rectangle area is claimed from this run.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

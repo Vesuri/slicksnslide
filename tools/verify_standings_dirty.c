@@ -25,9 +25,11 @@ int main(void)
     const short xs[]={-10,0,17,86,98,160,233,310,319};
     const short ys[]={-3,0,92,122,190,199};
     unsigned cases=0;
-    for(unsigned shadow_y=0;shadow_y<2;++shadow_y)
+    const unsigned entries[]={20,24,4}; /* records, standings, ordinary menu */
+    for(unsigned bridge=0;bridge<3;++bridge)
       for(unsigned t=0;t<6;++t) for(unsigned ix=0;ix<9;++ix)
         for(unsigned iy=0;iy<6;++iy) for(unsigned flags=0;flags<8;++flags) {
+            unsigned shadow_y=bridge==1;
             short width=help_font_call(&n,font,texts[t],0,0,0,1);
             unsigned char bytes[32];
             uint32_t args[]={0x380000,0x100000,0x50000,0x60000,
@@ -39,7 +41,7 @@ int main(void)
             check(uc_reg_write(n.cpu,UC_M68K_REG_A7,&sp));
             check(uc_mem_write(n.cpu,sp,bytes,sizeof bytes));
             memset(font_writes,0,sizeof font_writes);
-            check(uc_emu_start(n.cpu,be32(code+(shadow_y?24:20)),0x380000,0,1000000));
+            check(uc_emu_start(n.cpu,be32(code+entries[bridge]),0x380000,0,1000000));
             check(uc_reg_read(n.cpu,UC_M68K_REG_PC,&pc));
             if(pc!=0x380000) abort();
             memset(reported,0,sizeof reported);
@@ -57,6 +59,6 @@ int main(void)
             ++cases;
         }
     check(uc_close(n.cpu));
-    printf("Standings/shop/records dirty bounds cover all native stores in %u strings, including alignment, both shadows, tabs, newlines and clipping\n",cases);
+    printf("Menu/standings/shop/records dirty bounds cover all native stores in %u strings, including alignment, both shadows, tabs, newlines and clipping\n",cases);
     return 0;
 }

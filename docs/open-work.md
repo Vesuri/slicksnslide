@@ -54,7 +54,9 @@ Implementation and completed verification evidence are separate in
   Audit remaining full-width text callbacks, full-screen modal
   restores and direct row-converter bypasses separately from the shared
   publisher. The registered title-owner pulse now uses verified glyph bounds;
-  other callbacks still need their own caller coverage.
+  the ordinary menu-text callback also uses native-store-verified glyph bounds,
+  with current Players-menu publication coverage. Its other owners and other
+  callbacks still need their own caller coverage.
   Direct full-screen callers are classified in menu-cache-verification.md;
   preserve screen-entry initialization where the destination background is
   stale, and verify the remaining error-route/lifetime cases natively.

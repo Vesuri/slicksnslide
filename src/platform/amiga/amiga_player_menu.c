@@ -322,7 +322,7 @@ static void text(void *context,struct SlicksChunkyUi *ui,unsigned char *font,
     /* These menu strings are single-line and do not request shadows. */
     if(width<0 || left<0 || left+width>320 || y<0 || y+font[2]>200 || (flags&4)) { m->error=-1; return; }
     slicks_menu_text(ui->pixels,font,string,x,y,flags);
-    dirty(m,left,y,(short)(left+width),(short)(y+font[2]));
+    slicks_font_text_dirty(ui,font,string,x,y,1,flags,width,0);
 }
 static void icon(void *context,struct SlicksChunkyUi *ui,const struct SlicksMenuIcon *sprite,short x,short y)
 {
