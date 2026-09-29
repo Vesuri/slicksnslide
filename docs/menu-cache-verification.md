@@ -1288,3 +1288,27 @@ The explicit private key fixture remains ignored, and no key/owner contents
 or registered framebuffer dumps were logged. The emulator exited and closed.
 Build log: `tmp/title-owner-build.log`. This closes this one over-wide callback,
 not the remaining whole-menu dirty-region audit.
+
+## Direct full-screen publication inventory (source audit, 2026-09-29)
+
+Inspection of `slicks_diag.c` distinguishes full-screen initialization from
+ordinary menu updates. The following direct `slicks_chunky_rows_to_amiga`
+callers require destination-background validity before they can be narrowed:
+
+| Caller group | Reason for full publication at this boundary |
+| --- | --- |
+| Race preparation | Installs the newly rendered track in view 1. |
+| Shop entry | Installs the tuning screen in view 0 before interaction. Subsequent shop draws use the shared dirty publisher. |
+| Pause/intermission entry | View 0 may contain an earlier title/menu rather than the current race background. Subsequent menu interaction uses the shared publisher. |
+| Emergency pause/intermission/record recovery | Creates a warning over the current chunky background, but the destination view can be stale. This is not evidence that a warning-sized conversion alone is safe. |
+| Record results entry | Explicitly initializes view 0 from the race background plus overlay. |
+| Registration and championship fades | Initializes both bitmaps before alternating them for palette fades; a fade itself is not repeated full-screen C2P. |
+| Component pause/intermission diagnostics and rendering reference | Test setup/reference conversions, not normal selection-update loops. |
+
+This inventory is source-level classification, not a native proof of every
+error route or ownership transition. It does not authorize a blanket removal
+of these conversions, nor establish that every initialization is minimal.
+If a caller is changed to reuse a view already containing its background,
+that invariant and the resulting partial publication need separate pixel
+coverage. The actionable list retains remaining error-route and lifetime
+checks; this inventory narrows where to look for selection-time overdraw.

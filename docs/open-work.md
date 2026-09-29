@@ -55,6 +55,9 @@ Implementation and completed verification evidence are separate in
   restores and direct row-converter bypasses separately from the shared
   publisher. The registered title-owner pulse now uses verified glyph bounds;
   other callbacks still need their own caller coverage.
+  Direct full-screen callers are classified in menu-cache-verification.md;
+  preserve screen-entry initialization where the destination background is
+  stale, and verify the remaining error-route/lifetime cases natively.
   Extend failure-path coverage where only normal transitions have
   been checked. Completed publication and restoration evidence is kept in
   [menu-cache-verification.md](menu-cache-verification.md); do not infer
