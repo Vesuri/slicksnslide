@@ -7,4 +7,6 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
     unsigned char *,const struct SlicksShopContent *,struct SlicksShopMenu *);
 int slicks_amiga_shop_draw(struct SlicksAmigaPlayerMenu *,const struct SlicksShopContent *,
     const struct SlicksShopMenu *);
+int slicks_amiga_shop_refresh(struct SlicksAmigaPlayerMenu *,const struct SlicksShopContent *,
+    const struct SlicksShopMenu *,signed char,signed char);
 #endif

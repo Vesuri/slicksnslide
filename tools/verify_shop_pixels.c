@@ -128,11 +128,13 @@ int main(void)
         memcpy(saved,native,64000);snapshot[0]=80;snapshot[1]=200;
         for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)snapshot[2+(x&3)*16000+y*80+x/4]=v.pixels[y*320+x];
         check(uc_mem_write(u,0x90000,snapshot,sizeof snapshot));
-        for(signed char row=0;row<=rows;++row) {
+        for(signed char row=0;row<=rows;++row) for(unsigned refresh=0;refresh<3;++refresh) {
             short args[]={trial%s.players.count,row,-1,-1,rows,slicks_ui_nearest(&painter.surface.ui,50,10,10),slicks_ui_nearest(&painter.surface.ui,70,70,10)};
+            if(refresh==1) args[2]=(short)(1+trial%4);
+            if(refresh==2) args[3]=(short)(row+1);
             registers(u,0xe000);word(u,0x8e000,0);word(u,0x8e002,0x5000);for(unsigned i=0;i<7;++i)word(u,0x8e004+2*i,args[i]);
             check(uc_emu_start(u,0x2c574,0x50000,0,30000000));
-            if(slicks_draw_shop_values(&s,&rules,c.extra,args[0],row,-1,-1,rows,args[5],args[6],c.exit_label,&ops.draw)<0)abort();
+            if(slicks_draw_shop_values(&s,&rules,c.extra,args[0],row,args[2],args[3],rows,args[5],args[6],c.exit_label,&ops.draw)<0)abort();
             compare(&painter,&v,trial,"values");++cases;
         }
     }

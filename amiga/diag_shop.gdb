@@ -1,5 +1,5 @@
 set $shop_draws=0
-break *slicks_amiga_shop_draw
+break *slicks_amiga_shop_refresh
 commands
   silent
   set $shop_surface = *(struct SlicksAmigaPlayerMenu **)($sp+4)
@@ -29,7 +29,7 @@ commands
     printf "SHOP_INPUT_FAILED\n"
     quit 1
   end
-  if $shop_draws!=5
+  if $shop_draws!=7
     printf "SHOP_REDUNDANT_OR_MISSING_DRAW count=%u\n",$shop_draws
     quit 1
   end

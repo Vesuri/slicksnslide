@@ -46,14 +46,15 @@ Implementation and completed verification evidence are separate in
   actual full-screen replacements. Verify producer coverage and native pixels.
   Remaining publication coverage: additional Tracks storage/format
   failures, other Help owners,
-  shop driver/row-specific refresh selectors and driver changes/failures
+  shop multi-human driver changes, sparse-selection caller mapping and failures
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
-  For shop partial refresh, remove the blanket saved-background restore only
-  together with selective painter calls; verify the original packed-column
-  selector versus actual-driver indexing for sparse participation. The row
-  selector/boundary oracle is recorded in menu-cache-verification.md.
+  Shop selective painter calls now replace the blanket saved-background
+  restore, with row navigation and transaction publication coverage. Verify
+  the original packed-column selector versus actual-driver indexing for
+  sparse participation and rejected-transaction no-redraw behavior. Evidence
+  and the row selector/boundary oracle are in menu-cache-verification.md.
   Registration archive-unavailable, null Help-surface and viewer-allocation
   failures and malformed Help navigation now have native publication/return
   coverage, with their bounded fault cases recorded in the evidence document.

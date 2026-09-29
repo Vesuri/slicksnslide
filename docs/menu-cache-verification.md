@@ -1451,6 +1451,36 @@ instructions. Horizontal navigation and transactions still need their
 selector/lifetime integration checks. No production behavior changed in this
 audit, and no target performance result is claimed.
 
+## Selective shop publication integration (2026-09-29)
+
+`slicks_amiga_shop_refresh` now passes driver/row selectors to the original
+painter without first restoring every saved dirty area. The painter's own
+cell restores are authoritative. Initial creation and post-computer purchases
+still request all cells. Vertical movement and transactions refresh one
+driver's rows; horizontal movement refreshes the selected row across drivers.
+Unchanged navigation skips publication. This retains the native caller's
+existing actual-driver selection and packed display-column conversion; it
+does not resolve the original sparse-selection caller discrepancy above.
+
+`verify-shop-pixels` now exercises full, driver-only and row-only refreshes
+in sequence without resetting the framebuffer between them. All 440 complete
+screen comparisons pass against original instructions and assets, including
+native 68020 text. The 840 row-navigation, 4,096 dynamic drawing and 512
+background comparisons also pass.
+
+The stripped native fixture adds Up at the first row, Down/Up and Right with
+only one human selectable. It requires seven painter calls and the existing
+buy/sell cash/inventory and Help-return checks. Run
+`tmp/standalone-release-zfab4owj` passes; all eight publications match all
+64,000 chunky pixels. Configuration: stock-speed PAL 68020, 2 MiB Chip,
+no Fast, confirmed default 4 KiB stack. This is a race-entry checkpoint, not
+a normal-exit check. The muted emulator was closed. Build evidence:
+`tmp/shop-selective-build.log`.
+
+Remaining shop coverage includes actual multi-human horizontal changes,
+sparse selection caller behavior, rejected transactions and failure routes.
+No gameplay performance benchmark was run; performance work remains paused.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

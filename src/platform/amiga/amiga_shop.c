@@ -67,13 +67,16 @@ static struct SlicksShopDrawOps draw_ops(struct ShopPainter *p)
 
 int slicks_amiga_shop_draw(struct SlicksAmigaPlayerMenu *m,const struct SlicksShopContent *c,
     const struct SlicksShopMenu *state)
+{ return slicks_amiga_shop_refresh(m,c,state,-1,-1); }
+
+int slicks_amiga_shop_refresh(struct SlicksAmigaPlayerMenu *m,const struct SlicksShopContent *c,
+    const struct SlicksShopMenu *state,signed char driver,signed char row)
 {
     struct ShopPainter painter={.menu=m};
     struct SlicksShopDrawOps ops=draw_ops(&painter);
-    slicks_amiga_player_menu_restore(m);
     signed char column=0;
     for(unsigned d=0;d<4 && (int)d<state->driver;++d) column+=c->session->players.selected[d]!=0;
-    if(slicks_draw_shop_values(c->session,c->rules,c->extra,column,state->row,-1,-1,state->count,
+    if(slicks_draw_shop_values(c->session,c->rules,c->extra,column,state->row,driver,row,state->count,
         slicks_ui_nearest(&m->renderer.ui,50,10,10),slicks_ui_nearest(&m->renderer.ui,70,70,10),
         c->exit_label,&ops)<0) return -1;
     return m->error || m->renderer.error?-1:0;
