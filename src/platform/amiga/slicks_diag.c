@@ -765,6 +765,7 @@ volatile unsigned long g_slicks_title_full_publications,g_slicks_title_partial_p
 volatile unsigned long g_slicks_title_last_pixels;
 static unsigned char title_dirty_test;
 volatile unsigned long g_slicks_title_dirty_checks,g_slicks_title_dirty_errors;
+volatile unsigned short g_slicks_title_seen_modes,g_slicks_title_seen_roles,g_slicks_title_seen_counts;
 static void publish_title_dirty(struct SlicksAmigaPlatform *p,
     const unsigned char *logical,unsigned char *chunky)
 {
@@ -858,6 +859,15 @@ static void redraw_title_configuration(
     if(title_configuration) {
         struct SlicksRaceOptions options;
         short mode=title_configuration->options[0];
+        if(title_dirty_test) {
+            if(mode>=0 && mode<6) g_slicks_title_seen_modes|=1U<<mode;
+            for(unsigned i=0;i<4;++i) {
+                signed char role=g_slicks_setup_session.players.participation[i];
+                g_slicks_title_seen_roles|=role<0?1:role>0?2:4;
+            }
+            if(g_slicks_track_playlist.count==195) g_slicks_title_seen_counts|=1;
+            if(g_slicks_track_playlist.count==194) g_slicks_title_seen_counts|=2;
+        }
         slicks_resolve_race_options(&options,title_configuration,
             slicks_original_mode_flags[mode>=0 && mode<6?mode:0]);
         struct SlicksTitleStatusCommand commands[9];
@@ -3455,9 +3465,9 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D' || argv[8]=='T'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
-        if(argc==9 && argv[8]=='D') title_dirty_test=1;
+        if(argc==9 && (argv[8]=='D' || argv[8]=='T')) title_dirty_test=argv[8]=='D'?1:2;
         else if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
@@ -4114,9 +4124,26 @@ int main(void)
         unsigned char left_down;
         if(registration_test && title_dirty_test) {
             static const unsigned char keys[]={0x4d,0x4d,0x4f,0x4e,0x4c,0x4c,0x45};
+            static const unsigned char transition_keys[]={
+                0x4d,0x44,0x4f,0x45, /* Human -> Computer; return to title. */
+                0x44,0x4f,0x45,      /* Computer -> None; compact icons. */
+                0x44,0x4e,0x4e,0x45, /* None -> Computer -> Human. */
+                0x4d,0x4f,0x4e,      /* TRACKS: 195 -> 194 -> 195. */
+                0x4d,0x4e,0x4e,0x4e,0x4e, /* OPTIONS: all normal badges. */
+                0x4f,0x4f,0x4f,0x4f};
             unsigned at=registration_test-1;
-            championship_test_keys(&platform,&keys[at],1);
-            if(++registration_test>sizeof keys) registration_test=0;
+            if(title_dirty_test==2) {
+                if(at==sizeof transition_keys) {
+                    /* Rendering/input fixture only: do not save its edits. */
+                    g_slicks_diag_force_exit=1;registration_test=0;
+                } else {
+                    championship_test_keys(&platform,&transition_keys[at],1);
+                    ++registration_test;
+                }
+            } else {
+                championship_test_keys(&platform,&keys[at],1);
+                if(++registration_test>sizeof keys) registration_test=0;
+            }
         } else if(registration_test && ++registration_test==10) {
             /* Exercise the title pulse before ordinary Escape make/release.
              * Key file, trial date, save handling and clocks are untouched. */

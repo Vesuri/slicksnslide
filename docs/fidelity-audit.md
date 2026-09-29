@@ -144,6 +144,16 @@ lower artwork pixels unchanged. This is initial-screen integration evidence,
 not yet an exhaustive interactive badge/role/count transition audit. The
 original title animation (F08) and wider coverage below remain open.
 
+F02's native transition gate now also passes: `REGCHECKT` uses ordinary menu
+inputs to change Human -> Computer -> None -> Human, returns from Players
+after each change, edits 195 -> 194 -> 195 selected tracks, and cycles modes
+0..4 and back. `.run/title-transitions` reports modes=31, roles=7, counts=3,
+17 publications, zero full-screen logical/chunky/bitplane mismatches and
+restoration=31 on muted 2 MiB/no-Fast A1200. The fixture terminates without
+saving its edits. Combined with the original-instruction command oracle,
+this closes the normal-title status transition obligation. Arcade remains
+separately open as F10; animation and shortcut coverage are not implied.
+
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |
 | Startup/title/registration/exit | registration and title verification | Whole title composition, real state changes, both registration states, input and animation; missing optional order image remains unverified. |

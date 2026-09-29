@@ -36,9 +36,7 @@ Implementation and completed verification evidence are separate in
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.
   Do not claim feature completeness from isolated or historical passes.
-- Finish F02's interactive role/count/badge transition coverage; its original
-  status renderer is restored and initial native-screen checks pass. Close
-  F08's original title animation. Audit the
+- Close F08's original title animation. Audit the
   remaining title shortcuts and mouse routes against original callers.
   Implement F10's separate Arcade title renderer and audit its input routes;
   the original mode-5 caller does not draw the ordinary six-row title.

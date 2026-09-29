@@ -296,7 +296,7 @@ elif [ "${SLICKS_LAP_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag LAP\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_REGISTRATION_TEST:-0}" != 0 ]; then
   case "$SLICKS_REGISTRATION_TEST" in
-    1) registration_suffix=;; 2) registration_suffix=Y;; 3) registration_suffix=F;; 4) registration_suffix=D;; *) exit 2;;
+    1) registration_suffix=;; 2) registration_suffix=Y;; 3) registration_suffix=F;; 4) registration_suffix=D;; 5) registration_suffix=T;; *) exit 2;;
   esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag REGCHECK%s\n' "$registration_suffix" > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then

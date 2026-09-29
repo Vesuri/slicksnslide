@@ -26,9 +26,9 @@ resident decoded representations which should be reused instead of duplicated.
 | Intermission | `clock.@16` | 106 |
 | **Total: 59 resources, counted once** | | **231,785 (226.35 KiB)** |
 
-The five small title status resources are reserved for restoring the original
-title indicators; the live port does not currently draw them. Their exact
-binding to original status fields must be verified when fixing title fidelity.
+The five small title status resources are decoded at startup and used by the
+live original status renderer. Their role/count/badge bindings and native
+transitions are verified in `fidelity-audit.md` (F02).
 Current pause/intermission paths use `lang1.txt`; retaining all eight languages
 costs only 2,464 bytes altogether, but does not imply all language selection is
 already implemented.
@@ -51,10 +51,9 @@ Shop, records and intermission share the same car icons; do not load them again.
   chooser catalogue. Currently opening the chooser scans the directory.
   Preserve the existing 40-entry limit and overflow/error reporting; do not
   silently truncate. Read the selected save only on confirmed load.
-- Keyboard layout: snapshot the current keymap once at startup (8 qualifier
-  variants by 128 raw keys, 1,024 bytes). Current menu constructors repeatedly
-  open `keymap.library` and translate the keys. Share the immutable mapping,
-  keeping modifier/input state local to each dialog.
+- Keyboard layout: the startup snapshot is implemented (8 qualifier variants
+  by 128 raw keys, 1,024 bytes). Constructors share the immutable mapping;
+  modifier/input state remains local to each dialog.
 
 Successful saves/deletes must update the in-memory catalogues. Failed operations
 must leave the previous catalogue/state usable and retain existing `.new`/`.bak`
