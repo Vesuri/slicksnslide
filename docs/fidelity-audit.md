@@ -102,6 +102,31 @@ an interactive arrow sequence; it is not whole-title or whole-port acceptance.
 
 ## Coverage review required for whole-port acceptance
 
+### F02 title status restoration (2026-09-29)
+
+Replaced the unused hardcoded BASIC status slice with the original signed-role
+dispatch, compact icon positions, selected/total track counts and conditional
+inventory/weapons/custom badges. Production reads the current setup session,
+playlist, discovered catalogue and resolved configuration. The five original
+indexed assets are decoded at startup (320 bytes of pixel capacity total), not
+read on menu transitions. Counts use `kirj.@f`, original flags 6/4 (right/left
+alignment), and the original (70,70,15) palette query. Restore underlying title
+artwork before repaint so removed icons and shorter counts cannot remain.
+
+Fresh `verify-title-status` executes original 2995f..29af6: 6,480 ordered
+command comparisons across every ternary role combination, all badge
+combinations and ten count patterns pass. The five title assets now also run
+through the original indexed loader and transparent VGA renderer oracle.
+The extended GCC bridge test passes 640 status-font argument cases. Existing
+224 title-layout, 17,920 navigation and 65,536 dispatch cases still pass.
+
+The muted 2 MiB/no-Fast/default-stack REGCHECK run in
+`.run/fidelity-title-status` captures the actual title and exits with restoration
+31. The capture displays the four icons and 195/195 counts, with all 8,000
+lower artwork pixels unchanged. This is initial-screen integration evidence,
+not yet an exhaustive interactive badge/role/count transition audit. The
+original title animation (F08) and wider coverage below remain open.
+
 | Area | Existing evidence to inspect | Caller/integration obligation |
 | --- | --- | --- |
 | Startup/title/registration/exit | registration and title verification | Whole title composition, real state changes, both registration states, input and animation; missing optional order image remains unverified. |

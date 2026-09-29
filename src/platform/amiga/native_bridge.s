@@ -4,6 +4,7 @@
 	xdef	slicks_draw_title_text
 	xdef slicks_draw_title_registration
 	xdef slicks_tick_title_registration
+	xdef slicks_draw_title_status_text
 	xdef	slicks_draw_original_text
 	xdef	slicks_dispatch_title_key
 	xdef	slicks_setup_basic_mode
@@ -45,6 +46,25 @@ slicks_draw_original_text:
 	move.w	#$0100,d6
 	jsr	sui_font_string
 	movem.l	(sp)+,d2-d7/a2-a6
+	rts
+
+; C ABI: planes,text,x,y,flags. Status counters use the small font with
+; original right/left alignment (6/4), not the centred title-label wrapper.
+slicks_draw_title_status_text:
+	movem.l d2-d7/a2-a6,-(sp)
+	movea.l 48(sp),a0
+	movea.l 52(sp),a2
+	movea.l slicks_title_small_font,a1
+	clr.w slicks_title_text_page
+	move.w 58(sp),d0
+	move.w 62(sp),d1
+	move.w 66(sp),d2
+	moveq #1,d3
+	moveq #10,d4
+	moveq #0,d5
+	move.w #$0100,d6
+	jsr sui_font_string_planar
+	movem.l (sp)+,d2-d7/a2-a6
 	rts
 
 slicks_prepare_title_frame:

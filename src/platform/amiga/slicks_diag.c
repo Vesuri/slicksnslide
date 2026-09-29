@@ -78,6 +78,12 @@ static int load_registration(void)
 
 unsigned char *slicks_title_font;
 unsigned char *slicks_title_small_font;
+#include "../../ui/title_status.h"
+#include "../../ui/menu_icon.h"
+static const struct SlicksConfiguration *title_configuration;
+static unsigned char title_icons[5][64];
+static unsigned short title_icon_width[5],title_icon_height[5];
+extern void slicks_draw_title_status_text(unsigned char *,const char *,short,short,unsigned short);
 #define TITLE_FONT_CAPACITY 8192UL
 volatile unsigned long g_slicks_load_ticks[14];
 static unsigned char shop_end_game;
@@ -801,7 +807,41 @@ static void redraw_title_configuration(
     /* These legacy diagnostic arguments never belong on the original title.
      * Its status is alongside PLAYERS/TRACKS/OPTIONS, not a black footer. */
     (void)vehicle; (void)track_name; (void)laps;
+    /* Restore the status background as well as the original label crop:
+     * shrinking counts, inactive drivers and disabled badges must erase. */
+    for(unsigned y=96;y<140;++y) for(unsigned x=200;x<244;++x)
+        logical[(x&3)*65536UL+y*100+(x>>2)]=
+            slicks_title_background[2+(x&3)*16000UL+y*80+(x>>2)];
     slicks_draw_title_menu_selection(logical, palette, selection);
+    if(title_configuration) {
+        struct SlicksRaceOptions options;
+        short mode=title_configuration->options[0];
+        slicks_resolve_race_options(&options,title_configuration,
+            slicks_original_mode_flags[mode>=0 && mode<6?mode:0]);
+        struct SlicksTitleStatusCommand commands[9];
+        unsigned count=slicks_title_status_commands(commands,
+            g_slicks_setup_session.players.participation,g_slicks_track_playlist.count,
+            (short)g_slicks_diag_track_files,options.inventory_mode,options.weapons_enabled,mode);
+        struct SlicksChunkyUi ui={.palette=palette};
+        slicks_title_small_font[6]=slicks_ui_nearest(&ui,70,70,15);
+        for(unsigned i=0;i<count;++i) {
+            const struct SlicksTitleStatusCommand *c=&commands[i];
+            if(c->kind) {
+                char number[8]; unsigned value=c->value<0?-(int)c->value:c->value;
+                unsigned at=sizeof number;number[--at]=0;
+                do {number[--at]=(char)('0'+value%10);value/=10;} while(value);
+                if(c->value<0) number[--at]='-';
+                slicks_draw_title_status_text(logical,number+at,c->x,c->y,c->flags);
+            } else {
+                unsigned icon=(unsigned)c->value,w=title_icon_width[icon],h=title_icon_height[icon];
+                for(unsigned y=0;y<h;++y) for(unsigned x=0;x<w;++x) {
+                    unsigned char pixel=title_icons[icon][y*w+x];
+                    unsigned dx=(unsigned)c->x+x,dy=(unsigned)c->y+y;
+                    if(pixel) logical[(dx&3)*65536UL+dy*100+(dx>>2)]=pixel;
+                }
+            }
+        }
+    }
     if(registration.name[0]) slicks_draw_title_registration(logical,registration.name);
     slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
     /* Keep GCC from emitting a cross-section PC32 sibling jump, which the
@@ -3555,6 +3595,15 @@ int main(void)
         slicks_prepare_title_frame(title_asset, title_frame) != 0)
         goto cleanup;
     slicks_title_background=title_frame;
+    {
+        static const char *const names[]={"val1.@I","val2.@I","pel_on.@I","pel_ei.@I","pel_t.@I"};
+        for(unsigned i=0;i<5;++i) {
+            long bytes=slicks_resource_archive_load(&archive,names[i],title_asset,64003UL);
+            if(bytes<0 || slicks_decode_indexed_menu_icon(title_asset,(unsigned long)bytes,
+                title_icons[i],sizeof title_icons[i],&title_icon_width[i],&title_icon_height[i])) goto cleanup;
+        }
+        title_configuration=&configuration;
+    }
 
     slicks_title_font=(unsigned char *)AllocMem(TITLE_FONT_CAPACITY,MEMF_ANY);
     if(!slicks_title_font) goto cleanup;

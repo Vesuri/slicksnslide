@@ -84,6 +84,17 @@ int main(int argc,char **argv)
         }
     }
     puts("Original font GCC bridge: 320 coordinate/argument cases pass");
+    for(unsigned flags=4;flags<=6;flags+=2) for(unsigned x=0;x<320;++x) {
+        put32(uc,0x90004,0x50000);put32(uc,0x90008,0x61000);
+        put32(uc,0x9000c,x);put32(uc,0x90010,114);put32(uc,0x90014,flags);
+        run(uc,be32(code+28),be32(code+32));
+        if(reg(uc,UC_M68K_REG_A0)!=0x50000 || reg(uc,UC_M68K_REG_A2)!=0x61000 ||
+           (reg(uc,UC_M68K_REG_D0)&65535)!=x || (reg(uc,UC_M68K_REG_D1)&65535)!=114 ||
+           (reg(uc,UC_M68K_REG_D2)&65535)!=flags || reg(uc,UC_M68K_REG_D3)!=1 ||
+           reg(uc,UC_M68K_REG_D4)!=10 || reg(uc,UC_M68K_REG_D5)!=0 ||
+           (reg(uc,UC_M68K_REG_D6)&65535)!=0x100) return 1;
+    }
+    puts("Title status font bridge: 640 alignment/coordinate/argument cases pass");
     uc_close(uc);
     puts("Title GCC bridge: 65536 dispatch and 512 text/selection argument cases pass");
     return 0;

@@ -62,6 +62,8 @@ def main() -> None:
                         help="input is the native 320x200 chunky surface")
     parser.add_argument("--palette", type=Path,
                         help="use a target-dumped 768-byte six-bit palette")
+    parser.add_argument("--title-palette", action="store_true",
+                        help="use the original partII title palette")
     parser.add_argument(
         "--race-palette",
         action="store_true",
@@ -75,7 +77,7 @@ def main() -> None:
         raise ValueError(f"expected {expected_size} screen bytes, got {len(logical)}")
     palette_data = bytearray(
         args.palette.read_bytes() if args.palette else
-        archive_resource(args.archive.read_bytes(), b"peli.@p")
+        archive_resource(args.archive.read_bytes(), b"partII" if args.title_palette else b"peli.@p")
     )
     if len(palette_data) != 768:
         raise ValueError("peli.@p does not contain a 256-colour palette")

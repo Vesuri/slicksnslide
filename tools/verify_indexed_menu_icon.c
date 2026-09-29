@@ -55,7 +55,8 @@ int main(void)
     uc_hook hook;
     check(uc_hook_add(u,&hook,UC_HOOK_INSN,port,0,1,0,UC_X86_INS_OUT));
     check(uc_hook_add(u,&hook,UC_HOOK_MEM_WRITE,pixel,0,0xa0000,0xaffff));
-    const char *names[]={"ohj_key.@I","ohj_joy.@I","ohj_lptc.@I",
+    const char *names[]={"val1.@I","val2.@I","pel_on.@I","pel_ei.@I","pel_t.@I",
+        "ohj_key.@I","ohj_joy.@I","ohj_lptc.@I",
         "miina.ase","aikabomb.ase","flam_raj.@I",
         "ohjus.1","ohjus.2","ohjus.3","ohjus.4","ohjus.5","ohjus.6","ohjus.7","ohjus.8",
         "savu.1","savu.2","savu.3","rajahdys.1","rajahdys.2","rajahdys.3","rajahdys.4","flash.@I"};
@@ -77,6 +78,6 @@ int main(void)
         verify_indexed(u,"synthetic");
     }
     check(uc_close(u));
-    puts("Indexed controller/weapon assets: 22 resources and four format variants match original loader pixels, padding and dimensions; 104 transparent full-frame draws match across all alignments; every truncation rejected atomically");
+    puts("Indexed title/controller/weapon assets: 27 resources and four format variants match original loader pixels, padding and dimensions; 124 transparent full-frame draws match across all alignments; every truncation rejected atomically");
     return 0;
 }

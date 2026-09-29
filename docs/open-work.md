@@ -36,7 +36,9 @@ Implementation and completed verification evidence are separate in
   matrix and discrepancy IDs in [fidelity-audit.md](fidelity-audit.md). Audit
   production callers, parameters and overrides as well as translated helpers.
   Do not claim feature completeness from isolated or historical passes.
-- Close F02/F08: original title status indicators and animation. Audit the
+- Finish F02's interactive role/count/badge transition coverage; its original
+  status renderer is restored and initial native-screen checks pass. Close
+  F08's original title animation. Audit the
   remaining title shortcuts and mouse routes against original callers.
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
@@ -58,8 +60,6 @@ Implementation and completed verification evidence are separate in
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.
-- Restore original title status indicators/counts, verifying actual runtime
-  state against DOS rather than treating the current title as faithful.
 
 ## Remaining performance work
 

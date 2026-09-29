@@ -1099,6 +1099,14 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 
 .PHONY: verify-title-bridge
 .PHONY: verify-title-navigation
+.PHONY: verify-title-status
+build/verify_title_status: tools/verify_title_status.c tools/verify_title_menu.c src/ui/title_status.h
+	@mkdir -p build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \
+		-L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+verify-title-status: build/verify_title_status
+	build/verify_title_status
+
 build/verify_title_navigation: tools/verify_title_navigation.c tools/verify_options_menu.c src/ui/title_navigation.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \

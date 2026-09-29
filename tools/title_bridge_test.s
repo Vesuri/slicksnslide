@@ -2,6 +2,7 @@
 	dc.l slicks_dispatch_title_key,slicks_draw_title_text
 	dc.l slicks_draw_title_menu_selection,sui_draw_text,sui_title_menu
 	dc.l slicks_draw_original_text,sui_font_string
+	dc.l slicks_draw_title_status_text,sui_font_string_planar
 	include "src/platform/amiga/native_bridge.s"
 	include "src/ui/sui_title_dispatch.s"
 ; Drawing is a boundary here: verify incoming registers, not fake pixels.
