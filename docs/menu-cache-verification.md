@@ -803,3 +803,27 @@ assets; the separate pixel test uses real original/68020 painters. Logs:
 `tmp/intermission-bounds-build.log`, `tmp/intermission-bounds-host.log`.
 All debug runs were muted and their runners closed the emulators. Saved-game
 recovery and other intermission error routes remain separate open coverage.
+
+## Registration Help return publication
+
+Registration Help close now publishes its restored painter bounds before
+destroying the surface. The caller no longer reconverts both complete bitmaps:
+Help paints view 0 only, while view 1 retains the registration image. Warning
+close is explicit before publication as well; failure injection for that route
+is still separate coverage.
+
+Muted keyless Y and F1 fixtures (`SLICKS_REGISTRATION_TEST=2/3`,
+`diag_registration_rectangles.gdb`) each pass six complete bitplane/chunky
+comparisons: open, two navigation publications, close, and both return bitmaps.
+The pre-change three navigation frames are byte-identical; before/after Help
+screens match exactly. Both keys reach original chapter 353, finish with system
+restoration 31, and never release the display inside Help. Return converts
+(16,15)-(304,189), 50,112 pixels in view 0, instead of 128,000 pixels across both
+views. The palette-only fade continues using both intact images.
+
+Host Help lifetime bounds, 40,000 menu rectangle coverage steps and original
+registration pixel comparisons pass. Logs: `tmp/registration-bounds-control.log`,
+`tmp/registration-bounds-native.log`, `tmp/registration-bounds-f1.log`,
+`tmp/registration-bounds-host.log`, `tmp/registration-bounds-build.log`.
+All runners closed their emulators. These checks use no private registration
+key and do not close optional order-form, trial-prompt or warning-failure coverage.

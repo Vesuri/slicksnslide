@@ -3128,6 +3128,10 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     }
 done:
     if(m && m->help && slicks_amiga_help_close(m)) result=-1;
+    if(m && m->help_warning && slicks_amiga_help_warning_close(m)) result=-1;
+    /* Help only paints view 0. Publish its restored bounds before destroying
+     * the painter; view 1 still contains the original registration image. */
+    if(m && !result) present_menu_surface(p,m);
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&a);
     slicks_diag_registration_help_closed();return result;
@@ -3180,8 +3184,6 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     if(key<0) goto done;
     if(kind==1 && slicks_registration_help_requested(key)) {
         if(registration_exit_help(p,chunky,palette)) goto done;
-        slicks_amiga_platform_wait_display_blank(p);
-        for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,p->views[i].bitmap,0,200);
         if(slicks_amiga_platform_set_view(p,0,palette) || show_menu(p)) goto done;
         view=0;
     }

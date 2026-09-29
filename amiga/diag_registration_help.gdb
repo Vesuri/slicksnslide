@@ -4,6 +4,17 @@ set $exit=0
 set $opened=0
 set $closed=0
 set $optional=0
+set $registration_help_owned=0
+init-if-undefined $capture_registration_return = 0
+break *slicks_amiga_platform_end
+commands
+  silent
+  if $registration_help_owned
+    printf "REGISTRATION_HELP_UNEXPECTED_DISPLAY_RELEASE\n"
+    quit 1
+  end
+  continue
+end
 break registration_screen
 commands
   silent
@@ -35,6 +46,7 @@ commands
     quit 1
   end
   set $menu=menu
+  set $registration_help_owned=1
   continue
 end
 break slicks_diag_help_ready
@@ -54,7 +66,17 @@ break slicks_diag_registration_help_closed
 commands
   silent
   set $closed=$closed+1
+  set $registration_help_owned=0
   dump binary memory .run/registration-help/after.chunky $pixels $pixels+64000
+  if $capture_registration_return
+    set $return_view=0
+    while $return_view < 2
+      set $return_planes=g_slicks_diag_profile_platform->views[$return_view].bitmap->Planes[0]
+      eval "dump binary memory .run/menu-rectangles/%u.chunky $pixels $pixels+64000",10000+$return_view
+      eval "dump binary memory .run/menu-rectangles/%u.planar $return_planes $return_planes+64000",10000+$return_view
+      set $return_view=$return_view+1
+    end
+  end
   continue
 end
 break slicks_diag_system_restored
