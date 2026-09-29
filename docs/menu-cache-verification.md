@@ -952,3 +952,29 @@ Logs: `tmp/track-readonly-rectangles.log`,
 All runners closed their emulators. No production change was needed. These
 cover the named failures, not every catalogue truncation, recovery artifact or
 storage failure; the host storage oracle covers additional cases separately.
+
+## Full Players catalogue scrolling (2026-09-29)
+
+`SLICKS_PLAYER_MENU=19` / `PLAYERSS` with
+`diag_profile_scroll_rectangles.gdb` exercises the real input, picker and
+publication paths against 100 profiles. Generate the isolated `dh1/SLICKS.PLR`
+with `tools/create_picker_scroll_fixture.py`; it writes synthetic names and
+fields, refuses to overwrite an existing file, and contains no original game
+bytes. The runner supplies only raw key events, not selection-state writes.
+
+The sequence covers both bracket keys and keypad 9/3, scrolling in both
+directions, End/Home, Page Up clamping at the first entry, accepting entry 99,
+reopening at 99, paging to 89 and cancelling back to the accepted profile.
+The fixture asserts all twelve visible selections and final assignment.
+All fifteen shared publications decode to the full 64,000 authoritative
+chunky pixels. Ordinary scroll publications are one rectangle
+`(160,34)..(320,125)` (14,560 pixels), not a full-screen conversion. Modal
+open and close publications cover their larger actual owner areas.
+
+Verification: `make verify-amiga-key-scan verify-list-dialog` also passes,
+including 172,032 original key/state/scroll/result comparisons and 2,520
+original complete drawing/font-state comparisons. Native logs are
+`tmp/profile-scroll-native-boundaries.log`; the first page-only run is in
+`tmp/profile-scroll-native.log`. Captures are local-only. The muted A1200
+runner closed its emulator. This is picker scrolling/publication coverage,
+not a claim about every Players dialog or the remaining whole-port audit.

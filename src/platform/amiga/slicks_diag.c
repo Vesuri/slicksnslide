@@ -3673,7 +3673,8 @@ int main(void)
         argv[2]=='A' && argv[3]=='Y' && argv[4]=='E' && argv[5]=='R' && argv[6]=='S');
     unsigned char vehicle_save_test=(unsigned char)(argc==8 && argv[0]=='P' && argv[1]=='L' &&
         argv[2]=='A' && argv[3]=='Y' && argv[4]=='E' && argv[5]=='R' && argv[6]=='S' && (argv[7]=='Z' || argv[7]=='B'));
-    player_menu_test|=vehicle_save_test;
+    player_menu_test|=vehicle_save_test || (argc==8 && argv[0]=='P' && argv[1]=='L' &&
+        argv[2]=='A' && argv[3]=='Y' && argv[4]=='E' && argv[5]=='R' && argv[6]=='S' && argv[7]=='S');
     unsigned char name_test_stage=0;
     unsigned char shared_human_test=(unsigned char)(player_menu_test && argc==8 && argv[7]=='H');
     unsigned char persistence_test=(unsigned char)(player_menu_test && argc==8 && (argv[7]=='P' || argv[7]=='T' || argv[7]=='U' || argv[7]=='V' || argv[7]=='W' || argv[7]=='X' || argv[7]=='Y'));
@@ -4208,6 +4209,13 @@ int main(void)
             static const unsigned char handoff_keys[]={0x45,0x44,0x45,0x4c,0x44};
             for(unsigned i=0;i<sizeof handoff_keys;++i) platform.keys[sizeof menu_keys+i]=handoff_keys[i];
             platform.key_head=sizeof menu_keys+sizeof handoff_keys;
+        } else if(argc==8 && argv[7]=='S') {
+            /* Full-catalogue scrolling fixture: both bracket and numeric
+             * keypad page keys, then accept/reopen/cancel. */
+            static const unsigned char scroll_keys[]={0x44,0x1b,0x1b,0x1f,
+                0x1a,0x3f,0x1d,0x3d,0x1a,0x1d,0x44,0x44,0x1a,0x45};
+            for(unsigned i=0;i<sizeof scroll_keys;++i) platform.keys[i]=scroll_keys[i];
+            platform.key_head=sizeof scroll_keys;
         } else if(argc==8 && (argv[7]=='K' || argv[7]=='G')) {
             static const unsigned char picker_keys[]={0x44,0x4c,0x44,0x44,0x4d,0x45};
             for(unsigned i=0;i<sizeof picker_keys;++i) platform.keys[sizeof menu_keys+i]=picker_keys[i];

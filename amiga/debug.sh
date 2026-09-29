@@ -200,6 +200,8 @@ elif [ "${SLICKS_OPTIONS_MENU:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSC\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_OPTIONS_MENU:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_PLAYER_MENU:-0}" = 19 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSS\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_PLAYER_MENU:-0}" = 18 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERSB\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_PLAYER_MENU:-0}" = 17 ]; then
