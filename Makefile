@@ -1100,6 +1100,12 @@ build/verify_title_dispatch: tools/verify_title_dispatch.c
 .PHONY: verify-title-bridge
 .PHONY: verify-title-navigation
 .PHONY: verify-title-status
+.PHONY: verify-title-dirty
+build/verify_title_dirty: tools/verify_title_dirty.c src/ui/title_dirty.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-title-dirty: build/verify_title_dirty
+	build/verify_title_dirty
+
 build/verify_title_status: tools/verify_title_status.c tools/verify_title_menu.c src/ui/title_status.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include \

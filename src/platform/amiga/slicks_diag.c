@@ -759,12 +759,50 @@ static void make_track_path(char *path, const char *name)
 }
 
 #include "amiga_key_scan.h"
+#include "../../ui/title_dirty.h"
+static struct SlicksTitleDirty title_dirty;
+volatile unsigned long g_slicks_title_full_publications,g_slicks_title_partial_publications;
+volatile unsigned long g_slicks_title_last_pixels;
+static unsigned char title_dirty_test;
+volatile unsigned long g_slicks_title_dirty_checks,g_slicks_title_dirty_errors;
+static void publish_title_dirty(struct SlicksAmigaPlatform *p,
+    const unsigned char *logical,unsigned char *chunky)
+{
+    if(!title_dirty.count) return;
+    slicks_title_dirty_unpack(&title_dirty,logical,chunky);
+    /* Prepare in ordinary memory first; start publication at a fresh display
+     * end, not partway through the lower border. All eight planes per block. */
+    slicks_amiga_platform_wait_display_end(p);
+    unsigned long pixels=0;
+    for(unsigned i=0;i<title_dirty.count;++i) {
+        const struct SlicksTitleRect *r=&title_dirty.rects[i];
+        slicks_chunky_rect_to_amiga(chunky,p->views[0].bitmap,
+            r->left,r->top,r->right,r->bottom,0);
+        pixels+=(unsigned long)(r->right-r->left)*(r->bottom-r->top);
+    }
+    g_slicks_title_last_pixels=pixels;
+    if(pixels==64000) ++g_slicks_title_full_publications;
+    else ++g_slicks_title_partial_publications;
+    title_dirty.count=0;
+    if(title_dirty_test) {
+        const struct BitMap *bitmap=p->views[0].bitmap;
+        for(unsigned y=0;y<200;++y) for(unsigned x=0;x<320;++x) {
+            unsigned colour=0;
+            for(unsigned plane=0;plane<8;++plane)
+                if(bitmap->Planes[plane][y*320+(x>>3)]&(128U>>(x&7))) colour|=1U<<plane;
+            unsigned expected=logical[(x&3)*65536UL+y*100+(x>>2)];
+            if(colour!=expected || chunky[mult320[y]+x]!=expected) ++g_slicks_title_dirty_errors;
+        }
+        ++g_slicks_title_dirty_checks;
+    }
+}
 
 static void make_title_surface(unsigned char *planes,
                                const unsigned char *frame,
                                const unsigned char *palette)
 {
     slicks_draw_title_pages(planes, frame, palette);
+    slicks_title_dirty_add(&title_dirty,0,0,320,200);
 }
 
 static void clear_title_rectangle(unsigned char *logical,
@@ -807,12 +845,16 @@ static void redraw_title_configuration(
     /* These legacy diagnostic arguments never belong on the original title.
      * Its status is alongside PLAYERS/TRACKS/OPTIONS, not a black footer. */
     (void)vehicle; (void)track_name; (void)laps;
+    slicks_title_dirty_add(&title_dirty,200,96,244,140);
     /* Restore the status background as well as the original label crop:
      * shrinking counts, inactive drivers and disabled badges must erase. */
     for(unsigned y=96;y<140;++y) for(unsigned x=200;x<244;++x)
         logical[(x&3)*65536UL+y*100+(x>>2)]=
             slicks_title_background[2+(x&3)*16000UL+y*80+(x>>2)];
     slicks_draw_title_menu_selection(logical, palette, selection);
+    /* Original crop is byte-aligned: x=108..207, y=77..173. All menu
+     * labels and the old/new selection bevel lie inside these bounds. */
+    slicks_title_dirty_add(&title_dirty,108,77,208,174);
     if(title_configuration) {
         struct SlicksRaceOptions options;
         short mode=title_configuration->options[0];
@@ -842,8 +884,11 @@ static void redraw_title_configuration(
             }
         }
     }
-    if(registration.name[0]) slicks_draw_title_registration(logical,registration.name);
-    slicks_convert_to_amiga(logical, chunky, platform->views[0].bitmap);
+    if(registration.name[0]) {
+        slicks_draw_title_registration(logical,registration.name);
+        slicks_title_dirty_add(&title_dirty,0,190,320,200);
+    }
+    publish_title_dirty(platform,logical,chunky);
     /* Keep GCC from emitting a cross-section PC32 sibling jump, which the
      * HUNK converter cannot relocate. No extra hardware or rendering work. */
     __asm volatile("" ::: "memory");
@@ -3410,9 +3455,10 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='D'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
-        if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
+        if(argc==9 && argv[8]=='D') title_dirty_test=1;
+        else if(argc==9) registration_help_test=argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic clock fraction, never a normal-game override.
@@ -3675,7 +3721,6 @@ int main(void)
                                menu_selection, selected_vehicle,
                                track_names[selected_track], selected_laps);
     title_checksum = checksum_planes(logical);
-    slicks_convert_to_amiga(logical, chunky, platform.views[0].bitmap);
     if (slicks_amiga_platform_set_view(&platform, 0, source_palette) != 0)
         goto cleanup;
     title_display_checksum = checksum_bitmap(platform.views[0].bitmap);
@@ -4067,7 +4112,12 @@ int main(void)
     for (;;) {
         unsigned short code;
         unsigned char left_down;
-        if(registration_test && ++registration_test==10) {
+        if(registration_test && title_dirty_test) {
+            static const unsigned char keys[]={0x4d,0x4d,0x4f,0x4e,0x4c,0x4c,0x45};
+            unsigned at=registration_test-1;
+            championship_test_keys(&platform,&keys[at],1);
+            if(++registration_test>sizeof keys) registration_test=0;
+        } else if(registration_test && ++registration_test==10) {
             /* Exercise the title pulse before ordinary Escape make/release.
              * Key file, trial date, save handling and clocks are untouched. */
             platform.key_tail=0;platform.keys[0]=0x45;platform.keys[1]=0xc5;platform.key_head=2;
@@ -5324,13 +5374,8 @@ int main(void)
            !g_slicks_options_menu && !g_slicks_track_menu && !g_slicks_title_help &&
            !g_slicks_diag_saved_menu) {
             slicks_tick_title_registration(logical,registration.name,source_palette);
-            /* Publish only the owner-name strip, never redraw the game. */
-            unsigned char *out=chunky+60800;
-            for(unsigned offset=19000;offset<20000;offset+=100)
-                for(unsigned x=0;x<320;++x)
-                    *out++=logical[((x&3)<<16)+offset+(x>>2)];
-            slicks_amiga_platform_wait_display_blank(&platform);
-            slicks_chunky_rows_to_amiga(chunky,platform.views[0].bitmap,190,200);
+            slicks_title_dirty_add(&title_dirty,0,190,320,200);
+            publish_title_dirty(&platform,logical,chunky);
         }
         if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_lists) {
             if(g_slicks_track_menu->name_dialog) {
