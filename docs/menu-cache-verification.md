@@ -860,3 +860,23 @@ unverified injection fixture was removed. Native enumeration-I/O error coverage
 remains open, separately from the passing real overflow and host fault tests.
 All debug runs were muted and all runners exited. No synthetic fixtures or
 captured game data are committed.
+
+## Trial reminder prompt bounds
+
+The delayed trial prompt now uses the native font painter's glyph/alignment
+bounds and the shared rectangle merger instead of hard-coded full-width rows
+145..155. Initial trial composition remains a full image replacement; only
+the delayed text update uses rectangles. Both fade bitmaps receive the same
+prompt rectangle, with timing and original text/palette unchanged.
+
+`diag_registration_prompt.gdb` with `SLICKS_REGISTRATION_TEST=1` on a fresh
+keyless isolated directory prepared by `build/registration_test_config` passes
+the actual expired-trial path and restoration 31. The reported bounds are
+(144,145)-(176,151): 192 pixels per bitmap instead of 3,200. Both complete
+64,000-pixel bitplane decodes match the authoritative chunky surface. The
+original trial tint/text/prompt and synthetic owner-label pixel oracle passes,
+along with 5,184 native font-write coverage cases for both shadow modes.
+Logs: `tmp/trial-prompt-native.log`, `tmp/trial-prompt-host.log`,
+`tmp/registration-prompt-build.log`. The muted runner closed its emulator.
+The private key was not used; optional image and warning-failure coverage remain
+open, and this is not the complete default-stack release gate.

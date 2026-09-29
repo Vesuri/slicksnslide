@@ -49,6 +49,7 @@
 #include "../../ui/font_resource.h"
 #include "../../game/registration.h"
 #include "../../ui/registration_ui.h"
+#include "../../ui/help_text_dirty.h"
 #include "../../ui/menu_bitmap.h"
 extern void slicks_draw_title_registration(unsigned char *,const unsigned char *);
 extern void slicks_tick_title_registration(unsigned char *,const unsigned char *,const unsigned char *);
@@ -3138,8 +3139,25 @@ done:
 }
 /* Original registration-dependent presentation. Real archive BMPs and fonts,
  * never captured frames. kind 0=expired trial, 1=exit, 2=optional order form. */
-static void registration_text(void *pixels,const unsigned char *text,short x,short y,unsigned char flags)
-{ slicks_records_text(pixels,slicks_title_small_font,text,x,y,flags,0); }
+extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
+static struct {
+    struct SlicksChunkyUi ui;
+    struct SlicksMenuRect rectangles[16];
+    unsigned short count;
+} registration_painter;
+static void registration_dirty(void *context,short l,short t,short r,short b)
+{
+    (void)context;
+    slicks_menu_dirty_add(registration_painter.rectangles,&registration_painter.count,l,t,r,b);
+}
+static void registration_text(void *context,const unsigned char *text,short x,short y,unsigned char flags)
+{
+    struct SlicksChunkyUi *ui=context;
+    slicks_records_text(ui->pixels,slicks_title_small_font,text,x,y,flags,0);
+    slicks_font_text_dirty(ui,slicks_title_small_font,text,x,y,1,flags,
+        slicks_menu_measure(slicks_title_small_font,text),0);
+}
+__attribute__((noinline)) void slicks_diag_registration_prompt_ready(void) { __asm__ volatile("" ::: "memory"); }
 static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chunky,
     unsigned kind,unsigned short timer)
 {
@@ -3164,10 +3182,12 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     if(slicks_decode_menu_bitmap(resource,(unsigned long)length,chunky,palette,&w,&h,0) || w!=320 || h!=200) goto done;
     FreeMem(resource,70000);resource=0;slicks_resource_archive_close(&a);
     struct SlicksChunkyUi ui={chunky,palette,0,0};
+    registration_painter.ui=(struct SlicksChunkyUi){chunky,palette,registration_dirty,0};
+    registration_painter.count=0;
     if(kind==0) {
         slicks_registration_trial_background(&ui);
         slicks_title_small_font[6]=slicks_ui_nearest(&ui,70,70,70);
-        slicks_registration_trial_text(slicks_original_registration_text,0,registration_text,chunky);
+        slicks_registration_trial_text(slicks_original_registration_text,0,registration_text,&registration_painter.ui);
     }
     for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,p->views[i].bitmap,0,200);
     if(slicks_amiga_platform_set_view(p,0,black) || slicks_amiga_platform_begin(p,0)) goto done;
@@ -3176,9 +3196,14 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     slicks_diag_registration_screen_ready();
     if(kind==0) {
         registration_delay(p,2000);
-        slicks_registration_trial_text(slicks_original_registration_text,1,registration_text,chunky);
+        registration_painter.count=0;
+        slicks_registration_trial_text(slicks_original_registration_text,1,registration_text,&registration_painter.ui);
         slicks_amiga_platform_wait_display_blank(p);
-        for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,p->views[i].bitmap,145,155);
+        for(unsigned i=0;i<2;++i) for(unsigned n=0;n<registration_painter.count;++n) {
+            const struct SlicksMenuRect *r=&registration_painter.rectangles[n];
+            slicks_chunky_rect_to_amiga(chunky,p->views[i].bitmap,r->left,r->top,r->right,r->bottom,0);
+        }
+        slicks_diag_registration_prompt_ready();
     } else if(kind==1 && !registration.name[0]) registration_delay(p,300);
     short key=registration_wait(p);
     if(key<0) goto done;
