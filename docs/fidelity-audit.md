@@ -1081,6 +1081,26 @@ test a nonexistent boundary. The actionable list distinguishes startup
 partial-allocation cleanup from preparation error 8 (copper setup/validation).
 This is a source-level ownership finding, not a native fault-injection pass.
 
+## Demo exit: direct save retry (2026-09-29)
+
+`DEMORET` (`SLICKS_DEMO_LIFECYCLE_TEST=10`) reuses the dirty Options edit,
+demo entry and both full-pixel-checked data views, then requests program exit.
+The first real setup save fails on the fixture-created `.new` directory.
+Before pressing Retry, the fixture checks the complete configuration, all
+256 playlist entries, playlist count and cleared demo state. Both setup-store
+calls independently compare their configuration argument with the pre-demo
+snapshot. Enter retries directly, without canceling or entering another demo.
+
+The final muted native run passes: one demo, two views, two saves, one failure,
+142-byte saved-file readback and final OS restoration mask 31. The emulator
+exits successfully and is closed. Logs: `tmp/demo-retry-build.log` and
+`tmp/demo-retry-final-native.log`. An earlier diagnostic run omitted Enter's
+release and waited at exit; it was interrupted and is not a passing run.
+The corrected fixture supplies make and release, allowing the registration
+screen's ordinary release-before-timeout behavior. No production behavior
+was changed. Clean unmodified exit and fresh-process reload remain outside
+this specific fixture's scope.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
