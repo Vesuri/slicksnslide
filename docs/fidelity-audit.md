@@ -195,6 +195,25 @@ and the original-instruction selection/table oracles. Build evidence:
 testability refactor. Automatic negative-selector policy and broader label
 consumer fidelity remain open.
 
+### F15 Arcade language caller pixels (2026-09-29)
+
+The Arcade pixel oracle no longer intercepts original language wrapper
+`36227` and returns its input. It executes the original lookup/fallback code
+with DS:1722 pointing to each supplied decoded language table, or NULL for
+the missing-table case. Table decoding is independently compared with original
+`3601a` by `verify-language-table`; the rendering oracle does not replace
+lookup with the native helper.
+
+`make verify-arcade-title-pixels verify-language-table` passes. The expanded
+Arcade gate compares all 64,000 visible pixels and complete font state in
+1,296 cases: eight languages plus no table, three font aliases, both rows,
+four player counts and six pulse/refresh boundary combinations. Native labels
+use the same `players`, `settings` and `arcade.settingstext` lookups and
+fallbacks as the production binding. Only libc formatting remains intercepted.
+No production rendering change was required. This closes that painter's
+translated-label comparison, not target-side selection of every language,
+other menu callers, font-alias lifetime or automatic startup language policy.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title

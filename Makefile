@@ -1201,7 +1201,7 @@ verify-arcade-title: build/verify_arcade_title
 .PHONY: verify-arcade-title-pixels
 build/arcade_title_pixels_test.bin: tools/arcade_title_pixels_test.s src/platform/amiga/native_bridge.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph_planar.s | build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
-build/verify_arcade_title_pixels: tools/verify_arcade_title_pixels.c tools/verify_palette_remap.c src/ui/arcade_title_painter.h src/ui/arcade_title_draw.h src/ui/title_background.h | build
+build/verify_arcade_title_pixels: tools/verify_arcade_title_pixels.c tools/verify_palette_remap.c src/ui/arcade_title_painter.h src/ui/arcade_title_draw.h src/ui/title_background.h src/ui/language_table.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
 verify-arcade-title-pixels: build/verify_arcade_title_pixels build/arcade_title_pixels_test.bin
 	build/verify_arcade_title_pixels

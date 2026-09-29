@@ -146,6 +146,9 @@ Implementation and completed verification evidence are separate in
   pause and intermission language-table consumers. Implement the original
   startup negative-selector default policy, and audit the other
   label callers; honoring positive selections does not complete localization.
+  Arcade painter pixels/font state now match original lookup and drawing code
+  for all eight language tables plus missing-table fallback; other menu callers
+  and target-side per-language selection coverage remain separate.
   The zero-selector chooser is connected with original first-line labels,
   clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
   reaches the selected table and restores the system. Real input.device events,
