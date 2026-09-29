@@ -1411,6 +1411,9 @@ static int track_lists_finish(struct SlicksAmigaPlatform *platform,short total,c
 static int track_lists_commit(struct SlicksAmigaPlatform *platform,short total,void *names,int remove)
 {
     struct SlicksAmigaTrackLists *lists=g_slicks_track_menu->track_lists;
+    /* Picker/name/confirmation work is RAM-only. Release hardware only
+     * when committing the catalogue transaction to disk. */
+    slicks_amiga_platform_end(platform);
     g_slicks_track_lists_save=slicks_amiga_store_track_lists(&lists->catalogue,remove,
         remove<0?lists->name:0,&g_slicks_track_playlist,total,native_track_name,names);
     const char *error=0;
@@ -4573,11 +4576,10 @@ int main(void)
                         continue;
                     }
                     if(g_slicks_track_menu->track_lists) {
-                        slicks_amiga_platform_end(&platform);
                         if(track_lists_key(&platform,(short)track_count,track_names,character,
                             (unsigned char)amiga_raw_to_menu_scan(code),picker_clock.ticks)) goto cleanup;
                         present_menu_surface(&platform,g_slicks_track_menu);
-                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        if(show_menu(&platform)) goto cleanup;
                         slicks_diag_track_lists_ready();
                         continue;
                     }

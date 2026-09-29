@@ -1,6 +1,7 @@
 set $closed = 0
 set $confirm = 0
 set $empty = 0
+source diag_track_lists_resident.gdb
 break slicks_diag_track_lists_ready
 commands
   silent
@@ -15,6 +16,7 @@ commands
     end
   end
   if $m->track_lists
+    set $resident_guard = 1
     if $m->track_lists->catalogue.count != ($closed < 3)
       printf "TRACK_LIST_DELETE_CATALOGUE_FAILED closed=%u\n", $closed
       quit 1
@@ -28,6 +30,7 @@ end
 break slicks_diag_track_lists_closed
 commands
   silent
+  set $resident_guard = 0
   set $closed = $closed+1
   if g_slicks_track_menu->track_lists || g_slicks_track_menu->message || g_slicks_track_playlist.count != 1 || g_slicks_track_playlist.tracks[0] != 0
     quit 1
@@ -40,6 +43,10 @@ commands
   if g_slicks_diag_ingame
     if $closed != 4 || $confirm != 2 || $empty != 1 || g_slicks_diag_race_error || g_slicks_track_lists_save.result
       printf "TRACK_LIST_DELETE_FAILED closes=%u confirmations=%u empty=%u\n", $closed, $confirm, $empty
+      quit 1
+    end
+    if $commits != 1
+      printf "TRACK_LIST_DELETE_COMMIT_COUNT_FAILED\n"
       quit 1
     end
     printf "TRACK_LIST_NATIVE_CANCEL_NAME_CANCEL_DELETE_CONFIRM_REOPEN_OK\n"

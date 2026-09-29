@@ -81,7 +81,8 @@ Implementation and completed verification evidence are separate in
   [menu-cache-verification.md](menu-cache-verification.md).
   Cache the SLICKS.TRK and saved-game catalogues, preserving transactional
   save/delete updates and recovery/error handling. Track-information and its
-  warning close now retain hardware ownership; migrate remaining chooser,
+  warning close and RAM-only track-list chooser input now retain hardware
+  ownership; migrate remaining saved-game chooser,
   results/return and RAM-only transition owners. Shop and registration Help
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown

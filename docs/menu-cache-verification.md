@@ -47,6 +47,33 @@ progression, zero race error and restoration 31. No larger stack is requested.
 
 ## Checks
 
+### Track-list chooser RAM-only navigation
+
+Removed the owner-wide end/begin pair around every `track_lists_key` call.
+Picker movement, name typing/cancellation, delete confirmation/cancellation
+and selection from the in-memory catalogue retain hardware ownership. The
+actual transactional save/delete owner now releases hardware immediately
+before storage, and the caller republishes/reacquires only when necessary.
+Opening the catalogue still reads SLICKS.TRK; startup catalogue caching remains
+open. This is not a claim that entering the chooser is disk-free yet.
+
+`diag_track_lists_resident.gdb` supplies shared guards for selection/save and
+delete tests: no platform teardown or archive opening while navigating;
+catalogue disk loads require released hardware; save/delete must enter their
+boundary with active hardware and call storage only after release. Native
+`SLICKS_TRACK_MENU=2` passes name entry/save/race with two name frames and one
+disk commit. Values 3 and 4 then pass saved-list load/race with zero commits,
+and name cancellation/delete cancellation/confirmed deletion/empty reopen
+with exactly one commit. These use the same isolated
+`FSUAE_RUN=.run/track-lists-resident`, muted warp mode, and respectively
+`diag_track_lists.gdb` and `diag_track_lists_delete.gdb`; all runners exit and
+close their emulators at the race checkpoint. Local logs are
+`tmp/track-lists-resident-{save,load,delete}.log`.
+
+`make verify-track-lists verify-track-list-storage` also passes 60 original
+reader and 80 original writer comparisons, plus 361 transaction/load/failure
+cases. Serialization and transaction implementations were not changed.
+
 ### Track-information resident close and title-font memory repair
 
 Track-information and its load-warning dismissal now keep hardware ownership:
