@@ -44,24 +44,11 @@ Implementation and completed verification evidence are separate in
   only the covered blocks. Check ordinary selection changes, nested dialogs,
   restoration, scrolling and transitions; reserve full-screen conversion for
   actual full-screen replacements. Verify producer coverage and native pixels.
-  Remaining publication coverage: additional Tracks storage/format
-  failures, other Help owners,
+  Remaining publication coverage: other Help owners/page/language routes,
   shop sparse-selection policy/native coverage
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
-  A real SLICKS.TRK Open failure (directory at the file path) now has native
-  warning/dismissal/race-entry publication coverage, one startup load and no
-  archive reopen/display teardown while the Tracks menu is active. Controlled
-  Read/Close failures now also have native cached-warning, unchanged-playlist,
-  publication and race-entry coverage; other malformed inputs remain separate.
-  Normal Tracks Help now has link/history/close/reopen publication coverage,
-  exact restoration for both closes, no archive reopen/display teardown across
-  the guarded visits, and normal system exit. Other Help owner/page/language
-  routes remain separate from that verified sequence.
-  Tracks `.new` and `.bak` recovery warnings now each have native publication,
-  dismissal, unchanged-playlist and single-startup-load coverage; keep other
-  read/format failure cases separate from those verified artifact checks.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
   native sparse participation after resolving the policy question. Native

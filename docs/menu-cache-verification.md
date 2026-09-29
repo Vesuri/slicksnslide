@@ -974,6 +974,44 @@ and cache needed no fix for this route. This closes normal Tracks Help
 link/history/reopen publication and lifetime coverage, not every Help owner,
 language, page-scroll route or failure boundary.
 
+## Tracks malformed-file rejection matrix (2026-09-30)
+
+The fixture generator accepts explicit malformed variants, still refusing to
+overwrite any existing file. Its valid baseline is encoded by the production
+track-list writer. Seven variants exercise distinct parser rejection branches;
+the eighth has a valid-format prefix and allowed trailing bytes but exceeds
+the actual platform reader's 65,536-byte limit by one byte.
+
+All use normal TRACKSR input with real files and no injected I/O results.
+The invalid-format fixture now also uses the shared one-startup-load,
+no-archive-reopen and no-Tracks-menu-teardown guards. At the warning it
+requires result 2, zero I/O error and no published cached catalogue. Warning
+dismissal and race entry preserve the original one-track playlist. Each input
+compares byte-identically with a pre-run copy afterward.
+
+| Invalid input | Native run under `tmp/standalone-release-` |
+| --- | --- |
+| Seven-byte header | `eujrx8k1` |
+| Truncated list record | `yjzdirra` |
+| Truncated track-name array | `_tonmyho` |
+| Bad four-byte signature | `l0ur4e2c` |
+| List count above signed limit | `nssqi4dv` |
+| Track count above signed limit | `luo9o1df` |
+| Unterminated 21-byte list title | `r1ncvv2t` |
+| 65,537-byte file | `1usym77o` |
+
+Each run passes on stock PAL A1200, 2 MiB Chip/no Fast and confirmed default
+4 KiB stack. Each of twelve captured publications independently decodes to
+all 64,000 chunky pixels: 96 complete display comparisons in total. All runs
+are muted and owned emulators closed automatically. The fixtures terminate
+at race entry rather than claiming later post-race/system-exit coverage.
+
+Together with the real Open, controlled Read/Close, recovery-artifact and
+write/delete checks recorded here, this closes the listed Tracks storage and
+format warning/publication gap. The host suite separately checks every byte
+truncation of its reference record and preserves existing cache data on failed
+refresh. No production parser or renderer change was needed in this matrix.
+
 ## Tracks controlled Read/Close failures (2026-09-30)
 
 Explicit TRACKSQ/TRACKSC diagnostic input arms a one-shot fault immediately

@@ -1,2 +1,2 @@
-source diag_menu_rectangles.gdb
-source diag_track_lists_invalid.gdb
+set $expected_load=2
+source diag_track_lists_io_rectangles.gdb

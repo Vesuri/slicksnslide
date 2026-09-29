@@ -30,5 +30,7 @@ commands
   end
   continue
 end
-set $expected_load=1
+if $_isvoid($expected_load)
+  set $expected_load=1
+end
 source diag_track_lists_failure.gdb
