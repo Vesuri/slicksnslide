@@ -880,6 +880,11 @@ build/verify_language_table: tools/verify_language_table.c src/ui/language_table
 
 verify-language-table: build/verify_language_table
 	build/verify_language_table
+.PHONY: verify-language-console
+build/verify_language_console: tools/verify_language_console.c src/platform/amiga/amiga_language_chooser.h src/ui/language_table.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-language-console: build/verify_language_console
+	build/verify_language_console
 build/verify_speed_dialog: tools/verify_speed_dialog.c tools/verify_track_info.c src/ui/speed_dialog.h src/ui/track_records_renderer.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 

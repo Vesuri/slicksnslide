@@ -168,6 +168,33 @@ AmigaOS to open its own console. No production change was needed. Read errors
 after entering raw mode and a failed mode-restoration call remain separate
 unverified boundaries.
 
+### F15 console error-path checks (2026-09-29)
+
+The chooser implementation is shared verbatim by the native startup owner
+and `verify-language-console` through `amiga_language_chooser.h`. The host
+harness substitutes only platform/resource calls, not a second chooser model.
+Its 36 cases cover normal selection, non-interactive input, raw-mode entry
+failure, every read position returning error or EOF (including partial CSI),
+and cooked-mode restoration failure after successful input or a read error.
+Every post-entry read error attempts restoration once; a failed restoration
+returns failure even after a selection was accepted. A rejected raw-mode
+entry never attempts to leave a mode it did not enter.
+
+These are controlled API-fault checks of production control flow, not claims
+that an actual console handler recovered after refusing SetMode. The existing
+real-console success and real non-interactive-input fixtures provide separate
+target evidence. After moving the shared implementation, the real-console
+`HELPL9` fixture passes again in `tmp/standalone-release-u1uso7xa`, including
+mode calls, five input records, language 2, Help lifecycle and restoration
+mask 31. It uses the stripped binary, confirmed 4 KiB stack, stock-speed PAL
+68020, 2 MiB Chip/no Fast. Its muted emulator was closed.
+
+`make verify-language-console verify-language-table` passes both fault checks
+and the original-instruction selection/table oracles. Build evidence:
+`tmp/language-console-fault-build.log`. No chooser behavior changed in the
+testability refactor. Automatic negative-selector policy and broader label
+consumer fidelity remain open.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title
