@@ -69,6 +69,9 @@ Implementation and completed verification evidence are separate in
   Audit the signed demo flag's race input, AI, results and persistence consumers
   before enabling it; eleven additional original readers now have exhaustive
   byte-flag branch checks, but their native side-effect wiring remains open.
+  Include the original demo loading caption and two-pass race overlay in
+  that wiring; the overlay command sequence now has a separate original
+  caller oracle, but native rendering/publication is not connected.
   The setup profile IDs precede Arcade selection override.
   The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
   into production. Preserve F11/F12's exceptional track-data views; they are

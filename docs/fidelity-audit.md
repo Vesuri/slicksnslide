@@ -82,6 +82,31 @@ The original preceding gate bypasses these views when DS:0459 is zero, so
 ordinary race hotkeys must not enable them indiscriminately. Demo lifetime,
 input mapping and publication/return wiring remain open.
 
+### Demo presentation caller, not an AI selector
+
+`19dae` is a negative-flag predicate used by the per-race presentation owner
+`1f84d`; identifying that predicate alone does not prove any AI assignment.
+For a negative flag, the owner draws the original DS:0bff label twice: nearest
+palette colour to `(0,0,0)` at `(11,11)`, then nearest to `(50,50,50)` at
+`(10,10)`, both unaligned/unshadowed text calls through font DS:0680. It changes
+font colour slot zero before each pass. The owner skips its ordinary Arcade
+countdown branch in this case. For zero or positive flags it continues at
+`1f901` instead; positive mode must not be folded into idle-demo behaviour.
+
+`make verify-demo-overlay` executes the complete original predicate/overlay
+caller and intercepts only palette lookup, font-colour and text service calls.
+All 768 flag/palette-result cases pass, checking both ordered text passes,
+their coordinates/string/font/flags, and the normal-owner bypass. It is a
+command-boundary oracle, not a final pixel comparison or production wiring.
+Local log: `tmp/demo-overlay-oracle.log`.
+
+The track-loading caller also differs: `1b540..1b58f` draws the constructed
+ordinary caption for flag zero, the DS:09a0 demo caption for a negative flag,
+and no caption there for a positive flag. The existing branch oracle covers
+classification, but full native loading-caption lifetime remains unverified.
+Both captions/overlay must be included in live demo integration rather than
+merely selecting computer profiles and suppressing result screens.
+
 The idle scan replacement `2a387..2a39c` now passes 36,864 original-instruction
 comparisons: all byte scans, twelve initial timestamps and twelve elapsed
 boundaries including 19,999/20,000/20,001 ms, second boundaries, 16-bit carry,
