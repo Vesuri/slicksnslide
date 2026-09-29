@@ -1,0 +1,2 @@
+source diag_menu_rectangles.gdb
+source diag_profile_picker.gdb

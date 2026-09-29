@@ -903,3 +903,28 @@ Logs: `tmp/title-transition-rectangles.log`,
 These close the listed normal title transition/pulse publication checks on the
 integrated build; they do not measure wall-clock cadence against DOS or settle
 the remaining F10/F11/F12/input/demo callers. No production change was needed.
+
+## Players picker and Help publication coverage
+
+Fresh muted native runs with the shared complete bitplane decoder pass:
+
+- `SLICKS_PLAYER_MENU=3`, `diag_profile_picker_rectangles.gdb`: 12
+  publications and four picker visits, with changed selection accepted,
+  preserved on reopen and unchanged by cancellation.
+- `SLICKS_HELP_MENU=2`, `diag_nested_help_rectangles.gdb`: eight publications,
+  link/history navigation, close and reopen; before/after chunky bytes match.
+- `SLICKS_HELP_MENU=7`, `diag_help_failure_rectangles.gdb`: seven publications,
+  missing-resource and allocation-failure warnings, dismissal, successful retry
+  and close. Both warning returns exactly restore the prior screen and preserve
+  profile count and all selected profiles.
+- `SLICKS_HELP_MENU=3`, `diag_help_page_rectangles.gdb`: six publications,
+  previous/next page, Contents and close, with exact before/after restoration.
+
+Every publication compares all 64,000 pixels. The Help fixtures require system
+restoration 31; the focused picker fixture ends at its explicit accepted/cancel
+checkpoint, and its runner closes the emulator. Logs:
+`tmp/profile-picker-rectangles.log`, `tmp/players-help-rectangles.log`,
+`tmp/players-help-failure-rectangles.log`, `tmp/players-help-page-rectangles.log`.
+An initial picker invocation mistakenly used persistence mode 9 and failed the
+picker visit-count gate; only the corrected mode 3 run is counted. No production
+change was needed. Extended picker scrolling remains open.

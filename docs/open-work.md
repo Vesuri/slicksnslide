@@ -44,7 +44,7 @@ Implementation and completed verification evidence are separate in
   only the covered blocks. Check ordinary selection changes, nested dialogs,
   restoration, scrolling and transitions; reserve full-screen conversion for
   actual full-screen replacements. Verify producer coverage and native pixels.
-  Remaining publication coverage: remaining Players picker/Help paths,
+  Remaining publication coverage: extended Players picker scrolling,
   wider Tracks scrolling and storage/format failures, other Help owners,
   shop refresh selectors/driver changes/failures, remaining saved-game recovery,
   intermission/results error routes and registration warning failures.
