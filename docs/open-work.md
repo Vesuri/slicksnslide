@@ -99,9 +99,11 @@ Implementation and completed verification evidence are separate in
   keyboard snapshot are implemented; title Help, Options, Players, Controllers,
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
-  Extend native saved-game cache coverage to recovery-artifact/enumeration
-  failures; creation, overwrite/delete, cancellation and read-only save failure
-  now have real-intermission coverage.
+  Extend native saved-game cache coverage to enumeration I/O failures and
+  remaining recovery cases (including retained backups and blocked deletion).
+  Creation, overwrite/delete, cancellation, read-only save failure,
+  catalogue overflow and a pre-existing `.new` save obstruction have
+  real-intermission coverage.
   Startup snapshots and
   explicit transaction refresh are implemented for SLICKS.TRK and saved-game
   names; external repairs currently require

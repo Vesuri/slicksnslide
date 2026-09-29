@@ -827,3 +827,36 @@ registration pixel comparisons pass. Logs: `tmp/registration-bounds-control.log`
 `tmp/registration-bounds-host.log`, `tmp/registration-bounds-build.log`.
 All runners closed their emulators. These checks use no private registration
 key and do not close optional order-form, trial-prompt or warning-failure coverage.
+
+## Saved-game failure publications and real catalogue overflow
+
+`diag_championship_save_failure_rectangles.gdb` passes the real read-only
+save failure, notice dismissal, reopen/cancel and intermission return on a fresh
+isolated read-only volume. All 24 complete bitplane/chunky comparisons pass,
+with the existing requester, cache-refresh-count and display-ownership guards.
+Log: `tmp/save-failure-rectangles.log`.
+
+An isolated DH1 containing 41 synthetic `S00.SSS`..`S40.SSS` filenames reaches
+the actual enumeration overflow status -2. `diag_saved_overflow.gdb`, run with
+`SLICKS_CHAMPIONSHIP=save-fail`, passes the single warning/return and final
+restoration checks with exactly one enumeration (startup only), no picker
+and no second race. All 19 publications match their complete chunky surfaces.
+The synthetic files are catalogue-only placeholders and never loaded as games.
+Log: `tmp/saved-overflow-native.log`.
+
+`diag_saved_recovery_rectangles.gdb` uses the same native save-failure route on
+a writable isolated volume containing only a synthetic `E2E.SSS.new` recovery
+artifact. The actual transaction refuses it, reports recovery required, and
+passes warning/reopen/cancel/exit with 24 complete publication comparisons.
+The artifact's complete text remains unchanged; neither the primary save nor
+a `.bak` appears. Log: `tmp/saved-recovery-native.log`. The saved-file host
+oracle also passes filtering, bounds, filesystem faults, cache retention,
+recovery retention and requester restoration (`tmp/saved-cache-failures-host.log`).
+
+Attempts to inject an enumeration failure through debugger returns/registers
+or a cache write did not produce the requested negative status in the actual
+menu (it still observed count zero). Those attempts are not verification; the
+unverified injection fixture was removed. Native enumeration-I/O error coverage
+remains open, separately from the passing real overflow and host fault tests.
+All debug runs were muted and all runners exited. No synthetic fixtures or
+captured game data are committed.
