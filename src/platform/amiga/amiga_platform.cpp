@@ -353,6 +353,7 @@ void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform)
     unsigned long frame;
     if (!platform || !platform->active)
         return;
+    if(platform->io_active) { WaitTOF(); return; }
     frame = platform->vblank_count;
     while (platform->vblank_count == frame)
         ;
@@ -422,11 +423,54 @@ int slicks_amiga_platform_joystick(unsigned device,struct SlicksDeviceSample *sa
     return 0;
 }
 
+int slicks_amiga_platform_begin_io(struct SlicksAmigaPlatform *platform)
+{
+    if(!platform || !platform->active || platform->io_active) return -1;
+    slicks_amiga_platform_wait_display_blank(platform);
+    keyboard_end(platform);
+    Disable();
+    CUSTOM_WORD(REG_INTENA)=0x7fff;
+    SysBase->IntVects[INTB_VERTB]=platform->saved_vertb;
+    platform->vertb_taken=0;active_platform=0;
+    /* Restore device service, but retain our raster/copper and no OS sprites.
+     * LoadView(NULL) remains in force; do not expose the saved OS view. */
+    CUSTOM_WORD(REG_DMACON)=DMAF_ALL | DMAF_MASTER | DMAF_BLITHOG;
+    CUSTOM_WORD(REG_DMACON)=DMAF_SETCLR | DMAF_MASTER | DMAF_COPPER | DMAF_RASTER |
+        (platform->saved_dma & (DMAF_DISK | DMAF_BLITTER));
+    CUSTOM_WORD(REG_INTREQ)=0x7fff;
+    CUSTOM_WORD(REG_INTENA)=INTF_SETCLR | (platform->saved_interrupts & 0x7fff);
+    platform->io_active=1;
+    Enable();Permit();
+    return 0;
+}
+
+int slicks_amiga_platform_end_io(struct SlicksAmigaPlatform *platform)
+{
+    if(!platform || !platform->active || !platform->io_active) return -1;
+    Forbid();
+    slicks_amiga_platform_wait_display_blank(platform);
+    Disable();
+    CUSTOM_WORD(REG_INTENA)=0x7fff;
+    struct IntVector *vector=&SysBase->IntVects[INTB_VERTB];
+    vector->iv_Data=0;vector->iv_Code=(void (*)())vertical_blank_handler;
+    vector->iv_Node=&platform->vertb_interrupt.is_Node;
+    platform->vertb_taken=1;active_platform=platform;
+    Enable();
+    int result=keyboard_begin(platform);
+    CUSTOM_WORD(REG_DMACON)=DMAF_ALL | DMAF_MASTER | DMAF_BLITHOG;
+    CUSTOM_WORD(REG_DMACON)=DMAF_SETCLR | DMAF_MASTER | DMAF_COPPER | DMAF_RASTER;
+    CUSTOM_WORD(REG_INTREQ)=0x7fff;
+    CUSTOM_WORD(REG_INTENA)=INTF_SETCLR | INTF_INTEN | INTF_VERTB | INTF_PORTS;
+    platform->io_active=0;
+    return result;
+}
+
 void slicks_amiga_platform_end(struct SlicksAmigaPlatform *platform)
 {
     struct IntVector *vector;
     if (!platform || !platform->active)
         return;
+    if(platform->io_active) (void)slicks_amiga_platform_end_io(platform);
 
     keyboard_end(platform);
     CUSTOM_WORD(REG_INTENA) = 0x7fff;

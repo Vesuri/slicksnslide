@@ -34,6 +34,7 @@ struct SlicksAmigaPlatform {
     unsigned short saved_interrupts;
     unsigned char active;
     unsigned char vertb_taken;
+    unsigned char io_active;
 };
 
 #ifdef __cplusplus
@@ -64,6 +65,11 @@ int slicks_amiga_platform_right_mouse(void);
 struct SlicksDeviceSample;
 int slicks_amiga_platform_joystick(unsigned device,struct SlicksDeviceSample *sample);
 void slicks_amiga_platform_end(struct SlicksAmigaPlatform *platform);
+/* Temporary OS file-I/O window; keep the custom copper/bitmap installed.
+ * Caller must stop Paula playback and finish blitter work before entry.
+ * No menu/input or bitmap/copper mutation until end_io returns. */
+int slicks_amiga_platform_begin_io(struct SlicksAmigaPlatform *platform);
+int slicks_amiga_platform_end_io(struct SlicksAmigaPlatform *platform);
 unsigned short slicks_amiga_platform_restore_status(
     const struct SlicksAmigaPlatform *platform);
 

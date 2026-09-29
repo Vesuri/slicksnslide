@@ -908,6 +908,40 @@ erase it. Live integration still needs the display lifetime, actual font
 alias and filename construction resolved and verified. No emulator was
 started or release executable replaced for this host/CPU-oracle work.
 
+## Display-retaining disk-I/O handoff diagnostic (2026-09-29)
+
+The platform now has `begin_io`/`end_io` boundaries separate from final
+hardware teardown. They restore OS keyboard/VBI service, interrupts and
+scheduling for file I/O, without loading the saved OS View or changing the
+custom copper pointers. Raster/copper DMA remains enabled; OS sprites and
+audio DMA stay disabled. The caller must first stop its Paula playback and
+finish blitter work. Returning reinstalls the native VBI/keyboard ownership
+and gameplay DMA/interrupt mask. Final teardown closes an outstanding I/O
+window before normal system restoration. This API is currently used only by
+the explicit diagnostic, not ordinary race loading.
+
+The OS scheduling boundary is deliberate: file I/O can call `Wait`, which
+temporarily breaks `Forbid`; keeping `Forbid` alone is not a guarantee of
+exclusive hardware access. See the official [Exec Tasks documentation](https://wiki.amigaos.net/wiki/Exec_Tasks).
+
+`SLICKS_DEMO_LIFECYCLE_TEST=4` / `DEMOIOS` enters the I/O window from the title,
+reads the complete SLICKS.000 archive in 256-byte blocks, then waits 50
+OS-serviced vertical blanks. It checks the unchanged bitmap and null OS View,
+resumes native ownership and performs a real demo entry/views/key return.
+The sequence repeats twice. The first run passed with 642,007 bytes and
+rolling hash 811783429 each time, matching an independent host calculation
+(`tmp/loading-io-native.log`).
+
+The final fixture also requires an actual failed open of a child path under
+the regular archive file, then verifies the full system-restoration status
+31 after both cycles. It passes both I/O cycles, failed opens, two demo starts,
+four data views, configuration/playlist restoration and the complete final
+restore check; the muted emulator exits and is closed. Build/run logs: `tmp/loading-io-build.log` and
+`tmp/loading-io-native-final.log`. No asset files are modified by this test.
+An unchanged bitmap and null View do **not** prove that the hardware scanned
+out the intended copper list throughout I/O. Visible scanout remains an
+explicit integration gate; do not describe this as a completed loading screen.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

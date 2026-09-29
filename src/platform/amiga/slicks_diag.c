@@ -98,6 +98,8 @@ static unsigned char demo_lifecycle_test,demo_test_stage,demo_test_round;
 volatile unsigned char g_slicks_demo_test_error,g_slicks_demo_test_views;
 volatile unsigned char g_slicks_demo_idle_entries;
 volatile unsigned char g_slicks_demo_menu_waits;
+volatile unsigned long g_slicks_loading_io_bytes,g_slicks_loading_io_hash;
+volatile unsigned char g_slicks_loading_io_checks;
 static unsigned long demo_idle_input_at;
 volatile unsigned long g_slicks_demo_idle_wait_frames;
 __attribute__((noinline)) void slicks_diag_demo_test_done(void) { __asm__ volatile("" ::: "memory"); }
@@ -3652,6 +3654,10 @@ int main(void)
        argv[4]=='M' && argv[5]=='N' && argv[6]=='U') {
         demo_lifecycle_test=3;argc=0;argv="";
     }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='I' && argv[5]=='O' && argv[6]=='S') {
+        demo_lifecycle_test=4;argc=0;argv="";
+    }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:5;
@@ -4353,6 +4359,34 @@ int main(void)
                 g_slicks_demo_test_error=9;slicks_diag_demo_test_done();goto cleanup;
             }
             if(!demo_test_stage && !g_slicks_diag_ingame) {
+                if(demo_lifecycle_test==4) {
+                    unsigned long before_bitmap=checksum_bitmap(platform.views[0].bitmap);
+                    if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
+                    BPTR file=Open((CONST_STRPTR)"SLICKS.000",MODE_OLDFILE);
+                    unsigned char block[256];long got;
+                    g_slicks_loading_io_bytes=0;g_slicks_loading_io_hash=0;
+                    if(!file) goto cleanup;
+                    while((got=Read(file,block,sizeof block))>0) {
+                        g_slicks_loading_io_bytes+=(unsigned long)got;
+                        for(long i=0;i<got;++i)
+                            g_slicks_loading_io_hash=g_slicks_loading_io_hash*33UL+block[i];
+                    }
+                    Close(file);
+                    /* A file cannot be traversed as a directory. Exercise a
+                     * real DOS open failure without modifying any assets. */
+                    BPTR missing=Open((CONST_STRPTR)"SLICKS.000/no-file",MODE_OLDFILE);
+                    if(missing) {
+                        Close(missing);g_slicks_demo_test_error=13;
+                        slicks_diag_demo_test_done();goto cleanup;
+                    }
+                    for(unsigned i=0;i<50;++i) slicks_amiga_platform_wait_vblank(&platform);
+                    if(got<0 || !g_slicks_loading_io_bytes || platform.gfx_base->ActiView ||
+                        before_bitmap!=checksum_bitmap(platform.views[0].bitmap)) {
+                        g_slicks_demo_test_error=12;slicks_diag_demo_test_done();goto cleanup;
+                    }
+                    if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
+                    ++g_slicks_loading_io_checks;
+                }
                 before=configuration;count_before=g_slicks_track_playlist.count;
                 for(unsigned i=0;i<256;++i) playlist_before[i]=track_selection[i];
                 static const unsigned char keys[]={0x60,0x51,0xd1,0xe0};

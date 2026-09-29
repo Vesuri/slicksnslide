@@ -36,7 +36,7 @@ commands
     quit 1
   end
   printf "DEMO_LIFECYCLE_OK starts=%u views=%u configuration_and_playlist_restored=1\n",$demo_starts,g_slicks_demo_test_views
-  if demo_lifecycle_test>=2 && g_slicks_demo_idle_entries!=2
+  if (demo_lifecycle_test==2 || demo_lifecycle_test==3) && g_slicks_demo_idle_entries!=2
     printf "DEMO_IDLE_FAILED entries=%u\n",g_slicks_demo_idle_entries
     quit 1
   end
@@ -47,11 +47,20 @@ commands
     quit 1
   end
   printf "DEMO_MENU_WAITS %u\n",g_slicks_demo_menu_waits
+  if demo_lifecycle_test==4 && g_slicks_loading_io_checks!=2
+    printf "LOADING_IO_FAILED checks=%u\n",g_slicks_loading_io_checks
+    quit 1
+  end
+  printf "LOADING_IO checks=%u bytes=%lu hash=%lu\n",g_slicks_loading_io_checks,g_slicks_loading_io_bytes,g_slicks_loading_io_hash
   continue
 end
 break slicks_diag_system_restored
 commands
   silent
+  if g_slicks_diag_restore_status!=31
+    printf "DEMO_SYSTEM_RESTORE_FAILED status=%u\n",g_slicks_diag_restore_status
+    quit 1
+  end
   if g_slicks_demo_test_error || $demo_starts!=2 || g_slicks_demo_test_views!=4
     printf "DEMO_LIFECYCLE_EARLY_EXIT\n"
     quit 1
