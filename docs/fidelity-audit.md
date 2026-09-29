@@ -942,6 +942,32 @@ An unchanged bitmap and null View do **not** prove that the hardware scanned
 out the intended copper list throughout I/O. Visible scanout remains an
 explicit integration gate; do not describe this as a completed loading screen.
 
+## Loading caption construction and capture limitations (2026-09-29)
+
+`slicks_loading_caption` now concatenates the supplied track stem with the
+original DS:099c suffix, which the local asset exporter exposes alongside the
+demo labels. The pixel oracle no longer borrows the constructed DOS caption:
+it builds the native string independently, compares it with the result of
+original `1b51c..1b53d`, then renders it. Five- and eight-character stems pass
+all ten boundary-flag/palette cases. Atomic overflow rejection is also checked.
+Log: `tmp/loading-caption-final.log`. This verifies the builder, not its
+eventual production caller's choice of track stem or font alias.
+
+Visible-scanout verification remains open. The desktop app inventory did not
+expose the command-line FS-UAE window. A later emulator-side Lua attempt
+reached its native checkpoint and completed cleanup but produced neither a
+hook marker nor a screenshot; the installed binary also lacks the expected
+Lua interface symbols. The unsupported capture script was removed rather
+than retaining a falsely passing capture test.
+
+`diag_loading_io_visual.gdb` is a manual checkpoint for diagnostic mode 4:
+after the actual I/O and 50 OS-serviced refreshes, it verifies the active I/O
+state and null OS View, holds for 30 host seconds, then continues the normal
+lifecycle/restoration checks. A user visual check has been requested. The
+earlier checkpoint run completed (`tmp/loading-io-visual.log` was subsequently
+reused by the failed Lua capture attempt); neither run establishes visible
+scanout. All emulators started for these attempts were closed.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

@@ -64,14 +64,17 @@ Implementation and completed verification evidence are separate in
 - Close F08's remaining title cadence/reference comparison (the normal
   selected-label pulse is restored and its complete native cycle verified). Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:
-  connect the original loading painter to race preparation, including filename
-  caption construction, the actual caller font alias and display lifetime.
+  connect the original loading painter and verified filename/suffix builder to
+  race preparation, including the actual caller font alias and display lifetime.
   Its isolated drawing oracle is in `verify-loading-pixels`; this is not live
   integration. The current platform-end disk boundary restores the OS display,
   so merely drawing before that call does not preserve the loading screen.
   The diagnostic-only `begin_io`/`end_io` handoff now exercises disk reads while
   retaining the custom display allocation; verify visible scanout before
   connecting it to real loading, then cover preparation failures and cleanup.
+  A short manual visual check has been requested; `diag_loading_io_visual.gdb`
+  pauses after 50 OS-serviced refreshes. Desktop capture did not expose this
+  FS-UAE instance, and the installed binary did not execute the Lua hook.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
   Verify natural completion, failed preparation and program-exit/save-failure

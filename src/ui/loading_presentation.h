@@ -2,6 +2,23 @@
 #define SLICKS_LOADING_PRESENTATION_H
 #include "demo_overlay.h"
 
+/* Original 1b51c..1b53d concatenates the supplied track stem and DS:099c.
+ * Reject overflow atomically at the native boundary, rather than reproducing
+ * the DOS stack-buffer overwrite for an invalid filename. */
+static inline int slicks_loading_caption(unsigned char *out,unsigned capacity,
+    const unsigned char *track,const unsigned char *suffix)
+{
+    if(!out || !track || !suffix || !capacity) return -1;
+    unsigned a=0,b=0;
+    while(a<capacity && track[a]) ++a;
+    if(a==capacity) return -1;
+    while(b<capacity-a && suffix[b]) ++b;
+    if(b==capacity-a) return -1;
+    for(unsigned i=0;i<a;++i) out[i]=track[i];
+    for(unsigned i=0;i<=b;++i) out[a+i]=suffix[i];
+    return 0;
+}
+
 struct SlicksLoadingPresentationOps {
     struct SlicksDemoOverlayOps font;
     void (*tint)(void *,short,short,short,short,

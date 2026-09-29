@@ -137,9 +137,9 @@ int main(int argc,char **argv)
         fputs("};\n",out);
     }
     {
-        const unsigned offsets[]={0x9a0,0xbff};
-        const char *names[]={"loading","overlay"};
-        for(unsigned i=0;i<2;++i) {
+        const unsigned offsets[]={0x9a0,0xbff,0x99c};
+        const char *names[]={"loading","overlay","loading_suffix"};
+        for(unsigned i=0;i<3;++i) {
             fprintf(out,"static const unsigned char slicks_original_demo_%s[] = {",names[i]);
             unsigned j=0;
             do {

@@ -63,9 +63,8 @@ int main(void)
         check(uc_mem_write(u,dsbase+0x71bc,palette,sizeof palette));
         unsigned char flag=flags[k];
         check(uc_mem_write(u,dsbase+0x459,&flag,1));
-        /* String construction executes in the original. The supplied native
-         * caption is a renderer boundary, not a claim about its live caller. */
-        check(uc_mem_write(u,0x70000,"BASIC",6));
+        const unsigned char *track=(const unsigned char *)(pattern?"F1-TEST8":"BASIC");
+        check(uc_mem_write(u,0x70000,track,strlen((const char *)track)+1));
         uint16_t cs=0x1987,ds=0x3cbf,ss=0x8000,bp=0xf000,sp=0xef00;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));
         check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_BP,&bp));
@@ -79,7 +78,10 @@ int main(void)
         unsigned char caption[88],original_font[sizeof font];
         check(uc_mem_read(u,0x8efa8,caption,sizeof caption));
         check(uc_mem_read(u,0x60000,original_font,sizeof original_font));
-        slicks_loading_presentation((signed char)flag,caption,runtime+dsbase-0x10100+0x9a0,&ops);
+        unsigned char native_caption[88];
+        if(slicks_loading_caption(native_caption,sizeof native_caption,track,
+            runtime+dsbase-0x10100+0x99c) || strcmp((const char *)native_caption,(const char *)caption)) abort();
+        slicks_loading_presentation((signed char)flag,native_caption,runtime+dsbase-0x10100+0x9a0,&ops);
         if(memcmp(pixels,v.pixels,sizeof pixels)||memcmp(font,original_font,sizeof font)) {
             fprintf(stderr,"Loading mismatch pattern=%u flag=%u\n",pattern,flag);
             for(unsigned i=0;i<64000;++i)if(pixels[i]!=v.pixels[i]) {
@@ -90,6 +92,11 @@ int main(void)
         ++cases;
     }
     check(uc_close(u));check(uc_close(native.text.cpu));
+    unsigned char guard[8];memset(guard,0xa5,sizeof guard);
+    if(slicks_loading_caption(guard,sizeof guard,(const unsigned char *)"12345678",
+        (const unsigned char *)"")!=-1 || slicks_loading_caption(guard,sizeof guard,
+        (const unsigned char *)"1234",(const unsigned char *)"5678")!=-1) abort();
+    for(unsigned i=0;i<sizeof guard;++i)if(guard[i]!=0xa5)abort();
     printf("Loading presentation: %u complete original/68020 pixel and font comparisons pass\n",cases);
     return 0;
 }
