@@ -84,8 +84,8 @@ static void standings_text(void *context,const unsigned char *s,short x,short y,
     struct SlicksAmigaPlayerMenu *m=context;
     slicks_standings_text(m->renderer.ui.pixels,m->fonts[0],s,x,y,flags,
         slicks_ui_nearest(&m->renderer.ui,10,10,10));
-    /* Includes the original one-pixel shadow below the font. */
-    dirty(m,0,y,320,(short)(y+m->fonts[0][2]+1));
+    slicks_font_text_dirty(&m->renderer.ui,m->fonts[0],s,x,y,1,flags,
+        slicks_menu_measure(m->fonts[0],s),1);
 }
 static void standings_number(void *context,short value,short x,short y,unsigned char flags)
 {

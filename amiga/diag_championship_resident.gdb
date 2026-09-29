@@ -1,4 +1,5 @@
 init-if-undefined $expect_cup = 1
+init-if-undefined $capture_cup_pixels = 0
 set $cup_owned = 0
 set $cup_io = 0
 set $cup_loads = 0
@@ -61,6 +62,16 @@ commands
   end
   set $cup_phases = $cup_phases+1
   set $cup_io = 0
+  if $capture_cup_pixels && g_slicks_diag_standings_phase == 2
+    set $cup_pixels = g_slicks_diag_standings_menu->renderer.ui.pixels
+    set $cup_view = 0
+    while $cup_view < 2
+      set $cup_planes = g_slicks_diag_profile_platform->views[$cup_view].bitmap->Planes[0]
+      eval "dump binary memory .run/menu-rectangles/%u.chunky $cup_pixels $cup_pixels+64000", 10000+$cup_view
+      eval "dump binary memory .run/menu-rectangles/%u.planar $cup_planes $cup_planes+64000", 10000+$cup_view
+      set $cup_view = $cup_view+1
+    end
+  end
   continue
 end
 break slicks_diag_standings_closed

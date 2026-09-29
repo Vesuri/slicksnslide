@@ -2920,8 +2920,12 @@ load_records:
         if(slicks_ui_remap(&m->renderer.ui,35,75,270,180,table) ||
            slicks_amiga_records_draw(m,&records,outcome.ranks,40,55,
                 slicks_original_date_separator,slicks_original_date_order)) goto done;
-        present_menu_surface(platform,m);
-        if(slicks_amiga_platform_begin(platform,0)) goto done;
+        /* Race rendering used view 1. View 0 can still contain a previous
+         * menu: initialize its background as well as the records overlay. */
+        slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
+        slicks_amiga_player_menu_clear_dirty(m);
+        if(slicks_amiga_platform_set_view(platform,0,palette) ||
+           slicks_amiga_platform_begin(platform,0)) goto done;
         platform->key_tail=platform->key_head;
         g_slicks_diag_record_results_phase=2; slicks_diag_record_results_ready();
         if(result_wait(platform,300,diagnostic)) goto done;

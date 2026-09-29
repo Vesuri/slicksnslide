@@ -48,7 +48,7 @@ Implementation and completed verification evidence are separate in
   picker/Help paths, wider Tracks scrolling and storage/format failures,
   other Help owners, shop, saved-game/recovery,
   intermission/results and registration.
-  Audit remaining full-width text callbacks (standings), full-screen modal
+  Audit remaining full-width text callbacks, full-screen modal
   restores and direct row-converter bypasses separately from the shared
   publisher. Extend failure-path coverage where only normal transitions have
   been checked. Completed publication and restoration evidence is kept in

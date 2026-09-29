@@ -710,3 +710,38 @@ byte-identical. Logs: `tmp/pause-warning-native.log` and
 The normal target build passes. Debug runs were muted and their runners closed
 the emulators. These checks do not establish coverage of other menu owners or
 the broader release gate.
+
+## Standings text bounds and records background initialization
+
+Standings text now reports individual glyph bounds, including alignment and
+the original (1,1) shadow, instead of full-width rows. The existing Help bounds
+helper shares this calculation with its previous unaligned/unshadowed settings.
+`verify-standings-dirty` checks all native 68020 stores in 2,592 combinations
+of strings, alignment/shadow flags and clipped positions, including glyph zero,
+missing glyphs, tabs and newlines. A single visible glyph must report less than
+one whole row. The Help gate still passes 2,684 write-coverage strings, 1,166
+original pixel/font comparisons, 98 pages and 16 viewer entries. Standings
+drawing passes 20,736 original command-trace comparisons.
+
+The broader native capture exposed a separate records-entry defect: only the
+records rectangle was converted into view 0, whose background could still be an
+older menu. Capture 43 in `tmp/cup-bounds-native.log` differs outside that panel.
+Records entry now initializes all of view 0 and its race palette before showing
+it. This is an actual bitmap replacement, not a full-screen selection repaint.
+Championship entry likewise legitimately replaces both bitmaps for its fades.
+
+`diag_championship_rectangles.gdb` combines the existing ownership/disk-boundary
+gate with shared-publication captures, both final cup bitmaps, and explicit
+checks of all 256 high/low copper colours on records entry. The final muted
+A1200 run (`SLICKS_OPTIONS_MENU=8`, log `tmp/cup-palette-verify.log`) passes
+48 complete 64,000-pixel comparisons, two records-palette checks, one explicit
+cup disk load, all three cup phases, owned title return and restoration 31.
+The emulator runner exited successfully. Target build and host test logs:
+`tmp/standings-final-build.log`, `tmp/standings-dirty.log`.
+
+An intermediate test used two continuing breakpoints at the same standings
+checkpoint, suppressing the older phase counter; the capture is now integrated
+into the existing checkpoint. A palette assertion initially read an unreliable
+optimized caller argument; it now reads the live menu's palette copy. Neither
+failed test is counted as verification. These checks cover this championship
+route, not all remaining intermission/results/error owners or release gates.

@@ -219,7 +219,11 @@ static void verify_pages(uc_engine *u,struct Vga *v,struct HelpFontCpu *n,
     }
     printf("Original help pages: %u complete-frame/font/link-state comparisons pass\n",cases);
 }
+#ifdef SLICKS_HELP_PIXELS_LIBRARY
+int help_pixel_verifier_main(void)
+#else
 int main(void)
+#endif
 {
     unsigned char runtime[300000],resource[70000],base[64000],palette[768],font[8192],pixels[64000],help[16384],code[8192];
     FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
