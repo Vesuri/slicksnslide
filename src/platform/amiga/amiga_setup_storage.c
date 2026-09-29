@@ -8,6 +8,7 @@
 #include "amiga_setup_storage.h"
 #include "../../game/track_records.h"
 #include "../../ui/screen_capture.h"
+unsigned char g_slicks_diag_backup_protect;
 
 static void failure(struct SlicksSetupStorageReport *r,const char *path,LONG error)
 {
@@ -57,6 +58,16 @@ static int rename_file(void *context,const char *from,const char *to)
 }
 static int remove_file(void *context,const char *path)
 {
+#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+    /* CHAMPSAVB only, in its private fixture directory: make AmigaDOS reject
+     * cleanup after the real overwrite transaction has installed the save. */
+    if(g_slicks_diag_backup_protect) {
+        const char *target="E2E.SSS.bak";
+        unsigned i=0; while(path[i] && path[i]==target[i]) ++i;
+        if(!path[i] && !target[i] && SetProtection((CONST_STRPTR)path,FIBF_DELETE))
+            g_slicks_diag_backup_protect=0;
+    }
+#endif
     if(DeleteFile((CONST_STRPTR)path)) return 0;
     LONG error=IoErr(); if(error==ERROR_OBJECT_NOT_FOUND) return 0;
     failure(context,path,error); return -1;

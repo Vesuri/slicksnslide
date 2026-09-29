@@ -1532,6 +1532,33 @@ its existing host partial-enumeration and cache-retention tests. Production
 error policy is unchanged; this closes the bounded native partial-scan
 warning/return coverage, not all filesystem failure modes.
 
+## Committed save with failed backup cleanup (2026-09-29)
+
+`CHAMPSAVB` selects a private existing E2E save from the real first-intermission
+picker, accepts overwrite, acknowledges the result and exits. Immediately
+before backup cleanup, its explicit diagnostic sets AmigaDOS delete protection
+on `E2E.SSS.bak`. The real DeleteFile fails; its result is not fabricated.
+Normal launches never enable this fixture. The backup is deliberately left
+protected and intact in the private test directory.
+
+`tmp/standalone-release-49gtqbsq` passes the overwrite confirmation,
+GAME SAVED - BACKUP REMAINS notice, retained-display dialog return and normal
+exit with restoration mask 31. All 21 menu publications match all 64,000
+chunky pixels. The stripped binary runs with a confirmed default 4 KiB stack,
+stock-speed PAL 68020, 2 MiB Chip/no Fast. The muted emulator was closed.
+
+In `tmp/saved-cleanup-release-0W8Ag7/data`, E2E.SSS is a new structurally
+valid 196-byte original-format save with three tracks, next-track index one
+and four driver records; no `.new` remains. The `.bak` is byte-identical to
+the original 41,500-byte private probe (a copy of SLICKS.DAT, never loaded as
+a save). This proves preservation across cleanup failure, not loading that
+probe or a subsequent resume while a backup remains.
+
+Build: `tmp/saved-cleanup-build.log`. Storage regressions in
+`tmp/saved-cleanup-host.log` pass setup transaction/load, track publication,
+1,485 saved-game transaction faults and 2,310 saved-game load fault/truncation
+cases. No production save/recovery policy was changed.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

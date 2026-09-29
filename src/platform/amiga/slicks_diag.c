@@ -992,6 +992,8 @@ static unsigned char championship_test,championship_test_stage,championship_pick
 static unsigned char championship_dialog_step;
 static unsigned char championship_delete_test;
 static unsigned char championship_scan_test;
+static unsigned char championship_cleanup_test;
+extern unsigned char g_slicks_diag_backup_protect;
 extern unsigned char g_slicks_diag_saved_lock_failure;
 extern unsigned char g_slicks_diag_saved_next_failure;
 void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
@@ -1006,6 +1008,16 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
 {
     slicks_diag_saved_ready();
     if(!championship_test) return;
+    if(championship_cleanup_test) {
+        static const unsigned char phases[]={1,3,3};
+        static const unsigned char keys[][3]={{0x42,0x42,0x44},{0x15,0,0},{0x44,0x59,0x45}};
+        static const unsigned char counts[]={3,1,3};
+        unsigned step=championship_dialog_step++;
+        if(step>=3 || g_slicks_diag_saved_phase!=phases[step]) {
+            g_slicks_diag_force_exit=1; return;
+        }
+        championship_test_keys(p,keys[step],counts[step]); return;
+    }
     if(championship_scan_test) {
         static const unsigned char leave[]={0x44,0x59,0x45};
         if(g_slicks_diag_saved_phase!=3 || championship_dialog_step++) {
@@ -3939,6 +3951,8 @@ int main(void)
     championship_scan_test=(unsigned char)(championship_test==1 && argc==9 ?
         (argv[8]=='X'?1:argv[8]=='Y'?2:0):0);
     if(championship_scan_test) championship_test=6;
+    championship_cleanup_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='B');
+    if(championship_cleanup_test) { championship_test=6; g_slicks_diag_backup_protect=1; }
     if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
