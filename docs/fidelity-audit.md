@@ -21,6 +21,7 @@ and a production-screen comparison establish different things.
 | F10 | Arcade title integration validation | Original `29f31..29f47` selects `29afa` instead of `29753` for mode 5. Native integration and original full-screen renderer comparisons pass. Caller/transition font-alias lifetime, shortcut and mouse coverage remain to be completed. |
 | F11 | Added mouse-click title activation | Native code dispatched Enter on a left-button edge through a second, incomplete owner path. Removed: original `36ce0..36d64`, called by the title at `2a376`, reads the keyboard scan latch and repeat timer, not mouse buttons. |
 | F12 | Missing title F9 and demo routes | The native owner originally ignored dispatcher actions 4 and 5. F9 is now connected to race preparation; demo remains missing. Original F9 jumps to the result-99 case; F12 and the title idle timeout enter `2a3db` demo setup, backing up configuration and selecting a random track with four computer profiles. These are not ordinary GO. |
+| F13 | Missing computer-car display-direction delay | Original `23d97..23e7a` retains a displayed direction in DS:3068 and a byte timer in DS:3069. Native `draw_car_reference` and `car_render.s` choose directly from the current heading and have no equivalent state. Found while mapping the demo return reset, which initializes these two fields. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
@@ -658,6 +659,30 @@ now asserts the bound flag, actual rendering state and first text-call arguments
 without debugger writes. This is explicitly renderer
 coverage, not a claim that F12/idle entry, configuration restoration, input,
 rewards, results or persistence have been integrated. Those remain open.
+
+## Demo return field mapping exposed a renderer discrepancy (2026-09-29)
+
+The original return reset `1c10b..1c24a` clears DS:303f/3041, which is
+**fixed-point speed**, not the current lap clock. Existing original damage
+comparisons (`verify_dos_damage.c`) establish that mapping. DS:3037/3039 is
+the last lap duration. A blanket reset of all native clocks would therefore
+change state that this original routine does not reset.
+
+DS:3068/3069 are also not weapon selection fields. Their consumer at
+`23d97..23e7a` divides the current heading by 1200, initializes a negative
+stored direction (or immediately replaces it for negative/human participation),
+then uses the stored direction for the actor update. A differing current
+direction adds the update's low-byte timestep to a wrapping byte counter.
+Only **after** the actor update, a signed counter greater than five replaces
+the stored direction and clears the counter. A frame whose directions match
+does not otherwise clear the accumulated counter.
+
+Both native car drawing paths instead divide the live heading by 1200.
+Their cache comparisons validate one native renderer against another and do
+not cover this original caller-level direction state. This confirms F13 from
+the original instructions and production consumers; an independent executable
+comparison and the correction are not yet complete. The new state belongs to
+rendering, not steering, wheel-effect geometry or the simulation heading.
 
 ## Approved Amiga demo shortcut adapter (2026-09-29)
 

@@ -121,6 +121,14 @@ Implementation and completed verification evidence are separate in
   intermission; load/rejection fixtures still need their entry route resolved.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
+- Fix F13's missing computer-car display-direction delay, discovered while
+  mapping the demo return reset. Reproduce original `23d97..23e7a`'s signed
+  byte direction/counter state and post-publication update in both drawing
+  paths, without changing physics heading or wheel-effect geometry. Compare
+  against original instructions across role, heading and timer boundaries;
+  then run native car-render/publication regressions. Include its original
+  -1/0 initialization in demo-return reset. DS:303f/3041 in that reset is
+  fixed-point speed, not the current lap clock; preserve unrelated clocks.
 
 - Finish disk-free ordinary navigation using the startup-resident inventory in
   [menu-resident-assets.md](menu-resident-assets.md). The 57-resource cache and
