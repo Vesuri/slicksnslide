@@ -9,6 +9,12 @@ commands
       quit 1
     end
   end
+  if !$_isvoid($console_expected)
+    if g_slicks_language_console_modes!=3 || g_slicks_language_console_bytes!=5
+      printf "LANGUAGE_CONSOLE_IO_FAILED modes=%u reads=%u\n",g_slicks_language_console_modes,g_slicks_language_console_bytes
+      quit 1
+    end
+  end
   set $v = g_slicks_title_help->help
   if !$v || !$v->renderer.active || $v->navigation.done || !g_slicks_diag_profile_platform->active
     quit 1

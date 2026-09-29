@@ -116,6 +116,36 @@ automatic selection still retains the previous English fallback pending a
 user decision about the ambiguous platform keyboard/default policy. No
 claim of complete localization or chooser release validation is made.
 
+### F15 real console input and saved-choice restart (2026-09-29)
+
+`HELPL9` replaces the internal chooser-key fixture with actual
+`input.device` IND_WRITEEVENT press/release pairs. Up/Down/Down/Up/Escape
+go through the active Amiga console, production Read calls, CSI decoding,
+the original selection helper and real raw/cooked SetMode calls. Temporary
+ports, requests and the device are closed after each injected pair. These
+events are confined to the emulated Amiga, not the host desktop.
+
+The first attempted run had duplicate debugger breakpoints and failed its
+checks (`tmp/standalone-release-8f0i867r`); it is not a pass. Checks were
+combined at the existing Help checkpoint. The corrected input-only run
+`tmp/standalone-release-iyagu3go` passes; the final fixture also follows
+the normal exit persistence transaction.
+
+Final selection/save run: `tmp/standalone-release-22lwbhr_`. It verifies five
+chooser input records, successful raw and cooked mode calls, language 2 and
+the subsequent Read This/F1 lifecycle, then restores the system with mask 31.
+The resulting SLICKS.CFG is 142 bytes with saved language byte 2. A fresh
+process on the same private install, using plain `HELP` (no language override
+or injected chooser keys), recovers language 2 and passes the same lifecycle:
+`tmp/standalone-release-grh6mnw1`. Both full before/after Read This images are
+byte-identical. Neither run claims all translated screens are verified.
+
+Both final runs use the stripped binary, confirmed default 4 KiB stack,
+stock-speed PAL 68020, 2 MiB Chip/no Fast. Their muted emulators were closed.
+Build: `tmp/language-console-build.log`; private install:
+`tmp/language-console-release-S1pnIu`. Actual input failure/mode-restoration
+failure cases and the negative-selector automatic-default policy remain open.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title

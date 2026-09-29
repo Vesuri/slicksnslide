@@ -12,6 +12,8 @@
 #include <hardware/intbits.h>
 #include <proto/cia.h>
 #include <resources/cia.h>
+#include <devices/input.h>
+#include <devices/inputevent.h>
 
 #include "../../game/race_runtime.h"
 #include "../../game/driver_input.h"
@@ -94,6 +96,33 @@ static unsigned char title_language[2048];
 static unsigned title_language_used;
 static char menu_language_name[10]="lang1.txt";
 static unsigned char language_choice_test;
+volatile unsigned char g_slicks_language_console_modes,g_slicks_language_console_bytes;
+
+/* Emulator fixture only: deliver real Amiga input events to console.device,
+ * not bytes directly to the chooser or writes from the debugger. */
+static int language_console_test_key(unsigned step)
+{
+    static const unsigned char keys[]={0x4c,0x4d,0x4d,0x4c,0x45};
+    if(step>=sizeof keys) return -1;
+    struct MsgPort *port=CreateMsgPort();
+    if(!port) return -1;
+    struct IOStdReq *request=(struct IOStdReq *)CreateIORequest(port,sizeof(*request));
+    int result=-1;
+    if(request) {
+        if(!OpenDevice((CONST_STRPTR)"input.device",0,(struct IORequest *)request,0)) {
+            struct InputEvent events[2]={0};
+            events[0].ie_NextEvent=&events[1];
+            events[0].ie_Class=events[1].ie_Class=IECLASS_RAWKEY;
+            events[0].ie_Code=keys[step]; events[1].ie_Code=keys[step]|0x80;
+            request->io_Command=IND_WRITEEVENT; request->io_Data=events;
+            request->io_Length=sizeof events;
+            result=DoIO((struct IORequest *)request)?-1:0;
+            CloseDevice((struct IORequest *)request);
+        }
+        DeleteIORequest((struct IORequest *)request);
+    }
+    DeleteMsgPort(port); return result;
+}
 
 /* Original startup's text-console chooser. This runs before hardware
  * takeover; the game menus themselves never need console/disk transitions. */
@@ -114,7 +143,10 @@ static int choose_startup_language(struct SlicksResourceArchive *archive)
     }
     if(!count) return 1;
     BPTR input=Input();
-    if(!language_choice_test && (!IsInteractive(input) || !SetMode(input,1))) return -1;
+    if(language_choice_test!=1) {
+        if(!IsInteractive(input) || !SetMode(input,1)) return -1;
+        if(language_choice_test) g_slicks_language_console_modes|=1;
+    }
     PutStr((CONST_STRPTR)"Choose language: (Up/Down, Enter)\n");
     int result=-1; unsigned step=0;
     for(;;) {
@@ -123,12 +155,14 @@ static int choose_startup_language(struct SlicksResourceArchive *archive)
             PutStr((CONST_STRPTR)labels[i]); PutStr((CONST_STRPTR)"\n");
         }
         unsigned char key;
-        if(language_choice_test) {
+        if(language_choice_test==1) {
             static const unsigned char keys[]={72,80,80,72,27};
             if(step>=sizeof keys) break;
             key=keys[step++];
         } else {
+            if(language_choice_test==2 && language_console_test_key(step++)) break;
             if(Read(input,&key,1)!=1) break;
+            if(language_choice_test) ++g_slicks_language_console_bytes;
             if(key==0x9b) {
                 /* Amiga console special-key report; consume the full CSI. */
                 do { if(Read(input,&key,1)!=1) goto finished; } while(key<0x40);
@@ -141,7 +175,10 @@ static int choose_startup_language(struct SlicksResourceArchive *archive)
         PutStr((CONST_STRPTR)up);
     }
 finished:
-    if(!language_choice_test && !SetMode(input,0)) result=-1;
+    if(language_choice_test!=1) {
+        if(!SetMode(input,0)) result=-1;
+        else if(language_choice_test) g_slicks_language_console_modes|=2;
+    }
     return result;
 }
 static unsigned char title_arcade_refresh=2;
@@ -3996,9 +4033,9 @@ int main(void)
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && argv[4]=='F')) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
     if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
-       argv[4]=='L' && argv[5]>='0' && argv[5]<='8') {
-        title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]-'0');
-        language_choice_test=(unsigned char)(argv[5]=='0');
+       argv[4]=='L' && argv[5]>='0' && argv[5]<='9') {
+        title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]=='9'?0:argv[5]-'0');
+        language_choice_test=(unsigned char)(argv[5]=='9'?2:argv[5]=='0');
     }
     unsigned char title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
         argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
@@ -4846,7 +4883,7 @@ int main(void)
                 slicks_diag_demo_test_done();
                 if(g_slicks_demo_test_error) goto cleanup;
             }
-            if((demo_lifecycle_test && demo_lifecycle_test!=8 && demo_lifecycle_test!=10 && demo_lifecycle_test!=11) || (argc && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
+            if((demo_lifecycle_test && demo_lifecycle_test!=8 && demo_lifecycle_test!=10 && demo_lifecycle_test!=11) || (argc && language_choice_test!=2 && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
             slicks_amiga_platform_end(&platform);
             if(((persistence_test && (argv[7]=='T' || argv[7]=='V')) || demo_lifecycle_test==8 || demo_lifecycle_test==10) && !failure_injected) {
                 /* Isolated diagnostic fault, using AmigaDOS throughout so

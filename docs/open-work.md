@@ -148,8 +148,9 @@ Implementation and completed verification evidence are separate in
   label callers; honoring positive selections does not complete localization.
   The zero-selector chooser is connected with original first-line labels,
   clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
-  reaches the selected table and restores the system. Verify actual console
-  input/mode cleanup, failure routes and save/restart persistence. Resolve
+  reaches the selected table and restores the system. Real input.device events,
+  console reads, successful mode cleanup and save/restart persistence now pass
+  on the target. Verify input/mode failure routes. Resolve
   the DOS KEYB platform boundary rather than guessing a generic locale-to-language
   mapping; the automatic default policy question is awaiting the user.
 
