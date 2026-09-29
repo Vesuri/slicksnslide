@@ -87,6 +87,8 @@ Implementation and completed verification evidence are separate in
   original saved-image/title sequence. DS:4c1c is captured from the prepared
   startup background before subsequent text/menu draws, not immediately before
   a demo; use that producer when constructing the pixel comparison.
+  The missing startup background tints (F14) are fixed and independently
+  pixel-verified; the subsequent complete return composition remains open.
   Keep finish-event rewards distinct from
   the later skipped track/results branch; do not rewind the shared RNG.
   Keyboard entry, track-data views, repeated key return and natural deadline

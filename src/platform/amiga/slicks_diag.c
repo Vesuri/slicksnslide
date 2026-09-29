@@ -27,6 +27,7 @@
 #include "../../ui/palette_fade.h"
 #include "../../ui/result_wait.h"
 #include "../../ui/title_demo.h"
+#include "../../ui/title_background.h"
 #include "../../ui/track_data_view.h"
 #include "../../game/race_return.h"
 #include "../../ui/saved_file_dialog.h"
@@ -3888,8 +3889,10 @@ int main(void)
     if (slicks_resource_archive_load(&archive, "mainmenu.@I", title_asset,
                                      64003UL) != 64003L ||
         slicks_resource_archive_load(&archive, "partII", source_palette,
-                                     sizeof(source_palette)) != 768L ||
-        slicks_prepare_title_frame(title_asset, title_frame) != 0)
+                                     sizeof(source_palette)) != 768L)
+        goto cleanup;
+    slicks_title_prepare_background(title_asset+3,source_palette);
+    if(slicks_prepare_title_frame(title_asset,title_frame)!=0)
         goto cleanup;
     slicks_title_background=title_frame;
     {

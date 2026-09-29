@@ -22,6 +22,7 @@ and a production-screen comparison establish different things.
 | F11 | Added mouse-click title activation | Native code dispatched Enter on a left-button edge through a second, incomplete owner path. Removed: original `36ce0..36d64`, called by the title at `2a376`, reads the keyboard scan latch and repeat timer, not mouse buttons. |
 | F12 | Missing title F9 and demo routes | The native owner originally ignored dispatcher actions 4 and 5. F9 is now connected to race preparation; demo remains missing. Original F9 jumps to the result-99 case; F12 and the title idle timeout enter `2a3db` demo setup, backing up configuration and selecting a random track with four computer profiles. These are not ordinary GO. |
 | F13 | Missing computer-car display-direction delay | Original `23d97..23e7a` retains a displayed direction in DS:3068 and a byte timer in DS:3069. Native `draw_car_reference` and `car_render.s` choose directly from the current heading and have no equivalent state. Found while mapping the demo return reset, which initializes these two fields. |
+| F14 | Missing prepared-title background tints | Original `261e8..2623d` shades two rectangles before capturing DS:4c1c. Native startup previously converted the untouched artwork, affecting 10,837 pixels with the supplied artwork/palette. Corrected with one-time preparation; evidence below. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
@@ -1153,6 +1154,39 @@ branch restores DS:4c1c through `34f15`. This connects the known return handle
 to its startup producer; it does not prove native reconstructed pixels match
 the saved image. The remaining comparison must use the prepared background
 and subsequent title draws, not an assumed pre-demo framebuffer snapshot.
+
+## F14: prepare the original title background once
+
+`verify-title-preparation` executes the original two ordered tint calls at
+`261e8..26240`, including palette searches and VGA remapping, and compares
+every visible pixel with `slicks_title_prepare_background`. The real
+`mainmenu.@I`/`partII` pair and two patterned-image/palette cases pass all
+64,000 pixels each. The real raw artwork differs from the original prepared
+image at 10,837 pixels, confirming this was a production discrepancy rather
+than missing test coverage alone (`tmp/title-preparation-oracle.log`).
+
+Startup now applies the original (105,72)..(215,174) 20-percent tint, then
+(107,74)..(213,172) 40-percent tint, both toward RGB (24,24,34), before native
+planar conversion. Only the loaded in-memory staging asset is changed;
+original files are untouched. The resident prepared background is reused
+on menu/demo returns, so repeated redraws do not compound the tint and do
+not add file I/O or allocations.
+
+The Arcade pixel oracle now starts from this prepared background and passes
+all 144 full-screen/font-state cases (`tmp/title-preparation-arcade.log`).
+The stock-A1200 native Arcade audit passes 45 display checks with zero errors,
+four override counts, one Options return, the expected four-car race handoff
+and restoration mask 31 (`tmp/title-prepared-arcade-native.log`). This fixes
+the background discrepancy, not the still-open complete demo-return sequence
+or title cadence/font-alias lifetime audit.
+
+Normal-title transitions also pass: modes mask 31, roles mask 7, count mask
+3, 33 display checks, zero errors and restoration 31
+(`tmp/title-prepared-normal-native.log`). Repeated demo regression passes
+two starts, four full-pixel-checked data views, configuration/playlist
+restoration and normal system exit (`tmp/title-prepared-demo-native.log`).
+All three native runs were muted and their emulators closed. Build log:
+`tmp/title-preparation-build.log`.
 
 ## Adaptations to preserve or explicitly classify
 

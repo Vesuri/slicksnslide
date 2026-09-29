@@ -2,6 +2,7 @@
 #include "verify_palette_remap.c"
 #undef main
 #include "../src/ui/arcade_title_painter.h"
+#include "../src/ui/title_background.h"
 struct PlanarText {uc_engine *cpu;unsigned entry;unsigned char *fonts[3];unsigned sizes[3];};
 static void planar_text(void *p,unsigned char *logical,const unsigned char *font,const unsigned char *text,
     short x,short y,unsigned short flags,unsigned short shadow)
@@ -35,6 +36,7 @@ int main(void)
     static unsigned char runtime[300000],asset[70000],palette[768],background[64002],logical[262144],fonts[3][8192];
     FILE *f=fopen("disasm/runtime.bin","rb");if(!f)return 2;size_t bytes=fread(runtime,1,sizeof runtime,f);fclose(f);
     if(host_archive_load("ref/SLICKS.000","mainmenu.@I",asset,sizeof asset)!=64003 || host_archive_load("ref/SLICKS.000","partII",palette,768)!=768)abort();
+    slicks_title_prepare_background(asset+3,palette);
     background[0]=80;background[1]=200;
     for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)background[2+(x&3)*16000+y*80+(x>>2)]=asset[3+y*320+x];
     struct PlanarText native={0};const char *names[]={"kirj.@f","pieni.@f","iso.@f"};

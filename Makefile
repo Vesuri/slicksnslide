@@ -643,6 +643,12 @@ verify-demo-overlay: build/verify_demo_overlay
 	build/verify_demo_overlay
 
 .PHONY: verify-demo-pixels
+.PHONY: verify-title-preparation
+build/verify_title_preparation: tools/verify_title_preparation.c tools/verify_palette_remap.c tools/host_archive.h src/ui/title_background.h src/ui/palette_remap.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-title-preparation: build/verify_title_preparation
+	build/verify_title_preparation
+
 .PHONY: verify-loading-pixels
 build/verify_loading_pixels: tools/verify_loading_pixels.c tools/verify_palette_remap.c tools/host_archive.h src/game/race_runtime.c src/game/race_runtime.h $(wildcard src/ui/*.h) | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
@@ -1190,7 +1196,7 @@ verify-arcade-title: build/verify_arcade_title
 .PHONY: verify-arcade-title-pixels
 build/arcade_title_pixels_test.bin: tools/arcade_title_pixels_test.s src/platform/amiga/native_bridge.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph_planar.s | build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
-build/verify_arcade_title_pixels: tools/verify_arcade_title_pixels.c tools/verify_palette_remap.c src/ui/arcade_title_painter.h src/ui/arcade_title_draw.h | build
+build/verify_arcade_title_pixels: tools/verify_arcade_title_pixels.c tools/verify_palette_remap.c src/ui/arcade_title_painter.h src/ui/arcade_title_draw.h src/ui/title_background.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
 verify-arcade-title-pixels: build/verify_arcade_title_pixels build/arcade_title_pixels_test.bin
 	build/verify_arcade_title_pixels
