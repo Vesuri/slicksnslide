@@ -161,6 +161,9 @@ extern void slicks_draw_title_status_text(unsigned char *,const char *,short,sho
 volatile unsigned long g_slicks_load_ticks[14];
 static unsigned char shop_end_game;
 static unsigned char shop_test;
+/* Explicit NATURALWX/Y/Z boundary fixtures; never enabled by normal launches. */
+static unsigned char shop_rejection_test;
+volatile signed char g_slicks_shop_rejection_item;
 static unsigned char mode_transition_test;
 volatile unsigned short g_slicks_diag_mode_case;
 static unsigned char shop_transition_test,shop_transition_phase;
@@ -1952,6 +1955,24 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
 {
     const struct SlicksShopRules *rules=&slicks_original_shop_rules;
     unsigned char extra=(shop_test && g_slicks_diag_weapon_case>=7 && g_slicks_diag_weapon_case<=8)?1:(registration.name[0]!=0);
+    if(shop_rejection_test) {
+        signed char item=slicks_shop_item(rules,&session->options,session->inventory[0],
+            session->players.participation[0],session->players.vehicle[0],extra,0);
+        if(item<0) return -1;
+        g_slicks_shop_rejection_item=item;
+        if(shop_rejection_test==1) {
+            short cost=slicks_shop_price(rules,&session->options,session->inventory[0],
+                session->players.participation[0],session->players.vehicle[0],item,extra)/10;
+            if(cost<=0) return -1;
+            session->cash[0]=(short)(cost-1);
+        } else if(shop_rejection_test==2) session->inventory[0][(unsigned)item]=rules->capacity[(unsigned)item];
+        else {
+            for(unsigned i=0;i<13;++i) if((rules->flags[i]&2) && i!=(unsigned)item)
+                session->inventory[0][i]=1;
+            if(session->inventory[0][(unsigned)item] ||
+                slicks_shop_capacity(rules,session->inventory[0],session->players.vehicle[0],item)>0) return -1;
+        }
+    }
     unsigned buyable=0;
     for(unsigned d=0;d<4;++d) for(unsigned i=0;i<13;++i)
         if(slicks_shop_price(rules,&session->options,session->inventory[d],
@@ -1992,7 +2013,10 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     if(shop_test) {
         static const unsigned char keys[]={0x20,0x4c,0x4d,0x4c,0x4e,0x4f,0x41,0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
-        if(g_slicks_diag_weapon_case) {
+        if(shop_rejection_test) {
+            platform->keys[0]=0x44;platform->keys[1]=0x44;platform->keys[2]=0x45;
+            platform->key_head=3;
+        } else if(g_slicks_diag_weapon_case) {
             unsigned n=0;
             if(!shop_resume_test && (!shop_transition_test || !shop_track_position)) {
                 if(g_slicks_diag_weapon_case==9) {
@@ -3852,15 +3876,17 @@ int main(void)
     unsigned char continuous_diagnostics=(unsigned char)(argc!=0 || native_debug);
     if(!continuous_diagnostics)g_slicks_diag_target_frame=0;
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
+    unsigned char rejection_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='X' && argv[8]<='Z');
     unsigned char actor_case_test=(unsigned char)((argc==9 || (argc==10 && argv[9]=='Q')) && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
-    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
+    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || rejection_case || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
         (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || argv[7]=='O' || gameplay_benchmark));
     if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
     shop_test=(unsigned char)(natural_results_test && (argv[7]=='W' || shop_transition_test));
+    if(shop_test && rejection_case) shop_rejection_test=(unsigned char)(argv[8]-'X'+1);
     if(shop_test && weapon_case_test) g_slicks_diag_weapon_case=(unsigned short)(argv[8]-'0');
     if(shop_transition_test) g_slicks_diag_weapon_case=1;
     if(natural_results_test) {

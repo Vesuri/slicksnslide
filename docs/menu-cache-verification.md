@@ -1455,6 +1455,37 @@ instructions. Horizontal navigation and transactions still need their
 selector/lifetime integration checks. No production behavior changed in this
 audit, and no target performance result is claimed.
 
+## Native shop purchase rejection boundaries (2026-09-29)
+
+Explicit `NATURALWX/Y/Z` fixtures set up the first visible weapon before shop
+creation: respectively cash one unit below its price, its item count at the
+original limit, and no remaining vehicle carrying capacity for that weapon.
+The carrying-capacity fixture seeds other weapon slots with their ownership
+sentinel; it is controlled test setup, not a naturally acquired inventory or
+a registration-policy change. Normal launches cannot enable these fixtures.
+All three press Buy twice through the normal key queue, then exit toward the
+prepared race. No debugger operation changes target state.
+
+`diag_shop_rejection.gdb` independently checks the intended boundary, snapshots
+all four cash values and 52 inventory words, and requires them unchanged after
+both attempts. There are exactly two initial shop paints (creation and the
+post-computer setup), no attempted-purchase repaint and no additional shared
+C2P publication. Each initial publication compares correctly across all
+64,000 pixels. The gate reaches race entry; it does not claim normal race exit
+or unrelated shop resource-failure recovery.
+
+Final-build runs on stripped binaries, stock PAL 68020, 2 MiB/no Fast and a
+default 4 KiB stack:
+
+- Cash: `tmp/standalone-release-nbz1r3iu`.
+- Item limit: `tmp/standalone-release-idobzdz0`.
+- Vehicle carrying capacity: `tmp/standalone-release-i_fr005r`.
+
+All owned muted emulators were closed. Build: `tmp/shop-rejection-build.log`.
+The original transaction regression also passes 32,768 price and 65,536
+buy/sell comparisons, plus computer/RNG and navigation/row checks
+(`tmp/shop-rejection-host.log`). No production transaction change was needed.
+
 ## Sparse shop caller undefined selection (2026-09-29)
 
 `verify-shop-draw` now executes the original caller before invoking the painter,
