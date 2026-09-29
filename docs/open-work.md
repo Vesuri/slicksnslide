@@ -50,6 +50,9 @@ Implementation and completed verification evidence are separate in
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
+  Tracks `.new` and `.bak` recovery warnings now each have native publication,
+  dismissal, unchanged-playlist and single-startup-load coverage; keep other
+  read/format failure cases separate from those verified artifact checks.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
   the original packed-column selector versus actual-driver indexing for

@@ -1559,6 +1559,24 @@ Build: `tmp/saved-cleanup-build.log`. Storage regressions in
 1,485 saved-game transaction faults and 2,310 saved-game load fault/truncation
 cases. No production save/recovery policy was changed.
 
+## Tracks recovery-artifact publication (2026-09-29)
+
+Current stripped-binary `TRACKSR` runs with separately isolated
+`SLICKS.TRK.new` and `SLICKS.TRK.bak` pass
+`diag_track_lists_recovery_rectangles.gdb`. Each fixture supplies an existing
+recovery artifact before startup; the real loader returns recovery result 4
+with the matching path. The menu shows and dismisses the warning, retains the
+original one-track playlist, and reaches the race without another catalogue
+load on navigation. The artifacts remain byte-identical to their input probes.
+
+Runs: `tmp/standalone-release-1yanv_u0` (.new) and
+`tmp/standalone-release-9vz_c24s` (.bak). Each passes 12 full 64,000-pixel
+publication comparisons, including identical 64,96–256,110 warning/restore
+bounds. Both use a confirmed default 4 KiB stack, stock-speed PAL 68020,
+2 MiB Chip/no Fast. Their muted emulators were closed. These are race-entry
+checks, not normal-exit or recovery-file repair/resume checks. No production
+behavior changed, and no recovery artifact was deleted or overwritten.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from
