@@ -149,7 +149,8 @@ Implementation and completed verification evidence are separate in
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.
   Current stripped-binary title, Options-to-race and clean demo-exit gates
-  pass with a confirmed 4 KiB stack; the other release workflows still need
+  plus 600-update F1/CITY/WHACKO full-frame display audits pass with a
+  confirmed 4 KiB stack; the other release workflows still need
   current-build coverage (see release-verification.md).
   Include startup display-allocation failures and partial-create cleanup in
   those release gates. Both bitmap/copper allocations are startup-resident;

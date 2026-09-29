@@ -2,6 +2,15 @@
 
 ## 2026-09-29 — current title/menu default-stack regression
 
+Current-build full-frame racing audits also pass 600 updates each on F1
+(`tmp/standalone-release-cl_xj10f`, 32 actors, 2,068 marks), CITY
+(`tmp/standalone-release-o6qr7np5`, 18 actors, 1,480 marks), and WHACKO
+(`tmp/standalone-release-whrmplu7`, 5 actors, 1,854 marks). All confirm
+the 4 KiB entry stack and live statistics disabled, using the stripped binary
+and ELF hashes below. These compare incremental bitplanes against the full
+rendering reference; they are not performance measurements or normal-exit
+tests. The harness closes each emulator after the successful checkpoint.
+
 The current ELF was converted directly to a stripped HUNK and installed in
 a fresh private original-data directory, without overwriting `dist/` or an
 existing release candidate. This includes the prepared-title background fix
