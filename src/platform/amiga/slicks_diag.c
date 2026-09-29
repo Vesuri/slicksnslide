@@ -1938,7 +1938,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         platform->key_tail=0; platform->keys[0]=0x45; platform->key_head=1;
     }
     if(shop_test) {
-        static const unsigned char keys[]={0x20,0x4c,0x4d,0x4c,0x4e,0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
+        static const unsigned char keys[]={0x20,0x4c,0x4d,0x4c,0x4e,0x4f,0x41,0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
         if(g_slicks_diag_weapon_case) {
             unsigned n=0;
@@ -2001,12 +2001,14 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                     session->players.vehicle[0],c.extra,state.row);
                 if(it<0 || state.driver<0 || state.driver>=4) goto done;
                 unsigned d=(unsigned)state.driver;
+                unsigned changed;
                 if(action==SLICKS_SHOP_BUY)
-                    slicks_shop_buy(rules,&session->options,session->inventory[d],&session->cash[d],
+                    changed=slicks_shop_buy(rules,&session->options,session->inventory[d],&session->cash[d],
                         session->players.participation[d],session->players.vehicle[d],it,c.extra);
-                else slicks_shop_sell(rules,&session->options,session->inventory[d],&session->cash[d],
+                else changed=slicks_shop_sell(rules,&session->options,session->inventory[d],&session->cash[d],
                     session->players.participation[d],session->players.vehicle[d],it,c.extra);
                 if(shop_test) { ++g_slicks_shop_test_phase; slicks_diag_shop_ready(); }
+                if(!changed) continue;
             }
             if(action==SLICKS_SHOP_REDRAW || action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
                 signed char refresh_driver=(signed char)(state.driver+1),refresh_row=-1;
@@ -3828,7 +3830,8 @@ int main(void)
         for(unsigned i=0;i<4;++i) {
             unsigned p=i+3;
             g_slicks_profiles.setup[p]=g_slicks_profiles.setup[1];
-            if(shop_test && !i) g_slicks_profiles.setup[p].flags&=(unsigned char)~1U;
+            if(shop_test && (!i || (!weapon_case_test && !shop_transition_test && i==1)))
+                g_slicks_profiles.setup[p].flags&=(unsigned char)~1U;
             g_slicks_profiles.setup[p].vehicle=argv[7]=='I'?0:
                 argv[7]=='Q'?pc_audio_fleet[i]:fleet[i];
             g_slicks_profiles.setting[p]=100;

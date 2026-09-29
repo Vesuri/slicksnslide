@@ -1481,6 +1481,31 @@ Remaining shop coverage includes actual multi-human horizontal changes,
 sparse selection caller behavior, rejected transactions and failure routes.
 No gameplay performance benchmark was run; performance work remains paused.
 
+## Two-human shop and rejected transaction publication (2026-09-29)
+
+The native caller now checks the original transaction helper's changed-item
+count and skips drawing when it is zero. This follows the original caller:
+buy refresh selectors are assigned after an actual increment (`2d13c`),
+and an empty sale returns at `2d199` before the refresh assignment. Partial
+successful batches still redraw.
+
+The ordinary `NATURALW` fixture now selects two human profiles and moves
+Right/Left before making an empty-inventory sale, two purchases and one sale,
+opening/closing Help and entering the race. Weapon-specific and transition
+fixtures retain their original one-human configuration. The gate explicitly
+observes driver 1, requires nine painter calls for four transaction attempts
+and the navigation sequence, and checks final driver-0 cash/inventory and race
+handoff. Run `tmp/standalone-release-18l5o5jy` passes. All ten publications
+match all 64,000 chunky pixels. It uses the stripped binary, confirmed 4 KiB
+stack, stock-speed PAL 68020, 2 MiB Chip and no Fast RAM. The muted emulator
+was closed; this remains a race-entry rather than normal-exit gate.
+
+`tmp/shop-rejected-host.log` records 32,768 original price comparisons,
+65,536 buy/sell transactions, 4,096 computer-shop calls, 1,215 driver-navigation
+and 2,720 row-mapping comparisons. Build: `tmp/shop-rejected-build.log`.
+This does not establish native insufficient-cash/capacity boundary coverage,
+sparse profile selection behavior or shop asset/allocation failure recovery.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

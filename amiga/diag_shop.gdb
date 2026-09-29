@@ -1,9 +1,13 @@
 set $shop_draws=0
+set $shop_second_driver=0
 break *slicks_amiga_shop_refresh
 commands
   silent
   set $shop_surface = *(struct SlicksAmigaPlayerMenu **)($sp+4)
   set $shop_draws=$shop_draws+1
+  if g_slicks_shop_menu && g_slicks_shop_menu->driver==1
+    set $shop_second_driver=1
+  end
   continue
 end
 break slicks_diag_shop_ready
@@ -25,11 +29,11 @@ end
 break enter_prepared_race
 commands
   silent
-  if g_slicks_shop_test_phase != 3 || g_slicks_shop_help_phase != 2
+  if g_slicks_shop_test_phase != 4 || g_slicks_shop_help_phase != 2 || !$shop_second_driver
     printf "SHOP_INPUT_FAILED\n"
     quit 1
   end
-  if $shop_draws!=7
+  if $shop_draws!=9
     printf "SHOP_REDUNDANT_OR_MISSING_DRAW count=%u\n",$shop_draws
     quit 1
   end
