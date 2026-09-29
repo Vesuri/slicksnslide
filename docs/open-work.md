@@ -150,7 +150,8 @@ Implementation and completed verification evidence are separate in
   clamped arrows and Escape/Space/Enter acceptance; its diagnostic key sequence
   reaches the selected table and restores the system. Real input.device events,
   console reads, successful mode cleanup and save/restart persistence now pass
-  on the target. Verify input/mode failure routes. Resolve
+  on the target. Real non-interactive input rejects without takeover or setup
+  writes. Verify read errors after raw-mode entry and mode-restoration failure. Resolve
   the DOS KEYB platform boundary rather than guessing a generic locale-to-language
   mapping; the automatic default policy question is awaiting the user.
 

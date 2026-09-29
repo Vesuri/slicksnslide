@@ -146,6 +146,28 @@ Build: `tmp/language-console-build.log`; private install:
 `tmp/language-console-release-S1pnIu`. Actual input failure/mode-restoration
 failure cases and the negative-selector automatic-default policy remain open.
 
+### F15 non-interactive startup rejection (2026-09-29)
+
+`HELPL9 <NIL:` with `diag_language_no_console.gdb` now exercises real
+non-interactive input rather than an injected failed API result. The chooser
+is reached once and rejects it before changing console mode, reading keys,
+taking over the display or calling the setup writer. Native VBI ownership
+remains unchanged. The private fixture has no CFG or PLR afterward.
+
+Run `tmp/standalone-release-w6c4mz48` passes on the stripped binary with a
+confirmed 4 KiB stack, stock-speed PAL 68020, 2 MiB Chip/no Fast; its muted
+emulator was closed. It stops at the pre-takeover failure cleanup checkpoint,
+not a complete allocation-release proof or normal-game exit gate.
+
+Earlier attempts (`tmp/standalone-release-olbsot1h`,
+`tmp/standalone-release-5zphaxd4`, `tmp/standalone-release-aels4spl`) failed
+an overstrict OS-view identity assertion. The observed change was null to
+the OS console View during error output, with VBI data/code/node unchanged.
+The final check forbids application takeover and setup writes while allowing
+AmigaOS to open its own console. No production change was needed. Read errors
+after entering raw mode and a failed mode-restoration call remain separate
+unverified boundaries.
+
 ### Demo setup/restoration boundary
 
 `src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title
