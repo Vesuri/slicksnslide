@@ -100,6 +100,22 @@ int main(void)
         if(result!=slicks_title_demo_exit_key((signed char)flag,(short)scan))abort();
         ++keys;
     }
-    check(uc_close(u));printf("Original demo setup/restore: %u complete option/profile/playlist/RNG pairs pass; native guards atomic; %u demo-key cases pass\n",cases,keys);
+    const unsigned long times[]={0,19999,20000,20001,20999,21000,
+        65535,65536,0x7fffffffUL,0x80000000UL,0xffff0000UL,0xffffffffUL};
+    unsigned timer_cases=0;
+    for(unsigned start=0;start<12;++start)for(unsigned delta=0;delta<12;++delta)
+    for(unsigned scan=0;scan<256;++scan) {
+        unsigned long now=(times[start]+times[delta])&0xffffffffUL;
+        regs(u,0);uint16_t ax=(uint16_t)now,dx=(uint16_t)(now>>16);
+        check(uc_reg_write(u,UC_X86_REG_AX,&ax));check(uc_reg_write(u,UC_X86_REG_DX,&dx));
+        word(u,0x8eff8,times[start]);word(u,0x8effa,times[start]>>16);
+        word(u,0x8eff2,scan);
+        /* Clock acquisition is the boundary; the original arithmetic and
+         * conditional scan replacement execute without a model stub. */
+        check(uc_emu_start(u,0x2a387,0x2a39d,0,100));
+        if(readword(u,0x8eff2)!=slicks_title_demo_scan(scan,now,times[start]))abort();
+        ++timer_cases;
+    }
+    check(uc_close(u));printf("Original demo setup/restore: %u state pairs; atomic guards; %u key cases; %u timer cases pass\n",cases,keys,timer_cases);
     return 0;
 }

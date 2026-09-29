@@ -19,6 +19,16 @@ struct SlicksTitleDemo {
 static inline int slicks_title_demo_exit_key(signed char flag,short scan)
 { return flag<0 && scan<128 && scan!=0x57 && scan!=0x58; }
 
+/* Original 2a387..2a39c: signed 32-bit elapsed comparison, strictly >20s.
+ * The platform supplies original-style milliseconds (DOS time()*1000,
+ * whole-second resolution), not a count of rendered title updates. */
+static inline unsigned short slicks_title_demo_scan(unsigned short scan,
+    unsigned long now,unsigned long started)
+{
+    unsigned long elapsed=(now-started)&0xffffffffUL;
+    return elapsed>20000UL && elapsed<0x80000000UL?0x58:scan;
+}
+
 /* Original 2a3db..2a4c9. The selected profiles here are the pre-selection
  * inputs: the subsequent original Arcade override is a separate stage. */
 static inline int slicks_title_demo_begin(struct SlicksTitleDemo *demo,

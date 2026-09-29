@@ -66,6 +66,19 @@ honour 16-bit IP wrap: the target is `1b089`, not linear `2b089`. Their native
 display route remains unimplemented/unverified. The earlier conversational
 description as a screen capture was incorrect.
 
+The idle scan replacement `2a387..2a39c` now passes 36,864 original-instruction
+comparisons: all byte scans, twelve initial timestamps and twelve elapsed
+boundaries including 19,999/20,000/20,001 ms, second boundaries, 16-bit carry,
+signed 32-bit boundaries and wraparound. `slicks_title_demo_scan` preserves
+the original strict signed elapsed >20,000 test, including overriding a
+simultaneous scan when overdue. Clock acquisition is an explicit boundary;
+the comparison itself executes from the original image. Original `37aad`
+calls the DOS runtime date/time conversion at `14efc` and multiplies its
+whole-second value by 1000. Native integration must not assume that 1000
+rendered frames are the same thing, or use a >=20,000 comparison. The
+existing demo setup/restore and race-key tests still pass. No live timer or
+demo-return test has passed yet; production remains unchanged by this helper.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

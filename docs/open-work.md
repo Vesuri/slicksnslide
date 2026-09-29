@@ -55,6 +55,9 @@ Implementation and completed verification evidence are separate in
   The demo exit-key classifier passes all 65,536 byte pairs, but is not wired
   into production. Preserve F11/F12's exceptional track-data views; they are
   not exit keys or file captures. Their native display route remains missing.
+  The idle scan replacement passes 36,864 original timer-boundary cases.
+  Live integration must use elapsed time, not rendered-frame count, preserve
+  the strict >20,000 ms test and reset the timer after original input routes.
   do not merely map them to ordinary GO. The added mouse activation path
   has been removed following the original keyboard-reader audit.
   F9 now reaches normal race preparation independently of the highlighted row.
