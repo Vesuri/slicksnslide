@@ -29,6 +29,28 @@ shortcut routing and platform error screens need the same caller-level check.
 
 ## Title input caller audit
 
+### Demo setup/restoration boundary
+
+`src/ui/title_demo.h` reproduces original `2a3db..2a4c9` setup and title
+re-entry `2a2f4..2a343`. `make verify-title-demo` executes both original
+blocks, including actual memcpy, RNG and integer-runtime helpers, for 960
+paired cases: six discovered-track counts, five prior playlist lengths and
+32 state/seed patterns. It compares all option values, selected profiles,
+all 256 playlist entries, count, random stream, selection and active flag.
+Intervening mutations establish that restoration overwrites the saved options,
+profiles and entry zero, but preserves the RNG and the rest of the playlist.
+Invalid native input rejects atomically; inactive restore is a no-op.
+
+This helper is not yet connected to production. Demo activation, elapsed-time
+input, signed DS:0459 consumers, race return and persistence suppression still
+need implementation/verification. In particular, setting all four profile
+IDs to 1 in the demo setup is not proof of final participation: `2bb70`
+subsequently applies the ordinary Arcade override. Do not replace that caller
+chain with a guessed all-computer native setup. No emulator or release build
+was needed for this isolated comparison, and no live-demo pass is claimed.
+
+### Keyboard and F9
+
 Removed the separate left-mouse activation branch and its otherwise-unused
 `race_prepared` latch. This branch bypassed the keyboard GO playlist/error
 handling and did not handle Tracks at all. Keyboard activation and the common

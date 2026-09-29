@@ -48,6 +48,10 @@ Implementation and completed verification evidence are separate in
   remaining title shortcuts against original callers: F12/idle-timeout demo
   setup is currently ignored by the native owner.
   Implement their configuration backup/restore and race-return lifecycle;
+  the isolated original demo setup/restore helper now passes 960 paired
+  original-instruction comparisons, but is not connected to the live owner.
+  Audit the signed demo flag's race input, AI, results and persistence consumers
+  before enabling it; the setup profile IDs precede Arcade selection override.
   do not merely map them to ordinary GO. The added mouse activation path
   has been removed following the original keyboard-reader audit.
   F9 now reaches normal race preparation independently of the highlighted row.
