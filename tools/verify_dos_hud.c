@@ -267,6 +267,15 @@ static int composed_hud(const unsigned char *runtime,size_t bytes,unsigned activ
                     fprintf(stderr,"Composed HUD mismatch step=%u page=%u xy=%u,%u native=%u dos=%u\n",
                         step,page,x,y,surface[y*320+x],vga[(x&3)*65536+page*20000+y*100+x/4]); return 1;
                 }
+        /* Optional local-only reference for visual geometry investigations.
+         * These pixels come from the executed DOS painter, not the port. */
+        const char *dump=getenv("SLICKS_HUD_REFERENCE");
+        if(dump && active_mask==15 && step==0) {
+            FILE *out=fopen(dump,"wb"); if(!out) return 1;
+            for(unsigned y=184;y<200;++y) for(unsigned x=0;x<320;++x)
+                if(fputc(vga[(x&3)*65536+y*100+x/4],out)==EOF) { fclose(out); return 1; }
+            if(fclose(out)) return 1;
+        }
     }
     uc_close(uc);
     return 0;

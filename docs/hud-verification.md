@@ -1,5 +1,28 @@
 # Original HUD verification
 
+## Reported lap-digit/border overlap (2026-09-29)
+
+The user's `FS-UAE_Full_260929-1553_00.png` shows all four lap-1 digits
+overlapping the upper recessed-panel borders. This specific placement matches
+the original; it is not evidence that the complete live HUD is certified.
+
+The original background caller `25044..25064` draws the HUD image at (0,184).
+The racing-number caller `1df58..1dfcc` places the right-aligned lap digit at
+(101+60*driver,186), using DS:0680 (`kirj`). `verify-dos-hud` executed the
+original painter with the decoded original font and HUD background. Its new
+optional `SLICKS_HUD_REFERENCE=tmp/hud-border-original.bin` output stores the
+original VGA pixels for the first all-active lap-1 case, not the port's output.
+The complete 768-transition composition suite still passes.
+
+The supplied screenshot is a 2x display with native origin (74,60). Comparing
+the foreground masks in each driver's lap cell gives exact equality for all
+four digits (15 pixels each, covering native rows 186..191). The palette-backed
+upper-border comparison also matches; the only three differences when the
+comparison extends to row 191 are the fixture's different timer digits, not
+the panel geometry. Thus the raised placement relative to the recessed black
+interior is present in the original drawing, and no coordinate adjustment was
+made. Screenshot and extracted reference pixels remain local-only.
+
 ## Font selection and composed display (2026-09-25)
 
 The race used the wrong original font: `pieni.@f` (103 glyphs, height 5),
