@@ -6,6 +6,8 @@ set $closed=0
 set $optional=0
 set $registration_help_owned=0
 init-if-undefined $capture_registration_return = 0
+init-if-undefined $registration_help_failure = 0
+set $warnings=0
 break *slicks_amiga_platform_end
 commands
   silent
@@ -52,6 +54,10 @@ end
 break slicks_diag_help_ready
 commands
   silent
+  if $registration_help_failure
+    printf "REGISTRATION_HELP_FAULT_NOT_REACHED\n"
+    quit 1
+  end
   set $viewer=$menu->help
   if !$viewer || !$viewer->renderer.active || $viewer->navigation.done || $viewer->navigation.chapter != 353 || $viewer->navigation.page != 0 || !g_slicks_diag_profile_platform->active
     quit 1
@@ -60,6 +66,16 @@ commands
   dump binary memory .run/registration-help/help.chunky $viewer->renderer.ui.pixels $viewer->renderer.ui.pixels+64000
   dump binary memory .run/registration-help/help.palette $viewer->renderer.ui.palette $viewer->renderer.ui.palette+768
   printf "REGISTRATION_HELP_OPEN_OK chapter=353 page=0\n"
+  continue
+end
+break slicks_diag_help_failed
+commands
+  silent
+  if !$registration_help_failure || !$menu || $menu->help || !$menu->help_warning || !g_slicks_diag_profile_platform->active || g_slicks_diag_help_fail_allocation
+    printf "REGISTRATION_HELP_WARNING_FAILED\n"
+    quit 1
+  end
+  set $warnings=$warnings+1
   continue
 end
 break slicks_diag_registration_help_closed
@@ -82,10 +98,13 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $exit != 1 || $opened != 1 || $closed != 1 || $optional != (g_slicks_registration_status == 0) || g_slicks_diag_restore_status != 0x1f
+  if $exit != 1 || $opened != 1-$registration_help_failure || $warnings != $registration_help_failure || $closed != 1 || $optional != (g_slicks_registration_status == 0) || g_slicks_diag_restore_status != 0x1f
     quit 1
   end
   printf "REGISTRATION_EXIT_HELP_RESTORE_OK registered=%d\n",g_slicks_registration_status
+  if $registration_help_failure
+    printf "REGISTRATION_HELP_ALLOCATION_WARNING_RESTORE_OK\n"
+  end
   quit
 end
 continue

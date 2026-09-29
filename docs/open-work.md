@@ -47,7 +47,9 @@ Implementation and completed verification evidence are separate in
   Remaining publication coverage: additional Tracks storage/format
   failures, other Help owners,
   shop refresh selectors/driver changes/failures, remaining saved-game recovery,
-  intermission/results error routes and registration warning failures.
+  intermission/results error routes and remaining registration warning failures
+  (archive/surface failures and malformed navigation; viewer-allocation failure
+  now has native publication/return coverage).
   Title timing, shortcuts and demo fidelity remain separate open items below.
   Audit remaining full-width text callbacks, full-screen modal
   restores and direct row-converter bypasses separately from the shared

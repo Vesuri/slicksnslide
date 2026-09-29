@@ -1237,3 +1237,32 @@ bitmap and matches all chunky pixels. Both `after-read.chunky` and
 `.run/title-help-v1` is muted and closes its emulator. Log:
 `tmp/title-help-rectangles-current.log`. This checks normal title Help; it
 does not cover registration Help or every nested owner/error route.
+
+## Registration Help normal and allocation-failure publication (2026-09-29)
+
+The keyless exit-screen caller was checked separately from title Help on the
+current 2 MiB/no-Fast-RAM build. `SLICKS_REGISTRATION_TEST=2` with
+`diag_registration_rectangles.gdb` passes chapter 353/page 0, link down/up,
+close, optional absent-order-form handling and restoration 31. Four normal
+Help publications plus both returned display buffers pass independent full
+64,000-pixel decoding; exit before/after chunky images are byte-identical.
+Log: `tmp/registration-help-current.log`.
+
+New diagnostic `REGCHECKG` (`SLICKS_REGISTRATION_TEST=9`) applies the existing
+viewer-allocation fault only at the registration Help caller. It uses ordinary
+F1 and acknowledgement key events, not a patched return value. Normal launches
+are unchanged. `diag_registration_help_failure.gdb` asserts the fault was
+consumed, no viewer was opened, the warning exists, and display ownership is
+retained through return. The two warning publications are exactly
+`(64,96)..(256,110)`, 2,688 pixels each. Those and both restored display buffers
+pass full chunky/planar comparison; the before/after exit images are identical.
+The keyless optional-image attempt and restoration 31 still pass. Log:
+`tmp/registration-help-failure.log`.
+
+Both runs used fresh isolated data directories, were muted and closed their
+emulators. No private key/owner data was captured. This closes the registration
+Help *caller's* viewer-allocation warning case using keyless data; it does not
+claim archive/surface allocation failures, malformed navigation, or new
+registered-key coverage. The normal case's captures are preserved under
+`.run/menu-rectangles-registration-help-current`; failure captures use
+`.run/menu-rectangles`.
