@@ -70,7 +70,8 @@ Implementation and completed verification evidence are separate in
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
 - Recheck save/edit fixtures which previously assumed the extra intermission
-  rows. Keep the original hidden Save Game route covered.
+  rows. The hidden Save Game cancel/name/save/exit sequence is covered;
+  recheck load/edit entry routes without restoring invented visible rows.
 - Audit every remaining subsystem in the coverage matrix, distinguishing
   confirmed defects from unverified coverage and user-authorized adaptations.
 
@@ -82,8 +83,10 @@ Implementation and completed verification evidence are separate in
   Cache the SLICKS.TRK and saved-game catalogues, preserving transactional
   save/delete updates and recovery/error handling. Track-information and its
   warning close and RAM-only track-list chooser input now retain hardware
-  ownership; migrate remaining saved-game chooser,
-  results/return and RAM-only transition owners. Shop and registration Help
+  ownership. Saved-game picker-to-name and notice closes also retain ownership;
+  catalogue rereads and its released-on-return contract remain to be migrated,
+  together with results/return and remaining RAM-only transition owners.
+  Shop and registration Help
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.

@@ -142,3 +142,32 @@ A1200, 2 MiB Chip/no Fast RAM; runners close their owned emulators. Measured
 Options free Chip RAM is 192,504 bytes (largest 122,520); nested Help has 82,552
 bytes free (largest 66,096). These checkpoints precede the last small staging
 change and are not an exhaustive worst-case bound or release validation.
+
+## Saved-game RAM-only modal transitions
+
+The picker-to-name transition, name close, and notice open/close no longer
+unconditionally release hardware ownership. Notices reacquire only when needed.
+Enumeration, existence checks, delete, store and load retain explicit release
+boundaries. The dialog's released-on-return contract is unchanged; catalogue
+rereads, return-owner migration and full disk-free navigation remain open.
+
+`diag_championship_save.gdb` now includes `diag_saved_resident.gdb`, checking
+active ownership at exercised widget transitions and inactive ownership at
+filesystem entry points. The native hidden Save route passes picker cancel,
+reopen, name entry, save notice and normal exit with restoration 31. This is
+not coverage of every failure cleanup, overwrite, delete or load branch.
+
+Reproduce in a fresh run directory from `amiga/`:
+`SLICKS_CHAMPIONSHIP=save SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/championship-resident ./debug.sh '' diag_championship_save.gdb`.
+Local log `tmp/saved-resident-save-fresh.log` ends with
+`NATIVE_CHAMPIONSHIP_MENU_SAVE_EXIT_OK`. An initial run using the old directory
+encountered an existing E2E.SSS and its overwrite prompt; the fixture expects
+a fresh save. The existing file was preserved. The fixture's auxiliary state
+snapshots still use `.run/championship-v1`; game file I/O uses the selected
+run directory. The muted native runner closed its owned emulator.
+
+Fresh host gates also pass: `verify-saved-file-dialog` (262,144 original-caller
+comparisons), `verify-saved-game-storage` (1,485 save-failure and 2,310 load-I/O
+cases), and `verify-championship` (state/codec/staging and atomic rejection).
+No storage transaction or file-format implementation changed.

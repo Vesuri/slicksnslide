@@ -1,4 +1,5 @@
 # CHAMPSAVE queues ordinary raw-key input in native code. Read-only checks.
+source diag_saved_resident.gdb
 set $picker = 0
 set $name = 0
 set $saved = 0
