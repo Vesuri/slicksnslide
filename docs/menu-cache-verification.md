@@ -294,3 +294,30 @@ Local `tmp/saved-edit-native.log` reports
 bytes); only the generated TEMP.SSS was deleted. The muted runner closed its
 emulator. This replaces the stale entry assumption for edit testing, not the
 still-unresolved Load/resume/rejection fixtures or save-failure coverage.
+
+## Read-only championship save failure
+
+CHAMPSAVF (`SLICKS_CHAMPIONSHIP=save-fail`) is diagnostic-only raw-key input:
+the same new-race/first-intermission route, initial picker cancellation, name
+entry, warning dismissal, reopened picker cancellation and exit. The production
+save transaction and error handling are unchanged.
+
+Fresh muted stock A1200/2 MiB run:
+`SLICKS_CHAMPIONSHIP=save-fail SLICKS_DEBUG_READ_ONLY=1 SLICKS_DEBUG_WARP=1
+FSUAE_RUN=.run/championship-save-readonly ./debug.sh '' diag_championship_save_failure.gdb`.
+The gate checks one failed-save warning, three picker visits, one name dialog,
+two display-owned returns, one race start, unchanged empty cache and normal
+restoration 31 without forced exit. Exactly two enumerations occur: startup
+and refresh after the explicit failed transaction. The DOS requester pointer
+matches its pre-transaction value. No SSS/new/bak file was created.
+
+`tmp/saved-failure-native-recheck.log` ends with
+`NATIVE_CHAMPIONSHIP_READONLY_WARNING_REOPEN_CANCEL_EXIT_OK`; the runner closed
+its emulator. The initial attempt reached the correct warning but its duplicate
+store breakpoint did not initialize the requester-check variable; that debugger
+error is not a pass. Capture now lives in the shared store breakpoint.
+
+Host regressions also pass: saved-file cache/path/delete checks, 1,485 save
+faults, 2,310 load/truncation cases and 262,144 original saved-file caller
+comparisons. Native recovery-artifact/enumeration-failure and Load-entry coverage
+remain separate; a write-protection test does not establish those branches.

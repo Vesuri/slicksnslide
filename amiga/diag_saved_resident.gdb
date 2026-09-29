@@ -68,6 +68,8 @@ end
 break slicks_amiga_store_saved_game
 commands
   silent
+  set $saved_process = (struct Process *)SysBase->ThisTask
+  set $saved_window = $saved_process->pr_WindowPtr
   if g_slicks_diag_profile_platform->active
     printf "SAVED_STORE_WITH_HARDWARE_OWNED\n"
     quit 1

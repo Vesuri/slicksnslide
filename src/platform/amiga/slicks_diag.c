@@ -1007,13 +1007,18 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
     }
     if(g_slicks_diag_saved_phase==1) {
         static const unsigned char cancel[]={0x45,0x44},accept[]={0x44};
-        if(championship_test==1 && !championship_picker_count++) championship_test_keys(p,cancel,2);
+        if(championship_test==6 && championship_dialog_step) {
+            static const unsigned char leave[]={0x45,0x59,0x45};
+            championship_test_keys(p,leave,sizeof leave);
+        }
+        else if((championship_test==1 || championship_test==6) && !championship_picker_count++) championship_test_keys(p,cancel,2);
         else championship_test_keys(p,accept,1);
     } else if(g_slicks_diag_saved_phase==2) {
         static const unsigned char name[]={0x12,0x02,0x12,0x44};
         championship_test_keys(p,name,4);
     } else if(g_slicks_diag_saved_phase==3) {
         static const unsigned char exit[]={0x44,0x59,0x45};
+        if(championship_test==6) ++championship_dialog_step;
         championship_test_keys(p,exit,3);
     }
 }
@@ -2730,7 +2735,7 @@ retry:
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     g_slicks_diag_intermission_menu=m;
     slicks_diag_intermission_checkpoint();
-    if(championship_test==1 || championship_test==3) {
+    if(championship_test==1 || championship_test==3 || championship_test==6) {
         /* Original hidden Save route: F2, close Change Cars, Down, Enter.
          * Up from NEXT TRACK must not expose the removed native extension. */
         static const unsigned char keys[]={0x51,0x45,0x4d,0x44};
@@ -3670,7 +3675,7 @@ int main(void)
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5),title_help_failure_stage=0;
     shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');
     if((argc==9 || shop_resume_test) && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
-        championship_test=(unsigned char)(argv[5]=='S'?1:argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
+        championship_test=(unsigned char)(argv[5]=='S'?(argv[8]=='F'?6:1):argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
     if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
@@ -4011,7 +4016,7 @@ int main(void)
     slicks_diag_frame_ready();
     if(championship_test) {
         static const unsigned char save[]={0x4d,0x4d,0x44},load[]={0x4d,0x4d,0x4d,0x4d,0x44};
-        unsigned char start_new=(unsigned char)(championship_test==1 || championship_test==3);
+        unsigned char start_new=(unsigned char)(championship_test==1 || championship_test==3 || championship_test==6);
         if(championship_test==3) championship_dialog_step=1; /* Skip obsolete Load dialog phase. */
         championship_test_keys(&platform,start_new?save:load,start_new?3:5);
     }
@@ -4244,7 +4249,7 @@ int main(void)
             } else if(shop_transition_phase==2 && shop_track_position && race->frame_count>=100) {key=0x59;shop_transition_phase=3;}
             if(key) championship_test_keys(&platform,&key,1);
         }
-        if((championship_test==1 || championship_test==3) && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
+        if((championship_test==1 || championship_test==3 || championship_test==6) && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
             static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,0x4f,0x44,0x4d,0x44,0x4d,0x44,0x45,0x4c,0x4c,0x44};
             championship_test_keys(&platform,keys,sizeof keys); championship_test_stage=1;
         }
