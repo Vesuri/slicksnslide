@@ -77,8 +77,8 @@ Implementation and completed verification evidence are separate in
   FS-UAE instance, and the installed binary did not execute the Lua hook.
   Extend idle-timer coverage to synchronous modal returns; long Options/Help
   visits, ordinary navigation reset and repeated automatic entry are covered.
-  Extend failed-demo preparation checks beyond the temporary loading buffers
-  to display-allocation failures, and program-exit coverage to clean exit and
+  Extend failed-demo preparation checks to race-view setup failure (copper
+  construction/validation, not allocation), and program-exit coverage to clean exit and
   direct save retry. Dirty exit, save-failure
   cancellation, demo re-entry and subsequent successful save have native coverage.
   Compare the complete return presentation against the
@@ -136,6 +136,9 @@ Implementation and completed verification evidence are separate in
   use the cache, with native tests recorded in the evidence document. Keep explicit
   track/exit loads and saves as disk boundaries. Extend no-I/O/no-teardown
   assertions across every owner; rerun full 2 MiB/default-stack release gates.
+  Include startup display-allocation failures and partial-create cleanup in
+  those release gates. Both bitmap/copper allocations are startup-resident;
+  demo preparation does not allocate another display.
 
 ## Remaining performance work
 

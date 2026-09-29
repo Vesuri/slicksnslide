@@ -1067,7 +1067,19 @@ The run was muted and its emulator was closed. Build and native logs are
 
 This verifies recovery from the simulated temporary-allocation failure, not
 all allocation sites, actual system-wide low-memory pressure, or an independent
-allocation-leak accounting measurement. Display-allocation failures remain open.
+allocation-leak accounting measurement. Startup display-allocation failures
+remain open separately from demo preparation.
+
+### Display ownership boundary audit
+
+`slicks_amiga_platform_create` allocates the bitmap storage, bitmap descriptors,
+copper storage and framework wrappers for both views once at startup.
+`prepare_race` later calls `slicks_amiga_platform_set_view`, which rebuilds and
+validates the existing copper list; neither it nor `build_copper` allocates a
+new display. A demo-time display-allocation failure fixture would therefore
+test a nonexistent boundary. The actionable list distinguishes startup
+partial-allocation cleanup from preparation error 8 (copper setup/validation).
+This is a source-level ownership finding, not a native fault-injection pass.
 
 ## Adaptations to preserve or explicitly classify
 
