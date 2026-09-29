@@ -471,3 +471,12 @@ coverage of 53,440. These cover the original painter's two broad restoration
 regions, not merely its highlighted label. This demonstrates reduced publication
 area, not measured beam safety or coverage of all nested dialogs. The remaining
 per-owner, full-screen restoration and text-bound audits stay on the open list.
+
+Title Help's two-open/two-close workflow also passes all four full-surface
+publication comparisons and its no-disk/no-teardown/restoration guards, using
+`SLICKS_HELP_MENU=4` with `diag_help_rectangles.gdb`; local log
+`tmp/help-rectangles-recheck.log`. The first launch used the Options-Help
+scenario by mistake and failed the title-specific fixture; it is not counted
+as a workflow pass. Help still marks full-width text rows and restores the
+whole saved screen on close; this check establishes pixel correctness, not
+completion of its repaint-area reduction.
