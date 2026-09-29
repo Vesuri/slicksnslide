@@ -2,10 +2,14 @@ set $record_owner = 0
 set $record_warning_owned = 0
 set $record_closing = 0
 set $record_returns = 0
-break run_record_results
+break *run_record_results
 commands
   silent
   set $record_owner = 1
+  set $record_pixels = *(unsigned char **)($sp+12)
+  set $record_bitmap = g_slicks_diag_profile_platform->views[1].bitmap
+  eval "dump binary memory .run/post-race-records-v1/record-%u-entry.chunky %p %p", $record_returns, $record_pixels, $record_pixels+64000
+  eval "dump binary memory .run/post-race-records-v1/record-%u-entry.planar %p %p", $record_returns, $record_bitmap->Planes[0], $record_bitmap->Planes[0]+64000
   continue
 end
 break slicks_resource_archive_open
@@ -55,6 +59,8 @@ commands
   end
   set $record_owner = 0
   set $record_closing = 0
+  eval "dump binary memory .run/post-race-records-v1/record-%u-close.chunky %p %p", $record_returns, $record_pixels, $record_pixels+64000
+  eval "dump binary memory .run/post-race-records-v1/record-%u-close.planar %p %p", $record_returns, $record_bitmap->Planes[0], $record_bitmap->Planes[0]+64000
   set $record_returns = $record_returns+1
   continue
 end

@@ -2969,7 +2969,8 @@ done:
     slicks_resource_archive_close(&archive);
     if(bytes) FreeMem(bytes,8192);
     if(!result) {
-        slicks_chunky_rows_to_amiga(chunky,platform->views[1].bitmap,0,200);
+        /* Records and recovery notices only paint view 0. The unchanged
+         * race bitmap in view 1 is already current; do not reconvert it. */
         if(slicks_amiga_platform_set_view(platform,1,palette)) result=-1;
         else if(platform->active) {
             slicks_amiga_platform_wait_display_blank(platform);

@@ -1003,3 +1003,34 @@ text/order/state comparisons. Native evidence is
 `tmp/track-scroll-native.log`, host results `tmp/track-scroll-host.log`;
 captures and playlist snapshots remain local-only. The muted debug runner
 closed its emulator. Other storage/format failures remain separate open work.
+
+## Records return: retain the untouched race bitmap (2026-09-29)
+
+The direct row-converter audit found `run_record_results` converting all
+64,000 race pixels into view 1 on return, although records and their recovery
+warnings only paint view 0. The return now keeps view 1 untouched, preserving
+the palette restoration and blanking-safe view switch. No gameplay pacing,
+particle ordering or race simulation changed.
+
+`diag_records_resident.gdb` now captures chunky source and view-1 bitplanes
+at the ABI entry and completed return of each records owner.
+`tools/check_record_return.py` checks two returns: full byte preservation of
+both surfaces, plus independent decoding of every interleaved pixel against
+the source. The pre-change retry control passed these checks, establishing
+that the old conversion was redundant rather than repairing stale pixels.
+That control is in `tmp/record-view-control.log`.
+
+Validation uses the existing two-track standings/recovery fixture, retaining
+its state, resource-ownership, statistics, persistence and restoration gates.
+Run `SLICKS_RECORD_RECOVERY=retry`, `skip`, and `read-skip`, with
+`SLICKS_DEBUG_WARP=1`, `FSUAE_RUN=.run/post-race-records-v1` and
+`./debug.sh '' diag_standings.gdb`, then run the checker after each launch.
+Logs are `tmp/record-return-retry.log`, `tmp/record-return-skip.log` and
+`tmp/record-return-read-skip.log`. The source/pixel checks supplement, rather
+than replace, the original-code gates: 25,272 post-race qualification cases,
+192 wait cases and 216 ordered drawing traces (`tmp/record-return-host.log`).
+Other direct row-converter call sites and untested error routes remain open.
+All three patched runs passed both return-image checks and the final native
+standings/statistics/restoration gate (two returns each, restoration 31).
+All were muted and their Slicks emulators exited; no other project's emulator
+was stopped.
