@@ -66,6 +66,8 @@ Implementation and completed verification evidence are separate in
   remaining title shortcuts against original callers. Finish the demo lifecycle:
   connect the original loading painter and verified filename/suffix builder to
   race preparation, including the actual caller font alias and display lifetime.
+  The original startup assignment of `/KIRJ.@F` to DS:0680 is now executed by
+  the loading oracle; later caller/transition alias lifetime remains to be audited.
   Its isolated drawing oracle is in `verify-loading-pixels`; this is not live
   integration. The current platform-end disk boundary restores the OS display,
   so merely drawing before that call does not preserve the loading screen.

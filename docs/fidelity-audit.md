@@ -1119,6 +1119,22 @@ not every race completion/profile-statistics case or exact return-screen
 presentation. Together with DEMOSAV and DEMORET it covers clean exit, edited
 exit, save-failure cancellation/re-entry and direct retry independently.
 
+## Loading font initialization caller (2026-09-29)
+
+The loading oracle now executes original `19dd8..19e01` instead of assigning
+DS:0680 directly. At the resource-loader boundary `2fc0c`, the fixture checks
+the actual far-string argument is `/KIRJ.@F` and the load mode is zero,
+then supplies the pointer to the decoded font used by the existing pixel
+comparison. The original caller performs the pointer stores at `19de8` and
+`19dec`; the fixture checks those stores and the exact endpoint. Only the
+resource-loader call is substituted, not the caller or painter instructions.
+
+`make verify-loading-pixels` passes all ten original/68020 full-pixel and
+font-state cases with this initialization (`tmp/loading-font-owner.log`).
+This establishes the startup binding and painter consumption, not absence
+of later alias writes, menu-transition font-state changes, or live loading
+screen display lifetime. Those integration checks remain open.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

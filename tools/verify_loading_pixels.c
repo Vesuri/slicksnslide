@@ -20,6 +20,24 @@ static void loading_tint(void *context,short l,short t,short r,short b,
     if(slicks_ui_remap(&p->ui,l,t,r,b,table)) abort();
 }
 
+/* Execute the original font owner, substituting only the resource loader's
+ * return pointer. Check the actual request before allowing the caller to
+ * populate DS:0680; don't seed the alias that the painter is meant to use. */
+static void loading_font_request(uc_engine *u,uint64_t address,uint32_t size,void *context)
+{
+    (void)address;(void)size;
+    unsigned *calls=context;uint16_t ss,sp,cs,ip,ax=0,dx=0x6000;
+    check(uc_reg_read(u,UC_X86_REG_SS,&ss));check(uc_reg_read(u,UC_X86_REG_SP,&sp));
+    unsigned stack=(unsigned)ss*16+sp;
+    unsigned name=getword(u,stack+4)+16*getword(u,stack+6);
+    unsigned char text[9];check(uc_mem_read(u,name,text,sizeof text));
+    if(memcmp(text,"/KIRJ.@F",sizeof text) || getword(u,stack+8)!=0 || ++*calls!=1) abort();
+    ip=getword(u,stack);cs=getword(u,stack+2);sp+=4;
+    check(uc_reg_write(u,UC_X86_REG_AX,&ax));check(uc_reg_write(u,UC_X86_REG_DX,&dx));
+    check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_IP,&ip));
+    check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+}
+
 int main(void)
 {
     unsigned char runtime[300000],resource[8192],palette[768],code[8192];
@@ -47,7 +65,16 @@ int main(void)
     check(uc_hook_add(u,&h,UC_HOOK_MEM_READ|UC_HOOK_MEM_WRITE,vga_access,&v,0xa0000,0xaffff));
     check(uc_hook_add(u,&h,UC_HOOK_INSN,font_port,&v,1,0,UC_X86_INS_OUT));
     unsigned dsbase=0x3cbf0;
-    word(u,dsbase+0x680,0);word(u,dsbase+0x682,0x6000);
+    unsigned font_requests=0;uc_hook font_hook;
+    check(uc_hook_add(u,&font_hook,UC_HOOK_CODE,loading_font_request,&font_requests,0x2fc0c,0x2fc0c));
+    uint16_t init_cs=0x1987,init_ds=0x3cbf,init_ss=0x8000,init_sp=0xf000;
+    check(uc_reg_write(u,UC_X86_REG_CS,&init_cs));check(uc_reg_write(u,UC_X86_REG_DS,&init_ds));
+    check(uc_reg_write(u,UC_X86_REG_SS,&init_ss));check(uc_reg_write(u,UC_X86_REG_SP,&init_sp));
+    check(uc_emu_start(u,0x19dd8,0x19e01,0,1000));
+    uint16_t init_ip;check(uc_reg_read(u,UC_X86_REG_CS,&init_cs));check(uc_reg_read(u,UC_X86_REG_IP,&init_ip));
+    if((unsigned)init_cs*16+init_ip!=0x19e01 || font_requests!=1 ||
+       getword(u,dsbase+0x680)!=0 || getword(u,dsbase+0x682)!=0x6000) abort();
+    check(uc_hook_del(u,font_hook));
     word(u,dsbase+0x1d7b,100);word(u,dsbase+0x1d87,0);
     word(u,dsbase+0x1d8d,0);word(u,dsbase+0x1d8f,200);
     word(u,dsbase+0x1d91,0);word(u,dsbase+0x1d93,79);
