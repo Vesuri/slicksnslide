@@ -625,3 +625,34 @@ different 22-byte records while DOS reads the original packed 21-byte records.
 This independently checks that title indexing leaves the displayed text and
 navigation result unchanged, including large lists. The shared modal/font
 gates remain green. Log: `tmp/list-offset-pixels.log`.
+
+## Players prepared-background return bounds
+
+Players now keeps a second bounded rectangle list for all writes since its
+prepared background snapshot. This list is independent of publication clears
+and includes the ordinary rows and nested dialogs. Common modal return restores
+those rectangles from the original prepared image, clears the lifetime list,
+and continues tracking subsequent writes. Tracking is enabled only after the
+Players snapshot is prepared; other surface owners retain their existing
+behaviour. There is no shadow comparison or additional full-screen allocation.
+
+Before changing restoration, native name-entry and colour fixtures passed
+28 and 42 full-surface publication comparisons. After the change, every one
+of those 70 chunky surfaces also matches its baseline byte-for-byte, and all
+70 bitplane surfaces match their chunky source. Fixtures preserve create/edit,
+accept/cancel/reopen, RGB endpoint and font-state checks. Observed editor
+returns cover (32,28)-(320,200), 49,536 pixels instead of 64,000.
+
+The shared profile-delete path passes another fifteen complete publication
+comparisons, cancel/confirm/count/font restoration checks and unchanged profile
+bytes after cancellation. Its final return covers (32,28)-(272,200).
+All three runs are muted A1200/2 MiB fixtures and their runners closed the
+emulators. Logs: `tmp/name-return-bounds.log`, `tmp/colour-return-bounds.log`,
+`tmp/profile-delete-return-bounds.log`; baseline logs are
+`tmp/name-rectangles.log` and `tmp/colour-rectangles.log`.
+
+`verify-menu-dirty` and `verify-palette-remap` pass, including 40,000 dirty
+coverage steps, 108 original editor and 104 original Players full-frame
+comparisons and four original preparation comparisons. The normal build
+passes. These runs do not establish all remaining picker/controller/failure
+routes or the outstanding full release gate.

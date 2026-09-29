@@ -53,6 +53,9 @@ Implementation and completed verification evidence are separate in
   Options Help publication/return checks pass with glyph-derived horizontal
   bounds. Extend coverage to the other Help owners and failure paths.
   Do not infer whole-menu correctness from these gates.
+  Players name/colour create/edit/accept/cancel/reopen and profile-delete
+  cancel/confirm publications now pass; their prepared-background returns use
+  lifetime painter bounds. Extend remaining picker/controller/failure routes.
   Main Tracks and Track Information now have complete publication comparisons
   for their existing navigation/animation fixtures. Track Information closes
   restore lifetime bounds; five pre-draw allocation/resource failure returns

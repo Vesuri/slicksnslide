@@ -107,6 +107,9 @@ struct SlicksAmigaPlayerMenu {
     struct SlicksMenuIcon icons[11];
     struct SlicksMenuRect dirty[16];
     unsigned short dirty_count;
+    struct SlicksMenuRect saved_dirty[16];
+    unsigned short saved_dirty_count;
+    unsigned char track_saved_dirty;
     int error;
     struct SlicksAmigaProfilePicker *picker;
     short delete_index;

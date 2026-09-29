@@ -39,6 +39,8 @@ static void dirty(void *context,short left,short top,short right,short bottom)
 {
     struct SlicksAmigaPlayerMenu *m=context;
     slicks_menu_dirty_add(m->dirty,&m->dirty_count,left,top,right,bottom);
+    if(m->track_saved_dirty)
+        slicks_menu_dirty_add(m->saved_dirty,&m->saved_dirty_count,left,top,right,bottom);
     if(m->track_info)
         slicks_menu_dirty_add(m->track_info->painted,&m->track_info->painted_count,
             left,top,right,bottom);
@@ -993,12 +995,24 @@ int slicks_amiga_profile_delete_prompt(struct SlicksAmigaPlayerMenu *m,short ind
 }
 void slicks_amiga_player_menu_restore(struct SlicksAmigaPlayerMenu *m)
 {
-    /* Original common modal return 28ce4 restores the entire saved menu,
-     * not merely the dynamic row rectangles. */
+    /* Same prepared background as original 28ce4. Track all writes since
+     * that snapshot, not just the last publication or selected row. */
     if(m->delete_pending) m->fonts[0][6]=m->delete_old_colour;
     m->delete_pending=0;
-    for(unsigned i=0;i<64000;++i) m->renderer.ui.pixels[i]=m->saved[i];
-    dirty(m,0,0,320,200);
+    if(m->track_saved_dirty) {
+        m->track_saved_dirty=0;
+        for(unsigned i=0;i<m->saved_dirty_count;++i) {
+            const struct SlicksMenuRect *r=&m->saved_dirty[i];
+            for(unsigned y=r->top;y<r->bottom;++y)
+                for(unsigned x=r->left;x<r->right;++x)
+                    m->renderer.ui.pixels[mult320[y]+x]=m->saved[mult320[y]+x];
+            dirty(m,r->left,r->top,r->right,r->bottom);
+        }
+        m->saved_dirty_count=0; m->track_saved_dirty=1;
+    } else {
+        for(unsigned i=0;i<64000;++i) m->renderer.ui.pixels[i]=m->saved[i];
+        dirty(m,0,0,320,200);
+    }
 }
 int slicks_amiga_profile_editor_open(struct SlicksAmigaPlayerMenu *m,struct SlicksPlayerProfiles *profiles,
     short index,unsigned char is_new,unsigned long *random_state)
@@ -1069,6 +1083,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
     m->renderer.saved=m->saved; m->renderer.icons=m->icons; m->renderer.icon_count=11;
     m->renderer.text=text; m->renderer.icon=icon; m->renderer.context=m;
     if(slicks_player_renderer_prepare(&m->renderer,title,footer,footer_percent) || m->error) goto failed;
+    m->saved_dirty_count=0; m->track_saved_dirty=1;
     m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
