@@ -1506,6 +1506,32 @@ and 2,720 row-mapping comparisons. Build: `tmp/shop-rejected-build.log`.
 This does not establish native insufficient-cash/capacity boundary coverage,
 sparse profile selection behavior or shop asset/allocation failure recovery.
 
+## Partial saved-game catalogue error return (2026-09-29)
+
+The scanner already returns failure, not its accumulated filename count,
+when enumeration ends with an error other than `ERROR_NO_MORE_ENTRIES`.
+`CHAMPSAVY` now tests the native caller after one real matching filename:
+an explicit diagnostic injects a failed next-entry boundary with error 212,
+then lets the normal IoErr handling reject the partial catalogue. This is
+an injected API error, not evidence of a genuinely failing disk or filesystem.
+The private fixture's `PROBE.SSS` is only a catalogue-name probe (copied data,
+not a valid save); no attempt is made to load it.
+
+`tmp/standalone-release-en_5y6_p` reaches the genuine first intermission,
+shows CANNOT READ SAVED GAMES, returns with hardware ownership retained, and
+exits with restoration mask 31. The gate requires exactly one startup scan,
+one accepted filename before the injected failure, consumed fault state,
+cache count -1, restored requester pointer, one warning and return, and no
+save attempt. All 19 menu publications match all 64,000 chunky pixels;
+warning and restoration use the same 80,96–240,110 rectangle.
+Configuration: stripped binary, confirmed default 4 KiB stack, stock-speed
+PAL 68020, 2 MiB Chip/no Fast. The muted emulator was closed.
+
+Build: `tmp/saved-partial-build.log`. `make verify-saved-files` also passes
+its existing host partial-enumeration and cache-retention tests. Production
+error policy is unchanged; this closes the bounded native partial-scan
+warning/return coverage, not all filesystem failure modes.
+
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from

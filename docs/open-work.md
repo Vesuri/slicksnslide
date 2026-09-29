@@ -143,11 +143,13 @@ Implementation and completed verification evidence are separate in
   keyboard snapshot are implemented; title Help, Options, Players, Controllers,
   main Tracks and pause paths have been migrated. Evidence is separate in
   [menu-cache-verification.md](menu-cache-verification.md).
-  Extend native saved-game cache coverage to mid-enumeration `ExNext` I/O
-  failures and
-  remaining recovery cases (including post-save backup cleanup failures).
+  Extend native saved-game cache coverage to remaining recovery cases,
+  including post-save backup cleanup failures. An injected mid-enumeration
+  error after one accepted filename now has native partial-catalogue rejection,
+  warning, display-return and exit coverage (see the evidence document).
   A real startup directory-Lock failure now has native warning, publication,
-  retained-display return and exit coverage; it does not cover a partial scan.
+  retained-display return and exit coverage, separate from the injected
+  partial-scan error check.
   Creation, overwrite/delete, cancellation, read-only save failure,
   catalogue overflow, blocked/read-only deletion and pre-existing `.new`/`.bak` save obstructions have
   real-intermission coverage.

@@ -993,6 +993,7 @@ static unsigned char championship_dialog_step;
 static unsigned char championship_delete_test;
 static unsigned char championship_scan_test;
 extern unsigned char g_slicks_diag_saved_lock_failure;
+extern unsigned char g_slicks_diag_saved_next_failure;
 void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
 void __attribute__((noinline)) slicks_diag_saved_closed(void) { __asm__ volatile("" ::: "memory"); }
 static void championship_test_keys(struct SlicksAmigaPlatform *p,const unsigned char *keys,unsigned count)
@@ -3935,7 +3936,8 @@ int main(void)
         championship_test=(unsigned char)(argv[5]=='S'?(argv[8]=='F'?6:1):argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
     championship_delete_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='D');
     if(championship_delete_test) championship_test=6;
-    championship_scan_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='X');
+    championship_scan_test=(unsigned char)(championship_test==1 && argc==9 ?
+        (argv[8]=='X'?1:argv[8]=='Y'?2:0):0);
     if(championship_scan_test) championship_test=6;
     if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
@@ -4222,7 +4224,8 @@ int main(void)
     if(!menu_cache) goto cleanup;
     g_slicks_menu_cache_bytes=slicks_resource_cache_bytes(menu_cache);
     slicks_amiga_track_list_cache_refresh(&track_list_cache);
-    if(championship_scan_test) g_slicks_diag_saved_lock_failure=1;
+    if(championship_scan_test==1) g_slicks_diag_saved_lock_failure=1;
+    if(championship_scan_test==2) g_slicks_diag_saved_next_failure=1;
     slicks_amiga_saved_files_refresh(&saved_files_cache);
     if (auto_race) {
         struct SlicksConfiguration diagnostic_configuration=configuration;

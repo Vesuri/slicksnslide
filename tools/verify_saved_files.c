@@ -4,7 +4,7 @@
 typedef void *APTR;
 typedef const char *CONST_STRPTR;
 typedef int BPTR;
-enum {ACCESS_READ=0,ERROR_OBJECT_NOT_FOUND=205,ERROR_NO_MORE_ENTRIES=232};
+enum {ACCESS_READ=0,ERROR_OBJECT_NOT_FOUND=205,ERROR_OBJECT_WRONG_TYPE=212,ERROR_NO_MORE_ENTRIES=232};
 struct Process { APTR pr_WindowPtr; };
 struct FileInfoBlock { int fib_DirEntryType; char fib_FileName[108]; };
 static struct Process process;
@@ -32,6 +32,7 @@ static int ExNext(BPTR lock,struct FileInfoBlock *info)
     strcpy(info->fib_FileName,entries[cursor++]); return 1;
 }
 static int IoErr(void) { return error; }
+static void SetIoErr(int value) { error=value; }
 static int DeleteFile(const char *path)
 { assert(process.pr_WindowPtr==(APTR)-1); assert(!strcmp(path,"E2E.SSS")); ++deleted; return fault!=4; }
 #define SLICKS_SAVED_FILES_HOST_TEST

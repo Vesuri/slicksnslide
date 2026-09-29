@@ -7,6 +7,7 @@
 #include "amiga_saved_files.h"
 unsigned char g_slicks_diag_saved_lock_failure;
 long g_slicks_diag_saved_lock_error;
+unsigned char g_slicks_diag_saved_next_failure,g_slicks_diag_saved_partial_count;
 int slicks_saved_file_path(char path[13],const unsigned char *name)
 {
     unsigned n=0;
@@ -48,7 +49,16 @@ int slicks_amiga_saved_files(unsigned char names[40][9])
     int count=0,result=-1;
     struct FileInfoBlock info __attribute__((aligned(4)));
     if(!lock || !Examine(lock,&info)) goto done;
-    while(ExNext(lock,&info)) {
+    for(;;) {
+        /* Explicit fixture: inject a failed next-entry result only after a
+         * real matching filename. Exercise the normal IoErr rejection below. */
+        if(g_slicks_diag_saved_next_failure && count==1) {
+            g_slicks_diag_saved_next_failure=0;
+            g_slicks_diag_saved_partial_count=(unsigned char)count;
+            SetIoErr(ERROR_OBJECT_WRONG_TYPE);
+            break;
+        }
+        if(!ExNext(lock,&info)) break;
         if(info.fib_DirEntryType>=0) continue;
         unsigned n=0; while(n<13 && info.fib_FileName[n]) ++n;
         if(n<5 || n>12 || info.fib_FileName[n-4]!='.') continue;
@@ -62,6 +72,7 @@ int slicks_amiga_saved_files(unsigned char names[40][9])
         ++count;
     }
     if(IoErr()==ERROR_NO_MORE_ENTRIES) result=count;
+    else if(g_slicks_diag_saved_partial_count) g_slicks_diag_saved_lock_error=IoErr();
 done:
     if(lock) UnLock(lock);
     process->pr_WindowPtr=window; return result;

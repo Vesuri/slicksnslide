@@ -1,4 +1,4 @@
-# CHAMPSAVX: genuine first intermission, failed startup catalogue Lock.
+# CHAMPSAVX/Y: startup Lock failure / injected partial next-entry failure.
 source diag_menu_rectangles.gdb
 set $scans=0
 set $warnings=0
@@ -10,7 +10,8 @@ commands
   set $scans=$scans+1
   set $process=(struct Process *)SysBase->ThisTask
   set $window=$process->pr_WindowPtr
-  if $scans!=1 || !g_slicks_diag_saved_lock_failure
+  set $partial=g_slicks_diag_saved_next_failure
+  if $scans!=1 || (!g_slicks_diag_saved_lock_failure && !$partial)
     quit 1
   end
   continue
@@ -29,6 +30,9 @@ commands
     quit 1
   end
   set $warnings=$warnings+1
+  if $partial && (g_slicks_diag_saved_next_failure || g_slicks_diag_saved_partial_count!=1)
+    quit 1
+  end
   continue
 end
 break slicks_diag_saved_ready
@@ -60,7 +64,7 @@ commands
   if $scans!=1 || $warnings!=1 || $returns!=1 || $starts!=1 || g_slicks_diag_force_exit || g_slicks_diag_restore_status!=31
     quit 1
   end
-  printf "SAVED_CATALOGUE_LOCK_FAILURE_RETURN_EXIT_OK io_error=%ld\n",g_slicks_diag_saved_lock_error
+  printf "SAVED_CATALOGUE_SCAN_FAILURE_RETURN_EXIT_OK io_error=%ld partial=%u\n",g_slicks_diag_saved_lock_error,g_slicks_diag_saved_partial_count
   quit
 end
 continue
