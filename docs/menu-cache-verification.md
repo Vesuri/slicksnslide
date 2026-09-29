@@ -677,3 +677,36 @@ failure and after warning dismissal match exactly. Logs:
 All five runners closed their emulators. These are 2 MiB A1200 publication and
 modal-lifetime checks; they do not close other menu owners, manual joystick
 testing or the release-validation gate.
+
+## Pause bounds and emergency-warning ownership
+
+Pause now accumulates lifetime painter bounds in the existing saved-screen
+rectangle list. Closing restores only those blocks in chunky memory, including
+areas touched by child dialogs; returning to the untouched race bitmap needs
+no full-screen conversion. The saved snapshot itself remains full-size.
+
+The normal pause/Help/Controllers/speed/resume scenario and nested child-failure
+retry scenario each pass 13 complete bitplane/chunky publication comparisons.
+Captured race pixels and car state before and after the menus match exactly.
+The original race-menu oracle passes 17,920 key/navigation/result/modal cases.
+Fixtures: `diag_pause_rectangles.gdb`, `diag_pause_nested_rectangles.gdb`.
+Logs: `tmp/pause-bounds-native.log`, `tmp/pause-nested-bounds.log`,
+`tmp/pause-bounds-host.log`. The normal pre-change control is recorded in
+`tmp/pause-rectangles.log`.
+
+The opening-failure gate initially failed: the emergency warning called
+`platform_begin` while the cached pause owner already held the display.
+It now uses the ownership-aware view switch and retains ownership on dismissal.
+The first warning initializes the inactive menu bitmap in full, since that
+bitmap can still contain the title; this is not an incremental selection repaint.
+
+The strengthened `diag_pause_failure.gdb` passes all five injected opening
+failures, warning dismissal, successful retry and resumed engine/simulation
+checks. It rejects display release during each pause interval. All five warning
+bitmaps independently decode to their complete 64,000-byte chunky surfaces;
+all five before/after race structures, configurations and chunky surfaces are
+byte-identical. Logs: `tmp/pause-warning-native.log` and
+`tmp/pause-warning-ownership.log`; initial failure: `tmp/pause-failure-bounds.log`.
+The normal target build passes. Debug runs were muted and their runners closed
+the emulators. These checks do not establish coverage of other menu owners or
+the broader release gate.

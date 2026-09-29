@@ -4,6 +4,16 @@ set $closed = 0
 set $steps = 0
 set $advanced = 0
 set $warnings = 0
+set $pause_owned = 0
+break *slicks_amiga_platform_end
+commands
+  silent
+  if $pause_owned
+    printf "PAUSE_FAILURE_UNEXPECTED_DISPLAY_RELEASE\n"
+    quit 1
+  end
+  continue
+end
 break slicks_diag_pause_warning_ready
 commands
   silent
@@ -12,6 +22,9 @@ commands
     quit 1
   end
   eval "dump binary memory .run/pause-failure-v1/warning%u.chunky $pixels $pixels+64000", $warnings
+  set $planes = $p->views[0].bitmap->Planes[0]
+  eval "dump binary memory .run/menu-rectangles/%u.chunky $pixels $pixels+64000", $warnings
+  eval "dump binary memory .run/menu-rectangles/%u.planar $planes $planes+64000", $warnings
   set $palette = help_warning.renderer.painter.ui.palette
   dump binary memory .run/pause-failure-v1/warning.palette $palette $palette+768
   continue
@@ -20,6 +33,7 @@ break slicks_diag_pause_live_enter
 commands
   silent
   set $entered = $entered+1
+  set $pause_owned = 1
   set $r = g_slicks_diag_paused_race
   set $p = g_slicks_diag_profile_platform
   if !$r || !$p->active || $entered > 6
@@ -54,6 +68,7 @@ commands
   eval "dump binary memory .run/pause-failure-v1/after%u.chunky $pixels $pixels+64000", $entered
   eval "dump binary memory .run/pause-failure-v1/after%u.config $configuration (char *)$configuration+sizeof(*$configuration)", $entered
   set $recovered = $recovered+1
+  set $pause_owned = 0
   printf "PAUSE_FAILURE_RECOVERED %u\n", $recovered
   continue
 end
@@ -73,6 +88,7 @@ commands
     quit 1
   end
   set $closed = 1
+  set $pause_owned = 0
   continue
 end
 break slicks_diag_frame_ready

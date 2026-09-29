@@ -46,7 +46,7 @@ Implementation and completed verification evidence are separate in
   actual full-screen replacements. Verify producer coverage and native pixels.
   Remaining publication coverage: title transitions/pulse, remaining Players
   picker/Help paths, wider Tracks scrolling and storage/format failures,
-  other Help owners, pause/speed, shop, saved-game/recovery,
+  other Help owners, shop, saved-game/recovery,
   intermission/results and registration.
   Audit remaining full-width text callbacks (standings), full-screen modal
   restores and direct row-converter bypasses separately from the shared

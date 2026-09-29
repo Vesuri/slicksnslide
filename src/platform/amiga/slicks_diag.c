@@ -2541,7 +2541,7 @@ static int pause_unavailable_notice(struct SlicksAmigaPlatform *platform,struct 
     int result=-1;
     if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
     slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
-    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    if(show_menu(platform)) goto done;
     platform->key_tail=platform->key_head;
     slicks_diag_pause_warning_ready();
     if(diagnostic) {
@@ -2555,7 +2555,8 @@ static int pause_unavailable_notice(struct SlicksAmigaPlatform *platform,struct 
             if(!(raw&128) && raw<0x60 && amiga_raw_to_dos_scan(raw)) { result=0; goto done; }
     }
 done:
-    slicks_amiga_platform_end(platform);
+    /* Both the warning save-under and the race view are resident. The
+     * caller switches back to view 1 without releasing the display. */
     if(slicks_amiga_emergency_warning_close()) result=-1;
     return result;
 }

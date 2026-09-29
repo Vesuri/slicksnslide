@@ -112,8 +112,7 @@ int slicks_amiga_race_menu_close(struct SlicksAmigaPlayerMenu *m)
        m->race_menu->speed_active) return -1;
     struct SlicksAmigaRaceMenu *d=m->race_menu;
     slicks_race_menu_render_close(&d->renderer,&d->surface);
-    for(unsigned long i=0;i<64000;++i) m->renderer.ui.pixels[i]=m->saved[i];
-    dirty(m,0,0,320,200);
+    slicks_amiga_player_menu_restore(m);
     FreeMem(d,sizeof *d); m->race_menu=0; return 0;
 }
 int slicks_amiga_race_menu_draw(struct SlicksAmigaPlayerMenu *m)
@@ -173,6 +172,7 @@ int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *m,
     d->surface=(struct SlicksRecordsRenderer){.ui=m->renderer.ui,.fonts={m->fonts[0],m->fonts[1]},
         .text=records_text,.context=m};
     for(unsigned long i=0;i<64000;++i) m->saved[i]=m->renderer.ui.pixels[i];
+    m->saved_dirty_count=0; m->track_saved_dirty=1;
     if(slicks_race_menu_render_open(&d->renderer,&d->surface,&d->state,
         percent,d->tinted,sizeof d->tinted)) { FreeMem(d,sizeof *d); return -1; }
     m->race_menu=d;
