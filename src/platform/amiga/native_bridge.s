@@ -62,6 +62,7 @@ slicks_draw_title_status_text:
 	moveq #1,d3
 	moveq #10,d4
 	moveq #0,d5
+	move.w slicks_title_third_color,d5
 	move.w #$0100,d6
 	jsr sui_font_string_planar
 	movem.l (sp)+,d2-d7/a2-a6

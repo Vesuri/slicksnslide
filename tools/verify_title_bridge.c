@@ -91,10 +91,22 @@ int main(int argc,char **argv)
         if(reg(uc,UC_M68K_REG_A0)!=0x50000 || reg(uc,UC_M68K_REG_A2)!=0x61000 ||
            (reg(uc,UC_M68K_REG_D0)&65535)!=x || (reg(uc,UC_M68K_REG_D1)&65535)!=114 ||
            (reg(uc,UC_M68K_REG_D2)&65535)!=flags || reg(uc,UC_M68K_REG_D3)!=1 ||
-           reg(uc,UC_M68K_REG_D4)!=10 || reg(uc,UC_M68K_REG_D5)!=0 ||
+           reg(uc,UC_M68K_REG_D4)!=10 || reg(uc,UC_M68K_REG_D5)!=0x56 ||
            (reg(uc,UC_M68K_REG_D6)&65535)!=0x100) return 1;
     }
     puts("Title status font bridge: 640 alignment/coordinate/argument cases pass");
+    for(unsigned colour=0;colour<256;++colour) {
+        unsigned registers[]={UC_M68K_REG_A0,UC_M68K_REG_A1,UC_M68K_REG_D0,
+            UC_M68K_REG_D1,UC_M68K_REG_D2,UC_M68K_REG_D3};
+        unsigned values[]={0x40000,0x61000,160,85,colour,0};
+        for(unsigned i=0;i<6;++i) check(uc_reg_write(uc,registers[i],&values[i]));
+        run(uc,be32(code+36),be32(code+32));
+        unsigned char actual;check(uc_mem_read(uc,0x50006,&actual,1));
+        if(actual!=colour || reg(uc,UC_M68K_REG_D2)!=5 ||
+           reg(uc,UC_M68K_REG_D5)!=0x56 || reg(uc,UC_M68K_REG_A1)!=0x50000 ||
+           reg(uc,UC_M68K_REG_A2)!=0x61000) return 1;
+    }
+    puts("Title label font wrapper: 256 foreground colours preserve the original palette-selected shadow");
     uc_close(uc);
     puts("Title GCC bridge: 65536 dispatch and 512 text/selection argument cases pass");
     return 0;

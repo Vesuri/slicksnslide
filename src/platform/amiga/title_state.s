@@ -7,6 +7,7 @@
 	xdef	slicks_title_ordinary_color
 	xdef	slicks_title_selected_color
 	xdef slicks_title_background
+	xdef slicks_title_text_page
 
 slicks_title_counter:
 	dc.b	0
@@ -27,3 +28,5 @@ slicks_title_selected_color:
 	dc.w	0
 slicks_title_background:
 	dc.l 0
+slicks_title_text_page:
+	dc.w 0

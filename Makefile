@@ -1129,7 +1129,7 @@ build/verify_title_menu: tools/verify_title_menu.c
 verify-title-menu: build/title_menu.elf build/verify_title_menu
 	build/verify_title_menu build/title_menu.elf
 
-build/title_bridge.bin: tools/title_bridge_test.s src/platform/amiga/native_bridge.s src/ui/sui_title_dispatch.s
+build/title_bridge.bin: tools/title_bridge_test.s src/platform/amiga/native_bridge.s src/ui/sui_title_dispatch.s src/ui/sui_text.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
 

@@ -17,6 +17,8 @@ and a production-screen comparison establish different things.
 | F06 | Extra visible intermission rows and altered Up navigation | Original `245bb..245c8` forces the first navigable row to 2, and `245da..24702` draws rows 2/3. Production enabled `expose_actions` and intercepted Up before the original dispatcher. |
 | F07 | Menu transitions briefly expose AmigaOS | Menu owners end/begin hardware takeover around disk reads and even RAM-only close/redraw transitions. The separate resident-assets inventory covers the dependencies. |
 | F08 | Title animation cadence is not the full original title loop | Existing registration evidence explicitly excludes this; original `29f2c` selects between two renderers, while production uses a bounded translated title path. Detailed animation/state coverage remains unverified, not a completed feature. |
+| F09 | Main-title label and counter shadows forced to black | Original `297c4..297e8` sets DS:1600 to nearest (10,10,20); native title font wrappers passed zero instead of the translated third-colour result. Corrected below. |
+| F10 | Arcade title uses the ordinary title renderer | Original `29f31..29f47` calls the mode-5 predicate at `198b6`, then selects `29afa` instead of `29753`. Native presentation always uses the ordinary title; this also needs its associated input routes audited. |
 
 The first pass also finds hardwired `lang1.txt` in live pause/intermission.
 This is a **candidate**, not yet a confirmed bug: audit the original language
@@ -101,6 +103,21 @@ unchanged and restoration 31. This muted 2 MiB/no-Fast run does not exercise
 an interactive arrow sequence; it is not whole-title or whole-port acceptance.
 
 ## Coverage review required for whole-port acceptance
+
+### F09 title shadow correction (2026-09-29)
+
+Main labels and status counters now pass the original palette-selected shadow
+colour (`slicks_title_third_color`) into the real planar font renderer. Other
+generic small-title text retains its prior policy. Shared title text page state
+is owned by `title_state.s` alongside the other title state, allowing the bridge
+test to link the actual label wrapper rather than aliasing both font entries
+to the same stub.
+
+Fresh bridge checks include all 256 foreground colours with a nonzero shadow,
+640 status-counter ABI cases, and the existing 65,536 dispatch, 512 legacy
+text/selection and 320 original-font cases. The native target builds and the
+muted `.run/fidelity-title-shadow` REGCHECK exits with restoration 31. Original
+font rendering itself remains covered by the separate font pixel oracles.
 
 ### F02 title status restoration (2026-09-29)
 

@@ -40,6 +40,8 @@ Implementation and completed verification evidence are separate in
   status renderer is restored and initial native-screen checks pass. Close
   F08's original title animation. Audit the
   remaining title shortcuts and mouse routes against original callers.
+  Implement F10's separate Arcade title renderer and audit its input routes;
+  the original mode-5 caller does not draw the ordinary six-row title.
   F03–F05 now have direct original-instruction layout/navigation comparisons;
   native interactive sequence coverage remains to be extended.
 - Repair UIMENU2's extra-buffer fragmentation and assert that fault injection
