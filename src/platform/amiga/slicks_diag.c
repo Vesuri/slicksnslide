@@ -939,7 +939,7 @@ static void arcade_text(void *p,unsigned char *logical,const unsigned char *font
     __asm volatile("" ::: "memory");
 }
 static struct SlicksArcadePulseCache title_arcade_cache;
-static unsigned char title_arcade_pulse;
+static unsigned char title_arcade_pulse,title_arcade_owner_changed;
 static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
@@ -1019,7 +1019,7 @@ static void redraw_title_configuration(
         }
     }
 owner:
-    if(registration.name[0]) {
+    if(registration.name[0] && (!title_arcade_pulse || title_arcade_owner_changed)) {
         slicks_draw_title_registration(logical,registration.name);
         struct SlicksChunkyUi bounds={0,palette,arcade_dirty,0};
         slicks_font_text_dirty(&bounds,slicks_title_small_font,registration.name,
@@ -6269,7 +6269,9 @@ int main(void)
             if(configuration.options[0]!=5) {
                 pulse_normal_title(&platform,logical,chunky,source_palette,menu_selection);
             } else {
-                slicks_tick_title_registration(logical,registration.name,source_palette);
+                unsigned char owner=slicks_title_render_state[6];
+                slicks_advance_title_registration(source_palette);
+                title_arcade_owner_changed=(unsigned char)(owner!=slicks_title_render_state[6]);
                 title_arcade_pulse=1;
                 redraw_title_configuration(&platform,logical,chunky,source_palette,
                     menu_selection,selected_vehicle,track_path,0);

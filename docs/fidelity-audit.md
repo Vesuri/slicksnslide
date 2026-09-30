@@ -891,6 +891,43 @@ This verifies full redraws replace cached pulse state at those transitions.
 All four native candidate runs use stock PAL A1200, 2 MiB Chip/no Fast RAM,
 confirmed 4 KiB stack and muted audio; their owned emulators are closed.
 
+### Retain unchanged Arcade owner glyphs (2026-09-30)
+
+Arcade now advances registration phase/colour through the existing state-only
+bridge instead of drawing the name before the body and then again afterward.
+At the final owner-label step, a steady pulse draws only if the resulting
+palette index changed. Complete redraws remain unconditional, so returning
+from a child menu does not depend on old pixels being present. The original
+name bridge temporarily changes and restores the small-font colour; skipping
+an unchanged draw therefore requires no replacement font mutation. The
+ordinary title-loop vblank wait remains in force on no-publication updates.
+
+`verify-title-bridge` passes the state-only palette/state/ABI checks, 2,048
+Arcade font/flags/shadow cases and the existing dispatch/text/selection cases.
+Build and host logs: `tmp/arcade-owner-build.log`, `tmp/arcade-owner-host.log`.
+
+Both registered native cycles match every original pixel in all 65 frames:
+
+| Row / language | Run under `tmp/standalone-release-` | Publications |
+| --- | --- | --- |
+| 0 / English | `4tdo1ctc` | 27 |
+| 1 / Finnish | `o7066so4` | 30 (previous build: 75) |
+
+Both original-wrapper verifications report `registered=65`. Their unchanged
+startup full-publication count is one, native display errors are zero and
+final restoration is 31. These counts do not establish elapsed frame time.
+Private key/name captures remain ignored and are not part of the commit.
+
+The no-key English row-0 regression (`1qjcwoqt`) also matches all 65 original
+frames (`registered=0`): 23 publications, unchanged full count two, zero display
+errors and restoration 31. Registered Finnish Options return (`wy_j9arn`)
+matches all 64,000 original wrapper pixels (`registered=1`) after the child
+closes. Its four player-count selections, 41 display checks, Options roundtrip
+and two-human/two-computer race handoff pass with zero errors and restoration
+31. These runs use the same stock/default-stack setup and their emulators are
+closed. This closes the unchanged-owner suppression change, not remaining
+cadence or other nested-menu font-lifetime coverage.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

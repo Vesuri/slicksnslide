@@ -192,7 +192,7 @@ slicks_draw_title_menu_selection:
 ; C ABI: slicks_tick_title_registration(planes, text, palette).
 ; Advance the original colour pulse only while the title is visible.
 ; C ABI: slicks_advance_title_registration(palette), state-only for a retained
-; normal title. Full/Arcade callers keep their unconditional painter below.
+; title. Full redraw callers keep their unconditional painter below.
 slicks_advance_title_registration:
 	movem.l d2-d7/a2-a6,-(sp)
 	movea.l 48(sp),a0

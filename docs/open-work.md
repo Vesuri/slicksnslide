@@ -105,11 +105,9 @@ Implementation and completed verification evidence are separate in
   pulse/original-wrapper comparisons and no full-screen pulse publication.
   Ordinary visible rows now all have complete native pulse-cycle coverage.
   Remaining registered-owner/language combinations and title-pulse cost/cadence
-  remain separate checks. Arcade body pulses now use affected glyph bounds;
-  eliminate its still-unconditional registered-owner drawing/publication when
-  the owner ink is unchanged, preserving phase, font-alias and draw order.
-  Use the registered complete-cycle oracle as well as the unregistered and
-  Options/player-count transition gates before accepting that change.
+  remain separate checks. Arcade body and registered-owner pulses now publish
+  only changed glyphs; remaining cadence and nested-menu font-lifetime coverage
+  must not be inferred from the complete-cycle and Options-return pixel gates.
   This is menu fidelity/publication work,
   not a resumption of the paused gameplay optimization backlog. Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:
