@@ -1006,6 +1006,39 @@ the remaining F10/F11/F12/input/demo callers. No production change was needed.
 
 ## Players picker and Help publication coverage
 
+### Nested Help font and parent lifetime checks (2026-09-30)
+
+`diag_help.gdb` now captures the parent before each of its two Help visits,
+not merely the first viewer's save-under. It checks the three font aliases and
+dirty callback/context after each close, and dumps all 18,000 bytes of the
+parent's three font banks plus all 64,000 parent pixels before and after each
+visit. The host compares both pairs byte-for-byte. Archive reopen and display
+teardown are forbidden from entry until the corresponding close. Tracks is
+now accepted as a third owner by this shared fixture, in addition to Options
+and Players. Existing link/history/reopen and final system-restore checks
+remain in place.
+
+Fresh saved-Finnish fixtures on ff0b7ba pass:
+
+| Owner / argument | Run under `tmp/standalone-release-` | Publications |
+| --- | --- | --- |
+| Options / OPTIONSH | `5ghxlh_b` | 8 |
+| Players / OPTIONSJ | `ottzef43` | 8 |
+| Tracks / OPTIONSO | `3qk1zf12` | 8 |
+
+Each run logs its expected owner and `lang3.txt` at both entries. All six
+visits restore the complete font banks and parent pixels exactly; aliases and
+callback/context remain intact. All 24 bitplane publications independently
+match every chunky pixel. Each run reaches system restoration 31 on stock
+PAL 68020, 2 MiB Chip/no Fast, default 4 KiB stack, muted audio, and its emulator
+is closed. Use `diag_nested_help_rectangles.gdb` for these combined checks;
+the per-visit captures are in `.run/help-owner`.
+
+This covers native nested Help link/history/reopen lifetimes for those three
+owners with a saved translated language. It does not establish title-return
+font aliases, every other language/owner combination, or allocation failures.
+No production change was needed.
+
 ### Saved-language Players Help matrix (2026-09-30)
 
 At 4692007, OPTIONSK now passes with fresh saved configurations for all eight

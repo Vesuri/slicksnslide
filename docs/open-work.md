@@ -46,7 +46,8 @@ Implementation and completed verification evidence are separate in
   actual full-screen replacements. Verify producer coverage and native pixels.
   Remaining publication coverage: other Help owners and navigation/error
   routes (Players previous/next/Contents/close now passes all eight supplied
-  saved languages) and remaining
+  saved languages; Options/Players/Tracks link/history/reopen now has
+  saved-Finnish full-font/parent restoration and cache-ownership coverage) and remaining
   owner-specific navigation outside the documented coverage,
   shop sparse-selection policy/native coverage
   (ignored-key and Help-return redundant draws are removed and verified),
