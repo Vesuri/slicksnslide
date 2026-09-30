@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-09-30 — retain the displayed image during record I/O
+
+Post-race record reads, retries and writes now use the platform's disk-service
+window instead of full display teardown. The caller stops Paula first; every
+window ends before any menu input, rendering or warning. Cleanup closes an
+outstanding window before releasing the records owner.
+
+- `tmp/standalone-release-qrv35cpx`, OPTIONSBC with `diag_records_io.gdb`:
+  two race returns and five I/O windows pass on Workbench-loaded stock 2 MiB,
+  no Fast RAM, default 4 KiB stack. Independent dump comparisons verify all
+  64,000 displayed bytes and 768 palette bytes unchanged across each window;
+  both race buffers also restore exactly, with independently decoded planes.
+- `...-ik_pangu`, OPTIONSBC with the full standings fixture: read Close failure
+  and retry, write failure and retry, two record insertions/returns, standings,
+  profile persistence and system restoration pass. Both race return images
+  match. The generic first-record saved-file checker is not a pass here: the
+  first track did not take the write-recovery path; the write warning occurred
+  on the second track. Do not infer saved-byte coverage from that mismatch.
+- Full teardown is forbidden for the complete records-owner lifetime. Each
+  record write must have active retained display ownership, OS I/O enabled and
+  a null OS ActiView. The separate capture fixture avoids exceeding FS-UAE's
+  breakpoint capacity; two earlier over-capacity runs never began the test.
+
+All owned emulators were muted and closed. This is a scoped B10 improvement,
+not completion: intermission, ending and other disk boundaries remain open.
+
 ## 2026-09-30 — startup-owned retained dialog parents
 
 Pause, intermission and track-list parents use a distinct owner-tagged union

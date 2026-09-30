@@ -21,3 +21,16 @@ for race in range(2):
             if value != chunky[y*320+x]:
                 raise SystemExit(f"Race {race}: pixel ({x},{y}) differs at owner entry")
 print("Two record returns preserve all 64000 source pixels and all eight race bitplanes")
+
+# The separate I/O fixture captures the displayed image, which can be either
+# the race or its records/recovery overlay. Never accept a missing after dump.
+windows = sorted(root.glob("io-*-before.planar"))
+for before_path in windows:
+    stem = before_path.name.removesuffix("-before.planar")
+    for extension, size in (("planar", 64000), ("palette", 768)):
+        before = (root / f"{stem}-before.{extension}").read_bytes()
+        after = (root / f"{stem}-after.{extension}").read_bytes()
+        if len(before) != size or before != after:
+            raise SystemExit(f"{stem}: displayed {extension} changed during disk I/O")
+if windows:
+    print(f"{len(windows)} disk I/O windows preserve every displayed pixel and palette byte")

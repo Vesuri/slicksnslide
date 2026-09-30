@@ -3536,7 +3536,9 @@ static int run_record_results(struct SlicksAmigaPlatform *platform,
     struct SlicksRecordEntrant entrants[4];
     struct ClockData date;
     int result=-1;
-    slicks_amiga_platform_end(platform);
+    /* The caller has stopped Paula. Give DOS its interrupt/task service while
+     * keeping the current race/records bitmap and copper list on screen. */
+    if(platform->active && slicks_amiga_platform_begin_io(platform)) goto done;
     struct UtilityBase *UtilityBase=(struct UtilityBase *)OpenLibrary((CONST_STRPTR)"utility.library",37);
     if(!UtilityBase) goto done;
     struct DateStamp now; DateStamp(&now);
@@ -3544,7 +3546,8 @@ static int run_record_results(struct SlicksAmigaPlatform *platform,
         (unsigned long)now.ds_Tick/TICKS_PER_SECOND,&date);
     CloseLibrary((struct Library *)UtilityBase);
 load_records:
-    slicks_amiga_platform_end(platform);
+    if(platform->active && !platform->io_active &&
+       slicks_amiga_platform_begin_io(platform)) goto done;
     records=(struct SlicksTrackRecords){0};
     if(g_slicks_diag_record_alloc_stage==1) {
         bytes=0; ++g_slicks_diag_record_alloc_stage;
@@ -3555,6 +3558,7 @@ load_records:
     }
     long size=bytes?load_plain_file(g_slicks_diag_record_faults&1?"missing-post-race-track":path,bytes,8192):-1;
     g_slicks_diag_record_faults&=(unsigned char)~1;
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) goto done;
     if(size<0 || size>=8192 || slicks_track_records(bytes,(unsigned long)size,&records)<0) {
         if(bytes) { FreeMem(bytes,8192); bytes=0; }
         g_slicks_diag_record_results_phase=4;
@@ -3635,7 +3639,7 @@ prepare_table:
 save_records:
     if(outcome.changed) {
         for(;;) {
-            slicks_amiga_platform_end(platform);
+            if(platform->active && slicks_amiga_platform_begin_io(platform)) goto done;
             unsigned char changed;
             char obstruction[80]; unsigned at=0;
             unsigned char own_obstruction=0;
@@ -3652,6 +3656,7 @@ save_records:
             /* Remove only the empty directory this diagnostic just created.
              * Real recovery files are never removed by the UI. */
             if(own_obstruction && !DeleteFile((CONST_STRPTR)obstruction)) goto done;
+            if(platform->io_active && slicks_amiga_platform_end_io(platform)) goto done;
             /* Old-format tracks are an intentional original no-op, not a
              * failed write requiring an endless Retry prompt. */
             if(g_slicks_diag_record_save.result==SLICKS_SETUP_SAVED) break;
@@ -3667,6 +3672,7 @@ save_records:
     result=0;
 done:
     g_slicks_diag_record_menu=0;
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&archive);
     if(bytes) FreeMem(bytes,8192);
