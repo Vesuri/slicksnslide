@@ -53,6 +53,10 @@ def main():
         script=(boot/'Install').read_text()
     script=replace_form(script,'(welcome)','(if 0 (welcome))')
     script=replace_form(script,'(set #whd',f'(set #whd {int(whd)})')
+    if '(message "The WHDLoad icon needs' in script:
+        # The fixture has no Kickstart image: prove the warning is reached
+        # without blocking on its requester.
+        script=replace_form(script,'(message "The WHDLoad icon needs','(set #kick-warned 1)')
     script=replace_form(script,'(set #parent','(set #parent "DH2:out")')
     script=replace_form(script,'(set #archive','(set #archive "DH1:tmp/Slix151-release.zip")')
     script=replace_form(script,'(set #temp','(set #temp "DH2:scratch")')

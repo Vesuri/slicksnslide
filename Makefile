@@ -1638,16 +1638,36 @@ amiga-debug: amiga
 	cd amiga && . ./env.sh && ./debug.sh
 
 RELEASE_DIR ?= dist
-.PHONY: release-package dist install-data-helper
+RELEASE_HOST_CHECKS = verify-race-timing verify-drive-physics verify-race-lap-limit \
+	verify-car-collision verify-title-help verify-loading-pixels
+.PHONY: release release-package dist release-check install-data-helper install-data-test
 install-data-helper:
 	$(MAKE) -C tools/install-data
-release-package dist: amiga
+install-data-test:
+	$(MAKE) -C tools/install-data test
+release: dist
+# Clean Amiga rebuild, then package. Refuses to overwrite an existing archive.
+release-package dist:
+	cd amiga && . ./env.sh && $(MAKE) clean >/dev/null && $(MAKE)
 	. amiga/env.sh && $(MAKE) -C tools/install-data amiga
 	$(MAKE) -C whdload
 	mkdir -p build/release
 	. amiga/env.sh && elf2hunk amiga/out/SlicksDiag.elf build/release/Slicks -s
 	$(PYTHON) tools/package_release.py build/release/Slicks $(RELEASE_DIR)
 	$(PYTHON) tools/check_release.py $(RELEASE_DIR)/Slicks-$(shell cat VERSION).lha
+# Host oracles, helper tests, a two-build determinism check and a scratch
+# package audit. The shipped archive is built separately by `make dist`.
+release-check: $(RELEASE_HOST_CHECKS) install-data-test
+	@# The stripped release image: debug-symbol suffixes vary between builds.
+	cd amiga && . ./env.sh && \
+	  $(MAKE) clean >/dev/null && $(MAKE) >/dev/null 2>&1 && \
+	  elf2hunk out/SlicksDiag.elf ../build/determinism-1 -s >/dev/null && \
+	  $(MAKE) clean >/dev/null && $(MAKE) >/dev/null 2>&1 && \
+	  elf2hunk out/SlicksDiag.elf ../build/determinism-2 -s >/dev/null && \
+	  cmp ../build/determinism-1 ../build/determinism-2 && \
+	  echo "PASS: deterministic stripped executable $$(shasum -a 256 ../build/determinism-2 | cut -d' ' -f1)"
+	rm -rf build/release-check
+	$(MAKE) release-package RELEASE_DIR=build/release-check
 
 amiga-check: amiga
 	cd amiga && . ./env.sh && ./diag_run.sh

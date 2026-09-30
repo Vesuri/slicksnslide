@@ -125,46 +125,22 @@ instead:
 
 ## C. Packaging
 
-Follow Vette's layout (`~/Documents/Vette`: `Makefile` `dist`/`release-check`,
-`tools/check_release.py`, `release/{Install,ReadMe}`,
-`src/platform/amiga/version.s`). Keep the Slicks-specific extras: the
-standalone `Play` IconX launcher next to the WHDLoad icon, `CREDITS.txt`,
-`puff-license.txt`, and data installed from the user's `Slix151.zip`.
+Done 2026-09-30 in the Vette layout ([install-original-data.md](install-original-data.md)):
+- `$VER` strings;
+- the stricter `check_release.py`;
+- the `release`, `dist` and `release-check` targets;
+- the ReadMe in WHDLoad-install format;
+- the installer's Kickstart/RTB warning;
+- the `dist/` cleanup.
 
-- [ ] **C1. `$VER` string.** Add `src/platform/amiga/version.s` holding
-  `$VER: Slicks <VERSION> (dd.mm.yyyy)` in a retained section, and link it into
-  the release executable. Add `; $VER: Install <VERSION> (dd.mm.yyyy)` as line 2
-  of `release/Install`. Choose the version number: `VERSION` says 0.1.
-- [ ] **C2. `tools/check_release.py`.** Assert:
-  - the three `$VER` strings (game, slave, Install) match `VERSION`;
-  - `APPNAME=Slicks`, with no other project names in `Install.info`;
-  - `MultiView` in `ReadMe.info`;
-  - the slave tooltype and the `(tackon #parent "Slicks")` line in `Install`;
-  - the ReadMe section headings and the GitHub URL.
-- [ ] **C3. Makefile.**
-  - `release: dist`.
-  - `dist` does a clean rebuild of `amiga/` rather than depending on the
-    incremental build.
-  - `release-check`: host regression suite, `tools/install-data` test,
-    two-build SHA-256 determinism check, package, `check_release.py`.
-  - A top-level `install-data-test` target.
-- [ ] **C4. `release/ReadMe`.** Use the Vette/RoF WHDLoad-install layout, with
-  the current content reformatted:
-  1. disclaimer, then "This install applies to…";
-  2. Requirements, Installation, Display, Quitting, Features, Controls,
-     Registration;
-  3. History (`version <VERSION> (<date>): initial Amiga release`);
-  4. Contact (github.com/Vesuri/slicks, whdload.de);
-  5. the helper licence.
-- [ ] **C5. Installer parity.**
-  - Add the "drawer exists: Remove / Keep" prompt, keeping keys and saves by
-    default.
-  - The slave uses kickemu, so add Vette's Kickstart 3.1 image/`.RTB` check and
-    warning.
-  - Make the WHDLoad icon's stack consistent with the slave.
-- [ ] **C6. Housekeeping.** Delete the stray `dist/{display-end,registration-verified,release,vblank-limit}-*`
-  directories. Add a Release section (`make dist`, `make release-check`, tools
-  needed) to the development docs.
+Vette's "remove existing drawer" prompt is deliberately not copied: the Slicks
+drawer holds the user's key, profiles and championships, and the existing
+Reinstall/Keep data prompt already covers updates.
+
+- [ ] **C1. Version number.** The user chooses the release version (currently
+  `0.1`). Set it in `VERSION`, `src/platform/amiga/version.s`,
+  `whdload/SlicksSlave.s`, `release/Install` and the ReadMe history. Then
+  run `make release-check`.
 
 ## D. Release gate (run once, after B and C)
 

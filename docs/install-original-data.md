@@ -76,13 +76,21 @@ The archive has 12 allowlisted members including the drawer icon. No recursive
 asset collection, original files, keys, saves, ROMs, RTBs or WHDLoad binary.
 Icons follow Vette/Rescue on Fractalus; see [icon provenance](../release/icons/README.md).
 
+Release: `make release-check` runs the host oracles, the helper test, a
+two-build byte comparison of the stripped executable and a scratch package
+audit in `build/release-check/`. `make dist` (alias `make release`) does a clean
+Amiga rebuild and writes `dist/Slicks-$(cat VERSION).lha`. It refuses to
+overwrite an existing archive. `tools/check_release.py` also requires the
+game, slave and Installer `$VER` strings to match `VERSION`, the ReadMe
+section headings and history entry, and the project URL.
+
 Tests:
 
 ```sh
 make -C tools/install-data test
 python3 tools/install-data/test_amiga.py
 python3 tools/install-data/test_installer_script.py /local/Installer --package dist/Slicks-0.1.lha
-python3 tools/install-data/test_installer_script.py /local/Installer --whd --keep
+python3 tools/install-data/test_installer_script.py /local/Installer --whd --keep  # needs KICKSTART (amiga/env.sh)
 python3 tools/test_standalone_release.py /local/test-install/Slicks
 python3 tools/check_release.py dist/Slicks-0.1.lha
 ```

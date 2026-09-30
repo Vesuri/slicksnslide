@@ -59,5 +59,17 @@ def main():
     assert payloads["ReadMe.info"]==readme_icon()
     assert b"Mark Adler" in payloads["puff-license.txt"]
     assert not any(n.lower().endswith((".rek",".cfg",".plr",".sss",".000",".dat",".ss")) for n in payloads)
+    version=(root/"VERSION").read_text().strip().encode("ascii")
+    assert b"$VER: Slicks "+version+b" (" in payloads["Slicks"], "wrong game version"
+    assert b"$VER: Slicks.slave "+version+b" (" in payloads["Slicks.slave"], "wrong slave version"
+    assert b"; $VER: Install "+version+b" (" in payloads["Install"], "wrong installer version"
+    for other in (b"Rescue on Fractalus",b"Vette"): assert other not in payloads["Install.info"]
+    assert b"MultiView\0" in payloads["ReadMe.info"]
+    assert b'(settooltype "Slave" "Slicks.slave")' in payloads["Install"]
+    assert b'(set #dest (tackon #parent "Slicks"))' in payloads["Install"]
+    for heading in (b"Requirements",b"Installation",b"Display",b"Controls",b"History",b"Contact"):
+        assert b" "+heading+b":\n -"+b"-"*len(heading) in payloads["ReadMe"], heading
+    assert b"version "+version+b" (" in payloads["ReadMe"], "ReadMe history lacks this version"
+    assert b"https://github.com/Vesuri/slicks" in payloads["ReadMe"]
     print(f"PASS: {len(payloads)} allowlisted LH5 members; independent decompression, CRCs, executables, scripts and icons match")
 if __name__=="__main__": main()
