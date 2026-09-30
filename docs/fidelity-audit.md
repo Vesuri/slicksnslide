@@ -1718,6 +1718,14 @@ earlier checkpoint run completed (`tmp/loading-io-visual.log` was subsequently
 reused by the failed Lua capture attempt); neither run establishes visible
 scanout. All emulators started for these attempts were closed.
 
+An additional monitor-capability probe on 2026-09-30 reached the I/O checkpoint
+but `monitor help` returned `Protocol error with Rcmd: 01`
+(`tmp/standalone-release-ycojbzzp`). It is not a lifecycle or scanout pass;
+the runner closed the emulator. The installed binary exposes profile/reset
+monitor strings, not evidence of a supported screenshot monitor command.
+The host event-post permission preflight also returned false, so no screenshot
+shortcut was injected. A manual visible check remains requested.
+
 The 2026-09-30 recheck on 4a159af also passes both complete I/O/demo cycles
 and final restoration: `tmp/standalone-release-uvx96q5_` (earlier repeat
 `u87_t_sc`). The desktop controller still cannot select the command-line

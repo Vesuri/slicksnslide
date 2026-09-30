@@ -2551,6 +2551,46 @@ Reference/user track files were never cleared; all writes were to isolated
 copies. Build log: `tmp/clear-resident-build.log`. This closes this specific
 RAM-only transition defect, not the remaining owner/failure coverage.
 
+## Resident GO-to-shop transition (2026-09-30)
+
+Following the loading integration call chain revealed an overly early handoff:
+the title GO/F9/demo branch called `platform_end` before `prepare_race`, but
+`prepare_race` can first enter the entirely cached shop. Thus the downstream
+track-file dependency did not justify restoring AmigaOS before that menu.
+The earlier source inventory below missed this intervening owner.
+
+The title branch now retains takeover. Shop entry uses `show_menu`, which
+supports either an already-owned display or an inactive startup caller.
+`prepare_race` hands back to AmigaOS after the shop, before loader allocations
+and file access, including the no-shop path. Shop cleanup already hands back;
+the subsequent inactive end is harmless. Invalid mode rejection explicitly
+retains the old inactive error-return contract. Other callers and actual
+capture-file transactions keep their existing disk boundaries.
+
+`diag_title_shop_resident.gdb` asserts active ownership at actual preparation
+entry, active shop entry when applicable, and inactive ownership for subsequent
+archive opens. Native STARTGO reaches the correct race mode in all six saved
+Finnish, unregistered configurations on a stock PAL 68020, 2 MiB Chip/no Fast
+and confirmed default 4 KiB stack. Runs under `tmp/standalone-release-`, in
+mode order: `nvi6rttc`, `c085nme0`, `w7fhk25m`, `dprz89gs`, `_49j8hmy`,
+`ejv_zclt`. Modes 1, 2 and 3 enter the shop with these fixtures. The final
+mode-1 publication check `nba3daoc` also reconstructs all 64,000 planar pixels
+and matches the shop's chunky surface exactly.
+
+Recovery regressions pass with normal restoration 31: DEMOMEM (`_suw9u0u`),
+DEMOERR (`10or2v_w`) and DEMOVIW (`xy6m8drv`) exercise preparation allocation,
+file-load and display-list rejection followed by retry/demo return. SETUPS1
+(`kl2btko6`) and SETUPSC (`sj711gg9`) exercise shop-constructor failures,
+error dismissal, Players navigation and successful race retry; each has four
+exact menu publications. An earlier SETUPS1 run (`8ukhozeb`) completed the
+native gate but its outer invocation used the wrong marker; the correctly
+invoked repeat above is the accepted evidence. These race-entry gates do not
+claim normal exit verification for the shop runs.
+
+Build log: `tmp/title-shop-resident-build.log`. All runs were muted and their
+emulators closed. This removes the title-to-shop OS handoff, not the actual
+disk-loading handoff; visible loading-time scanout remains an integration gate.
+
 ## Remaining platform teardown call-site inventory (2026-09-30)
 
 After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in
@@ -2572,7 +2612,9 @@ After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in
 Thus 13 sites are explicit diagnostics (the twelve component calls and the
 setup-fault obstruction removal); the other 21 are disk/service boundaries
 or owner/final cleanup. No further unconditional RAM-only navigation teardown
-was found in this inventory. This is a source-level conclusion, not proof of
+was found in this inventory. The later GO-to-shop audit below corrects this
+classification: a real downstream disk dependency did not justify handing
+off before an intervening resident shop. This is a source-level conclusion, not proof of
 every runtime route or permission to remove any of these boundaries blindly.
 In particular, retaining the display *during* disk service still depends on
 the separate loading handoff's visible-scanout gate.

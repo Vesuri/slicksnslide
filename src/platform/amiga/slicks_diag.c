@@ -2139,7 +2139,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
     slicks_amiga_player_menu_clear_dirty(m);
     platform->key_tail=platform->key_head;
-    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    if(show_menu(platform)) goto done;
     g_slicks_shop_menu=&state; slicks_diag_shop_ready();
     if(shop_live_failure_test || title_start_test) {
         platform->key_tail=0;platform->keys[0]=0x45;platform->key_head=1;
@@ -2290,6 +2290,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     g_slicks_diag_race_error=0;
     if(configuration->options[0]<0 || configuration->options[0]>=6) {
         g_slicks_diag_race_error=7;
+        slicks_amiga_platform_end(platform);
         return -1;
     }
     if(session) {
@@ -2323,6 +2324,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     if(session && run_shop(platform,chunky,session)) {
         g_slicks_diag_race_error=9; goto cleanup;
     }
+
+    /* GO may arrive with the resident title display still owned. The shop
+     * uses cached assets; hand back to AmigaOS only for the disk loader. */
+    slicks_amiga_platform_end(platform);
 
     dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
     track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
@@ -6049,7 +6054,6 @@ int main(void)
                             track_count,&g_slicks_setup_session.random_state,(short *)&menu_selection)) goto cleanup;
                         selected_laps=(unsigned short)configuration.options[3];
                     }
-                    slicks_amiga_platform_end(&platform);
                     /* Original 2a593..2a5e4 supplies one random track when
                      * GO is selected with an empty playlist. */
                     if(original_setup) {

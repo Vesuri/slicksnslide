@@ -85,6 +85,7 @@ native caller/input/error checks.
   fix any offending routes found. The explicit platform-end call-site inventory
   is complete after the Clear Records fix; remaining work here is native route
   coverage, not repeating that source inventory. Use the startup-resident inventory
+  (the GO-to-shop timing classification is corrected in the later evidence)
   in [menu-resident-assets.md](menu-resident-assets.md). Keep actual track/exit
   image loads, cup loads and saves as explicit disk boundaries.
 - Verify cached Load-owner transitions and recovery after D1 is resolved.
