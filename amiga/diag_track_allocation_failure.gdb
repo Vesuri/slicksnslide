@@ -1,4 +1,4 @@
-# CATFAIL1/2/3 with 300 track files: initial names, growing names, selection.
+# CATFAIL1/2/3/4 with 300 files: initial names, growing names, selection, FIB.
 set $discovery_returned = 0
 break *discover_tracks
 commands
@@ -37,7 +37,8 @@ end
 break slicks_diag_track_storage_released
 commands
   silent
-  if !$discovery_returned || g_slicks_diag_track_alloc_fail<1 || g_slicks_diag_track_alloc_fail>3 || g_slicks_diag_track_alloc_attempts!=g_slicks_diag_track_alloc_fail || g_slicks_diag_track_alloc_live || g_slicks_track_playlist.tracks!=initial_track_selection || g_slicks_track_playlist.capacity!=256 || !(g_slicks_diag_restore_status & 1)
+  set $expected_attempts = g_slicks_diag_track_alloc_fail==4?0:g_slicks_diag_track_alloc_fail
+  if !$discovery_returned || g_slicks_diag_track_alloc_fail<1 || g_slicks_diag_track_alloc_fail>4 || g_slicks_diag_track_alloc_attempts!=$expected_attempts || g_slicks_diag_track_directory_alloc_failed!=(g_slicks_diag_track_alloc_fail==4) || g_slicks_diag_track_alloc_live || g_slicks_track_playlist.tracks!=initial_track_selection || g_slicks_track_playlist.capacity!=256 || !(g_slicks_diag_restore_status & 1)
     printf "CATALOGUE_ALLOCATION_CLEANUP_FAILED fail=%u attempts=%u live=%u\n",g_slicks_diag_track_alloc_fail,g_slicks_diag_track_alloc_attempts,g_slicks_diag_track_alloc_live
     quit 1
   end

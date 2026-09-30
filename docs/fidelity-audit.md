@@ -2856,6 +2856,19 @@ Normal 300-track startup/race entry still passes in
 `tmp/track-allocation-failure-build.log`. As with the preceding checks, the
 independent Load draft remains uncommitted and unexercised by these routes.
 
+### F18 follow-up: directory-object allocation rejection
+
+`CATFAIL4` substitutes failure of the directory FileInfoBlock allocation before
+any Lock or name-buffer allocation. The production null-result branch returns
+zero immediately instead of trying the current-directory fallback with missing
+storage. The extended allocation gate checks that this exact fault was reached,
+no name/selection allocation was attempted, no title/race/takeover occurred,
+and cleanup leaves no tracked catalogue buffers or replacement selection owner.
+It passes on stock 68020/2 MiB/no Fast/default 4 KiB stack in
+`tmp/standalone-release-1lbyt7wg`; debug audio is muted and the emulator closes.
+This is controlled API-return failure, not actual global memory exhaustion.
+Build log: `tmp/track-directory-allocation-build.log`.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

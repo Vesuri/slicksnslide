@@ -766,6 +766,7 @@ extern void slicks_chunky_pixels_to_amiga(
 static unsigned char track_files_in_current_directory;
 volatile unsigned short g_slicks_diag_track_alloc_fail,g_slicks_diag_track_alloc_attempts;
 volatile unsigned short g_slicks_diag_track_alloc_live;
+volatile unsigned short g_slicks_diag_track_directory_alloc_failed;
 static void *allocate_track_storage(unsigned long bytes)
 {
     if(g_slicks_diag_track_alloc_fail && ++g_slicks_diag_track_alloc_attempts==g_slicks_diag_track_alloc_fail)return 0;
@@ -789,7 +790,9 @@ static unsigned short discover_tracks(
     unsigned short at;
     track_files_in_current_directory=0;
 retry_directory:
-    info=(struct FileInfoBlock *)AllocDosObject(DOS_FIB,0);
+    if(g_slicks_diag_track_alloc_fail==4) {
+        g_slicks_diag_track_directory_alloc_failed=1;info=0;
+    } else info=(struct FileInfoBlock *)AllocDosObject(DOS_FIB,0);
     if(!info)return 0;
     lock=Lock((CONST_STRPTR)(track_files_in_current_directory?"":"TRACKS"),ACCESS_READ);
     if (!lock)
@@ -4102,7 +4105,7 @@ int main(void)
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
     if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='F' &&
-       argv[4]=='A' && argv[5]=='I' && argv[6]=='L' && argv[7]>='1' && argv[7]<='3') {
+       argv[4]=='A' && argv[5]=='I' && argv[6]=='L' && argv[7]>='1' && argv[7]<='4') {
         g_slicks_diag_track_alloc_fail=(unsigned short)(argv[7]-'0');argc=0;argv="";
     }
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
