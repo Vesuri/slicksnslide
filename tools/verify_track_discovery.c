@@ -1,8 +1,9 @@
 #define main options_verifier_main
 #include "verify_options_menu.c"
 #undef main
+#include "../src/game/track_catalogue.h"
 
-struct Discovery { unsigned count,next,allocations; };
+struct Discovery { unsigned count,next,allocations; const char *const *names; };
 static unsigned farptr(uc_engine *u,unsigned p)
 { return readword(u,p)+16*readword(u,p+2); }
 static void endpoint(uc_engine *u,unsigned expected)
@@ -27,7 +28,8 @@ static void boundary(uc_engine *u,uint64_t address,uint32_t size,void *context)
         else {
             char name[13]={0};
             /* Deliberately descending enumeration order, not alphabetical. */
-            snprintf(name,sizeof name,"T%07u.SS",d->count-d->next++);
+            if(d->names) snprintf(name,sizeof name,"%s",d->names[d->next++]);
+            else snprintf(name,sizeof name,"T%07u.SS",d->count-d->next++);
             check(uc_mem_write(u,out+30,name,sizeof name));
         }
     }
@@ -43,9 +45,13 @@ int main(void)
     check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));check(uc_mem_write(u,0x10100,runtime,n));
     struct Discovery d={0};uc_hook hooks[3];const unsigned addresses[]={0x12c46,0x12c7d,0x35e7c};
     for(unsigned i=0;i<3;++i)check(uc_hook_add(u,&hooks[i],UC_HOOK_CODE,boundary,&d,addresses[i],addresses[i]));
-    const unsigned counts[]={0,1,195,256,257,300};
+    const char *const mixed[]={"z.SS","A0.SS","A!.SS","A.SS","AA.SS","a.SS",
+        "a!.ss","Z.ss","EIGHT888.SS","DUP.SS","DUP.SS","_ONE.SS"};
+    const char *const sorted[]={"A","A!","A0","AA","DUP","DUP","EIGHT888","Z","_ONE","a","a!","z"};
+    const unsigned counts[]={0,1,195,256,257,300,sizeof mixed/sizeof mixed[0]};
     for(unsigned c=0;c<sizeof counts/sizeof counts[0];++c) {
         d=(struct Discovery){.count=counts[c]};regs(u,0);uint16_t cs=0x2e0f,ax;
+        if(c==sizeof counts/sizeof counts[0]-1)d.names=mixed;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));
         word(u,0x8ef04,0);word(u,0x8ef06,0x7000);
         word(u,0x8ef08,0);word(u,0x8ef0a,0x7100);
@@ -57,7 +63,13 @@ int main(void)
         if(ax!=d.count || farptr(u,0x71000)!=(d.count?0x60000:0))abort();
         for(unsigned i=0;i<d.count;++i) {
             char expected[13]={0},actual[9];snprintf(expected,sizeof expected,"T%07u",d.count-i);
-            check(uc_mem_read(u,0x60000+9*i,actual,9));if(memcmp(actual,expected,9))abort();
+            check(uc_mem_read(u,0x60000+9*i,actual,9));
+            if(d.names) {
+                unsigned j=0;
+                while(d.names[i][j] && d.names[i][j]!='.') { expected[j]=d.names[i][j];++j; }
+                expected[j]=0;
+                if(!memchr(actual,0,sizeof actual) || strcmp(actual,expected))abort();
+            } else if(memcmp(actual,expected,9))abort();
         }
         printf("Original discovery count=%u: enumeration order retained, 9-byte stems\n",d.count);
         /* Startup subsequently calls the real catalogue sorter at 2612a. */
@@ -68,9 +80,27 @@ int main(void)
         for(unsigned i=0;i<d.count;++i) {
             char expected[13]={0},actual[9];snprintf(expected,sizeof expected,"T%07u",i+1);
             check(uc_mem_read(u,0x60000+9*i,actual,9));
+            if(d.names) {
+                if(!memchr(actual,0,sizeof actual) || strcmp(actual,sorted[i]))abort();
+                continue;
+            }
             if(memcmp(actual,expected,9)) { fprintf(stderr,"Sort mismatch at %u: %.9s\n",i,actual);abort(); }
         }
         printf("Original startup sorter: %u stems in ascending order\n",d.count);
+        if(d.names) {
+            const char *native[sizeof mixed/sizeof mixed[0]];
+            memcpy(native,mixed,sizeof native);
+            for(unsigned left=0;left+1<d.count;++left)
+                for(unsigned right=left+1;right<d.count;++right)
+                    if(slicks_track_stem_compare(native[right],native[left])<0) {
+                        const char *swap=native[left];native[left]=native[right];native[right]=swap;
+                    }
+            for(unsigned i=0;i<d.count;++i) {
+                char actual[9];check(uc_mem_read(u,0x60000+9*i,actual,9));
+                if(slicks_track_stem_compare(native[i],actual))abort();
+            }
+            puts("Native stem comparator matches original: prefixes, punctuation, case, duplicate stems and eight-byte names");
+        }
     }
     check(uc_close(u));return 0;
 }

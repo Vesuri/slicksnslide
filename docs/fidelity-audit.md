@@ -2698,6 +2698,34 @@ stock 68020/2 MiB Chip/no Fast, resident dialog returns and full system
 restoration. Debug audio was muted and both emulators closed. Build log:
 `tmp/large-save-build.log`.
 
+### F18 follow-up: compare track stems, not filename extensions
+
+Mixed-name execution of the original discovery and startup sorter exposed a
+native ordering defect: the port compared full filenames, placing `A!.SS`
+before `A.SS` because `!` precedes `.`. DOS removes extensions before sorting,
+so its correct order is `A`, `A!`, `A0`, `AA`. This can affect initial playlist
+indices and consequently seeded shuffle results, not just the visible list.
+
+`slicks_track_stem_compare` now compares up to eight unsigned stem bytes,
+treating the first dot as a terminator while retaining the full real filename
+for disk access. Case remains significant, matching the original routine when
+supplied mixed-case enumeration results. This does not claim DOS itself would
+enumerate lowercase filenames: directory enumeration is the substituted OS
+boundary in this oracle. The original and native comparator agree on a
+12-entry case containing prefixes, punctuation, mixed case, duplicates and
+eight-byte stems. Existing numeric-count discovery tests also pass.
+
+The native `diag_track_stem_order.gdb` fixture uses eight distinct valid files
+and captures the actual catalogue at race preparation. The resulting order is
+`A.SS`, `A!.SS`, `A0.SS`, `AA.SS`, `EIGHT888.SS`, `Z.ss`, `_ONE.SS`, `zed.SS`.
+The exact dump is checked against that sequence; native STARTGO reaches race
+entry on stock 68020/2 MiB/no Fast/default 4 KiB stack in
+`tmp/standalone-release-i0gp4dhh`. This is a startup/race-entry check, not a
+normal-exit or every-filesystem naming-policy claim. Debug audio was muted and
+the owned emulator closed. Build log: `tmp/track-stem-sort-build.log`.
+The tested working tree also contains the independent uncommitted Load-caller
+draft; that route is not exercised or validated by this startup gate.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

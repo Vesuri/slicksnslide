@@ -594,7 +594,7 @@ verify-track-record-write: build/verify_track_record_write
 	build/verify_track_record_write
 .PHONY: verify-title-help
 .PHONY: verify-track-discovery
-build/verify_track_discovery: tools/verify_track_discovery.c tools/verify_options_menu.c | build
+build/verify_track_discovery: tools/verify_track_discovery.c tools/verify_options_menu.c src/game/track_catalogue.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-track-discovery: build/verify_track_discovery
 	build/verify_track_discovery

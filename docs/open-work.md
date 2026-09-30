@@ -176,9 +176,16 @@ native caller/input/error checks.
   caller-owned storage. Verify new Save/Load allocation failures and larger
   native bounds. Extend demo diagnostics beyond their current first
   256 selection words before claiming full large-playlist restoration.
+  A working-tree Load-caller draft now uses dynamic names/indices, frees names
+  after staging, and adopts indices only after successful race preparation.
+  Host codec/resolution/storage regressions pass; native Load-entry and
+  allocation/preparation-failure validation remain unproven pending D1.
+  Do not treat the draft or its successful build as completion of this gate.
   Resolve missing/empty directory fallback against the original startup path
-  before changing the fabricated BASIC.SS entry. Complete mixed-case/name
-  ordering boundaries; current oracle names are uppercase numeric stems.
+  before changing the fabricated BASIC.SS entry. The stem-versus-extension
+  sorting defect is fixed: original comparisons cover case, punctuation,
+  prefixes, duplicates and eight-byte stems; native startup covers eight
+  distinct boundary filenames.
 - Review every remaining subsystem in the coverage matrix/discrepancy ledger in
   [fidelity-audit.md](fidelity-audit.md), including production callers, parameters
   and overrides, not only isolated translated helpers.

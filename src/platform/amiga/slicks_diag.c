@@ -25,6 +25,7 @@
 #include "../../game/profile_palette.h"
 #include "../../game/setup_session.h"
 #include "../../game/championship.h"
+#include "../../game/track_catalogue.h"
 #include "../../game/post_race_records.h"
 #include "../../ui/palette_fade.h"
 #include "../../ui/result_wait.h"
@@ -819,12 +820,7 @@ cleanup:
         for (left = 0; left + 1 < count; ++left) {
             unsigned short right;
             for (right = left + 1; right < count; ++right) {
-                unsigned short character = 0;
-                while (names[left][character] == names[right][character] &&
-                       names[left][character])
-                    ++character;
-                if ((unsigned char)names[right][character] <
-                    (unsigned char)names[left][character]) {
+                if (slicks_track_stem_compare(names[right],names[left])<0) {
                     char temporary[SLICKS_TRACK_NAME_SIZE];
                     for (at = 0; at < SLICKS_TRACK_NAME_SIZE; ++at) {
                         temporary[at] = names[left][at];
