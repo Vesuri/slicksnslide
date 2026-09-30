@@ -2,6 +2,7 @@
 break slicks_diag_gameplay_ready
 commands
   silent
+  printf "RETENTION_MEMORY free=%lu largest=%lu\n",g_slicks_retention_free,g_slicks_retention_largest
   printf "RETENTION_CHECK updates=%lu mismatches=%lu particles=%lu first=%lu\n",g_slicks_retention_checks,g_slicks_retention_mismatches,g_slicks_retention_particle_mismatches,g_slicks_retention_first_mismatch
   printf "GEOMETRY_CACHE checks=%lu mismatches=%lu\n",slicks_geometry_cache_checks,slicks_geometry_cache_mismatches
   printf "IMMUTABLE_MAPS mismatches=%lu\n",g_slicks_retention_immutable_mismatches
@@ -16,6 +17,7 @@ end
 break slicks_diag_system_restored
 commands
   printf "RETENTION_CHECK_EARLY_EXIT\n"
+  printf "RETENTION_MEMORY free=%lu largest=%lu\n",g_slicks_retention_free,g_slicks_retention_largest
   quit 1
 end
 continue

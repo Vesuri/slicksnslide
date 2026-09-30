@@ -582,6 +582,9 @@ static void pc_sampler_release(void)
 #ifdef SLICKS_RETENTION_CHECK
 #include "retention_snapshot.h"
 volatile unsigned long g_slicks_retention_immutable_mismatches;
+volatile unsigned long g_slicks_retention_free, g_slicks_retention_largest;
+static struct SlicksRetentionSnapshot *saved_race;
+static unsigned char *saved_chunky;
 volatile unsigned long g_slicks_retention_checks, g_slicks_retention_mismatches,
     g_slicks_retention_first_mismatch, g_slicks_retention_particle_mismatches;
 volatile unsigned long g_slicks_status_cache_checks,g_slicks_status_cache_mismatches,
@@ -6994,15 +6997,22 @@ int main(void)
                 race->profile_scope=g_slicks_diag_profile_all>=3?g_slicks_diag_profile_all-2:0;
             }
 #ifdef SLICKS_RETENTION_CHECK
-            static struct SlicksRetentionSnapshot *saved_race;
-            static unsigned char *saved_chunky;
             /* RETCHECK=1: run each racing update first without retention
              * from a snapshot, then for real; the chunky surfaces must match. */
             {
                 static struct SlicksRetentionState saved_retention;
                 static struct SlicksTrailParticle reference_particles[SLICKS_TRAIL_PARTICLE_MAX];
-                if (!saved_race) saved_race = AllocMem(sizeof *saved_race, MEMF_ANY);
-                if (!saved_chunky) saved_chunky = AllocMem(64000, MEMF_ANY);
+                if(!saved_race) {
+                    g_slicks_retention_free=AvailMem(MEMF_ANY);
+                    g_slicks_retention_largest=AvailMem(MEMF_ANY|MEMF_LARGEST);
+                    saved_chunky=AllocMem(64000,MEMF_ANY);
+                    saved_race=AllocMem(sizeof *saved_race,MEMF_ANY|MEMF_CLEAR);
+                    if(!saved_race || !saved_chunky) goto cleanup;
+                    for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i) {
+                        saved_race->prefix[i]=AllocMem(slicks_retention_block_size(i),MEMF_ANY);
+                        if(!saved_race->prefix[i]) goto cleanup;
+                    }
+                }
                 if (race->racing && saved_race && saved_chunky) {
                     unsigned long reference;
                     slicks_retention_capture(saved_race,race);
@@ -7402,6 +7412,14 @@ cleanup:
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;
+#ifdef SLICKS_RETENTION_CHECK
+    if(saved_race) {
+        for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i)
+            if(saved_race->prefix[i]) FreeMem(saved_race->prefix[i],slicks_retention_block_size(i));
+        FreeMem(saved_race,sizeof *saved_race); saved_race=0;
+    }
+    if(saved_chunky) { FreeMem(saved_chunky,64000); saved_chunky=0; }
+#endif
     slicks_amiga_track_list_cache_free(&track_list_cache);
     if(demo_expected_playlist) {
         FreeMem(demo_expected_playlist,demo_expected_playlist_capacity*sizeof(short));

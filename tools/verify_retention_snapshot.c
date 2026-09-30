@@ -5,6 +5,10 @@ int main(void)
 {
     static struct SlicksRaceRuntime original,race;
     static struct SlicksRetentionSnapshot saved;
+    static unsigned char prefix[SLICKS_RETENTION_BLOCKS][SLICKS_RETENTION_BLOCK+16];
+    memset(prefix,0xa5,sizeof prefix);
+    for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i)
+        saved.prefix[i]=prefix[i]+8;
     unsigned char *bytes=(unsigned char *)&original;
     for(unsigned i=0;i<sizeof original;++i)bytes[i]=(unsigned char)(i*37+(i>>8));
     race=original;
@@ -13,6 +17,12 @@ int main(void)
     memset(race.steering_cache,0x5a,sizeof race.steering_cache);
     memset((unsigned char *)&race+SLICKS_RETENTION_TAIL,0x3c,sizeof race-SLICKS_RETENTION_TAIL);
     if(!slicks_retention_restore(&race,&saved) || memcmp(&race,&original,sizeof race))return 1;
+    for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i)
+        for(unsigned j=0;j<sizeof prefix[i];++j)
+            if((j<8 || j>=8+slicks_retention_block_size(i)) && prefix[i][j]!=0xa5) {
+                fprintf(stderr,"Snapshot block guard overwritten: block=%u byte=%u\n",i,j);
+                return 1;
+            }
     for(unsigned region=0;region<3;++region)for(unsigned edge=0;edge<4;++edge) {
         unsigned char *p;unsigned n;
         race=original;
@@ -26,6 +36,6 @@ int main(void)
             return 1;
         }
     }
-    printf("Retention snapshot: all mutable bytes restore; all three immutable arrays reject edge mutations and full clears/fills; runtime=%zu snapshot=%zu\n",sizeof race,sizeof saved);
+    printf("Retention snapshot: all mutable bytes restore across guarded blocks; all three immutable arrays reject edge mutations and full clears/fills; runtime=%zu snapshot=%zu\n",sizeof race,sizeof saved+SLICKS_RETENTION_PREFIX);
     return 0;
 }

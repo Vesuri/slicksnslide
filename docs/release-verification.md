@@ -1,5 +1,29 @@
 # Development release audit
 
+## 2026-09-30 — retention diagnostic allocation repair
+
+The release-gate RETCHECK run initially reached 700 updates with zero actual
+comparisons. Its 129,748-byte contiguous state allocation failed: after the
+64,000-byte surface allocation, 134,472 bytes remained free but the largest
+block was only 128,840 bytes. Reserving the state earlier instead prevented
+startup's menu cache from fitting, so that attempt was rejected.
+
+The optional diagnostic now stores the same mutable prefix in independently
+allocated 1 KiB blocks, with an exact-sized final block. It still keeps all
+production assets resident and hashes the three excluded immutable maps.
+Allocation failure exits the diagnostic rather than silently bypassing its
+comparisons; partial allocations are released at cleanup. The gate reports
+free and largest memory measurements to make future failures identifiable.
+
+The host snapshot test passes full mutable-state restoration, guards around
+each block and all twelve immutable-map mutation cases, both normally and
+under address/undefined-behavior sanitizers. On PAL A1200, 2 MiB Chip and no
+Fast RAM, BASIC passes 603 race and 700 HUD comparisons with zero surface,
+particle, immutable-map or HUD mismatches. Final state matches the original
+zero-comparison run exactly. Logs are under `tmp/release-render-73f9c03/`.
+Remaining track audits and the restored release binary comparison are recorded
+separately when complete; this repair alone does not close D-2.
+
 ## 2026-09-30 — ship gate D-1 at 73f9c03
 
 Started `make release-check` with an empty `git status --porcelain` at

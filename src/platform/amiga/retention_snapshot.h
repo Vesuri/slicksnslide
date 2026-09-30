@@ -7,12 +7,21 @@
  * and after both reference and optimized passes instead of duplicating them. */
 #define SLICKS_RETENTION_PREFIX __builtin_offsetof(struct SlicksRaceRuntime,material_map)
 #define SLICKS_RETENTION_TAIL __builtin_offsetof(struct SlicksRaceRuntime,demo_flag)
+#define SLICKS_RETENTION_BLOCK 1024U
+#define SLICKS_RETENTION_BLOCKS ((SLICKS_RETENTION_PREFIX+SLICKS_RETENTION_BLOCK-1)/SLICKS_RETENTION_BLOCK)
 struct SlicksRetentionSnapshot {
-    unsigned char prefix[SLICKS_RETENTION_PREFIX];
+    /* Diagnostic-only scatter storage: startup/menu allocations can leave
+     * enough total Chip RAM but no contiguous block for the entire state. */
+    unsigned char *prefix[SLICKS_RETENTION_BLOCKS];
     struct SlicksSteeringCache steering[SLICKS_RACE_CAR_COUNT];
     unsigned char tail[sizeof(struct SlicksRaceRuntime)-SLICKS_RETENTION_TAIL];
     unsigned int immutable_hash;
 };
+static unsigned slicks_retention_block_size(unsigned block)
+{
+    unsigned remaining=SLICKS_RETENTION_PREFIX-block*SLICKS_RETENTION_BLOCK;
+    return remaining<SLICKS_RETENTION_BLOCK?remaining:SLICKS_RETENTION_BLOCK;
+}
 _Static_assert(sizeof(unsigned int)==4,"32-bit diagnostic hash");
 _Static_assert(_Alignof(struct SlicksRaceRuntime)>=4 &&
     SLICKS_RETENTION_PREFIX%4==0 &&
@@ -48,7 +57,9 @@ static unsigned int slicks_retention_map_hash(const struct SlicksRaceRuntime *ra
 static void slicks_retention_capture(struct SlicksRetentionSnapshot *saved,
                                      const struct SlicksRaceRuntime *race)
 {
-    __builtin_memcpy(saved->prefix,race,sizeof saved->prefix);
+    for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i)
+        __builtin_memcpy(saved->prefix[i],(const unsigned char *)race+i*SLICKS_RETENTION_BLOCK,
+            slicks_retention_block_size(i));
     __builtin_memcpy(saved->steering,race->steering_cache,sizeof saved->steering);
     __builtin_memcpy(saved->tail,(const unsigned char *)race+SLICKS_RETENTION_TAIL,sizeof saved->tail);
     saved->immutable_hash=slicks_retention_map_hash(race);
@@ -60,7 +71,9 @@ static int slicks_retention_restore(struct SlicksRaceRuntime *race,
                                    const struct SlicksRetentionSnapshot *saved)
 {
     int unchanged=slicks_retention_maps_match(saved,race);
-    __builtin_memcpy(race,saved->prefix,sizeof saved->prefix);
+    for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i)
+        __builtin_memcpy((unsigned char *)race+i*SLICKS_RETENTION_BLOCK,saved->prefix[i],
+            slicks_retention_block_size(i));
     __builtin_memcpy(race->steering_cache,saved->steering,sizeof saved->steering);
     __builtin_memcpy((unsigned char *)race+SLICKS_RETENTION_TAIL,saved->tail,sizeof saved->tail);
     return unchanged;
