@@ -103,8 +103,9 @@ Implementation and completed verification evidence are separate in
   65-frame original-wrapper pulse comparison and selective-publication check.
   Both supplied translated-label/status overlap cases now have complete native
   pulse/original-wrapper comparisons and no full-screen pulse publication.
-  Extend pulse coverage to remaining rows and address remaining title-pulse
-  cost separately.
+  Ordinary visible rows now all have complete native pulse-cycle coverage.
+  Remaining registered-owner/language combinations, Arcade animation and
+  title-pulse cost/cadence remain separate checks.
   This is menu fidelity/publication work,
   not a resumption of the paused gameplay optimization backlog. Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:

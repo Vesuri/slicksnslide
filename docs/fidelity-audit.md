@@ -776,6 +776,35 @@ both owned emulators closed. This closes the supplied translated-label/status
 overlap pulse gap, not other rows' native input cycles, registered-owner
 combinations or animation timing. No production rendering change was needed.
 
+### Remaining ordinary title-row pulse cycles (2026-09-30)
+
+The remaining visible rows use the existing `REGCHECKA[ROW]` input fixture
+with fresh saved mode-0/language-1 configuration, original data and no keyfile.
+For each row, `diag_title_pulse_pixels.gdb` captures 65 consecutive phases;
+`verify_title_return_pixels RUN 65` then executes the original complete title
+wrapper and compares all 64,000 visible pixels, including wrap/phase checks.
+The native gate additionally rejects full-screen publication during the
+pulse cycle and requires full system restoration.
+
+| Row | Native run under `tmp/standalone-release-` | Ticks / display checks |
+| --- | --- | --- |
+| 1 — Players | `g2wll8vb` | 73 / 24 |
+| 2 — Tracks | `huxnyq4f` | 74 / 25 |
+| 5 — Read This | `1d5e4qor` | 76 / 28 |
+| 6 — Quit | `aq214bc_` | 77 / 29 |
+
+All four pass every pixel of all 65 frames (260 full compositions total),
+zero native display errors and restore status 31. Each logs exactly one
+complete-title painter call at the selected row (navigation entry), not one
+per pulse. Their two startup full-screen publications remain unchanged
+throughout the measured cycle. Runs are sequential, muted, stock PAL
+68020/2 MiB Chip/no Fast RAM with default 4 KiB stack; all emulators exit.
+
+Together with the earlier GO and Options cycles, this closes ordinary-row
+native pulse coverage. It does not establish all registered-name/language
+combinations, Arcade animation, nested-owner font lifetime or uninterrupted
+cadence. No production change was needed for these four rows.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused
