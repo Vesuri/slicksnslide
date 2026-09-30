@@ -100,10 +100,13 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    across child dialogs and must be released before the primary owner. All
    dialog acquisition is now bounded reuse: amiga_player_menu.c contains only
    its startup AllocMem and matching shutdown FreeMem.
-5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536
-   bytes and its loader another 65,536. The redundant loader buffer is now
-   eliminated: refresh reads/validates its unpublished staging directly, then
-   allocates an exact-size retained copy before releasing the previous copy.
+5. **Persistence/catalogues:** track-list store and refresh now borrow 65,536
+   bytes from the owner-tagged modal overlay, after picker/name/message children
+   close. Primary/track-list parents and the immutable catalogue are separate.
+   Refresh reads/validates unpublished scratch directly, then still allocates
+   an exact-size retained copy before releasing the previous copy. That retained
+   replacement is not yet startup-only. Both APIs reject missing/short scratch
+   before filesystem work. Release rebuilds the particle cache if a race exists.
    Reserve catalogue/transaction capacity at launch; bound dynamic name tables,
    profile editing, save/load and screenshot encoding without losing atomic
    new/backup file replacement or original data support.

@@ -1795,7 +1795,7 @@ struct SlicksSetupLoadReport g_slicks_track_lists_load;
 struct SlicksSetupStorageReport g_slicks_track_lists_save;
 __attribute__((noinline)) void slicks_diag_track_lists_ready(void) { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void slicks_diag_track_lists_closed(void) { __asm__ volatile("" ::: "memory"); }
-/* Modal transitions are RAM-only; commits explicitly release hardware. */
+/* Modal transitions are RAM-only; commits retain the display during disk I/O. */
 static int track_lists_finish(struct SlicksAmigaPlatform *platform,short total,const char *error)
 {
     slicks_amiga_track_lists_close(g_slicks_track_menu);
@@ -1805,14 +1805,24 @@ static int track_lists_finish(struct SlicksAmigaPlatform *platform,short total,c
         slicks_original_players_footer_percent)) return -1;
     slicks_diag_track_lists_closed(); return 0;
 }
+static void refresh_track_list_cache(void)
+{
+    unsigned char *work=slicks_amiga_storage_workspace_acquire(SLICKS_AMIGA_TRACK_LIST_BYTES);
+    slicks_amiga_track_list_cache_refresh(&track_list_cache,work,SLICKS_AMIGA_TRACK_LIST_BYTES);
+    slicks_amiga_storage_workspace_release(work);
+}
 static int track_lists_commit(struct SlicksAmigaPlatform *platform,short total,void *names,int remove)
 {
     struct SlicksAmigaTrackLists *lists=g_slicks_track_menu->track_lists;
-    /* Picker/name/confirmation work is RAM-only. Release hardware only
-     * when committing the catalogue transaction to disk. */
-    slicks_amiga_platform_end(platform);
+    /* Children are closed before this boundary. Keep their last published
+     * image visible while the transaction uses OS filesystem services. */
+    if(platform->active && slicks_amiga_platform_begin_io(platform)) return -1;
+    unsigned char *work=slicks_amiga_storage_workspace_acquire(SLICKS_AMIGA_TRACK_LIST_BYTES);
     g_slicks_track_lists_save=slicks_amiga_store_track_lists(&lists->catalogue,remove,
-        remove<0?lists->name:0,&g_slicks_track_playlist,total,native_track_name,names);
+        remove<0?lists->name:0,&g_slicks_track_playlist,total,native_track_name,names,
+        work,SLICKS_AMIGA_TRACK_LIST_BYTES);
+    slicks_amiga_storage_workspace_release(work);
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) return -1;
     const char *error=0;
     switch(g_slicks_track_lists_save.result) {
     case SLICKS_SETUP_SAVED: break;
@@ -1820,11 +1830,13 @@ static int track_lists_commit(struct SlicksAmigaPlatform *platform,short total,v
     case SLICKS_SETUP_RECOVERY_REQUIRED: error="KEEP SLICKS.TRK NEW/BAK FILES"; break;
     default: error="SLICKS.TRK SAVE FAILED"; break;
     }
-    int result=track_lists_finish(platform,total,error);
     /* Close every borrowed view before publishing a refreshed catalogue.
-     * This remains part of the explicit save/delete disk boundary. */
-    slicks_amiga_track_list_cache_refresh(&track_list_cache);
-    return result;
+     * Do not open a warning child until transaction scratch is released. */
+    slicks_amiga_track_lists_close(g_slicks_track_menu);
+    if(platform->active && slicks_amiga_platform_begin_io(platform)) return -1;
+    refresh_track_list_cache();
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) return -1;
+    return track_lists_finish(platform,total,error);
 }
 static int track_lists_key(struct SlicksAmigaPlatform *platform,short total,void *names,
     unsigned char character,unsigned char scan,unsigned long tick)
@@ -5058,7 +5070,7 @@ int main(void)
     if(!menu_cache) goto cleanup;
     g_slicks_menu_cache_bytes=slicks_resource_cache_bytes(menu_cache);
     g_slicks_diag_track_read_fault=track_read_failure_test;
-    slicks_amiga_track_list_cache_refresh(&track_list_cache);
+    refresh_track_list_cache();
     if(championship_scan_test==1) g_slicks_diag_saved_lock_failure=1;
     if(championship_scan_test==2) g_slicks_diag_saved_next_failure=1;
     slicks_amiga_saved_files_refresh(&saved_files_cache);

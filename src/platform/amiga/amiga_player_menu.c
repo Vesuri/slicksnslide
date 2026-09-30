@@ -93,7 +93,7 @@ static struct SlicksAmigaPlayerMenu *acquire_menu(void)
 static struct SlicksAmigaHelpWorkspace *help_workspace;
 static unsigned char help_workspace_busy;
 enum ModalOwner { MODAL_HELP=1,MODAL_CONTROLLERS,MODAL_NAME,MODAL_COLOUR,
-    MODAL_PICKER,MODAL_TRACK_INFO,MODAL_CHANGE_CARS,MODAL_MESSAGE };
+    MODAL_PICKER,MODAL_TRACK_INFO,MODAL_CHANGE_CARS,MODAL_MESSAGE,MODAL_STORAGE };
 static void (*help_workspace_restore)(void *);
 static void *help_workspace_context;
 int slicks_amiga_help_workspace_bind(void *bytes,unsigned long capacity,
@@ -136,6 +136,10 @@ static struct SlicksHelpViewer *acquire_help(void)
 { return acquire_modal(sizeof(struct SlicksHelpViewer),MODAL_HELP); }
 static void release_help(struct SlicksHelpViewer *viewer)
 { release_modal(viewer,MODAL_HELP); }
+void *slicks_amiga_storage_workspace_acquire(unsigned long size)
+{ return acquire_modal(size,MODAL_STORAGE); }
+void slicks_amiga_storage_workspace_release(void *bytes)
+{ release_modal(bytes,MODAL_STORAGE); }
 
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 extern void slicks_menu_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short);

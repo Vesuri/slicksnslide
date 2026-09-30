@@ -141,6 +141,10 @@ int slicks_amiga_menu_workspace_create(void);
 void slicks_amiga_menu_workspace_destroy(void);
 void *slicks_amiga_menu_workspace_acquire(unsigned long);
 void slicks_amiga_menu_workspace_release(void *);
+/* Transactions may borrow the modal cache only after all children close.
+ * The retained primary/parent/catalogue remain independent and live. */
+void *slicks_amiga_storage_workspace_acquire(unsigned long);
+void slicks_amiga_storage_workspace_release(void *);
 struct SlicksAmigaHelpWorkspace {
     union {
         struct {

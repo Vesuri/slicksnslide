@@ -26,7 +26,7 @@ commands
   set $resident_guard = 0
   set $closed = $closed+1
   if g_slicks_track_menu->track_lists || g_slicks_track_menu->message || g_slicks_track_playlist.count != 2 || g_slicks_track_playlist.tracks[0] != 0 || g_slicks_track_playlist.tracks[1] != 1
-    printf "TRACK_LIST_SELECTION_FAILED count=%d\n", g_slicks_track_playlist.count
+    printf "TRACK_LIST_SELECTION_FAILED count=%d indices=%d/%d message=%p save=%u io_error=%ld commits=%u\n", g_slicks_track_playlist.count,g_slicks_track_playlist.tracks[0],g_slicks_track_playlist.tracks[1],g_slicks_track_menu->message,g_slicks_track_lists_save.result,g_slicks_track_lists_save.io_error,$commits
     quit 1
   end
   continue

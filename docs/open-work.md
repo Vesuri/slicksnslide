@@ -40,7 +40,7 @@ All closed (B1–B8; evidence in [frame-pacing.md](frame-pacing.md) and
 - [ ] **B10. Preserve the game display during disk access:** The manual race
   completion briefly exposed Workbench before displaying the results screen.
   Keep the current game image visible while loading/saving, while allowing the
-  OS services required for disk I/O. Remaining boundaries: track-list writes,
+  OS services required for disk I/O. Remaining boundaries:
   track-info/record-clear operations, screenshot writes, ending/registration
   images, setup-save failure recovery and nonfatal race-preparation failures.
   Audit remaining teardown calls and verify safe ownership/restoration on exit.

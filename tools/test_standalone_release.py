@@ -36,6 +36,8 @@ def main():
     parser.add_argument('--default-stack',action='store_true',default=True,
                         help='Compatibility option: all runs use the default stack')
     parser.add_argument('--workbench',action='store_true')
+    parser.add_argument('--read-only',action='store_true',
+                        help='Mount the isolated game-data volume read-only for real DOS failure tests')
     parser.add_argument('--allocation-audit',action='store_true')
     parser.add_argument('--audit-players',action='store_true')
     parser.add_argument('--expect-failure',action='store_true')
@@ -117,6 +119,7 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
         emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory='+args.chip_memory,'--fast_memory=0',
           '--cpu='+args.cpu,'--uae_cpu_speed='+args.cpu_speed,
           '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10','--hard_drive_1='+str(installed),
+          '--hard_drive_1_read_only='+str(int(args.read_only)),
           '--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
           '--remote_debugger=20','--remote_debugger_port='+str(port),'--remote_debugger_trigger=Slicks',
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=env)

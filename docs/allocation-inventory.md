@@ -197,6 +197,14 @@ proof. The allocating plain-file helper remains only in the explicit
 intermission construction diagnostic. Persistence encoding stays separate
 and remains open work; it must coexist with those exported names.
 
+Track-list store/refresh staging now borrows the modal overlay under a distinct
+storage-owner tag. Both adapters take explicit caller-owned 65,536-byte scratch;
+their staging AllocMem/FreeMem expressions are removed. Picker/name/confirmation
+children close before acquisition, and any new warning opens only after refresh
+releases the slot. Startup refresh uses the same already-bound overlay. The
+retained catalogue's exact-size replacement allocation is still open B12 work,
+as are other persistence operations. No additional startup bytes are reserved.
+
 This matrix separates child payloads from longer-lived parent, catalogue and
 transaction data. The remaining work is placing those parents/payloads and
 transactions into bounded spans and proving the combined peak, not treating

@@ -253,12 +253,12 @@ void slicks_amiga_track_list_cache_free(struct SlicksAmigaTrackListCache *cache)
     cache->view=(struct SlicksTrackLists){0,0,0};
     cache->report=(struct SlicksSetupLoadReport){SLICKS_SETUP_LOAD_INVALID,0,"SLICKS.TRK",0,0};
 }
-void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *cache)
+void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *cache,
+    unsigned char *work,unsigned long capacity)
 {
-    unsigned char *work=AllocMem(SLICKS_AMIGA_TRACK_LIST_BYTES,MEMF_ANY);
     struct SlicksTrackLists next;
     cache->report=(struct SlicksSetupLoadReport){SLICKS_SETUP_LOAD_IO_ERROR,ERROR_NO_FREE_STORE,"SLICKS.TRK",0,0};
-    if(!work) return;
+    if(!work || capacity<SLICKS_AMIGA_TRACK_LIST_BYTES) return;
     cache->report=load_track_lists_work(work,SLICKS_AMIGA_TRACK_LIST_BYTES,&next);
     if(cache->report.result==SLICKS_SETUP_LOADED) {
         unsigned char *bytes=AllocMem(next.size,MEMF_ANY);
@@ -271,16 +271,15 @@ void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *cac
             next.bytes=bytes; cache->view=next;
         }
     }
-    FreeMem(work,SLICKS_AMIGA_TRACK_LIST_BYTES);
 }
 struct SlicksSetupStorageReport slicks_amiga_store_track_lists(
     const struct SlicksTrackLists *lists,int remove,const unsigned char *title,
     const struct SlicksTrackPlaylist *playlist,unsigned total,
-    const unsigned char *(*name)(void *,unsigned),void *context)
+    const unsigned char *(*name)(void *,unsigned),void *context,
+    unsigned char *buffer,unsigned long capacity)
 {
     struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,0};
-    unsigned char *buffer=AllocMem(SLICKS_AMIGA_TRACK_LIST_BYTES,MEMF_ANY);
-    if(!buffer) { report.io_error=ERROR_NO_FREE_STORE; report.path="SLICKS.TRK"; return report; }
+    if(!buffer || capacity<SLICKS_AMIGA_TRACK_LIST_BYTES) { report.io_error=ERROR_NO_FREE_STORE; report.path="SLICKS.TRK"; return report; }
     long size=slicks_track_lists_write(lists,remove,title,playlist,total,name,context,
         buffer,SLICKS_AMIGA_TRACK_LIST_BYTES);
     if(size<0) { report.path="SLICKS.TRK"; report.io_error=ERROR_OBJECT_WRONG_TYPE; }
@@ -289,7 +288,7 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_lists(
         const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
         report.result=store_files(&file,1,&ops);
     }
-    FreeMem(buffer,SLICKS_AMIGA_TRACK_LIST_BYTES); return report;
+    return report;
 }
 
 struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,

@@ -1,5 +1,38 @@
 # Development release audit
 
+## 2026-09-30 — retained track-list I/O and reserved transaction scratch
+
+Track-list save/delete and refresh use display-retaining OS-service windows.
+All rendering occurs outside them; modal children and borrowed catalogue views
+close before scratch acquisition/refresh, and warnings open after release.
+Store/refresh take explicit bounded scratch from the startup particle-cache
+modal overlay with a separate storage owner. No heap fallback or additional
+startup bytes are added. Retained catalogue replacement still allocates.
+
+Workbench-loaded stock 2 MiB/no-Fast/default-4-KiB-stack evidence:
+
+- Before scratch conversion, TRACKSL (`...-24neo_sc`) selected indices 0/1
+  correctly but failed the late 65,536-byte save allocation (DOS error 103).
+- After conversion, TRACKSL (`tmp/standalone-release-_1p0svk5`) passes real
+  save/selection/race entry, with all 16 publications matching every pixel.
+- TRACKSD (`...-5g25g08z`) passes name/delete cancellation, confirmed deletion,
+  empty-catalogue reopening and race entry; all 26 publications match.
+- TRACKSF (`...-nuu6gjbk`) mounts the private data volume read-only: real DOS
+  write failure, warning dismissal, requester restoration and race entry pass;
+  all 18 publications match. The standalone harness now exposes --read-only.
+- Host production-adapter suite passes 324 single/double save faults, refresh
+  faults/retention, recovery artifacts and cleanup. Missing/short caller scratch
+  is rejected before filesystem work, without changing the retained catalogue.
+
+Maximal-catalogue Workbench check (`...-oh94vx80`) still exits early. The first
+TRACKSN audit (`...-9w_8ypd4`) has no scripted exit after race entry and was
+closed, not counted as a cleanup pass. REGCHECK audit (`...-rye3zbbz`) identifies
+a later 70,000-byte registration-image allocation failure, after both the
+65,528-byte catalogue and 96,546-byte menu reservation succeed. It reports
+return code 20, 135 allocations, one failure, zero outstanding blocks and zero
+workspace conflicts; its expected-normal-exit assertion fails. This remains
+B12 work, not a maximal-catalogue pass. All owned emulators are closed.
+
 ## 2026-09-30 — retained display through championship save-file operations
 
 The saved-game dialog uses OS-service windows for existence checks, save/load,

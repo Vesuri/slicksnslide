@@ -1,5 +1,20 @@
 set $resident_guard = 0
 set $commits = 0
+break slicks_amiga_track_list_cache_refresh
+commands
+  silent
+  if g_slicks_track_menu
+    if !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView || g_slicks_track_menu->track_lists
+      printf "TRACK_LIST_REFRESH_OWNERSHIP_FAILED\n"
+      quit 1
+    end
+  else
+    if g_slicks_diag_profile_platform->active
+      quit 1
+    end
+  end
+  continue
+end
 break slicks_amiga_track_lists_open
 commands
   silent
@@ -42,8 +57,8 @@ end
 break slicks_amiga_store_track_lists
 commands
   silent
-  if g_slicks_diag_profile_platform->active
-    printf "TRACK_LIST_SAVE_WITH_HARDWARE_OWNED\n"
+  if !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
+    printf "TRACK_LIST_SAVE_WITHOUT_RETAINED_DISPLAY_IO\n"
     quit 1
   end
   continue
@@ -51,7 +66,7 @@ end
 break slicks_amiga_platform_end
 commands
   silent
-  if $resident_guard
+  if $resident_guard || g_slicks_track_menu
     printf "TRACK_LIST_RAM_NAVIGATION_TEARDOWN\n"
     quit 1
   end

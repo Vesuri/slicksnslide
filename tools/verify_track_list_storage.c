@@ -3,6 +3,7 @@
 #define main track_records_storage_verifier_main
 #include "verify_track_storage.c"
 #undef main
+static unsigned char transaction_work[SLICKS_AMIGA_TRACK_LIST_BYTES];
 static const unsigned char *track_name(void *p,unsigned index)
 { (void)p; static const unsigned char n[][9]={"BASIC","1WAY","ABCDEFGH"}; return n[index]; }
 static void initialize_with_cache(const unsigned char *bytes,unsigned size)
@@ -26,12 +27,12 @@ int main(void)
         long next_size=slicks_track_lists_write(&lists,remove,title,&selected,3,track_name,0,next,sizeof next);
         assert(next_size>0);
         fail_first=fail_second=0; initialize(old,(unsigned)old_size);
-        struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&lists,remove,title,&selected,3,track_name,0);
+        struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&lists,remove,title,&selected,3,track_name,0,transaction_work,sizeof transaction_work);
         assert(report.result==SLICKS_SETUP_SAVED && equals(0,next,(unsigned)next_size));
         unsigned calls=operation;
         for(unsigned first=0;first<=calls+2;++first) for(unsigned second=first;second<=calls+2;++second) {
             initialize(old,(unsigned)old_size); fail_first=first; fail_second=second;
-            report=slicks_amiga_store_track_lists(&lists,remove,title,&selected,3,track_name,0);
+            report=slicks_amiga_store_track_lists(&lists,remove,title,&selected,3,track_name,0,transaction_work,sizeof transaction_work);
             assert(!allocations); ++cases; ++results[report.result];
             if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING)
                 assert(equals(0,next,(unsigned)next_size));
@@ -73,13 +74,13 @@ int main(void)
         struct File snapshot[3]; memcpy(snapshot,files,sizeof files);
         load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
         assert(load.result==SLICKS_SETUP_LOAD_RECOVERY && !memcmp(snapshot,files,sizeof files));
-        struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&lists,0,0,0,0,0,0);
+        struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&lists,0,0,0,0,0,0,transaction_work,sizeof transaction_work);
         assert(report.result==SLICKS_SETUP_RECOVERY_REQUIRED && !memcmp(snapshot,files,sizeof files) && !allocations);
     }
     initialize(empty,sizeof empty); files[0].present=0;
     load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
     assert(load.result==SLICKS_SETUP_LOADED && !view.count && view.size==8 && !files[0].present && !allocations);
-    struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&view,-1,(const unsigned char *)"First",&selected,3,track_name,0);
+    struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&view,-1,(const unsigned char *)"First",&selected,3,track_name,0,transaction_work,sizeof transaction_work);
     assert(report.result==SLICKS_SETUP_SAVED && equals(0,old,(unsigned)old_size) && !allocations);
     memset(loaded,0,sizeof loaded); view=(struct SlicksTrackLists){0,0,0};
     load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
@@ -87,33 +88,44 @@ int main(void)
     assert(load.result==SLICKS_SETUP_LOADED && !slicks_track_lists_select(&view,0,&restored,3,track_name,0));
     assert(restored.count==4 && !memcmp(recovered,indices,sizeof recovered) && !allocations);
     for(unsigned i=0;i<4;++i) assert(results[i]);
+    initialize(old,(unsigned)old_size);
+    report=slicks_amiga_store_track_lists(&view,-1,(const unsigned char *)"First",&selected,3,track_name,0,0,sizeof transaction_work);
+    assert(report.result==SLICKS_SETUP_SAVE_FAILED && report.io_error==ERROR_NO_FREE_STORE && !operation && !allocations);
+    report=slicks_amiga_store_track_lists(&view,-1,(const unsigned char *)"First",&selected,3,track_name,0,transaction_work,sizeof transaction_work-1);
+    assert(report.result==SLICKS_SETUP_SAVE_FAILED && report.io_error==ERROR_NO_FREE_STORE && !operation && !allocations);
     struct SlicksAmigaTrackListCache cache={0};
     initialize(old,(unsigned)old_size); fail_first=fail_second=0;
-    slicks_amiga_track_list_cache_refresh(&cache);
+    slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
     assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.size==(unsigned long)old_size &&
         cache.view.count==1 && !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
     calls=operation;
     const unsigned char *retained=cache.view.bytes;
+    for(unsigned size=0;size<2;++size) {
+        initialize_with_cache(old,(unsigned)old_size);
+        slicks_amiga_track_list_cache_refresh(&cache,size?transaction_work:0,sizeof transaction_work-size);
+        assert(cache.report.result==SLICKS_SETUP_LOAD_IO_ERROR && cache.report.io_error==ERROR_NO_FREE_STORE &&
+            cache.view.bytes==retained && !memcmp(retained,old,(size_t)old_size) && !operation && allocations==1);
+    }
     for(unsigned fault_at=1;fault_at<=calls;++fault_at) {
         initialize_with_cache(old,(unsigned)old_size); fail_first=fault_at; fail_second=0;
-        slicks_amiga_track_list_cache_refresh(&cache);
+        slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
         assert(cache.report.result!=SLICKS_SETUP_LOADED && cache.view.bytes==retained &&
             !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
     }
     fail_first=fail_second=0;
     for(unsigned cut=0;cut<(unsigned)old_size;++cut) {
         initialize_with_cache(old,cut);
-        slicks_amiga_track_list_cache_refresh(&cache);
+        slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
         assert(cache.report.result==SLICKS_SETUP_LOAD_INVALID && cache.view.bytes==retained &&
             !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
     }
     for(unsigned artifact=1;artifact<3;++artifact) {
         initialize_with_cache(old,(unsigned)old_size); files[artifact].present=1;
-        slicks_amiga_track_list_cache_refresh(&cache);
+        slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
         assert(cache.report.result==SLICKS_SETUP_LOAD_RECOVERY && cache.view.bytes==retained && allocations==1);
     }
     initialize_with_cache(empty,sizeof empty); files[0].present=0;
-    slicks_amiga_track_list_cache_refresh(&cache);
+    slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
     assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.size==8 &&
         !cache.view.count && !memcmp(cache.view.bytes,empty,8) && allocations==1);
     slicks_amiga_track_list_cache_free(&cache);
