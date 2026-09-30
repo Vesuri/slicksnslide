@@ -103,9 +103,11 @@ are used as preview output. The arena API explicitly borrows rather than owns.
 5. **Persistence/catalogues:** track-list store and refresh now borrow 65,536
    bytes from the owner-tagged modal overlay, after picker/name/message children
    close. Primary/track-list parents and the immutable catalogue are separate.
-   Refresh reads/validates unpublished scratch directly, then still allocates
-   an exact-size retained copy before releasing the previous copy. That retained
-   replacement is not yet startup-only. Both APIs reject missing/short scratch
+   The retained catalogue reserves 65,536 bytes at startup, after the larger
+   menu block but before small compressed-resource blocks. Refresh validates
+   unpublished scratch and copies into the reservation only on success. Failure
+   preserves the old bytes/view but records an error to prevent stale browsing.
+   Both APIs reject missing/short scratch
    before filesystem work. Release rebuilds the particle cache if a race exists.
    Reserve catalogue/transaction capacity at launch; bound dynamic name tables,
    profile editing, save/load and screenshot encoding without losing atomic

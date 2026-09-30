@@ -1,4 +1,6 @@
-# TRACKSQ/TRACKSC with a valid nonempty SLICKS.TRK in a private fixture.
+# TRACKSQ with a valid nonempty SLICKS.TRK in a private fixture.
+# TRACKSC is also selected by the scroll-cost probe, so it is not a usable
+# unattended list-Close workflow. Adapter host tests cover Close failures.
 # Controlled Read/Close result faults; real handles are always closed.
 break read_file
 commands

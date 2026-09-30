@@ -5120,6 +5120,10 @@ int main(void)
         PutStr((CONST_STRPTR)"Slicks: insufficient memory for menu and track workspace.\n");
         goto cleanup;
     }
+    if(slicks_amiga_track_list_cache_create(&track_list_cache)) {
+        PutStr((CONST_STRPTR)"Slicks: insufficient memory for track-list storage.\n");
+        goto cleanup;
+    }
     if(slicks_amiga_menu_keymap_init() ||
        slicks_resource_archive_open(&archive,"SLICKS.000")) goto cleanup;
     menu_cache=slicks_resource_cache_create(&archive,slicks_menu_resources,

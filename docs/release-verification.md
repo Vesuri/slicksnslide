@@ -1,5 +1,38 @@
 # Development release audit
 
+## 2026-10-01 — track-list cache reserves its capacity at launch
+
+The retained catalogue now allocates 65,536 bytes once, before small menu-cache
+blocks fragment startup scratch. Refresh reads and validates the separate
+modal staging span, then publishes into the reservation without allocating.
+Failure retains the previous bytes/view but records an error, preventing stale
+browsing. Shutdown frees the reservation even when its first refresh failed.
+The unused standalone loader also accepts explicit scratch instead of allocating.
+
+- Host: 324 save fault cases plus read/Close faults, truncation, recovery-file
+  retention, reservation failure and cleanup pass. Three repeated full-capacity
+  growth/invalid-refresh/shrink cycles preserve pointer identity and bytes;
+  cumulative allocation calls do not increase after startup reservation.
+- `tmp/standalone-release-1_rqo5tb`: stock Workbench/68020/2 MiB/no Fast/4 KiB
+  stack TRACKSL save/reopen/select/race passes; all 16 menu publications match
+  all 64,000 pixels. An initial run used the wrong warning fixture and is not
+  a pass (`...-h90197pq`).
+- `...-0ft1aoym`: maximal 65,528-byte catalogue, same stock configuration,
+  REGCHECK allocation audit and two launches in the same OS session pass:
+  return 0, 204 allocation calls, no failed or outstanding blocks, no workspace
+  conflicts, and SAME_OS_RESTART_OK. The full reservation adds only eight bytes
+  over this former exact-size catalogue; an empty catalogue reserves 65,528
+  more bytes so future edits cannot require heap growth.
+- `...-as2divqy`: TRACKSQ rejects an injected Read failure without publishing
+  a partial cache; warning dismissal and race entry pass, with matching menu
+  publications. TRACKSC (`...-s2rx71l5`) also selects the scroll-cost diagnostic
+  and was stopped explicitly, not counted as a recovery pass. Host tests cover
+  Close failures. The warning fixture now observes the actual cache-refresh
+  entry point rather than the unused standalone loader.
+
+All test emulators are closed and all file writes used private installation
+copies. Archive-directory allocation remains B12 work.
+
 ## 2026-10-01 — championship persistence uses reserved scratch
 
 Championship save/load adapters now require caller scratch and never allocate.

@@ -1,5 +1,6 @@
 /* Reuse the existing short-read/write and two-fault AmigaDOS mock, but
  * execute the actual production SLICKS.TRK load/store adapter. */
+#define SLICKS_TRACK_LIST_STORAGE_TEST
 #define main track_records_storage_verifier_main
 #include "verify_track_storage.c"
 #undef main
@@ -44,27 +45,27 @@ int main(void)
     }
     fail_first=fail_second=0; initialize(old,(unsigned)old_size);
     struct SlicksTrackLists view={0,17,19};
-    struct SlicksSetupLoadReport load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
+    struct SlicksSetupLoadReport load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view,transaction_work,sizeof transaction_work);
     assert(load.result==SLICKS_SETUP_LOADED && view.bytes==loaded && view.count==1 &&
         view.size==(unsigned long)old_size && !memcmp(loaded,old,(size_t)old_size) && !allocations);
     unsigned calls=operation;
     for(unsigned fault_at=1;fault_at<=calls;++fault_at) {
         initialize(old,(unsigned)old_size); fail_first=fault_at; fail_second=0;
         memset(loaded,0xa5,sizeof loaded); view=(struct SlicksTrackLists){0,17,19};
-        load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
+        load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view,transaction_work,sizeof transaction_work);
         assert(load.result!=SLICKS_SETUP_LOADED && !view.bytes && view.size==17 && view.count==19 && !allocations);
         for(unsigned i=0;i<sizeof loaded;++i) assert(loaded[i]==0xa5);
     }
     fail_first=fail_second=0;
     for(unsigned capacity=8;capacity<(unsigned)old_size;++capacity) {
         initialize(old,(unsigned)old_size); view=(struct SlicksTrackLists){0,17,19}; memset(loaded,0xa5,sizeof loaded);
-        load=slicks_amiga_load_track_lists(loaded,capacity,&view);
+        load=slicks_amiga_load_track_lists(loaded,capacity,&view,transaction_work,sizeof transaction_work);
         assert(load.result==SLICKS_SETUP_LOAD_INVALID && !view.bytes && view.size==17 && view.count==19 && !allocations);
         for(unsigned i=0;i<sizeof loaded;++i) assert(loaded[i]==0xa5);
     }
     for(unsigned cut=0;cut<(unsigned)old_size;++cut) {
         initialize(old,cut); view=(struct SlicksTrackLists){0,17,19}; memset(loaded,0xa5,sizeof loaded);
-        load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
+        load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view,transaction_work,sizeof transaction_work);
         assert(load.result==SLICKS_SETUP_LOAD_INVALID && !view.bytes && !allocations);
         for(unsigned i=0;i<sizeof loaded;++i) assert(loaded[i]==0xa5);
     }
@@ -72,18 +73,18 @@ int main(void)
         initialize(old,(unsigned)old_size); files[artifact].present=1; files[artifact].size=5;
         memset(files[artifact].bytes,0x77,5);
         struct File snapshot[3]; memcpy(snapshot,files,sizeof files);
-        load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
+        load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view,transaction_work,sizeof transaction_work);
         assert(load.result==SLICKS_SETUP_LOAD_RECOVERY && !memcmp(snapshot,files,sizeof files));
         struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&lists,0,0,0,0,0,0,transaction_work,sizeof transaction_work);
         assert(report.result==SLICKS_SETUP_RECOVERY_REQUIRED && !memcmp(snapshot,files,sizeof files) && !allocations);
     }
     initialize(empty,sizeof empty); files[0].present=0;
-    load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
+    load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view,transaction_work,sizeof transaction_work);
     assert(load.result==SLICKS_SETUP_LOADED && !view.count && view.size==8 && !files[0].present && !allocations);
     struct SlicksSetupStorageReport report=slicks_amiga_store_track_lists(&view,-1,(const unsigned char *)"First",&selected,3,track_name,0,transaction_work,sizeof transaction_work);
     assert(report.result==SLICKS_SETUP_SAVED && equals(0,old,(unsigned)old_size) && !allocations);
     memset(loaded,0,sizeof loaded); view=(struct SlicksTrackLists){0,0,0};
-    load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view);
+    load=slicks_amiga_load_track_lists(loaded,sizeof loaded,&view,transaction_work,sizeof transaction_work);
     short recovered[4]={-1,-1,-1,-1}; struct SlicksTrackPlaylist restored={recovered,0,4};
     assert(load.result==SLICKS_SETUP_LOADED && !slicks_track_lists_select(&view,0,&restored,3,track_name,0));
     assert(restored.count==4 && !memcmp(recovered,indices,sizeof recovered) && !allocations);
@@ -95,6 +96,16 @@ int main(void)
     assert(report.result==SLICKS_SETUP_SAVE_FAILED && report.io_error==ERROR_NO_FREE_STORE && !operation && !allocations);
     struct SlicksAmigaTrackListCache cache={0};
     initialize(old,(unsigned)old_size); fail_first=fail_second=0;
+    slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
+    assert(cache.report.result==SLICKS_SETUP_LOAD_IO_ERROR && !operation && !allocations);
+    fail_first=1;
+    assert(slicks_amiga_track_list_cache_create(&cache)<0 && !cache.storage && !allocations);
+    slicks_amiga_track_list_cache_free(&cache);
+    fail_first=0;operation=0;
+    assert(!slicks_amiga_track_list_cache_create(&cache) && allocations==1);
+    unsigned startup_calls=allocation_calls;
+    assert(slicks_amiga_track_list_cache_create(&cache)<0 && allocation_calls==startup_calls);
+    operation=0;
     slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
     assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.size==(unsigned long)old_size &&
         cache.view.count==1 && !memcmp(cache.view.bytes,old,(size_t)old_size) && allocations==1);
@@ -128,9 +139,26 @@ int main(void)
     slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
     assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.size==8 &&
         !cache.view.count && !memcmp(cache.view.bytes,empty,8) && allocations==1);
+    static unsigned char maximum[SLICKS_AMIGA_TRACK_LIST_BYTES];
+    memcpy(maximum,empty,8); maximum[7]=1;
+    maximum[8]=8188>>8;maximum[9]=8188&255;maximum[10]='X';
+    for(unsigned i=31;i<sizeof maximum;++i) maximum[i]=(unsigned char)(i*37);
+    for(unsigned repeat=0;repeat<3;++repeat) {
+        initialize_with_cache(maximum,sizeof maximum);
+        slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
+        assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.bytes==retained &&
+            cache.view.size==sizeof maximum && !memcmp(retained,maximum,sizeof maximum));
+        initialize_with_cache(maximum,sizeof maximum);files[0].bytes[0]='X';
+        slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
+        assert(cache.report.result==SLICKS_SETUP_LOAD_INVALID && !memcmp(retained,maximum,sizeof maximum));
+        initialize_with_cache(empty,sizeof empty);
+        slicks_amiga_track_list_cache_refresh(&cache,transaction_work,sizeof transaction_work);
+        assert(cache.report.result==SLICKS_SETUP_LOADED && cache.view.bytes==retained && cache.view.size==8);
+    }
     slicks_amiga_track_list_cache_free(&cache);
-    assert(!allocations && !cache.view.bytes && cache.report.result==SLICKS_SETUP_LOAD_INVALID);
-    puts("Resident track-list cache: exact-size replacement, all refresh faults, recovery retention and cleanup pass");
+    assert(!allocations && !cache.storage && !cache.view.bytes && cache.report.result==SLICKS_SETUP_LOAD_INVALID);
+    assert(allocation_calls==startup_calls);
+    puts("Resident track-list cache: startup reservation, allocation-free refresh, all refresh faults, recovery retention and cleanup pass");
     printf("Amiga saved-list storage: %u single/double save faults, load/close/allocation failures, truncation, recovery guards and missing-file first save pass\n",cases);
     return 0;
 }

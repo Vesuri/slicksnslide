@@ -53,8 +53,8 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
 | --- | ---: | --- |
 | store_capture | 1 | Baseline site removed: explicit 65,078-byte caller scratch from modal storage; source chunky remains live and separate |
 | store_setup | 1 | Baseline site removed: explicit 5,771-byte caller scratch from modal storage; live profiles/configuration retained during atomic replacement |
-| load_track_lists | 1 | Up to 65,536; preserve caller output on failure |
-| track_list_cache_refresh | 2 | 65,536 staging plus retained next.size; old cache must remain valid until successful validation/publication |
+| load_track_lists | 1 | Baseline site removed: explicit unpublished caller scratch; output preserved on failure; no production caller |
+| track_list_cache_refresh | 2 | Baseline sites replaced: modal staging plus full 65,536-byte startup cache reservation; refresh allocates nothing and preserves old data until successful validation |
 | store_track_lists | 1 | 65,536 output alongside immutable old catalogue and selection |
 | load_saved_game | 1 | Baseline site removed: explicit caller scratch, 6 + 8 × track capacity + 212; hidden Load branch borrows modal storage and keeps outputs separate |
 | store_saved_game | 1 | Baseline site removed: exact encoded size (at most 80,218) leased from modal storage; input track names remain live in separate completed-race VGA storage |
@@ -194,16 +194,19 @@ playlist names. The phase-exclusive union in idle VGA is 141,312 bytes, with
 disjoint input/output/label spans during preview and an 80,000-byte name span
 after the renderer copies its labels. See memory-lifetimes.md for offsets and
 proof. The allocating plain-file helper remains only in the explicit
-intermission construction diagnostic. Persistence encoding stays separate
-and remains open work; it must coexist with those exported names.
+intermission construction diagnostic. Persistence encoding stays separate in
+the modal reservation and coexists with those exported names.
 
 Track-list store/refresh staging now borrows the modal overlay under a distinct
 storage-owner tag. Both adapters take explicit caller-owned 65,536-byte scratch;
 their staging AllocMem/FreeMem expressions are removed. Picker/name/confirmation
 children close before acquisition, and any new warning opens only after refresh
 releases the slot. Startup refresh uses the same already-bound overlay. The
-retained catalogue's exact-size replacement allocation is still open B12 work,
-as are other persistence operations. No additional startup bytes are reserved.
+retained catalogue now has a full-capacity 65,536-byte startup reservation,
+reused without allocation on every validated refresh. Compared with the former
+exact-size cache, this reserves 65,528 more bytes for an empty catalogue and
+only eight more for the maximal 65,528-byte test catalogue. Failed refreshes
+retain the old bytes, while their error report prevents stale browsing.
 
 This matrix separates child payloads from longer-lived parent, catalogue and
 transaction data. The remaining work is placing those parents/payloads and

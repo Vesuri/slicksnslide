@@ -2,7 +2,7 @@
 # Real AmigaDOS Open failure; no debugger fault/state injection.
 source diag_menu_rectangles.gdb
 set $track_io_loads=0
-break slicks_amiga_load_track_lists
+break slicks_amiga_track_list_cache_refresh
 commands
   silent
   set $track_io_loads=$track_io_loads+1
