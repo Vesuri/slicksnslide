@@ -1,5 +1,8 @@
 # CHAMPSAVE queues ordinary raw-key input in native code. Read-only checks.
 source diag_saved_resident.gdb
+if $_isvoid($expected_saved_tracks)
+  set $expected_saved_tracks = 3
+end
 set $picker = 0
 set $name = 0
 set $saved = 0
@@ -25,7 +28,7 @@ break slicks_diag_intermission_checkpoint
 commands
   silent
   printf "SAVE_INTERMISSION count=%u points=%d cash=%d\n",g_slicks_track_playlist.count,g_slicks_setup_session.points[0],g_slicks_setup_session.cash[0]
-  if g_slicks_track_playlist.count != 3 || $starts != 1
+  if g_slicks_track_playlist.count != $expected_saved_tracks || $starts != 1
     quit 1
   end
   continue

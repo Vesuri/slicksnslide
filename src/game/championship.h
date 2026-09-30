@@ -8,13 +8,14 @@
  * Options, input bindings, colours and RNG are deliberately not serialized
  * by the original. Keep the current configuration and RNG on resume. */
 static inline int slicks_championship_export(struct SlicksSavedGame *out,
-    unsigned char tracks[][8],const short *selection,unsigned count,short next_track,
+    unsigned char tracks[][8],unsigned capacity,const short *selection,unsigned count,short next_track,
     unsigned catalogue_count,const unsigned char *(*name)(void *,unsigned),void *context,
     const struct SlicksSetupSession *session,const struct SlicksPlayerProfiles *profiles,
     const unsigned char scales[4])
 {
     if(!out || !tracks || !selection || !name || !session || !profiles || !scales ||
-       !count || count>256 || next_track<0 || (unsigned)next_track>=count) return -1;
+       !count || count>SLICKS_SAVED_GAME_TRACK_MAX || count>capacity ||
+       next_track<0 || (unsigned)next_track>=count) return -1;
     for(unsigned i=0;i<count;++i)
         if(selection[i]<0 || (unsigned)selection[i]>=catalogue_count || !name(context,selection[i])) return -1;
     for(unsigned i=0;i<4;++i)

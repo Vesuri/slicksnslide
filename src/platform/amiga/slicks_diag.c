@@ -3135,16 +3135,23 @@ retry:
                     if(opened<=0 && slicks_amiga_intermission_refresh_cars(m,g_slicks_setup_session.players.vehicle)) goto done;
                     if(opened<0 && slicks_amiga_warning_open(m,(const unsigned char *)"CARS UNAVAILABLE - PRESS A KEY")) goto done;
                 } else if(action==SLICKS_INTERMISSION_SAVE_GAME) {
-                    static unsigned char saved_tracks[256][8];
+                    unsigned count=g_slicks_track_playlist.count;
+                    unsigned char (*saved_tracks)[8]=count && count<=SLICKS_SAVED_GAME_TRACK_MAX?
+                        AllocMem(count*8UL,MEMF_ANY):0;
                     struct SlicksSavedGame game; unsigned char scales[4];
                     for(unsigned i=0;i<4;++i) {
                         scales[i]=race->cars[i].position_scale;
                         for(unsigned j=0;j<13;++j) g_slicks_setup_session.inventory[i][j]=race->weapon_inventory[i][j];
                     }
-                    if(slicks_championship_export(&game,saved_tracks,track_selection,g_slicks_track_playlist.count,
+                    if(slicks_championship_export(&game,saved_tracks,count,track_selection,count,
                         position+1,track_count,native_track_name,track_names,&g_slicks_setup_session,&g_slicks_profiles,scales)) {
+                        if(saved_tracks) FreeMem(saved_tracks,count*8UL);
                         if(championship_notice(platform,m,(const unsigned char *)"CHAMPIONSHIP CANNOT BE SAVED")<0) goto done;
-                    } else if(run_saved_game_dialog(platform,m,&game,saved_tracks,1)<0) goto done;
+                    } else {
+                        int saved=run_saved_game_dialog(platform,m,&game,saved_tracks,1);
+                        FreeMem(saved_tracks,count*8UL);
+                        if(saved<0) goto done;
+                    }
                 }
             }
             if(diagnostic==2) {
@@ -5168,7 +5175,12 @@ int main(void)
         }
         if((championship_test==1 || championship_test==3 || championship_test==6) && !championship_test_stage && g_slicks_track_menu && platform.key_head==platform.key_tail) {
             static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,0x4f,0x44,0x4d,0x44,0x4d,0x44,0x45,0x4c,0x4c,0x44};
-            championship_test_keys(&platform,keys,sizeof keys); championship_test_stage=1;
+            /* CHAMPSAVL retains the startup All playlist instead of choosing
+             * three entries. The Save dialog still receives ordinary keys. */
+            static const unsigned char all_keys[]={0x45,0x4c,0x4c,0x44};
+            if(argc==9 && argv[8]=='L') championship_test_keys(&platform,all_keys,sizeof all_keys);
+            else championship_test_keys(&platform,keys,sizeof keys);
+            championship_test_stage=1;
         }
         if(championship_test && g_slicks_diag_ingame && race->frame_count>=40 && championship_test_stage<2) {
             unsigned char key=championship_test==2?0x59:0x58;

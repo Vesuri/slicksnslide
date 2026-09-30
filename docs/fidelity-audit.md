@@ -2658,6 +2658,46 @@ build checks, not a native Load-dialog or larger-playlist completion claim.
 Dynamic caller allocation, codec/export limits and native validation remain
 open.
 
+### F18 follow-up: dynamic championship Save backing
+
+The codec bound is now 10,000, matching the original discovery caller's limit.
+Export accepts an explicit backing capacity and rejects insufficient storage
+before changing either the output descriptor or track bytes. Intermission Save
+allocates exactly eight bytes per selected track and frees them on export
+failure, dialog cancellation, successful save and dialog failure. It no longer
+uses a 256-entry static array. Failed allocation takes the existing cannot-save
+notice path; dedicated native allocation-fault verification remains open.
+
+The platform loader sizes its temporary encoded-file buffer from the supplied
+capacity and rejects capacities above the codec bound. This keeps the existing
+256-entry Load caller safe without allocating 80 KiB for every ordinary load.
+That caller still needs dynamic backing and transactional live-playlist growth;
+this commit does not claim native large-playlist resume is finished.
+
+`verify-saved-game` now compares all 588 original/native writer cases directly,
+including the 168 cases with 257/300 tracks that formerly asserted rejection.
+All original streams round-trip, all truncated prefixes remain rejected, and
+2,266 unchanged-destination capacity guards pass. `verify-championship` adds
+257/300/10,000-track export/encode/decode/stage host cases, including insufficient
+export capacity leaving all outputs untouched. These are host boundary tests,
+not original 10,000-track or native maximum-memory evidence. Platform storage
+tests additionally write/read 300 tracks, reject 256-entry destination storage
+without modifying it, and reject excessive capacities before any I/O. The
+existing 1,485 write-fault, 2,310 load-fault/truncation and original resume
+matching/fallback comparisons also pass.
+
+Native `CHAMPSAVL` enters Tracks and returns without replacing the real startup
+All playlist, then uses normal input for race entry, skip to intermission,
+Save cancellation, reopen, filename entry, Save and exit. The 300-file fixture
+passes `diag_large_championship_save.gdb` in
+`tmp/standalone-release-yj8jomwq`. Its actual `E2E.SSS` is 2,572 bytes, declares
+300 tracks, contains every `T0000001` through `T0000300` exactly once and stores
+next-track index one. The ordinary three-track `CHAMPSAVE` regression passes in
+`tmp/standalone-release-lk977pnv`. Both confirm 4,096-byte default stacks,
+stock 68020/2 MiB Chip/no Fast, resident dialog returns and full system
+restoration. Debug audio was muted and both emulators closed. Build log:
+`tmp/large-save-build.log`.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

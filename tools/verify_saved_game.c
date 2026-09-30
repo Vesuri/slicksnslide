@@ -12,7 +12,7 @@ static unsigned word(uc_engine *u,unsigned address)
 { unsigned char b[2]; check(uc_mem_read(u,address,b,2)); return b[0]|b[1]<<8; }
 static void putword(uc_engine *u,unsigned address,unsigned value)
 { unsigned char b[2]={(unsigned char)value,(unsigned char)(value>>8)}; check(uc_mem_write(u,address,b,2)); }
-/* Independent of the port's current 256-track staging limit. */
+/* Independently sized reference catalogue. */
 enum { ORACLE_TRACK_MAX=300 };
 struct SaveOracle { unsigned char bytes[6+8*ORACLE_TRACK_MAX+4*53]; unsigned used,closed,opened,catalogue_calls; };
 static void io(uc_engine *u,uint64_t address,uint32_t size,void *context)
@@ -44,7 +44,7 @@ int main(void)
     struct SaveOracle oracle;
     const unsigned hooks[]={0x11eaf,0x123ce,0x119c2,0x35e63};
     for(unsigned i=0;i<4;++i) { uc_hook h; check(uc_hook_add(u,&h,UC_HOOK_CODE,io,&oracle,hooks[i],hooks[i])); }
-    const short counts[]={0,1,2,64,256,257,300}; unsigned cases=0,guards=0,large_cases=0;
+    const short counts[]={0,1,2,64,256,257,300}; unsigned cases=0,guards=0;
     for(unsigned count=0;count<sizeof counts/sizeof counts[0];++count) for(unsigned length=0;length<=20;++length) for(unsigned pattern=0;pattern<4;++pattern) {
         unsigned char tracks[ORACLE_TRACK_MAX][8]; struct SlicksSavedGame game={.track_count=counts[count],.next_track=(short)(pattern*21845),.tracks=tracks};
         for(unsigned i=0;i<ORACLE_TRACK_MAX;++i) for(unsigned j=0;j<8;++j) tracks[i][j]=(unsigned char)(i*31+j*11+pattern);
@@ -84,27 +84,7 @@ int main(void)
             check(uc_reg_read(u,UC_X86_REG_CS,&cs)); check(uc_reg_read(u,UC_X86_REG_IP,&ip)); check(uc_reg_read(u,UC_X86_REG_AX,&ax));
             if(cs!=0x9000 || ip || (ax&255)!=!opened || oracle.closed!=opened) abort();
             if(!opened) { if(oracle.used || oracle.catalogue_calls) abort(); continue; }
-            if(game.track_count>SLICKS_SAVED_GAME_TRACK_MAX) {
-                /* Verify the original's larger stream without weakening the
-                 * port's guard before its callers own adequate storage. The
-                 * player/next-track tail must equal the zero-track encoding. */
-                struct SlicksSavedGame tail_game=game;
-                unsigned char tail[6+4*53];
-                tail_game.track_count=0;
-                long tail_size=slicks_save_game_bytes(&tail_game,tail,sizeof tail);
-                unsigned track_bytes=8U*(unsigned)game.track_count;
-                if(tail_size<0 || oracle.used!=track_bytes+(unsigned)tail_size ||
-                   oracle.bytes[0]!=0x53 || oracle.bytes[1]!=8 ||
-                   oracle.bytes[2]!=(unsigned)game.track_count/256 ||
-                   oracle.bytes[3]!=(unsigned char)game.track_count ||
-                   memcmp(oracle.bytes+4,tracks,track_bytes) ||
-                   memcmp(oracle.bytes+4+track_bytes,tail+4,(size_t)tail_size-4) ||
-                   oracle.catalogue_calls!=track_bytes || slicks_saved_game_size(&game)!=-1)
-                    abort();
-                ++large_cases;
-                continue;
-            }
-            unsigned char encoded[SLICKS_SAVED_GAME_MAX_BYTES+1]; memset(encoded,0xa5,sizeof encoded);
+            unsigned char encoded[sizeof oracle.bytes+1]; memset(encoded,0xa5,sizeof encoded);
             long bytes=slicks_save_game_bytes(&game,encoded,sizeof encoded);
             if(bytes!=(long)oracle.used || bytes!=slicks_saved_game_size(&game) ||
                 memcmp(encoded,oracle.bytes,(size_t)bytes) || encoded[bytes]!=0xa5 ||
@@ -112,23 +92,23 @@ int main(void)
                 fprintf(stderr,"Saved-game mismatch count=%u length=%u pattern=%u\n",count,length,pattern); return 1;
             }
             struct SlicksSavedGame decoded;
-            unsigned char loaded_tracks[256][8],roundtrip[SLICKS_SAVED_GAME_MAX_BYTES];
-            if(slicks_load_game_bytes(&decoded,loaded_tracks,256,oracle.bytes,oracle.used) ||
+            unsigned char loaded_tracks[ORACLE_TRACK_MAX][8],roundtrip[sizeof oracle.bytes];
+            if(slicks_load_game_bytes(&decoded,loaded_tracks,ORACLE_TRACK_MAX,oracle.bytes,oracle.used) ||
                slicks_save_game_bytes(&decoded,roundtrip,sizeof roundtrip)!=bytes ||
                memcmp(roundtrip,oracle.bytes,oracle.used)) abort();
             /* Every truncated original stream must leave both outputs alone. */
             memset(&decoded,0xa5,sizeof decoded); memset(loaded_tracks,0xa5,sizeof loaded_tracks);
             for(unsigned cut=0;cut<oracle.used;++cut) {
-                if(slicks_load_game_bytes(&decoded,loaded_tracks,256,oracle.bytes,cut)!=-1) abort();
+                if(slicks_load_game_bytes(&decoded,loaded_tracks,ORACLE_TRACK_MAX,oracle.bytes,cut)!=-1) abort();
                 for(unsigned j=0;j<sizeof decoded;++j) if(((unsigned char *)&decoded)[j]!=0xa5) abort();
                 for(unsigned j=0;j<sizeof loaded_tracks;++j) if(((unsigned char *)loaded_tracks)[j]!=0xa5) abort();
             }
             encoded[bytes]=0;
-            if(slicks_load_game_bytes(&decoded,loaded_tracks,256,encoded,bytes+1)!=-1) abort();
+            if(slicks_load_game_bytes(&decoded,loaded_tracks,ORACLE_TRACK_MAX,encoded,bytes+1)!=-1) abort();
             if(game.track_count && slicks_load_game_bytes(&decoded,loaded_tracks,
                (unsigned)game.track_count-1,oracle.bytes,oracle.used)!=-1) abort();
             encoded[0]=0;
-            if(slicks_load_game_bytes(&decoded,loaded_tracks,256,encoded,bytes)!=-1) abort();
+            if(slicks_load_game_bytes(&decoded,loaded_tracks,ORACLE_TRACK_MAX,encoded,bytes)!=-1) abort();
             if(length==20 && count==4 && pattern==3) for(unsigned cap=0;cap<(unsigned)bytes;++cap) {
                 memset(encoded,0xa5,sizeof encoded);
                 if(slicks_save_game_bytes(&game,encoded,cap)!=-1) abort();
@@ -140,11 +120,10 @@ int main(void)
     }
     struct SlicksSavedGame invalid={.track_count=-1}; unsigned char byte=0xa5;
     if(slicks_save_game_bytes(&invalid,&byte,1)!=-1 || byte!=0xa5) abort();
-    invalid.track_count=257; if(slicks_saved_game_size(&invalid)!=-1) abort();
+    invalid.track_count=SLICKS_SAVED_GAME_TRACK_MAX+1; if(slicks_saved_game_size(&invalid)!=-1) abort();
     invalid.track_count=1; if(slicks_saved_game_size(&invalid)!=-1) abort();
     uc_close(u);
     printf("Original saved-game writer: %u byte-exact streams and open failures; %u unchanged-destination capacity guards pass\n",cases,guards);
     puts("Saved-game decoder: original-writer streams round-trip exactly; all truncated prefixes, extra bytes, bad signatures and undersized track buffers rejected");
-    printf("Original writer beyond port staging limit: %u exact 257/300-track streams and open failures pass; native support remains pending\n",large_cases);
     return 0;
 }

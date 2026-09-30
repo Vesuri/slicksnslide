@@ -1,7 +1,8 @@
 #ifndef SLICKS_SAVED_GAME_H
 #define SLICKS_SAVED_GAME_H
 
-#define SLICKS_SAVED_GAME_TRACK_MAX 256
+/* Match the original track-discovery caller's bound, not a native staging size. */
+#define SLICKS_SAVED_GAME_TRACK_MAX 10000
 #define SLICKS_SAVED_GAME_MAX_BYTES (6+8*SLICKS_SAVED_GAME_TRACK_MAX+4*53)
 
 /* Original .SSS writer 1d587..1d769. This is not a raw memory snapshot:

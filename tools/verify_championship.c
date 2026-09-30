@@ -23,7 +23,7 @@ int main(void)
         for(unsigned j=0;j<13;++j) source.inventory[i][j]=(short)(13*i+j);
     }
     struct SlicksSavedGame game,decoded;
-    assert(!slicks_championship_export(&game,tracks,selection,3,1,3,name,0,&source,&profiles,scales));
+    assert(!slicks_championship_export(&game,tracks,256,selection,3,1,3,name,0,&source,&profiles,scales));
     long size=slicks_save_game_bytes(&game,bytes,sizeof bytes); assert(size>0);
     assert(!slicks_load_game_bytes(&decoded,decoded_tracks,256,bytes,size));
     struct SlicksSetupSession current={.random_state=987654},staged;
@@ -59,4 +59,29 @@ int main(void)
         resolved.track_capacity=256;
     }
     puts("Championship export/encode/decode/stage: shared human, AI, inactive, inventory, standings, scale, RNG and atomic rejection PASS");
+    static unsigned char large_tracks[SLICKS_SAVED_GAME_TRACK_MAX][8];
+    static unsigned char large_decoded[SLICKS_SAVED_GAME_TRACK_MAX][8];
+    static short large_selection[SLICKS_SAVED_GAME_TRACK_MAX],large_resolved[SLICKS_SAVED_GAME_TRACK_MAX];
+    const unsigned large_counts[]={257,300,SLICKS_SAVED_GAME_TRACK_MAX};
+    for(unsigned c=0;c<sizeof large_counts/sizeof large_counts[0];++c) {
+        unsigned count=large_counts[c];
+        for(unsigned i=0;i<count;++i) large_selection[i]=(short)(i%3);
+        memset(large_tracks,0xa5,sizeof large_tracks);
+        struct SlicksSavedGame before_game=game;
+        assert(slicks_championship_export(&game,large_tracks,count-1,large_selection,count,1,
+            3,name,0,&source,&profiles,scales)==-1);
+        assert(!memcmp(&game,&before_game,sizeof game));
+        for(unsigned i=0;i<sizeof large_tracks;++i) assert(((unsigned char *)large_tracks)[i]==0xa5);
+        assert(!slicks_championship_export(&game,large_tracks,count,large_selection,count,1,
+            3,name,0,&source,&profiles,scales));
+        size=slicks_save_game_bytes(&game,bytes,sizeof bytes); assert(size>0);
+        assert(!slicks_load_game_bytes(&decoded,large_decoded,count,bytes,size));
+        resolved.tracks=large_resolved; resolved.track_capacity=count;
+        assert(slicks_championship_stage(&staged,&resolved,&decoded,&current,&config,&profiles,
+            fallback,10,3,name,0)==SLICKS_RESUME_READY);
+        assert(!memcmp(large_resolved,large_selection,count*sizeof(short)));
+        assert(!memcmp(staged.inventory,source.inventory,sizeof source.inventory));
+        assert(staged.random_state==current.random_state);
+    }
+    puts("Large championship capacity/round-trip/staging: 257, 300 and 10000 tracks PASS (host boundary tests)");
 }

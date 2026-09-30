@@ -283,7 +283,7 @@ struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
     struct SlicksSetupStorageReport io={SLICKS_SETUP_SAVE_FAILED,0,0};
     unsigned length=0;
     if(path) while(length<120 && path[length]) ++length;
-    if(!game || !tracks || !length || length>=120) {
+    if(!game || !tracks || !length || length>=120 || capacity>SLICKS_SAVED_GAME_TRACK_MAX) {
         report.result=SLICKS_SETUP_LOAD_INVALID; return report;
     }
     char leftover[124];
@@ -302,17 +302,18 @@ struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
             report.io_error=io.io_error; goto done;
         }
     }
-    unsigned char *buffer=AllocMem(SLICKS_SAVED_GAME_MAX_BYTES,MEMF_ANY);
+    unsigned long buffer_size=6UL+8UL*capacity+4*53;
+    unsigned char *buffer=AllocMem(buffer_size,MEMF_ANY);
     if(!buffer) {
         report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE;
         goto done;
     }
-    long size=read_file(&report,path,buffer,SLICKS_SAVED_GAME_MAX_BYTES);
+    long size=read_file(&report,path,buffer,buffer_size);
     if(size==-1) {
         report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_OBJECT_NOT_FOUND;
     } else if(size>=0 && slicks_load_game_bytes(game,tracks,capacity,buffer,(unsigned long)size))
         report.result=SLICKS_SETUP_LOAD_INVALID;
-    FreeMem(buffer,SLICKS_SAVED_GAME_MAX_BYTES);
+    FreeMem(buffer,buffer_size);
 done:
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     process->pr_WindowPtr=window;
