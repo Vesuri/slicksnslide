@@ -93,6 +93,10 @@ native caller/input/error checks.
   and missed refreshes, and cover remaining registration/language combinations
   outside the complete-cycle evidence. This is menu work, not permission to
   resume paused gameplay optimization.
+  The current Finnish normal/Arcade registered/unregistered cadence refresh
+  is recorded in the fidelity evidence. Next split preparation, publication
+  and synchronization costs without debugger stops, including the Arcade
+  entry interval; do not reuse the older 72-refresh result as the current rate.
 - F03–F05/F10/F12: finish remaining native interactive sequences and shortcuts
   against original callers, including other starting rows beyond the checked
   GO/F9 matrix, remaining demo/input routes and applicable mouse behavior.

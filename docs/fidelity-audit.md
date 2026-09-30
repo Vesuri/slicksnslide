@@ -2181,6 +2181,45 @@ to add the missing diagnostic shop input; only the twelve final runs above
 constitute the matrix. Normal-game routing was not changed. Other starting
 rows, Help shortcuts and demo routes retain their separate coverage scope.
 
+## Current native title cadence refresh (2026-09-30)
+
+Measured production HEAD `901e786` without an in-loop debugger breakpoint:
+`REGCHECKU` with `diag_title_timing.gdb`, stock PAL 68020, 2 MiB Chip/no Fast,
+stripped executable and a confirmed 4096-byte CLI stack. Each fixture has a
+fresh mode-0 or mode-5 configuration, saved Finnish (3), and private copies of
+the original data. Registered runs use the local private key, never packaged
+or committed. No production code or pacing policy changed for these runs.
+
+| Mode / registration | Run under `tmp/standalone-release-` | 64 intervals: refresh histogram | Total refreshes / mean ms |
+| --- | --- | --- | --- |
+| Normal / registered | `p55pik70`, repeat `40c_orxs` | 44 x 1, 20 x 2 | 84 / 26.250 |
+| Normal / unregistered | `gntmrfop` | 50 x 1, 14 x 2 | 78 / 24.375 |
+| Arcade / registered | `ry49ieoc` | 40 x 1, 23 x 2, 1 x 11 | 97 / 30.3125 |
+| Arcade / unregistered | `neza4ilx` | 46 x 1, 17 x 2, 1 x 11 | 91 / 28.4375 |
+
+Both Arcade traces have the eleven-refresh interval at sample 1. Excluding
+that entry interval explicitly, the remaining 63 intervals take 86 refreshes
+(27.302 ms mean) registered and 80 (25.397 ms) unregistered. Do not describe
+the inclusive means as steady-state animation cost. The first-entry spike's
+exact work attribution is still open.
+
+All five gates pass pulse-counter progression, zero full-frame comparison
+diagnostics and normal restoration mask 31. The harness closes all five muted
+emulators. These are cadence measurements, not new pixel-fidelity evidence.
+The current normal registered result repeats but does not reproduce the older
+72-refresh result above. This establishes the current baseline, not a cause
+or a controlled attribution of the difference to any intervening commit.
+
+Source inspection identifies two distinct synchronization points: the main
+non-race loop waits for VBI, while `publish_title_dirty` prepares dirty pixels
+then waits for a fresh display-end edge. If preparation misses that edge,
+publication waits for the next one. The traces alone do not split preparation,
+C2P and waiting costs. Next attribution should collect their beam-time spans
+without stopping the loop, including the Arcade entry interval, before changing
+the pacing policy. Other saved languages, selections and original DOS Arcade
+cadence still need their own coverage; this does not close F08 or resume paused
+gameplay optimization.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
