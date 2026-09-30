@@ -123,7 +123,7 @@ elif [ -n "${SLICKS_WEAPON_TRANSITION:-}" ]; then
   case "$SLICKS_WEAPON_TRANSITION" in P|R|E|C|A) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s\n' "$SLICKS_WEAPON_TRANSITION" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_WEAPON_CASE:-}" ]; then
-  case "$SLICKS_WEAPON_CASE" in 1|2|3|4|5|6|7|8|9) ;; *) exit 2;; esac
+  case "$SLICKS_WEAPON_CASE" in 1|2|3|4|5|6|7|8|9|S) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALW%s\n' "$SLICKS_WEAPON_CASE" > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_NATURAL_RESULTS:-}" = shop ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALW\n' > "$DH0/s/startup-sequence"
@@ -392,7 +392,7 @@ PREAMBLE="$RUN/connect.gdb"
 {
   printf 'set pagination off\nset confirm off\nset remotetimeout 90\n'
   printf 'target remote 127.0.0.1:%s\n' "$DEBUG_PORT"
-  if [ -n "${SLICKS_WEAPON_CASE:-}" ]; then
+  if [ -n "${SLICKS_WEAPON_CASE:-}" ] && [ "$SLICKS_WEAPON_CASE" != S ]; then
     case "$SLICKS_WEAPON_CASE" in 1|2|3|4|5|6|7|8|9) ;; *) exit 2;; esac
     printf 'set $weapon_case = %s\n' "$SLICKS_WEAPON_CASE"
   fi

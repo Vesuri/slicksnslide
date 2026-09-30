@@ -51,12 +51,6 @@ This is implemented and verified ([title-and-loading-verification.md](title-and-
 The one remaining step is for the user to look once during a track load and
 confirm the tinted panel and caption on screen, not Workbench.
 
-### B5. Sparse-shop fixture
-
-Run one native fixture with only driver 3 human: buy one item, sell one item,
-press one ignored key. Accept when there is no crash, the transactions land on
-driver 3, and the ignored key triggers no redraw.
-
 ### B6. Typematic repeat in Help and name entry
 
 Menu repeat through the original `36ce0` reader is done

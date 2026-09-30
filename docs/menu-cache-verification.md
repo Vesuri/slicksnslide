@@ -2868,3 +2868,23 @@ in open work. It does not establish the missing `webf_ord.bmp` visual contents.
 The subsequent checked-reader fix and three native rejection cases are recorded
 in [registration-support.md](registration-support.md); that specific I/O gap is
 now closed, separately from the missing artwork's visual check.
+
+## Sparse shop native fixture (B5, decision D2, 2026-09-30)
+
+`NATURALWS` (`SLICKS_WEAPON_CASE=S`, `amiga/diag_sparse_shop.gdb`) makes
+drivers 1 and 3 human and drivers 2 and 4 inactive, then sends Right, Enter,
+Backspace, Q and Escape. Results (`tmp/b5-sparse.log`):
+- Right selects driver index 2, a real driver index kept by the safe mapping.
+- Buy takes driver 3's cash from 1000 to 900 and its item count from 20 to 21.
+- Sell returns 950 and 20.
+- Q causes no refresh: 3 refreshes in total, for Right, buy and sell.
+- Driver 1's cash is unchanged.
+
+With only driver 3 active, the shop has no rows, because `2c41c` builds the
+list from driver 1, exactly as the original does.
+
+The fixture also exposed that a successful `run_shop` released the display,
+so race loading after a shop still showed the AmigaOS view. Success now keeps
+the shop screen for the loading panel; failures still release the display.
+The shop race entry (`diag_shop.gdb`, including the draw count), registration
+shop, demo lifecycle and SETUPG fixtures pass (`tmp/b5-regress.log`).

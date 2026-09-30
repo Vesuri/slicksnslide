@@ -424,6 +424,15 @@ volatile unsigned long g_slicks_diag_late_publications;
 /* HOLDT: Down held on the title for 150 vblanks, then released. Each
  * dispatched Down records the BIOS tick (selection clamps at the last row). */
 static unsigned char hold_title_test;
+/* NATURALWS (B5/D2): drivers 1 and 3 human, 2 and 4 inactive. Right moves
+ * to driver 3 (a real driver index, not a packed column); then buy, sell,
+ * one ignored key and Escape. Records the driver used by each transaction,
+ * driver-3 cash/inventory and shop refreshes. (Only driver 3 active leaves
+ * no rows: 2c41c builds the list from driver 1, as the original does.) */
+static unsigned char sparse_shop_test;
+volatile short g_slicks_sparse_shop_driver,g_slicks_sparse_shop_cash[3],
+    g_slicks_sparse_shop_item_count[3],g_slicks_sparse_shop_other_cash;
+volatile unsigned short g_slicks_sparse_shop_refreshes,g_slicks_sparse_shop_transactions;
 static unsigned long hold_title_started;
 volatile unsigned long g_slicks_diag_hold_steps,g_slicks_diag_hold_release_tick,
     g_slicks_diag_hold_start_tick,g_slicks_diag_hold_ticks[64];
@@ -2223,6 +2232,15 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                 slicks_shop_capacity(rules,session->inventory[0],session->players.vehicle[0],item)>0) return -1;
         }
     }
+    if(sparse_shop_test) {
+        session->players.participation[0]=-1; session->players.participation[1]=0;
+        session->players.participation[2]=-1; session->players.participation[3]=0;
+        session->players.selected[2]=session->players.selected[0];
+        session->players.vehicle[2]=session->players.vehicle[0];
+        session->cash[2]=session->cash[0];
+        for(unsigned i=0;i<13;++i) session->inventory[2][i]=session->inventory[0][i];
+        g_slicks_sparse_shop_other_cash=session->cash[0];
+    }
     unsigned buyable=0;
     for(unsigned d=0;d<4;++d) for(unsigned i=0;i<13;++i)
         if(slicks_shop_price(rules,&session->options,session->inventory[d],
@@ -2282,6 +2300,13 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         } else if(shop_rejection_test) {
             platform->keys[0]=0x44;platform->keys[1]=0x44;platform->keys[2]=0x45;
             platform->key_head=3;
+        } else if(sparse_shop_test) {
+            /* Right, Enter buys row 0, Backspace sells it, Q ignored, Escape. */
+            platform->keys[0]=0x4e;platform->keys[1]=0x44;platform->keys[2]=0x41;
+            platform->keys[3]=0x10;platform->keys[4]=0x45;
+            platform->key_head=5;
+            g_slicks_sparse_shop_cash[0]=session->cash[2];
+            for(unsigned i=0;i<13;++i) g_slicks_sparse_shop_item_count[0]+=session->inventory[2][i];
         } else if(g_slicks_diag_weapon_case) {
             unsigned n=0;
             if(!shop_transition_test || !shop_track_position) {
@@ -2380,6 +2405,13 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                         session->players.participation[d],session->players.vehicle[d],it,c.extra);
                 else changed=slicks_shop_sell(rules,&session->options,session->inventory[d],&session->cash[d],
                     session->players.participation[d],session->players.vehicle[d],it,c.extra);
+                if(sparse_shop_test && g_slicks_sparse_shop_transactions<2) {
+                    unsigned t=++g_slicks_sparse_shop_transactions,count=0;
+                    g_slicks_sparse_shop_driver=state.driver;
+                    for(unsigned i=0;i<13;++i) count+=(unsigned)session->inventory[2][i];
+                    g_slicks_sparse_shop_cash[t]=session->cash[2];
+                    g_slicks_sparse_shop_item_count[t]=(short)count;
+                }
                 if(shop_test) { ++g_slicks_shop_test_phase; slicks_diag_shop_ready(); }
                 if(!changed) continue;
             }
@@ -2391,6 +2423,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                         refresh_driver=-1; refresh_row=(signed char)(state.row+1);
                     }
                 }
+                if(sparse_shop_test) ++g_slicks_sparse_shop_refreshes;
                 if(slicks_amiga_shop_refresh(m,&c,&state,refresh_driver,refresh_row)) goto done;
                 present_menu_surface(platform,m);
             }
@@ -2398,7 +2431,9 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     }
     shop_end_game=state.end_game; result=0;
 done:
-    slicks_amiga_platform_end(platform);
+    /* Success keeps the shop screen shown: race preparation paints the
+     * loading panel over it (1b488). Failures release the display. */
+    if(result) slicks_amiga_platform_end(platform);
     g_slicks_shop_menu=0;
     slicks_amiga_player_menu_destroy(m); slicks_resource_archive_close(&archive);
     return result;
@@ -4403,13 +4438,14 @@ int main(void)
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char rejection_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='X' && argv[8]<='Z');
     unsigned char shop_failure_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]=='F');
+    sparse_shop_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]=='S' && argv[0]=='N');
     if(argc==9 && argv[7]=='W' && (argv[8]=='H' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'))
         shop_help_input_test=(unsigned char)(argv[8]=='H'?1:argv[8]=='J'?2:argv[8]=='K'?3:argv[8]=='L'?4:5);
     unsigned char actor_case_test=(unsigned char)((argc==9 || (argc==10 && argv[9]=='Q')) && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
-    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || rejection_case || shop_failure_case || shop_help_input_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
+    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || rejection_case || shop_failure_case || sparse_shop_test || shop_help_input_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
         (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || argv[7]=='O' || gameplay_benchmark));
     if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
