@@ -90,6 +90,10 @@ native caller/input/error checks.
   allocation failure now also passes bounded warning publication, exact
   parent restoration, resident ownership and normal-exit checks with keyless
   data; do not repeat it as an unverified allocation branch.
+  Pause Help now ignores modifier-only events after updating key state; its
+  Shift-release/lowercase-history/reopen/resume route passes exact publication,
+  parent/race restoration and resident-ownership checks. Other input routes
+  and languages remain separate coverage.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

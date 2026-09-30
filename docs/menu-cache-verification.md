@@ -3,6 +3,34 @@
 Implementation/evidence, 2026-09-29. Open integration work is maintained only
 in `open-work.md`. This is not a claim that every menu is disk-free yet.
 
+## Pause Help modifier-only events (2026-09-30)
+
+The remaining character-adapter callers all preserve raw release bits. The
+pause Help caller nevertheless forwarded empty ASCII/scan pairs for modifier
+presses to the viewer, unlike the other Help owners. Such events are not DOS
+getch input. It now updates modifier state but skips viewer dispatch and
+publication when neither ASCII nor scan is present.
+
+`LIVEMENUM` / `diag_pause_help_modifiers.gdb` adds Shift press/release and
+lowercase b history to the real pause/Help/reopen/resume sequence. Before the
+guard, `tmp/standalone-release-w2qrmm6j` published an unnecessary cursor rectangle
+on Shift. Its diagnostic checkpoint then replaced the remaining queued keys,
+and the modifier assertion failed. That failure does not establish a stuck
+modifier with ordinary human input; the confirmed defect is empty-event
+dispatch/publication.
+
+After the guard, `tmp/standalone-release-g03gpxm9` passes with zero modifiers,
+history back to Contents, exact Help parent restoration on both visits,
+byte-identical car state and all 64,000 restored race pixels. All ten menu
+publications independently match the chunky surface. Race and status clocks
+stay stopped during the modal, resume afterward with engines active, and final
+system restoration is 31. Archive reopening and display teardown are forbidden
+while the pause owner exists. The run uses PAL 68020/2 MiB/no Fast, 4 KiB stack,
+muted audio; its emulator exits. The original navigation oracle also passes
+816 key/page/link/history/fallback comparisons (`tmp/pause-help-modifier-oracle.log`).
+Build logs: `tmp/pause-help-modifiers-{build,fixed-build}.log`.
+Other Help routes and languages remain separate gates.
+
 ## Ownership and storage
 
 Startup retains the 57 additional resources in `menu_resources.h`; decoded

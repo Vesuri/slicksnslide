@@ -40,6 +40,10 @@ commands
     printf "PAUSE_HELP_ADVANCED_RACE\n"
     quit 1
   end
+  if !$_isvoid($check_pause_modifiers) && $steps==6 && $m->key_modifiers
+    printf "PAUSE_HELP_MODIFIER_RELEASE_FAILED\n"
+    quit 1
+  end
   if !$_isvoid($check_pause_language) && ($steps==0 || $steps==7 || $steps==9)
     set $d=$m->race_menu
     if !$d || menu_language_name[4]<49 || menu_language_name[4]>56
