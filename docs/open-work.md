@@ -47,8 +47,10 @@ All closed (B1–B8; evidence in [frame-pacing.md](frame-pacing.md) and
   completed race, `ENTER: RETRY / ESC: END MATCH` appeared instead of the
   intermission menu. This is `run_intermission`'s unavailable/error path, not
   the ordinary match-end prompt. Track selection is 195/195 and mode is
-  Classic. Determine which resource/allocation/initialization failed, fix it,
-  and repeat the manual championship save check. Cause is not yet established.
+  Classic. Isolated Workbench-loaded 2 MiB/4 KB-stack reproduction identifies
+  the 65,536-byte preview arena allocation in `slicks_amiga_intermission_open`
+  as the failure, after data and menu allocations succeed. Reduce peak scratch
+  memory use and repeat the manual championship save check.
 
 ## C. Packaging
 

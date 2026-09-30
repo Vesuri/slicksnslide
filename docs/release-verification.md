@@ -38,6 +38,17 @@ The user then confirmed a clean normal exit to Workbench. Standalone manual
 exit passes; championship saving remains blocked by B11, and both WHDLoad
 manual passes are still outstanding.
 
+Isolated `OPTIONSTI` reproduction with Workbench loaded and the default 4 KB
+stack reaches the same intermission failure (`tmp/standalone-release-j8z09nkk`).
+An optimized source-line breakpoint run was inconclusive and stopped.
+Exec AllocMem/return breakpoints in `tmp/standalone-release-vcndob3s` identify
+the exact failure: the 65,536-byte preview arena in
+`slicks_amiga_intermission_open` returns null. The 41,500-byte SLICKS.DAT,
+2,011-byte BASICTRK.SS, menu surface and dialog were already allocated.
+This is evidence for peak-memory pressure, not another demonstrated leak.
+Tests used a separate copy of the installation and did not modify the manual
+session's data. The completed manual emulator and diagnostic sessions were closed.
+
 ## 2026-09-30 — allocation ownership and default-stack lifecycle
 
 The framework allocated its 24,577-word blitter queue unconditionally in a
