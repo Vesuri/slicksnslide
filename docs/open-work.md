@@ -79,7 +79,10 @@ native caller/input/error checks.
   restores the shop, warns and permits a verified reopen/race retry. Viewer and
   background allocation failures also have exact-restoration/reopen gates with
   no archive reopen or display teardown. Remaining page/language/error sequences
-  still need their own evidence.
+  still need their own evidence. The Finnish-configured shop now also covers
+  Contents → General Instructions, both bracket/keypad page aliases, Tab and
+  Shift+K, full shop restoration and race entry with exact native publications;
+  this does not claim a translated Help body or all languages/chapters.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

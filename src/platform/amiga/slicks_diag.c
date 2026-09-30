@@ -2221,9 +2221,12 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             static const unsigned char help_keys[]={0x50,0x50,0x44,0x41,0x40,0x35,0x45,0x45};
             static const unsigned char failure_keys[]={0x50,0x4d,0x44,0x50,0x45,0x45};
             static const unsigned char allocation_keys[]={0x50,0x44,0x50,0x45,0x45};
+            static const unsigned char page_keys[]={0x50,0x50,0x42,0x44,0x1b,0x1a,0x1f,0x3f,
+                0x50,0x42,0x60,0x27,0xe0,0x45,0x45};
             const unsigned char *keys=shop_help_input_test==2?failure_keys:help_keys;
             unsigned count=shop_help_input_test==2?sizeof failure_keys:sizeof help_keys;
-            if(shop_help_input_test>=3) { keys=allocation_keys;count=sizeof allocation_keys; }
+            if(shop_help_input_test==3 || shop_help_input_test==4) { keys=allocation_keys;count=sizeof allocation_keys; }
+            if(shop_help_input_test==5) { keys=page_keys;count=sizeof page_keys; }
             for(unsigned i=0;i<count;++i) platform->keys[i]=keys[i];
             platform->key_head=count;
         } else if(shop_rejection_test) {
@@ -2287,7 +2290,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             signed char old_driver=state.driver,old_row=state.row;
             enum SlicksShopAction action=slicks_shop_key(&state,session->players.participation,scan);
             if(action==SLICKS_SHOP_HELP) {
-                if(shop_help_input_test>=3 && !shop_help_fault_sent) {
+                if((shop_help_input_test==3 || shop_help_input_test==4) && !shop_help_fault_sent) {
                     extern unsigned char g_slicks_diag_help_fail_backing;
                     if(shop_help_input_test==3) g_slicks_diag_help_fail_allocation=1;
                     else g_slicks_diag_help_fail_backing=1;
@@ -4228,8 +4231,8 @@ int main(void)
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char rejection_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='X' && argv[8]<='Z');
     unsigned char shop_failure_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]=='F');
-    if(argc==9 && argv[7]=='W' && (argv[8]=='H' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L'))
-        shop_help_input_test=(unsigned char)(argv[8]=='H'?1:argv[8]=='J'?2:argv[8]=='K'?3:4);
+    if(argc==9 && argv[7]=='W' && (argv[8]=='H' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'))
+        shop_help_input_test=(unsigned char)(argv[8]=='H'?1:argv[8]=='J'?2:argv[8]=='K'?3:argv[8]=='L'?4:5);
     unsigned char actor_case_test=(unsigned char)((argc==9 || (argc==10 && argv[9]=='Q')) && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
@@ -4249,6 +4252,7 @@ int main(void)
          * setup. Never inject moving cars, finish state, or result pixels. */
         setup_dirty=1;
         configuration=slicks_original_configuration;
+        if(shop_help_input_test==5)configuration.field_05e1=3;
         configuration.options[0]=4; configuration.options[3]=1;
         if(argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || gameplay_benchmark) configuration.options[3]=4;
         configuration.options[7]=0; configuration.options[9]=10;

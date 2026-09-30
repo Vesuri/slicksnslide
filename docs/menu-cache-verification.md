@@ -2669,6 +2669,35 @@ emulators closed. These allocation fault/reopen checks do not constitute an
 exhaustive heap-leak audit, other language/page coverage, or normal program-exit
 proof: the gates finish at successful race entry.
 
+### Shop Help real paging and Finnish menu configuration
+
+`NATURALWM` opens Shop Help, follows F1/Contents → Tab/General Instructions →
+Enter, pages forward/back with ]/[ and keypad 3/9, returns to Contents, tests
+Tab and Shift+K, closes Help and starts the race. It uses Finnish menu selector
+3; Help's separate country selector remains zero, so this is not a claim that
+the Help body is translated. `diag_shop_help_pages.gdb` verifies actual ASCII/
+scan pairs and movement through chapter 1069 pages 0→1→0 twice, followed by
+Contents chapter 348 selection 1→2→1. Modifier release is sent as a real raw
+key event, not a patched viewer state.
+
+The stock PAL 68020/2 MiB/no Fast/default 4 KiB run
+`tmp/standalone-release-6j2lbd1c` passes. All 13 shared menu publications match
+all 64,000 chunky pixels; pre-Help and restored shop surfaces match byte for
+byte. Archive reopen/display teardown are rejected throughout the Help visit;
+cash is unchanged and race entry succeeds. This ends at race entry, not normal
+application exit. Audio is muted and the runner closes its emulator.
+
+Original Help navigation and Amiga input adapter suites pass in
+`tmp/shop-help-pages-oracles.log`; build log: `tmp/shop-help-pages-build.log`.
+Initial fixture attempts are not passes: `18936wo4` conflated menu-language
+and Help-country IDs; `l47qsjqm` and `252nic_k` attempted paging from single-page
+Contents/tuning. The final sequence follows an actual link to a multi-page
+chapter, rather than treating an ignored key as successful scrolling.
+The existing viewer-allocation failure/reopen route (`NATURALWK`) also passes
+on the same build in `tmp/standalone-release-p788lcic`: five exact publications
+and byte-identical warning-dismissal restoration. The independent Load draft
+remains uncommitted and unexercised by these routes.
+
 ## Remaining platform teardown call-site inventory (2026-09-30)
 
 After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in
