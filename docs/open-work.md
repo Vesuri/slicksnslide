@@ -83,6 +83,10 @@ native caller/input/error checks.
   Contents → General Instructions, both bracket/keypad page aliases, Tab and
   Shift+K, full shop restoration and race entry with exact native publications;
   this does not claim a translated Help body or all languages/chapters.
+  Registration Help's confirmed stuck-modifier caller defect (F19) is fixed:
+  a native before/after test covers Shift release, lowercase history, exact
+  publications, parent restoration and normal exit. Other registration input
+  routes remain separate from that check.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

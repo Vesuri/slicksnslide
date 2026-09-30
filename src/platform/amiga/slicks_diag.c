@@ -3533,6 +3533,9 @@ static int result_wait(struct SlicksAmigaPlatform *platform,unsigned limit,unsig
 volatile unsigned short g_slicks_registration_screen;
 /* Explicit REGCHECKY/F input fixtures; never set by a normal launch. */
 static unsigned char registration_help_test;
+struct SlicksHelpViewer *g_slicks_registration_help_viewer;
+unsigned char g_slicks_registration_help_ascii,g_slicks_registration_help_modifiers;
+__attribute__((noinline)) void slicks_diag_registration_help_key(void) { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void slicks_diag_registration_screen_ready(void) { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void slicks_diag_registration_help_closed(void) { __asm__ volatile("" ::: "memory"); }
 static void registration_delay(struct SlicksAmigaPlatform *p,unsigned milliseconds)
@@ -3619,12 +3622,14 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     }
     if(registration_help_test) {
         static const unsigned char keys[]={0x4d,0xcd,0x4c,0xcc,0x45,0xc5};
-        championship_test_keys(p,keys,sizeof keys);
+        static const unsigned char modifier_keys[]={0x50,0x42,0x44,0x60,0x27,0xa7,0xe0,0x35,0x45};
+        championship_test_keys(p,registration_help_test==7?modifier_keys:keys,
+            registration_help_test==7?sizeof modifier_keys:sizeof keys);
     }
     while(!g_slicks_diag_force_exit) {
         unsigned short raw;slicks_amiga_platform_wait_vblank(p);
         while(slicks_amiga_platform_poll_key(p,&raw)) {
-            unsigned char character=slicks_amiga_menu_character(m,(unsigned char)(raw&127));
+            unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
             if(raw&128) continue;
             if(m->help_warning) { result=0;goto done; }
             struct SlicksAmigaHelpKey key=slicks_amiga_help_key((unsigned char)raw,character);
@@ -3633,6 +3638,12 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
                 if(slicks_amiga_help_close(m)) goto done;
                 present_menu_surface(p,m);
                 goto unavailable;
+            }
+            if(registration_help_test==7) {
+                g_slicks_registration_help_viewer=m->help;
+                g_slicks_registration_help_ascii=key.ascii;
+                g_slicks_registration_help_modifiers=m->key_modifiers;
+                slicks_diag_registration_help_key();
             }
             if(m->help->navigation.done) { result=0;goto done; }
             present_menu_surface(p,m);
@@ -4201,10 +4212,10 @@ int main(void)
         registration_external_test=(unsigned char)(argv[8]=='K'?1:2);
         argc=8; /* Ordinary REGCHECK exit flow; only external I/O is faulted. */
     }
-    if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='M' || argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:argv[8]=='C'?5:6;
-        else if(argc==9) registration_help_test=argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
+        else if(argc==9) registration_help_test=argv[8]=='M'?7:argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic state, never a normal-game override.

@@ -27,6 +27,7 @@ and a production-screen comparison establish different things.
 | F16 | Added global right-mouse program exit | The main loop read the right-button register and set `exit_requested` independently of the keyboard/menu owner, including during Help. Removed in the keyboard-only exit correction below. This was a native shortcut, not an original title/Help action. |
 | F17 | Shop Help drops printable input | `run_shop` supplied only scans (plus Escape ASCII) to the Help viewer. Original navigation requires ASCII for Enter/Space link activation, Backspace/“b” history and Tab/uppercase K. Corrected to use the shared keymapped Help adapter. |
 | F18 | Track catalogue silently truncates at 256 | Original discovery/sorting accept 257 and 300 controlled filenames. Dynamic native discovery/selection storage now passes 300-track startup/race/Help; large persistence, allocation failures and upper-bound coverage remain open. |
+| F19 | Registration Help retains released modifiers | The caller masked raw key releases before the shared keymap handler, turning Shift release into another press. Native before/after regression proves lowercase `b` history fails before correction and works afterward. |
 
 The original language startup/caller audit confirmed the hardwired-language
 candidate as F15. Track catalogue sorting, limits,
@@ -2988,6 +2989,35 @@ Normal 300-track preparation and race entry pass with zero error/allocation
 mask in `tmp/standalone-release-ctrint75` using the restored loader.
 All owned emulators were closed and audio muted. The independent Load draft
 remains uncommitted. Successful 10,000-track race entry remains open.
+
+## F19: registration Help modifier-release correction
+
+`registration_exit_help` passed `raw&127` to `slicks_amiga_menu_character`
+before discarding release events. The character adapter needs bit 7 to clear
+modifier state, so the registration caller latched Shift on release. Other
+production callers already pass the complete raw byte. The fix removes only
+that mask; release events still update modifiers and are then excluded from
+Help navigation.
+
+`REGCHECKM` uses real queued events: Contents, Tab, Enter into a linked
+chapter, Shift+K, K release, Shift release, lowercase b, Escape. With the old
+caller the native regression (`tmp/standalone-release-n7sqp_jh`) reports
+ASCII 66/modifiers 1 and stays at chapter 1581, failing the history assertion.
+With the fix (`tmp/standalone-release-7u63z__r`) it reports ASCII 98/modifiers 0,
+returns to Contents chapter 348, empties the history entry and exits Help.
+The shared registration gate also verifies normal exit/system restoration 31
+with no display teardown while Help owns the image. This fixture is keyless;
+it does not capture private registration data or claim all registered routes.
+
+All seven captured menu publications match all 64,000 chunky pixels, and the
+before/after registration image is byte-identical. The run uses stock PAL
+68020/2 MiB/no Fast and default 4 KiB stack, muted audio, and closes its emulator.
+Original Help-navigation and Amiga key-adapter suites pass in
+`tmp/registration-modifier-oracles.log`. Before/fixed build logs are
+`tmp/registration-modifiers-before-build.log` and
+`tmp/registration-modifiers-fixed-build.log`. The independent Load draft remains
+uncommitted and unexercised. This closes the confirmed release-bit defect, not
+every registration Help input or language route.
 
 ## Adaptations to preserve or explicitly classify
 
