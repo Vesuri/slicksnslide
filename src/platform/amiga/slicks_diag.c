@@ -6052,7 +6052,8 @@ int main(void)
                 if(action==2 && menu_selection==4 && original_setup) {
                     static unsigned char saved_tracks[256][8];
                     static struct SlicksSavedGame game;
-                    static struct SlicksSavedGameResolved resolved;
+                    static short resolved_tracks[256];
+                    static struct SlicksSavedGameResolved resolved={.tracks=resolved_tracks,.track_capacity=256};
                     static struct SlicksSetupSession staged,previous;
                     struct SlicksConfiguration next_config=configuration;
                     struct SlicksResourceArchive archive={0};

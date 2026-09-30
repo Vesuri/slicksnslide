@@ -2625,12 +2625,38 @@ assert the current native rejection: this is evidence for removing a port
 limit, not a claim that native larger saves already work, nor an original
 reader/resume or 10,000-track boundary test.
 
-The production resume resolver and championship staging each currently place
-a fixed-size resolved-track structure on the stack. Their ownership must be
-changed before increasing the shared limit; mechanically enlarging it would
-violate the default-stack requirement. Native intermission/title staging and
-the platform loader also need corresponding capacity handling. These remain
-open implementation work.
+At this checkpoint the production resume resolver and championship staging
+each placed a fixed-size resolved-track structure on the stack. Mechanically
+enlarging the shared limit would violate the default-stack requirement.
+
+### F18 follow-up: caller-owned resume indices
+
+`SlicksSavedGameResolved` now holds a caller-owned index pointer and explicit
+capacity instead of embedding a playlist array. The resolver rejects absent
+or undersized storage before writing anything. It validates every track and
+profile first, then repeats the track lookup to publish the indices; catalogue
+callbacks must provide a stable read-only view throughout this synchronous
+transaction. Duplicate-name resolution remains last-match-wins. This trades
+a second lookup pass for removal of playlist-sized automatic storage; it is
+not a gameplay optimization or a claim about large-playlist load speed.
+
+Championship staging validates active-player and AI-profile requirements before
+resolution, leaving no subsequent rejecting branch that could expose partly
+updated index storage. The production title caller explicitly supplies its
+existing 256-word static backing for now. No new Load entry is exposed.
+
+Verification: `make verify-saved-game-resume verify-championship
+verify-saved-game-storage` passes 3,392 original track/profile comparisons,
+2,560 original vehicle comparisons, championship round-trip/state checks,
+1,485 saved-file write faults and 2,310 load fault/truncation cases. New guards
+check missing/undersized index storage, a missing second track, and a profile
+failure after a valid track; indices and metadata remain unchanged. Staging
+also tests inactive-only games and missing AI profiles without modifying the
+previous staged session or index array. The Amiga build passes
+(`tmp/resume-owned-storage-build.log`). These are host/original-routine and
+build checks, not a native Load-dialog or larger-playlist completion claim.
+Dynamic caller allocation, codec/export limits and native validation remain
+open.
 
 ## Adaptations to preserve or explicitly classify
 

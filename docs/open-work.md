@@ -170,9 +170,10 @@ native caller/input/error checks.
   race entry and Help restoration. Finish allocation-failure and upper-bound
   gates; remove remaining 256-track saved-game/export/staging limits. The
   original writer now passes 168 exact 257/300-track stream cases; the port
-  still rejects them. Replace nested fixed-size resume staging with explicitly
-  owned storage, preserving transactional failure and the 4 KiB stack rather
-  than merely enlarging the arrays. Extend demo diagnostics beyond their current first
+  still rejects them. Resume indices now use capacity-checked caller-owned
+  storage without playlist-sized stack temporaries; extend the native caller's
+  allocation and codec/export limits next, preserving transactional failure
+  and the 4 KiB stack. Extend demo diagnostics beyond their current first
   256 selection words before claiming full large-playlist restoration.
   Resolve missing/empty directory fallback against the original startup path
   before changing the fabricated BASIC.SS entry. Complete mixed-case/name

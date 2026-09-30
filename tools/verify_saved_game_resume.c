@@ -38,6 +38,7 @@ int main(void)
     unsigned char names[5][9]={{0}},tracks[1][8]={{'T','E','S','T',0}};
     struct SlicksSavedGame game={.track_count=1,.tracks=tracks};
     struct SlicksSavedGameResolved out,before;
+    short resolved_tracks[1];
     unsigned cases=0;
     for(unsigned mask=0;mask<32;++mask) {
         for(unsigned j=0;j<5;++j) memcpy(names[j],(mask&(1U<<j))?(j&1?"test":"TEST"):"MISS",5);
@@ -47,12 +48,14 @@ int main(void)
         unsigned char zero=0; check(uc_mem_write(u,0x8f000-0xa,&zero,1));
         check(uc_emu_start(u,0x1d2d4,0x90000,0,10000));
         short original=(short)readword(u,0x71000);
-        memset(&out,0xa5,sizeof out); before=out;
+        memset(&out,0xa5,sizeof out); out.tracks=resolved_tracks; out.track_capacity=1; before=out;
+        resolved_tracks[0]=-123;
         int result=slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,10);
         if(result!=(original<0?SLICKS_RESUME_MISSING_TRACK:SLICKS_RESUME_READY)) {
             fprintf(stderr,"Track mask=%u original=%d result=%d\n",mask,original,result); return 1;
         }
-        if(original<0) assert(!memcmp(&out,&before,sizeof out)); else assert(out.tracks[0]==original);
+        if(original<0) { assert(!memcmp(&out,&before,sizeof out)); assert(resolved_tracks[0]==-123); }
+        else assert(out.tracks[0]==original);
         ++cases;
     }
     game.track_count=0;
@@ -70,7 +73,7 @@ int main(void)
         check(uc_mem_write(u,0x8f000-0x2c,game.names[0],21));
         check(uc_emu_start(u,0x1d48b,0x90000,0,10000));
         short original=(short)readword(u,0x3cbf0+0x44c);
-        memset(&out,0xa5,sizeof out); before=out;
+        memset(&out,0xa5,sizeof out); out.tracks=resolved_tracks; out.track_capacity=1; before=out;
         int result=slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,10);
         int missing=participation<0 && original==-2;
         assert(result==(missing?SLICKS_RESUME_MISSING_PROFILE:SLICKS_RESUME_READY));
@@ -91,8 +94,27 @@ int main(void)
         assert(slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,total)==SLICKS_RESUME_READY);
         assert(out.vehicles[0]==original); ++vehicle_cases;
     }
+    game.track_count=1; game.participation[0]=0;
+    memcpy(names[0],"TEST",5);
+    out.track_capacity=0; before=out; resolved_tracks[0]=-123;
+    assert(slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,10)==SLICKS_RESUME_INVALID);
+    assert(!memcmp(&out,&before,sizeof out) && resolved_tracks[0]==-123);
+    out.track_capacity=1; out.tracks=0; before=out;
+    assert(slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,10)==SLICKS_RESUME_INVALID);
+    assert(!memcmp(&out,&before,sizeof out));
+    out.tracks=resolved_tracks; before=out;
+    game.participation[0]=-1; memset(game.names[0],'?',20);
+    assert(slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,10)==SLICKS_RESUME_MISSING_PROFILE);
+    assert(!memcmp(&out,&before,sizeof out) && resolved_tracks[0]==-123);
+    unsigned char two_tracks[2][8]={{'T','E','S','T',0},{'A','B','S','E','N','T',0}};
+    short two_indices[2]={-123,-456};
+    game.tracks=two_tracks; game.track_count=2; game.participation[0]=0;
+    out.tracks=two_indices; out.track_capacity=2; before=out;
+    assert(slicks_resolve_saved_game(&out,&game,5,name_at,names,&profiles,10)==SLICKS_RESUME_MISSING_TRACK);
+    assert(!memcmp(&out,&before,sizeof out) && two_indices[0]==-123 && two_indices[1]==-456);
     check(uc_close(u));
     printf("Saved-game resume: %u original track/profile matching comparisons pass, including duplicates, case, empty/max names and player roles\n",cases);
     printf("Saved-game resume: %u original vehicle-fallback comparisons pass\n",vehicle_cases);
+    puts("Caller-owned resume storage: missing/undersized buffers and late track/profile failures leave outputs unchanged");
     return 0;
 }

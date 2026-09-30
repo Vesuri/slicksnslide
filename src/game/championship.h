@@ -52,14 +52,19 @@ static inline enum SlicksSavedGameResolveResult slicks_championship_stage(
        game->track_count<=0 || game->next_track<0 ||
        game->next_track>=slicks_arcade_track_count(config->options[0],config->options[14],game->track_count))
         return SLICKS_RESUME_INVALID;
-    struct SlicksSavedGameResolved r;
+    unsigned active=0;
+    for(unsigned i=0;i<4;++i) {
+        if(game->participation[i]>0 && profiles->count<2) return SLICKS_RESUME_MISSING_PROFILE;
+        if(game->participation[i]) ++active;
+    }
+    if(!active) return SLICKS_RESUME_INVALID;
+    struct SlicksSavedGameResolved r=*resolved;
     enum SlicksSavedGameResolveResult status=slicks_resolve_saved_game(&r,game,track_count,name,context,profiles,vehicle_count);
     if(status!=SLICKS_RESUME_READY) return status;
     struct SlicksSetupSession next=*current;
     unsigned fallback_index=0,negative=0;
     next.players.count=0;
     for(unsigned i=0;i<4;++i) {
-        if(game->participation[i]>0 && profiles->count<2) return SLICKS_RESUME_MISSING_PROFILE;
         next.players.selected[i]=r.profiles[i]; next.players.vehicle[i]=(signed char)r.vehicles[i];
         next.players.participation[i]=game->participation[i];
         if(game->participation[i]) {
@@ -72,7 +77,6 @@ static inline enum SlicksSavedGameResolveResult slicks_championship_stage(
         next.saved_position_scale[i]=game->position_scale[i];
         for(unsigned j=0;j<13;++j) next.inventory[i][j]=game->inventory[i][j];
     }
-    if(!next.players.count) return SLICKS_RESUME_INVALID;
     next.saved_position_scale_valid=1;
     *out=next; *resolved=r; return SLICKS_RESUME_READY;
 }

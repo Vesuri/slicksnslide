@@ -27,7 +27,8 @@ int main(void)
     long size=slicks_save_game_bytes(&game,bytes,sizeof bytes); assert(size>0);
     assert(!slicks_load_game_bytes(&decoded,decoded_tracks,256,bytes,size));
     struct SlicksSetupSession current={.random_state=987654},staged;
-    struct SlicksSavedGameResolved resolved;
+    short resolved_tracks[256];
+    struct SlicksSavedGameResolved resolved={.tracks=resolved_tracks,.track_capacity=256};
     assert(slicks_championship_stage(&staged,&resolved,&decoded,&current,&config,&profiles,fallback,10,3,name,0)==SLICKS_RESUME_READY);
     assert(staged.random_state==current.random_state && staged.players.count==3 && staged.saved_position_scale_valid);
     assert(!memcmp(staged.points,source.points,sizeof source.points));
@@ -39,17 +40,23 @@ int main(void)
     assert(staged.players.selected[1]==2 && staged.players.selected[2]==2 && staged.players.selected[3]==-2);
     struct SlicksSetupSession previous=staged;
     struct SlicksSavedGameResolved previous_resolved=resolved;
-    for(unsigned fault=0;fault<7;++fault) {
+    for(unsigned fault=0;fault<9;++fault) {
         struct SlicksSavedGame bad=decoded; struct SlicksConfiguration badconfig=config;
+        struct SlicksPlayerProfiles badprofiles=profiles;
         if(fault==0) bad.next_track=-1;
         if(fault==1) bad.next_track=3;
         if(fault==2) bad.track_count=0;
         if(fault==3) bad.names[1][0]='X';
         if(fault==4) for(unsigned i=0;i<4;++i) bad.participation[i]=0;
         if(fault==5) { badconfig.options[0]=5; badconfig.options[14]=1; }
-        if(fault==6) decoded_tracks[0][0]='X';
-        assert(slicks_championship_stage(&staged,&resolved,&bad,&current,&badconfig,&profiles,fallback,10,3,name,0)!=SLICKS_RESUME_READY);
+        if(fault==6) badprofiles.count=1;
+        if(fault==7) resolved.track_capacity=2;
+        if(fault==8) decoded_tracks[2][0]='X';
+        previous_resolved=resolved;
+        assert(slicks_championship_stage(&staged,&resolved,&bad,&current,&badconfig,&badprofiles,fallback,10,3,name,0)!=SLICKS_RESUME_READY);
         assert(!memcmp(&staged,&previous,sizeof staged) && !memcmp(&resolved,&previous_resolved,sizeof resolved));
+        assert(!memcmp(resolved_tracks,selection,sizeof selection));
+        resolved.track_capacity=256;
     }
     puts("Championship export/encode/decode/stage: shared human, AI, inactive, inventory, standings, scale, RNG and atomic rejection PASS");
 }

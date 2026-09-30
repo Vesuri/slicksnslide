@@ -4,7 +4,9 @@
 #include "player_profiles.h"
 
 struct SlicksSavedGameResolved {
-    short tracks[SLICKS_SAVED_GAME_TRACK_MAX],profiles[4];
+    short *tracks;
+    unsigned track_capacity;
+    short profiles[4];
     unsigned char vehicles[4];
 };
 enum SlicksSavedGameResolveResult { SLICKS_RESUME_READY, SLICKS_RESUME_INVALID,
@@ -33,8 +35,9 @@ static inline enum SlicksSavedGameResolveResult slicks_resolve_saved_game(
 {
     if(!out || !game || !profiles || !track_name || !vehicle_count || vehicle_count>128 ||
        track_count>32767 || profiles->count<1 || profiles->count>SLICKS_PROFILE_MAX ||
-       slicks_saved_game_size(game)<0) return SLICKS_RESUME_INVALID;
-    struct SlicksSavedGameResolved next={0};
+       slicks_saved_game_size(game)<0 || (unsigned)game->track_count>out->track_capacity ||
+       (game->track_count && !out->tracks)) return SLICKS_RESUME_INVALID;
+    struct SlicksSavedGameResolved next=*out;
     for(unsigned i=0;i<(unsigned)game->track_count;++i) {
         short found=-1;
         for(unsigned j=0;j<track_count;++j) {
@@ -42,7 +45,6 @@ static inline enum SlicksSavedGameResolveResult slicks_resolve_saved_game(
             if(name && slicks_saved_name_equal(game->tracks[i],name,8)) found=(short)j;
         }
         if(found<0) return SLICKS_RESUME_MISSING_TRACK;
-        next.tracks[i]=found;
     }
     for(unsigned i=0;i<4;++i) {
         signed char vehicle=game->vehicles[i];
@@ -58,6 +60,14 @@ static inline enum SlicksSavedGameResolveResult slicks_resolve_saved_game(
             if(next.profiles[i]<0) return SLICKS_RESUME_MISSING_PROFILE;
         }
     }
+    /* Catalogue callbacks are stable, read-only views for this transaction.
+     * Validate every name/profile before touching caller-owned indices. This
+     * second pass avoids a playlist-sized automatic array on the 4 KiB stack. */
+    for(unsigned i=0;i<(unsigned)game->track_count;++i)
+        for(unsigned j=0;j<track_count;++j) {
+            const unsigned char *name=track_name(context,j);
+            if(name && slicks_saved_name_equal(game->tracks[i],name,8)) next.tracks[i]=(short)j;
+        }
     *out=next;
     return SLICKS_RESUME_READY;
 }
