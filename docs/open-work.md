@@ -51,22 +51,24 @@ This is implemented and verified ([title-and-loading-verification.md](title-and-
 The one remaining step is for the user to look once during a track load and
 confirm the tinted panel and caption on screen, not Workbench.
 
-### B6. Typematic repeat in Help and name entry
+### B6. Help key-handling rate
 
-Menu repeat through the original `36ce0` reader is done
-([fidelity-audit.md](fidelity-audit.md), "Held-key repeat").
+The typematic repeat for Help and name entry is implemented: a 500 ms delay,
+then 10.9 repeats/s, the AT default, since the original never programs it.
 
-Help (3295d) and name entry (2f7a9) instead chain to BIOS INT 9 and repeat
-through the PC keyboard's typematic.
+A probe with Down held in title Help showed the scheduler due every 4.6
+vblanks, but the main loop took a key only every 25 vblanks. So Help processes
+held keys at about 2 per second.
 
 Steps:
-1. Measure the delay and rate in the DOSBox reference by holding a key in
-   Help and counting the characters produced.
-2. Generate matching repeat makes in the platform queue, only while those two
-   owners are active.
+1. Measure why one Help key costs about 0.5 s on the target: redraw,
+   publication or a wait.
+2. Compare with the original's Help scrolling speed under DOSBox at a
+   286-class setting.
+3. Fix it if the port is slower than the original.
 
-Accept when a native fixture that holds a key in Help, and one that holds a
-key in name entry, match the measured counts.
+Accept when Help's per-key cost is measured, and either matches the original
+or is fixed.
 
 ## C. Packaging
 
@@ -82,10 +84,7 @@ Vette's "remove existing drawer" prompt is deliberately not copied: the Slicks
 drawer holds the user's key, profiles and championships, and the existing
 Reinstall/Keep data prompt already covers updates.
 
-- [ ] **C1. Version number.** The user chooses the release version (currently
-  `0.1`). Set it in `VERSION`, `src/platform/amiga/version.s`,
-  `whdload/SlicksSlave.s`, `release/Install` and the ReadMe history. Then
-  run `make release-check`.
+Version: 0.1 (30.09.2026), chosen by the user, in all `$VER` strings.
 
 ## D. Release gate (run once, after B and C)
 

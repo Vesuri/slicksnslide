@@ -40,6 +40,7 @@ struct SlicksAmigaPlatform {
     /* Original DS:1714 latch (last raw event; bit 7 = release/none) and
      * the BIOS 0040:006c tick count, advanced per vblank. */
     volatile unsigned char key_latch;
+    volatile unsigned long key_latch_vblank; /* When key_latch last changed. */
     volatile unsigned long bios_ticks;
     unsigned long bios_remainder;
 };
@@ -82,6 +83,12 @@ void slicks_amiga_platform_wait_display_end(
  * code. Queued makes count as the reader's immediate first return. */
 int slicks_amiga_platform_repeat_key(struct SlicksAmigaPlatform *platform,
     unsigned char arg,unsigned short *raw);
+/* Help (3295d) and name entry (2f7a9) chain to BIOS INT 9, so a held key
+ * repeats through the keyboard's typematic. The original never programs it:
+ * the AT power-on default is a 500 ms delay, then 10.9 repeats/s. Call only
+ * when poll_key has nothing queued; returns 1 with the held raw code. */
+int slicks_amiga_platform_typematic_key(struct SlicksAmigaPlatform *platform,
+    unsigned short *raw);
 /* Original 36ca5: forget the held key (latch = none). Null: the active platform. */
 void slicks_amiga_platform_clear_latch(struct SlicksAmigaPlatform *platform);
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,

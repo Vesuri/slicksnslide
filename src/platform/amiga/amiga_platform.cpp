@@ -173,6 +173,7 @@ static unsigned long keyboard_handler(void)
         return 0;
     unsigned short event=slicks_amiga_key_event(code,&platform->keyboard_shifts);
     platform->key_latch = code; /* 36e29: every make and break. */
+    platform->key_latch_vblank = platform->vblank_count;
     next = (unsigned char)((platform->key_head + 1) & 15);
     if (next != platform->key_tail) {
         platform->keys[platform->key_head] = event;
@@ -512,6 +513,29 @@ int slicks_amiga_platform_repeat_key(struct SlicksAmigaPlatform *platform,
     unsigned char latch = platform->key_latch;
     if (!slicks_key_repeat_poll(&key_repeat, latch, platform->bios_ticks, arg))
         return 0;
+    *raw = latch;
+    return 1;
+}
+
+/* Typematic time in 1/109 vblank units: 25 vblanks (500 ms) of delay, then
+ * one repeat per 500 units (50*109/500 = 10.9 per second). */
+static unsigned char typematic_code = 0x80;
+static unsigned long typematic_press, typematic_next;
+int slicks_amiga_platform_typematic_key(struct SlicksAmigaPlatform *platform,
+    unsigned short *raw)
+{
+    if (!platform || !raw || !platform->active || platform->io_active)
+        return 0;
+    unsigned char latch = platform->key_latch;
+    unsigned long pressed = platform->key_latch_vblank;
+    if (latch & 128) { typematic_code = 0x80; return 0; }
+    if (latch != typematic_code || pressed != typematic_press) {
+        typematic_code = latch; typematic_press = pressed;
+        typematic_next = pressed * 109UL + 25UL * 109UL;
+    }
+    if ((long)(platform->vblank_count * 109UL - typematic_next) < 0)
+        return 0;
+    typematic_next += 500UL;
     *raw = latch;
     return 1;
 }

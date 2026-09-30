@@ -3197,3 +3197,19 @@ PC, typematic would re-send it after about 500 ms.
   apart, and none at or after the release at tick 57.
 - Demo lifecycle, SETUPF retry, and championship save and edit fixtures pass
   (`tmp/b6-*.log`).
+
+**Typematic (Help and name entry).** The original never programs typematic:
+it has no `INT 16h AH=03` and no port-60h write, so the keyboard's AT
+power-on default applies (500 ms delay, 10.9/s).
+
+`slicks_amiga_platform_typematic_key` replays the held latch with that
+schedule, in 1/109-vblank units. It is used by:
+- title, Options and Players Help;
+- shop and pause Help;
+- name dialogs and saved-game name entry.
+
+The saved-game list picker now also uses its `315b2` argument.
+
+**Evidence.** A target probe held Down in title Help. The first repeat came at
+press+25 vblanks and the schedule then advanced 4.6 vblanks per repeat. The
+Help owner consumed only one key per 25 vblanks, which is open item B6.

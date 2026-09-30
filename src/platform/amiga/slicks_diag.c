@@ -1386,7 +1386,10 @@ again:
         slicks_amiga_platform_wait_vblank(p);
         if(g_slicks_diag_force_exit) goto done;
         unsigned short raw;
-        while(slicks_amiga_platform_poll_key(p,&raw)) {
+        /* 315b2: list dialogs repeat per focus (list 2, actions 6). */
+        while(slicks_amiga_platform_poll_key(p,&raw) ||
+              slicks_amiga_platform_repeat_key(p,
+                  (unsigned char)(m->picker->renderer.state.focus_actions*4+2),&raw)) {
             (void)slicks_amiga_menu_character(m,(unsigned char)raw);
             if(!(raw&128)) slicks_list_dialog_key(&m->picker->renderer.state,
                 (unsigned char)amiga_raw_to_menu_scan(raw));
@@ -1408,7 +1411,9 @@ again:
             championship_dialog_checkpoint(p); slicks_amiga_platform_wait_vblank(p);
             if(g_slicks_diag_force_exit) goto done;
             unsigned short raw;
-            while(slicks_amiga_platform_poll_key(p,&raw)) {
+            /* 2f7a9: name entry repeats through the keyboard typematic. */
+            while(slicks_amiga_platform_poll_key(p,&raw) ||
+                  slicks_amiga_platform_typematic_key(p,&raw)) {
                 unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
                 if(raw&128) continue;
                 accepted=slicks_name_dialog_key(&m->name_dialog->renderer,character);
@@ -1618,8 +1623,9 @@ done:
 
 /* RAM-only menu transitions retain takeover. Real disk boundaries still call
  * platform_end explicitly and arrive here inactive. Publish at display blank. */
-/* B6: the 36ce0 argument of the main-loop owner receiving the next key, or
- * -1 where the original uses a non-repeating reader (36d8b, getch) or none. */
+/* B6: the 36ce0 argument of the main-loop owner receiving the next key;
+ * -2 where the owner chains to BIOS INT 9 (Help, name entry: typematic);
+ * -1 where the original uses a non-repeating reader (36d8b) or none. */
 static int menu_repeat_arg(void)
 {
     struct SlicksAmigaPlayerMenu *m=g_slicks_title_help?g_slicks_title_help:
@@ -1627,8 +1633,8 @@ static int menu_repeat_arg(void)
         (g_slicks_track_menu?g_slicks_track_menu:g_slicks_options_menu));
     if(g_slicks_diag_ingame || g_slicks_title_help_warning) return -1;
     if(!m) return 2;                                          /* title 2a378 */
-    if(m==g_slicks_title_help || m->help || m->help_warning || m->message ||
-       m->name_dialog || m->delete_pending) return -1;
+    if(m->help || m->name_dialog) return -2;
+    if(m==g_slicks_title_help || m->help_warning || m->message || m->delete_pending) return -1;
     if(m->picker) return m->picker->renderer.state.focus_actions*4+2; /* 315b2 */
     if(m==g_slicks_track_menu)                                /* 26b6d / 274db */
         return m->track_info?7:g_slicks_track_state.column+1;
@@ -2329,8 +2335,8 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         if(g_slicks_diag_force_exit) goto done;
         /* 2cfce: the shop repeats held keys every three BIOS ticks. */
         while(slicks_amiga_platform_poll_key(platform,&raw) ||
-              (!m->help && !m->help_warning &&
-               slicks_amiga_platform_repeat_key(platform,2,&raw))) {
+              (m->help?slicks_amiga_platform_typematic_key(platform,&raw):
+               !m->help_warning && slicks_amiga_platform_repeat_key(platform,2,&raw))) {
             unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
             if(raw&128) continue;
             /* Classic keyboards have no Scroll Lock. Help is the shop-only
@@ -4066,6 +4072,7 @@ static int run_race_pause(struct SlicksAmigaPlatform *platform,struct SlicksAmig
          * Controllers 2dd8b every three. Help, messages and key capture
          * use non-repeating readers. */
         while(slicks_amiga_platform_poll_key(platform,&raw) ||
+              (m->help && !m->help_warning && slicks_amiga_platform_typematic_key(platform,&raw)) ||
               (!m->help_warning && !m->message && !m->help &&
                !(m->controllers_dialog && m->controllers_dialog->state.capturing) &&
                slicks_amiga_platform_repeat_key(platform,
@@ -5611,9 +5618,10 @@ int main(void)
             /* Keyboard-interrupt equivalent of a press that stays down. */
             platform.key_latch=0x4d; platform.key_tail=0; platform.keys[0]=0x4d; platform.key_head=1;
             hold_title_started=platform.vblank_count; g_slicks_diag_hold_start_tick=platform.bios_ticks;
+            platform.key_latch_vblank=platform.vblank_count;
             hold_title_test=2;
         } else if(hold_title_test==2 && platform.vblank_count-hold_title_started>=150) {
-            platform.key_latch=0xcd; g_slicks_diag_hold_release_tick=platform.bios_ticks; hold_title_test=3;
+            platform.key_latch=0xcd; hold_title_test=3; g_slicks_diag_hold_release_tick=platform.bios_ticks;
         } else if(hold_title_test==3 && platform.vblank_count-hold_title_started>=250) {
             slicks_diag_frame_ready(); g_slicks_diag_force_exit=1;
         }
@@ -5635,8 +5643,9 @@ int main(void)
             unsigned char have_key=(unsigned char)slicks_amiga_platform_poll_key(&platform,&code);
             if(!have_key) {
                 int repeat=menu_repeat_arg();
-                have_key=(unsigned char)(repeat>=0 &&
-                    slicks_amiga_platform_repeat_key(&platform,(unsigned char)repeat,&code));
+                have_key=(unsigned char)(repeat>=0?
+                    slicks_amiga_platform_repeat_key(&platform,(unsigned char)repeat,&code):
+                    repeat==-2 && slicks_amiga_platform_typematic_key(&platform,&code));
             }
             if(hold_title_test && have_key && code==0x4d && g_slicks_diag_hold_steps<64)
                 g_slicks_diag_hold_ticks[g_slicks_diag_hold_steps++]=platform.bios_ticks;

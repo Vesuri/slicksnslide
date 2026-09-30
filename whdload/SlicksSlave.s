@@ -38,7 +38,7 @@ slv_info dc.b "Amiga port by Vesuri",10
         dc.b "Version 0.1 (28.09.2026)",10
         dc.b "F10 quits",0
 slv_config dc.b 0
-        dc.b "$VER: Slicks.slave 0.1 (28.09.2026)",0
+        dc.b "$VER: Slicks.slave 0.1 (30.09.2026)",0
 _program dc.b "Slicks",0
 _args
         IFD RACETEST
