@@ -1,5 +1,32 @@
 # Development release audit
 
+## 2026-09-30 — B9: atomic Players/Tracks image and palette transitions
+
+Title-owned Players/Tracks opens and closes copy the outgoing interleaved
+bitmap and its actual copper palette to existing view 1, switch to it at
+blanking, then rebuild incoming view 0 offscreen. Only a completed image and
+palette are published. The retained view cannot be a resumable race: these
+four call sites belong to the title-menu lifecycle only. No additional memory
+is allocated, no menu dirty-rectangle policy changes, and no disk I/O occurs.
+
+Workbench, stock 68020/2 MiB/no Fast/default 4 KiB stack:
+
+- `tmp/standalone-release-cvyrlxej`, PLAYERSR: two closes/reopen, profile/vehicle
+  preservation and race update 200 pass. Four outgoing pixel/palette pairs are
+  identical before holding, after copying, and before incoming publication.
+  Reopened Players, returned title and race 200 each match all 64,000 pixels.
+- `...-w404mx2c`, TRACKS: selection, two closes/reopen and race entry pass.
+  All four retained pixel/palette pairs match, as do all nine captured menu
+  publications. Guards require the held view to remain shown while view 0's
+  palette is rebuilt and forbid display teardown during a transition.
+- First composed Players fixture (`...-h89vgjsv`) failed because two debugger
+  breakpoints shared the race-start address; not counted as a workflow pass.
+  The helper fixture no longer duplicates that breakpoint. The old handoff
+  fixture also now disables its actual breakpoint number, not hard-coded 1.
+
+Both passing test sessions closed. B9 is complete; other disk/lifetime and
+release gates remain separate open work.
+
 ## 2026-09-30 — reserved trophy staging and retained trophy I/O
 
 Championship results borrow the modal storage lease for the 64,003-byte trophy

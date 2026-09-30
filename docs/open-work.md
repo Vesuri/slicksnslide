@@ -28,14 +28,9 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-All closed (B1–B8; evidence in [frame-pacing.md](frame-pacing.md) and
-[fidelity-audit.md](fidelity-audit.md)).
-
-- [ ] **B9. Menu palette transition:** During the manual release retry, pressing
-  Escape in Players immediately applies the main-menu palette while the Players
-  image remains visible for over half a second. Coordinate palette and image
-  transitions so the outgoing screen does not use the incoming palette.
-  User requested fixing this after the current manual test.
+B1–B9 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
+[fidelity-audit.md](fidelity-audit.md) and
+[release-verification.md](release-verification.md).
 
 - [ ] **B10. Preserve the game display during disk access:** The manual race
   completion briefly exposed Workbench before displaying the results screen.

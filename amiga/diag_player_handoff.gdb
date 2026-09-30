@@ -2,13 +2,14 @@ set $draws = 0
 set $closed = 0
 set $initial = 0
 break *slicks_diag_frame_ready
+set $handoff_initial_break=$bpnum
 commands
   silent
   if !$initial
     set $initial = 1
     set $platform = g_slicks_diag_profile_platform
     dump binary memory .run/player-handoff-v1/title-before.copper $platform->views[0].copper $platform->views[0].copper+558
-    disable 1
+    disable $handoff_initial_break
   end
   continue
 end

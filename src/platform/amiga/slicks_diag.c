@@ -1687,6 +1687,20 @@ static int show_menu(struct SlicksAmigaPlatform *platform)
     return show_view(platform,0);
 }
 
+/* Title-owned full-screen transitions may reuse view 1: no paused race
+ * survives here. Hold an exact copy of the outgoing bitmap AND palette
+ * while the incoming owner reconstructs view 0, then show_menu publishes
+ * its complete image/palette together at display blanking. */
+__attribute__((noinline)) static int hold_title_menu_display(struct SlicksAmigaPlatform *platform)
+{
+    if(!platform->active || slicks_amiga_platform_shown_view()==1) return 0;
+    const unsigned long *source=(const unsigned long *)platform->views[0].bitmap->Planes[0];
+    unsigned long *target=(unsigned long *)platform->views[1].bitmap->Planes[0];
+    for(unsigned i=0;i<64000UL/sizeof *target;++i) target[i]=source[i];
+    if(slicks_amiga_platform_set_view(platform,1,slicks_amiga_platform_view_palette(0))) return -1;
+    return show_view(platform,1);
+}
+
 static int open_help(struct SlicksAmigaPlatform *platform,struct SlicksAmigaPlayerMenu *menu,const unsigned char *topic)
 {
     struct SlicksResourceArchive archive={0};
@@ -1774,6 +1788,7 @@ static int draw_track_menu(struct SlicksAmigaPlatform *platform,short total,unsi
 static int open_track_menu(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     char names[][SLICKS_TRACK_NAME_SIZE],short total,short random_count)
 {
+    if(hold_title_menu_display(platform)) return -1;
     /* This constructor only loads trckmenu/fonts from the memory provider;
      * names and saved track lists are startup catalogues. RECORDS still
      * loads the explicitly selected track through an OS boundary. */
@@ -1928,6 +1943,7 @@ static int open_controllers_dialog(struct SlicksAmigaPlatform *platform,
 static int open_player_menu(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
     struct SlicksConfiguration *configuration,struct SlicksPlayerMenu *state)
 {
+    if(hold_title_menu_display(platform)) return -1;
     struct SlicksResourceArchive archive={0};
     const struct SlicksPlayerMenuLabels labels={slicks_original_players_random,
         slicks_original_players_random_each,{slicks_original_players_add,
@@ -6141,6 +6157,7 @@ int main(void)
                         configuration.field_0626=state->random_count; setup_dirty=1;
                     }
                     if(state->done) {
+                        if(hold_title_menu_display(&platform)) goto cleanup;
                         slicks_amiga_player_menu_destroy(g_slicks_track_menu); g_slicks_track_menu=0;
                         g_slicks_track_renderer.surface=0;
                         if(g_slicks_track_playlist.count) selected_track=(unsigned short)track_selection[0];
@@ -6414,6 +6431,7 @@ int main(void)
                     /* Other modal actions remain pending, never treated as completed edits. */
                     g_slicks_diag_player_menu_action=(unsigned short)pending;
                     if(player_menu_state.done) {
+                        if(hold_title_menu_display(&platform)) goto cleanup;
                         setup_dirty|=player_menu_state.dirty;
                         if(g_slicks_setup_session.players.vehicle[0]>=0 &&
                            g_slicks_setup_session.players.vehicle[0]<SLICKS_VEHICLE_COUNT)
