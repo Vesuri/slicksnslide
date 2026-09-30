@@ -1,5 +1,27 @@
 # Development release audit
 
+## 2026-09-30 — track records retain display ownership
+
+Tracks' record viewer and Options' confirmed Clear Records now service disk
+I/O without restoring Workbench. Warnings, redraws and input run only after
+closing the service window, including failed preview reads and partial clears.
+
+Stock Workbench/68020/2 MiB/no Fast/default 4 KiB-stack runs:
+
+- `tmp/standalone-release-6i6aa2yr`: TRACKSV failed Close, warning dismissal,
+  retry, reopen and race entry pass. All three I/O windows retain identical
+  bitmap/palette bytes; all 12 menu publications match all pixels. Earlier
+  `...-7gvo_fhl` passed the workflow before capture guards were added.
+- `...-gi1_qj94`: OPTIONSR cancellation then confirmed clearing of the complete
+  catalogue passes, with 25 matching menu publications and restoration 31.
+- `...-1wgcef6w`: OPTIONSS clears the first track then encounters a private
+  pre-existing second-track .new file; partial-failure warning, path notice,
+  recovery-file preservation and restoration pass. Files are isolated copies.
+
+Guards forbid teardown while these menus are owned, permit exactly one I/O
+window on confirmed clearing, and require active game display, OS I/O service
+and null ActiView during record operations. All test emulators closed.
+
 ## 2026-09-30 — registration display retention
 
 Registration archive/external-image reads now retain the existing game display

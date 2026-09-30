@@ -6189,11 +6189,13 @@ int main(void)
                         if(show_menu(&platform)) goto cleanup;
                         slicks_diag_track_lists_ready();
                     } else if(g_slicks_track_action==SLICKS_TRACK_MENU_RECORDS) {
-                        slicks_amiga_platform_end(&platform);
                         char path[SLICKS_TRACK_NAME_SIZE+8];
                         if(state->cursor<0 || state->cursor>=track_count) goto cleanup;
                         make_track_path(path,track_names[state->cursor]);
-                        if(open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor),logical)) {
+                        if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
+                        int info_result=open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor),logical);
+                        if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
+                        if(info_result) {
                             /* A failed open may already have painted and restored the background. */
                             g_slicks_track_state.previous=-1;
                             if(draw_track_menu(&platform,(short)track_count,0) ||
@@ -6201,7 +6203,7 @@ int main(void)
                                 slicks_original_players_footer_percent)) goto cleanup;
                         }
                         present_menu_surface(&platform,g_slicks_track_menu);
-                        if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                        if(show_menu(&platform)) goto cleanup;
                         slicks_diag_track_info_ready();
                     } else {
                         if(draw_track_menu(&platform,(short)track_count,1)) goto cleanup;
@@ -6217,7 +6219,7 @@ int main(void)
                         if(g_slicks_track_clear_phase==1 && scan==0x15) {
                             /* Only confirmed clearing touches disk. Cancellation
                              * and warning/path notices retain the live display. */
-                            slicks_amiga_platform_end(&platform);
+                            if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
                             static char path[SLICKS_TRACK_NAME_SIZE+8];
                             g_slicks_track_clear_report=(struct SlicksSetupStorageReport){SLICKS_SETUP_SAVED,0,0};
                             g_slicks_track_clear_changed=0;
@@ -6227,6 +6229,7 @@ int main(void)
                                 g_slicks_track_clear_changed+=changed;
                                 if(g_slicks_track_clear_report.result!=SLICKS_SETUP_SAVED) break;
                             }
+                            if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
                             const unsigned char *message=slicks_original_clear_complete;
                             g_slicks_track_clear_phase=2;
                             if(g_slicks_track_clear_report.result!=SLICKS_SETUP_SAVED) {

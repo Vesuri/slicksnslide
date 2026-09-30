@@ -36,8 +36,8 @@ B1–B9 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
   completion briefly exposed Workbench before displaying the results screen.
   Keep the current game image visible while loading/saving, while allowing the
   OS services required for disk I/O. Remaining boundaries:
-  track-info/record-clear operations, screenshot writes, setup-save failure
-  recovery and nonfatal race-preparation failures.
+  screenshot writes, setup-save failure recovery and nonfatal race-preparation
+  failures.
   Audit remaining teardown calls and verify safe ownership/restoration on exit.
 
 - [ ] **B11. Intermission fails in stock-A1200 manual session:** After the

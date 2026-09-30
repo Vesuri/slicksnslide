@@ -10,8 +10,8 @@ commands
     quit 1
   end
   set $writes = $writes+1
-  if g_slicks_diag_profile_platform->active
-    printf "CLEAR_DISK_WRITE_WITH_TAKEOVER\n"
+  if !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
+    printf "CLEAR_DISK_DISPLAY_OR_SERVICE_FAILED\n"
     quit 1
   end
   continue

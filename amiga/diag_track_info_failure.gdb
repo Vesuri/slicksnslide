@@ -5,6 +5,10 @@ set $closed = 0
 break open_track_info
 commands
   silent
+  if !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
+    printf "TRACK_INFO_IO_SERVICE_FAILED\n"
+    quit 1
+  end
   printf "TRACK_INFO_FAILURE_OPEN %s\n",name
   if !$failed
     if $_isvoid($expect_plain_close) && (name[0] != 'R' || name[1] != 'A' || name[7] != 'D')

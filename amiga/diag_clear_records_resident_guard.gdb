@@ -1,7 +1,16 @@
-# Include before either Clear Records workflow. Only confirmation may release
-# takeover; opening/cancelling the question and error/path notices are RAM-only.
+# Include before either Clear Records workflow. Confirmation may service disk
+# I/O but never restore Workbench; other message transitions remain RAM-only.
 set $clear_io_windows=0
 break *slicks_amiga_platform_end
+commands
+  silent
+  if g_slicks_options_menu
+    printf "CLEAR_DISPLAY_TEARDOWN\n"
+    quit 1
+  end
+  continue
+end
+break slicks_amiga_platform_begin_io
 commands
   silent
   if g_slicks_options_menu
