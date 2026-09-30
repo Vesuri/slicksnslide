@@ -309,6 +309,8 @@ volatile unsigned short g_slicks_diag_race_error;
 volatile unsigned short g_slicks_diag_race_stage;
 /* Failed preparation buffers: DAT, track, arena, navigation, car, font. */
 volatile unsigned short g_slicks_diag_race_allocation_failures;
+/* Opt-in catalogue recovery probe: total/largest before and after scratch. */
+unsigned long g_slicks_diag_race_memory[4];
 volatile unsigned short g_slicks_diag_shadow_check;
 volatile unsigned long g_slicks_diag_jump_takeoffs;
 volatile unsigned long g_slicks_diag_jump_landings;
@@ -2459,6 +2461,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
      * uses cached assets; hand back to AmigaOS only for the disk loader. */
     slicks_amiga_platform_end(platform);
 
+    if(catalogue_recovery) {
+        g_slicks_diag_race_memory[0]=AvailMem(MEMF_ANY);
+        g_slicks_diag_race_memory[1]=AvailMem(MEMF_ANY|MEMF_LARGEST);
+    }
     dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
     track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
     arena = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
@@ -2468,6 +2474,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     /* Exercise partial-allocation cleanup without exhausting system memory. */
     if(g_slicks_diag_race_load_fault==1) g_slicks_diag_race_load_fault=0;
     else font_resource = (unsigned char *)AllocMem(2048UL, MEMF_ANY);
+    if(catalogue_recovery) {
+        g_slicks_diag_race_memory[2]=AvailMem(MEMF_ANY);
+        g_slicks_diag_race_memory[3]=AvailMem(MEMF_ANY|MEMF_LARGEST);
+    }
     if (!dat || !track || !arena || !navigation || !car_resource ||
         !font_resource) {
         g_slicks_diag_race_allocation_failures=(!dat)|((!track)<<1)|((!arena)<<2)|

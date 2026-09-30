@@ -205,6 +205,11 @@ native caller/input/error checks.
   configuration byte-for-byte and restoring system state. Supporting race
   entry at this extreme size still needs a peak-memory/lifetime solution that
   retains resident menus; do not count 10,000-track race entry as passed.
+  Opt-in memory measurements now establish an actual capacity shortfall:
+  97,256 bytes free before about 144,464 bytes of scratch demand, with identical
+  counts on retry. Reordering allocations alone cannot fix it. Assess borrowing
+  a surface during decoding only after capacity, consumer and failure-lifetime
+  proofs; the complete chunky reconstruction at race start is not enough alone.
   Merely shrinking DAT to its file length did not fix the arena failure and
   is unsafe without auditing its later masks/HUD/font scratch uses; that trial
   was removed. These are debugger/host timings,

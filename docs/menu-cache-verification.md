@@ -33,6 +33,34 @@ Other Help routes and languages remain separate gates.
 
 ## Ownership and storage
 
+### Upper-bound catalogue scratch-memory attribution (2026-09-30)
+
+An opt-in CATRECOV probe reads Exec's free-total and largest-block counts
+immediately before and after the race scratch allocations, while AmigaOS owns
+the machine. It adds no memory queries to ordinary startup or gameplay.
+`tmp/standalone-release-ut5owe0z` reaches the existing two real allocation
+failures, retry/dismiss/exit and restoration-31 gate on PAL A1200, 2 MiB/no
+Fast, default 4 KiB stack. Both attempts report identical byte counts:
+
+| Boundary | Total free | Largest block |
+| --- | ---: | ---: |
+| Before scratch | 97,256 | 66,512 |
+| After scratch attempts | 18,328 | 16,288 |
+
+Only the 65,536-byte decode arena fails (mask 4). Other scratch allocations
+consume 78,928 bytes; together they would require about 144,464 bytes, exceeding
+the initial free total by 47,208. Allocation reordering or defragmentation alone
+cannot meet that peak. Both session/configuration before/after pairs compare
+byte-for-byte, and free counts repeat exactly on retry; this is not a full heap
+leak audit. The muted emulator exits; build log is `tmp/catalogue-memory-build.log`.
+
+Next candidate: borrow an existing surface during decoding. `slicks_race_start`
+reconstructs the complete chunky surface from the logical track before actor
+drawing, but this alone is insufficient proof: decoding capacity, all earlier
+chunky consumers, error/title restoration and loading-painter lifetime must be
+checked before any aliasing is accepted. No production buffer alias is introduced
+by this measurement. The 10,000-track race-entry gate remains open.
+
 Startup retains the 57 additional resources in `menu_resources.h`; decoded
 title artwork and its palette already have permanent owners. Private lossless
 run-pair storage is selected only when smaller than the original encoded bytes.

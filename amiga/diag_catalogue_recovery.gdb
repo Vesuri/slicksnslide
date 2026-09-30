@@ -35,6 +35,7 @@ commands
     dump binary memory .run/catalogue-recovery/config-after-2.bin title_configuration title_configuration+1
   end
   printf "CATALOGUE_MEMORY_RECOVERED attempt=%u allocation_failures=%u\n",$attempts,g_slicks_diag_race_allocation_failures
+  printf "CATALOGUE_SCRATCH_MEMORY before_total=%lu before_largest=%lu after_total=%lu after_largest=%lu\n",g_slicks_diag_race_memory[0],g_slicks_diag_race_memory[1],g_slicks_diag_race_memory[2],g_slicks_diag_race_memory[3]
   continue
 end
 break slicks_diag_race_load_dismissed
