@@ -1,5 +1,27 @@
 # Development release audit
 
+## 2026-09-30 — shop capture uses reserved storage and retained display
+
+The shop's original screenshot feature borrows 65,078 bytes from the modal
+storage lease while no child dialog is active. The chunky source/parent stay
+live and separate. Storage requires explicit sufficient scratch and rejects
+missing/short spans before filesystem operations. Release precedes warnings.
+Disk I/O services run under the unchanged shop bitmap/palette.
+
+- Host capture-storage suite: 984 single-fault points, no overwrite, retained
+  recovery files, and missing/short scratch rejection without I/O pass.
+- `tmp/standalone-release-ewthnhdp`: stock Workbench/68020/2 MiB/no Fast/4 KiB
+  stack NATURALW, both screenshot writes and ordinary shop/race handoff pass.
+  Both windows retain identical bitmap/palette bytes. The two real BMP files
+  have exact source pixels, bottom-up rows and the original DAC palette format.
+- `...-8ahqcqos`: same private data mounted read-only; the capture warning
+  consumes the next key, then the existing shop transaction/Help/race-entry
+  assertions pass. The one failed-write window retains bitmap/palette bytes;
+  no third BMP is created. Both runs are closed.
+
+No captured images or original data are committed or used as implementation
+assets. This preserves the existing user-accessible screenshot feature.
+
 ## 2026-09-30 — track records retain display ownership
 
 Tracks' record viewer and Options' confirmed Clear Records now service disk

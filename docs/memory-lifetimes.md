@@ -123,6 +123,12 @@ are used as preview output. The arena API explicitly borrows rather than owns.
 
 ### Intermission staging layout
 
+Shop capture borrows 65,078 bytes from modal storage only on the normal shop
+input path (no Help/message child). Its primary parent and chunky source do
+not alias the lease. The lease is released before opening a write-failure
+warning; storage rejects insufficient scratch before touching disk. No new
+startup bytes or capture-time allocations are required.
+
 The completed race's VGA allocation now hosts a 141,312-byte union. During
 construction its spans are decode output [0,65536), DAT input [65536,131072),
 track input [131072,139264), and decoded language [139264,141312).

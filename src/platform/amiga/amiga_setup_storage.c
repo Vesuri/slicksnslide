@@ -93,17 +93,19 @@ static enum SlicksSetupSaveResult store_files(const struct SlicksSetupFile *file
     return result;
 }
 struct SlicksSetupStorageReport slicks_amiga_store_capture(
-    const unsigned char *pixels,const unsigned char *palette)
+    const unsigned char *pixels,const unsigned char *palette,
+    unsigned char *buffer,unsigned long capacity)
 {
     static char path[]="TUNING00.BMP";
     char temporary[]="TUNING00.BMP.new",backup[]="TUNING00.BMP.bak";
     struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
+    if(!buffer || capacity<SLICKS_CAPTURE_SIZE) {
+        report.io_error=ERROR_NO_FREE_STORE; return report;
+    }
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr; process->pr_WindowPtr=(APTR)-1;
 #endif
-    unsigned char *buffer=AllocMem(SLICKS_CAPTURE_SIZE,MEMF_ANY);
-    if(!buffer) { report.io_error=ERROR_NO_FREE_STORE; goto done; }
     if(slicks_encode_capture(buffer,SLICKS_CAPTURE_SIZE,pixels,palette)) goto done;
     for(unsigned n=0;n<99;++n) {
         path[6]=temporary[6]=backup[6]=(char)('0'+n/10);
@@ -118,7 +120,6 @@ struct SlicksSetupStorageReport slicks_amiga_store_capture(
     }
     report.io_error=ERROR_OBJECT_EXISTS;
 done:
-    if(buffer) FreeMem(buffer,SLICKS_CAPTURE_SIZE);
     report.path=path;
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     process->pr_WindowPtr=window;

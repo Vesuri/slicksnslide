@@ -56,6 +56,7 @@
 #include "../../ui/font_resource.h"
 #include "../../game/registration.h"
 #include "../../ui/registration_ui.h"
+#include "../../ui/screen_capture.h"
 #include "../../ui/help_text_dirty.h"
 #include "../../ui/menu_bitmap.h"
 #include "../../ui/loading_presentation.h"
@@ -2476,13 +2477,18 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                 if(show_menu(platform)) goto done;
                 if(shop_help_input_test>=3 && m->help_warning) slicks_diag_help_failed();
             } else if(action==SLICKS_SHOP_CAPTURE) {
-                /* File I/O is performed only while AmigaOS owns the machine. */
-                slicks_amiga_platform_end(platform);
-                struct SlicksSetupStorageReport saved=slicks_amiga_store_capture(chunky,m->palette);
+                /* No Help/message child is active on this input path.
+                 * Keep its displayed parent and chunky source untouched. */
+                if(slicks_amiga_platform_begin_io(platform)) goto done;
+                unsigned char *capture=slicks_amiga_storage_workspace_acquire(SLICKS_CAPTURE_SIZE);
+                struct SlicksSetupStorageReport saved=slicks_amiga_store_capture(chunky,m->palette,
+                    capture,SLICKS_CAPTURE_SIZE);
+                slicks_amiga_storage_workspace_release(capture);
+                if(slicks_amiga_platform_end_io(platform)) goto done;
                 if(saved.result!=SLICKS_SETUP_SAVED && slicks_amiga_warning_open(m,
                     (const unsigned char *)"SCREEN CAPTURE FAILED - PRESS A KEY")) goto done;
                 present_menu_surface(platform,m);
-                if(slicks_amiga_platform_begin(platform,0)) goto done;
+                if(show_menu(platform)) goto done;
             } else if(action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
                 int it=slicks_shop_item(rules,&session->options,session->inventory[0],session->players.participation[0],
                     session->players.vehicle[0],c.extra,state.row);

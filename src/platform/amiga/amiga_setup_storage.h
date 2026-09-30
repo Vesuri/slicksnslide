@@ -19,9 +19,10 @@ struct SlicksSetupStorageReport {
  * policy and dirty-state/UI handling remain the caller's responsibility. */
 struct SlicksSetupStorageReport slicks_amiga_store_setup(
     const struct SlicksConfiguration *,const struct SlicksPlayerProfiles *,unsigned char);
-/* Shop Scroll Lock: first free TUNING00..98.BMP; never replace a capture. */
+/* Shop Scroll Lock: first free TUNING00..98.BMP; never replace a capture.
+ * Caller supplies at least SLICKS_CAPTURE_SIZE bytes, separate from pixels. */
 struct SlicksSetupStorageReport slicks_amiga_store_capture(
-    const unsigned char *,const unsigned char *);
+    const unsigned char *,const unsigned char *,unsigned char *,unsigned long);
 /* Caller owns/validates the chosen .SSS path and keeps it alive for report.path.
  * Uses original bytes with the existing new/backup transaction. OS required. */
 struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *,const struct SlicksSavedGame *);
