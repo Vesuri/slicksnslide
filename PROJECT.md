@@ -358,6 +358,7 @@ amiga/                 build, run, debug, and diagnostic scripts
 
 ## Immediate next step
 
-Follow [the current queue](docs/open-work.md) for remaining gameplay priorities and deferred
-checks. Performance optimization is stopped; do not restart the deferred manual joystick
+Follow [the ship list](docs/open-work.md): real-time race clock, adaptive publication,
+loading screen, packaging and one release gate. Frame-pacing evidence is in
+[docs/frame-pacing.md](docs/frame-pacing.md). Do not restart the deferred manual joystick
 check without agreement.
