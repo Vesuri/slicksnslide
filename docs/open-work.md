@@ -28,6 +28,9 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
+All closed (B1–B8; evidence in [frame-pacing.md](frame-pacing.md) and
+[fidelity-audit.md](fidelity-audit.md)).
+
 ## C. Packaging
 
 Done 2026-09-30 in the Vette layout ([install-original-data.md](install-original-data.md)):

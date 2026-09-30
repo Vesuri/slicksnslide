@@ -1,6 +1,7 @@
 #ifndef SLICKS_MENU_BACKGROUND_H
 #define SLICKS_MENU_BACKGROUND_H
 #include "chunky_ui.h"
+#include "chunky_rows.h"
 
 /* Visible-page equivalent of 3b9de for a saved 320x200 screen. x/y are the
  * page origin, not the crop destination: DOS adds source x/4 and source y.
@@ -22,7 +23,7 @@ static inline int slicks_restore_menu_background(struct SlicksChunkyUi *ui,
     unsigned char *destination=ui->pixels+mult320[top]+left;
     const unsigned char *source=saved+mult320[sy]+sx;
     for(int row=0;row<rows;++row,destination+=320,source+=320)
-        for(int column=0;column<columns;++column) destination[column]=source[column];
+        slicks_ui_copy_row(destination,source,columns);
     if(ui->dirty) ui->dirty(ui->dirty_context,(short)left,(short)top,
         (short)(left+columns),(short)(top+rows));
     return 0;

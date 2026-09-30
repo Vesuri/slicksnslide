@@ -273,7 +273,7 @@ void __attribute__((noinline)) slicks_diag_help_test_ready(void) { __asm__ volat
 static unsigned char help_fail_archive;
 static unsigned char help_fail_surface;
 unsigned char g_slicks_title_help_warning;
-/* HELPK: raster lines per menu key, [0] drawing and [1] publication. */
+/* HELPK/TRACKK: raster lines per menu key, [0] drawing and [1] publication. */
 unsigned long g_slicks_diag_key_cost[16][2]; unsigned g_slicks_diag_key_cost_count;
 static unsigned char title_help_saved[280*22];
 struct SlicksSetupLoadReport g_slicks_setup_load_report;
@@ -1721,16 +1721,24 @@ static const unsigned char *native_track_name(void *context,unsigned index)
     }
     display[i]=0; return display;
 }
-static int draw_track_menu(struct SlicksAmigaPlatform *platform,short total)
+/* allow_partial: a plain key on the shown list (no modal in between). */
+static int draw_track_menu(struct SlicksAmigaPlatform *platform,short total,unsigned char allow_partial)
 {
     const struct SlicksTrackMenuLabels labels={
         {slicks_original_track_actions[0],slicks_original_track_actions[1],slicks_original_track_actions[2],
          slicks_original_track_actions[3],slicks_original_track_actions[4],slicks_original_track_actions[5]},
         slicks_original_track_random_on,slicks_original_track_random_off,slicks_original_track_separator};
     g_slicks_track_menu->error=0;
+    g_slicks_track_renderer.allow_partial=allow_partial;
+    unsigned long cost_at=slicks_amiga_platform_raster_time(platform);
     if(slicks_track_renderer_draw(&g_slicks_track_renderer,&g_slicks_track_state,total,
         &g_slicks_track_playlist,&labels) || g_slicks_track_menu->error) return -1;
+    unsigned long cost_drawn=slicks_amiga_platform_raster_time(platform);
     present_menu_surface(platform,g_slicks_track_menu);
+    if(g_slicks_diag_key_cost_count<16) {
+        g_slicks_diag_key_cost[g_slicks_diag_key_cost_count][0]=cost_drawn-cost_at;
+        g_slicks_diag_key_cost[g_slicks_diag_key_cost_count++][1]=slicks_amiga_platform_raster_time(platform)-cost_drawn;
+    }
     return 0;
 }
 static int open_track_menu(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
@@ -1749,7 +1757,7 @@ static int open_track_menu(struct SlicksAmigaPlatform *platform,unsigned char *c
     if(!g_slicks_track_menu) return -1;
     g_slicks_track_state.column=0; g_slicks_track_state.previous=-1;
     g_slicks_track_state.done=0; g_slicks_track_state.random_count=random_count; g_slicks_track_action=0;
-    if(draw_track_menu(platform,total) || slicks_amiga_platform_set_view(platform,0,g_slicks_track_menu->palette) ||
+    if(draw_track_menu(platform,total,0) || slicks_amiga_platform_set_view(platform,0,g_slicks_track_menu->palette) ||
        show_menu(platform)) return -1;
     slicks_diag_tracks_ready(); return 0;
 }
@@ -1762,7 +1770,7 @@ static int track_lists_finish(struct SlicksAmigaPlatform *platform,short total,c
 {
     slicks_amiga_track_lists_close(g_slicks_track_menu);
     g_slicks_track_state.previous=-1;
-    if(draw_track_menu(platform,total)) return -1;
+    if(draw_track_menu(platform,total,0)) return -1;
     if(error && slicks_amiga_message_open(g_slicks_track_menu,(const unsigned char *)error,
         slicks_original_players_footer_percent)) return -1;
     slicks_diag_track_lists_closed(); return 0;
@@ -4594,6 +4602,10 @@ int main(void)
     unsigned char track_scroll_test=(unsigned char)(argc==7 && argv[0]=='T' && argv[1]=='R' &&
         argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='P');
     tracks_test|=track_scroll_test;
+    /* TRACKSK: B7 per-key cost; open Tracks and queue 12 cursor Downs. */
+    unsigned char track_cost_test=(unsigned char)(argc==7 && argv[0]=='T' && argv[1]=='R' &&
+        argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='C');
+    tracks_test|=track_cost_test;
     unsigned char track_info_close_test=(unsigned char)(argc==7 && argv[0]=='T' && argv[1]=='R' &&
         argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='V');
     unsigned char track_info_close_stage=0;
@@ -4607,7 +4619,7 @@ int main(void)
     unsigned char track_info_test=(unsigned char)(tracks_test && argc==7 && (argv[6]=='I' || argv[6]=='J' || argv[6]=='K' || track_info_close_test));
     unsigned char track_info_fault_test=(unsigned char)(track_info_test && argv[6]=='K'),track_info_fault_stage=1;
     unsigned char track_info_failure_test=(unsigned char)(track_info_test && argv[6]=='J'),track_info_failure_stage=0;
-    unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test);
+    unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test && !track_cost_test);
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && (argv[4]=='F' || argv[4]=='A'))) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='F'),title_help_failure_stage=0;
     unsigned char title_help_arcade_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='A');
@@ -5053,6 +5065,12 @@ int main(void)
         if(track_info_failure_test) platform.key_head=3;
         if(track_info_fault_test) g_slicks_diag_track_info_fault=1;
         if(track_info_close_test) { g_slicks_diag_plain_close_fault=1;g_slicks_diag_track_info_probe=1; }
+        if(track_cost_test) {
+            unsigned steps=0;
+            platform.keys[steps++]=0x4d; platform.keys[steps++]=0x4d; platform.keys[steps++]=0x44;
+            while(steps<15) platform.keys[steps++]=0x4d;
+            platform.key_head=steps;
+        }
         if(track_scroll_test) {
             static const unsigned char scroll_keys[]={0x4d,0x4d,0x44,
                 0x1b,0x1f,0x1a,0x3f,0x1d,0x4d,0x3d,0x4c,0x1d,0x45,0x44};
@@ -5727,6 +5745,8 @@ int main(void)
                     g_slicks_options_renderer.surface=0;
                     g_slicks_options_configuration=0;
                     service_menu_open=0;
+                    /* Players and Tracks install their own palettes on view 0. */
+                    if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
                     make_title_surface(logical,title_frame,source_palette);
                     redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
                         selected_vehicle,track_names[selected_track],selected_laps);
@@ -5964,7 +5984,9 @@ int main(void)
                     if(g_slicks_track_menu->track_info) {
                         if(!character && !amiga_raw_to_dos_scan(code)) continue;
                         slicks_amiga_track_info_close(g_slicks_track_menu);
-                        present_menu_surface(&platform,g_slicks_track_menu);
+                        /* Close restored the background; redraw the list. */
+                        g_slicks_track_state.previous=-1;
+                        if(draw_track_menu(&platform,(short)track_count,0)) goto cleanup;
                         slicks_diag_track_info_closed();
                         continue;
                     }
@@ -6012,6 +6034,8 @@ int main(void)
                         slicks_amiga_player_menu_destroy(g_slicks_track_menu); g_slicks_track_menu=0;
                         g_slicks_track_renderer.surface=0;
                         if(g_slicks_track_playlist.count) selected_track=(unsigned short)track_selection[0];
+                        /* Tracks installs trckmenu's palette on view 0. */
+                        if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
                         make_title_surface(logical,title_frame,source_palette);
                         redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
                             selected_vehicle,track_names[selected_track],selected_laps);
@@ -6035,14 +6059,18 @@ int main(void)
                         char path[SLICKS_TRACK_NAME_SIZE+8];
                         if(state->cursor<0 || state->cursor>=track_count) goto cleanup;
                         make_track_path(path,track_names[state->cursor]);
-                        if(open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor)) &&
-                            slicks_amiga_message_open(g_slicks_track_menu,(const unsigned char *)"TRACK RECORDS LOAD FAILED",
+                        if(open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor))) {
+                            /* A failed open may already have painted and restored the background. */
+                            g_slicks_track_state.previous=-1;
+                            if(draw_track_menu(&platform,(short)track_count,0) ||
+                               slicks_amiga_message_open(g_slicks_track_menu,(const unsigned char *)"TRACK RECORDS LOAD FAILED",
                                 slicks_original_players_footer_percent)) goto cleanup;
+                        }
                         present_menu_surface(&platform,g_slicks_track_menu);
                         if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                         slicks_diag_track_info_ready();
                     } else {
-                        if(draw_track_menu(&platform,(short)track_count)) goto cleanup;
+                        if(draw_track_menu(&platform,(short)track_count,1)) goto cleanup;
                         slicks_diag_tracks_ready();
                     }
                     continue;

@@ -694,6 +694,12 @@ build/verify_help_navigation: tools/verify_help_navigation.c tools/verify_option
 verify-help-navigation: build/verify_help_navigation
 	build/verify_help_navigation
 
+.PHONY: verify-track-partial
+build/verify_track_partial: tools/verify_track_partial.c tools/host_archive.h $(wildcard src/ui/*.h) src/game/track_playlist.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-track-partial: build/verify_track_partial
+	build/verify_track_partial
+
 .PHONY: verify-help-partial
 build/verify_help_partial: tools/verify_help_partial.c tools/host_archive.h $(wildcard src/ui/*.h) | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
@@ -1650,7 +1656,8 @@ amiga-debug: amiga
 
 RELEASE_DIR ?= dist
 RELEASE_HOST_CHECKS = verify-race-timing verify-drive-physics verify-race-lap-limit \
-	verify-car-collision verify-title-help verify-key-repeat verify-loading-pixels
+	verify-car-collision verify-title-help verify-key-repeat verify-loading-pixels \
+	verify-font-glyph verify-help-partial verify-track-partial verify-track-prepare
 .PHONY: release release-package dist release-check install-data-helper install-data-test
 install-data-helper:
 	$(MAKE) -C tools/install-data

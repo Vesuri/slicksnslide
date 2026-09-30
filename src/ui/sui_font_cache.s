@@ -1,6 +1,7 @@
 	section	code
 	xdef	sui_font_cache
 	xdef	sui_font_glyph_flush
+	xdef	slicks_font_glyph_map
 
 ; Glyph offsets are the original's low-word sum of padded width*height over
 ; all preceding glyphs (2ff0c..2ff2b). Computing them per character costs
@@ -84,6 +85,16 @@ sui_font_cache:
 	movem.l	(sp)+,d0-d5/d7/a0/a2/a5
 .hit:
 	movem.l	(sp)+,d5/d6
+	rts
+
+; GCC ABI: const unsigned char *slicks_font_glyph_map(const unsigned char *font)
+slicks_font_glyph_map:
+	move.l	a4,-(sp)
+	movea.l	8(sp),a1
+	bsr.w	sui_font_cache
+	lea	SUI_GLYPH_CACHE_MAP(a4),a0
+	move.l	a0,d0
+	movea.l	(sp)+,a4
 	rts
 
 ; Invalidate every cached font; called after any font resource is decoded.

@@ -231,13 +231,16 @@ void slicks_amiga_track_info_close(struct SlicksAmigaPlayerMenu *m)
     if(!m || !m->track_info) return;
     struct SlicksAmigaTrackInfo *d=m->track_info;
     /* Detach before reporting restores so they cannot modify the lifetime
-     * list being traversed. Failed partial opens use the same bounds. */
+     * list being traversed. Failed partial opens use the same bounds.
+     * The Tracks screen under the panel is its prepared background plus the
+     * list draw, so restore the background here and let the caller redraw
+     * the list: no 64,000-byte save-under competes with the preview arena
+     * for Chip RAM on a 2 MiB machine. */
     m->track_info=0;
     for(unsigned i=0;i<d->painted_count;++i) {
         const struct SlicksMenuRect *r=&d->painted[i];
         for(unsigned y=r->top;y<r->bottom;++y)
-            for(unsigned x=r->left;x<r->right;++x)
-                m->renderer.ui.pixels[mult320[y]+x]=d->saved[mult320[y]+x];
+            slicks_ui_copy_row(m->renderer.ui.pixels+mult320[y]+r->left,m->saved+mult320[y]+r->left,r->right-r->left);
         dirty(m,r->left,r->top,r->right,r->bottom);
     }
     for(unsigned i=0;i<2;++i) m->fonts[i][6]=d->font_colours[i];
@@ -270,7 +273,6 @@ int slicks_amiga_track_info_open_prepared(struct SlicksAmigaPlayerMenu *m,struct
     struct SlicksAmigaTrackInfo *d=track_info_fault(1)?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
     if(!d) return -1;
     g_slicks_diag_track_info_stage=1;
-    for(unsigned long i=0;i<64000;++i) d->saved[i]=m->renderer.ui.pixels[i];
     for(unsigned i=0;i<2;++i) d->font_colours[i]=m->fonts[i][6];
     m->track_info=d;
     d->phase=1;

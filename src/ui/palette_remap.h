@@ -1,6 +1,7 @@
 #ifndef SLICKS_PALETTE_REMAP_H
 #define SLICKS_PALETTE_REMAP_H
 #include "chunky_ui.h"
+#include "chunky_rows.h"
 
 /* Original 344c5: build an indexed-colour tint table. Keep the signed byte
  * percentage, truncated /25, byte narrowing, and 16-bit blended sum. This
@@ -35,8 +36,7 @@ static inline int slicks_ui_remap(struct SlicksChunkyUi *ui,
         return -1;
     if(left==right || top==bottom) return 0;
     unsigned char *row=ui->pixels+mult320[(unsigned)top]+left;
-    for(short y=top;y<bottom;++y,row+=320)
-        for(short x=0;x<right-left;++x) row[x]=table[row[x]];
+    for(short y=top;y<bottom;++y,row+=320) slicks_ui_remap_row(row,right-left,table);
     if(ui->dirty) ui->dirty(ui->dirty_context,left,top,right,bottom);
     return 0;
 }

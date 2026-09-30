@@ -3254,3 +3254,51 @@ routines.
 (80 ms), under the 92 ms typematic period. The ten target Help fixtures pass:
 title, nested Options and Players, page keys, failure recovery and title Help
 failure.
+
+## Track selector speed, title palette and track-info memory (B7/B8, 2026-09-30)
+
+**B7 measurement.** `TRACKSC` (`SLICKS_TRACK_MENU=20`, `diag_track_key_cost.gdb`)
+opens Tracks and queues 12 cursor moves. With the B6 glyph cache in place,
+each move still cost about 2,435 lines of drawing plus 690 of publication
+(200 ms): background restores 503, text 1,177, tint 465 and bevel 176.
+
+**B7 fixes (pixel-identical).**
+- `chunky_rows.h` moves restores and tints four pixels per Chip access.
+- The dirty-bounds scan uses the cached character map
+  (`slicks_font_glyph_map`).
+- Cursor-only redraw in `track_menu_renderer.h`. When page, playlist,
+  counters and total are unchanged, the pixels differ only inside the old and
+  new bevel and scroll-marker rectangles. Every draw operation still runs in
+  order: those outside that damage are skipped, the others run in full and
+  their pixels outside it are put back. The renderer counts every dirty
+  report on its surface, so any foreign painter forces the next draw to be a
+  full one.
+- `verify-track-partial` compares the partial and full renderers over 30,000
+  keys (16,192 partial draws), including playlist toggles and foreign
+  repaints. It catches mutations that drop the scroll marker or ignore
+  foreign repaints.
+
+**B7 result.** A cursor move costs about 600–1,000 lines of drawing plus
+30–280 of publication. A move that scrolls the list is still a full redraw,
+about 1,900 lines plus publication.
+
+**B8.** Tracks installs `trckmenu`'s palette on view 0. Its close path and
+the Escape return-to-title path now restore the title palette. Evidence:
+`diag_track_palette.gdb` shows view 0 identical before Tracks opens and after
+it closes.
+
+**Track-info memory regression (found by the fixtures).** The records panel
+allocated a 64,000-byte save-under while `open_track_info` still held its
+64 KiB preview arena. Before B6 only about 3.5 KiB of Chip RAM was spare, and
+B6/B7 grew the program by about 14 KiB, so the panel failed with "TRACK
+RECORDS LOAD FAILED". The Tracks screen is its prepared background (`m->saved`)
+plus the list draw. Close now restores the painted rectangles from `m->saved`,
+and the caller redraws the list in full, with the same pixels. The panel
+block shrinks from 67,466 to 3,466 bytes; 54,520 bytes remain in the largest
+free block at that point.
+
+**Gates.** Host: `verify-track-partial`, `verify-track-prepare` (redraw
+against the original), `verify-track-menu-draw`, `verify-palette-remap`,
+`verify-menu-restore`, `verify-standings-dirty`, `verify-font-glyph`. Target:
+TRACKSC, TRACKS, scroll, lists, track info, info faults and info failure
+fixtures pass, and every recorded publication matches its chunky surface.

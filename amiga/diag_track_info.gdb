@@ -1,5 +1,16 @@
 set $opened = 0
 set $closed = 0
+set $before = 0
+# The panel keeps no save-under: capture the list frame before it paints.
+break slicks_amiga_track_info_open_prepared
+commands
+  silent
+  if !$before
+    dump binary memory .run/track-info-v1/before.chunky m->renderer.ui.pixels m->renderer.ui.pixels+64000
+    set $before = 1
+  end
+  continue
+end
 break slicks_diag_track_info_ready
 commands
   silent
@@ -13,7 +24,6 @@ commands
   set $font1 = $m->track_info->font_colours[1]
   set $selection_count = g_slicks_track_playlist.count
   if $opened == 1
-    dump binary memory .run/track-info-v1/before.chunky $m->track_info->saved $m->track_info->saved+64000
     dump binary memory .run/track-info-v1/info.chunky $m->renderer.ui.pixels $m->renderer.ui.pixels+64000
     dump binary memory .run/track-info-v1/info.palette $m->palette $m->palette+768
   end

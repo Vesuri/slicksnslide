@@ -1,6 +1,10 @@
 #ifndef SLICKS_HELP_TEXT_DIRTY_H
 #define SLICKS_HELP_TEXT_DIRTY_H
 #include "chunky_ui.h"
+#ifdef __m68k__
+/* First glyph index per character code, font[0] when absent. */
+extern const unsigned char *slicks_font_glyph_map(const unsigned char *font);
+#endif
 /* Painter bounds for the Help and standings font bridges. Follow individual
  * glyph advances, not whole-string measured width: glyph zero, signed spacing,
  * tabs and trailing glyph overhang differ. Alignment uses the native measured
@@ -11,6 +15,9 @@ static inline void slicks_font_text_dirty(struct SlicksChunkyUi *ui,
     unsigned char flags,short measured_width,unsigned char shadow_y)
 {
     const unsigned char *codes=font+6+font[5],*widths=codes+font[0];
+#ifdef __m68k__
+    const unsigned char *map=slicks_font_glyph_map(font); /* sui_font_cache */
+#endif
     short anchor=x;
     if((flags&3)==1) x=(short)(x-measured_width/2);
     else if((flags&3)==2) x=(short)(x-measured_width);
@@ -18,7 +25,11 @@ static inline void slicks_font_text_dirty(struct SlicksChunkyUi *ui,
     for(unsigned n=0;n<1000 && text[n];++n) {
         unsigned c=text[n],glyph=0;
         if(c==13 || c==10) { x=anchor; y=(short)(y+font[2]+1); continue; }
+#ifdef __m68k__
+        glyph=map[c]; (void)codes;
+#else
         while(glyph<font[0] && codes[glyph]!=c) ++glyph;
+#endif
         if(glyph<font[0] && widths[glyph] && font[2]) {
             int l=x,t=y,r=x+widths[glyph]+((flags&4)!=0),
                 b=y+font[2]+((flags&4)?shadow_y:0);
