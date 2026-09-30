@@ -18,21 +18,33 @@
 #include "../../ui/language_table.h"
 #include "../../game/track_scene.h"
 
+/* These parents retain their child dialogs but never coexist with one
+ * another: pause, between-race intermission, or Tracks' list workflow. */
+struct MenuWorkspace {
+    struct SlicksAmigaPlayerMenu menu;
+    union {
+        struct SlicksAmigaRaceMenu pause;
+        struct SlicksAmigaIntermission intermission;
+        struct SlicksAmigaTrackLists lists;
+    } parent;
+};
 static unsigned char *menu_workspace;
 static unsigned char menu_workspace_busy;
+static unsigned char parent_owner;
+enum ParentOwner { PARENT_PAUSE=1,PARENT_INTERMISSION,PARENT_LISTS };
 volatile unsigned long g_slicks_menu_workspace_conflicts;
 int slicks_amiga_menu_workspace_create(void)
 {
     if(menu_workspace) return -1;
-    menu_workspace=AllocMem(sizeof(struct SlicksAmigaPlayerMenu),MEMF_ANY);
-    menu_workspace_busy=0;
+    menu_workspace=AllocMem(sizeof(struct MenuWorkspace),MEMF_ANY);
+    menu_workspace_busy=0; parent_owner=0;
     return menu_workspace?0:-1;
 }
 void slicks_amiga_menu_workspace_destroy(void)
 {
-    if(menu_workspace_busy) ++g_slicks_menu_workspace_conflicts;
-    if(menu_workspace) FreeMem(menu_workspace,sizeof(struct SlicksAmigaPlayerMenu));
-    menu_workspace=0; menu_workspace_busy=0;
+    if(menu_workspace_busy || parent_owner) ++g_slicks_menu_workspace_conflicts;
+    if(menu_workspace) FreeMem(menu_workspace,sizeof(struct MenuWorkspace));
+    menu_workspace=0; menu_workspace_busy=0; parent_owner=0;
 }
 void *slicks_amiga_menu_workspace_acquire(unsigned long bytes)
 {
@@ -46,11 +58,31 @@ void *slicks_amiga_menu_workspace_acquire(unsigned long bytes)
 void slicks_amiga_menu_workspace_release(void *memory)
 {
     if(!memory) return;
-    if(memory!=menu_workspace || !menu_workspace_busy) {
+    if(memory!=menu_workspace || !menu_workspace_busy || parent_owner) {
         ++g_slicks_menu_workspace_conflicts;
         return;
     }
     menu_workspace_busy=0;
+}
+static void *acquire_parent(unsigned long size,unsigned char owner)
+{
+    if(!menu_workspace || !menu_workspace_busy || parent_owner ||
+       size>sizeof(((struct MenuWorkspace *)0)->parent)) {
+        ++g_slicks_menu_workspace_conflicts; return 0;
+    }
+    parent_owner=owner;
+    unsigned char *bytes=(unsigned char *)&((struct MenuWorkspace *)menu_workspace)->parent;
+    for(unsigned long i=0;i<size;++i) bytes[i]=0;
+    return bytes;
+}
+static void release_parent(void *bytes,unsigned char owner)
+{
+    if(!bytes) return;
+    if(!menu_workspace || parent_owner!=owner ||
+       bytes!=(void *)&((struct MenuWorkspace *)menu_workspace)->parent) {
+        ++g_slicks_menu_workspace_conflicts; return;
+    }
+    parent_owner=0;
 }
 static struct SlicksAmigaPlayerMenu *acquire_menu(void)
 {
@@ -209,7 +241,7 @@ int slicks_amiga_race_menu_close(struct SlicksAmigaPlayerMenu *m)
     struct SlicksAmigaRaceMenu *d=m->race_menu;
     slicks_race_menu_render_close(&d->renderer,&d->surface);
     slicks_amiga_player_menu_restore(m);
-    FreeMem(d,sizeof *d); m->race_menu=0; return 0;
+    release_parent(d,PARENT_PAUSE); m->race_menu=0; return 0;
 }
 int slicks_amiga_race_menu_draw(struct SlicksAmigaPlayerMenu *m)
 {
@@ -257,12 +289,12 @@ int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *m,
     slicks_amiga_platform_clear_latch(0);
     if(!m || !archive || !language || !keys || row>=6 || m->race_menu ||
        m->help || m->controllers_dialog || !m->renderer.ui.pixels || !m->renderer.fonts[0]) return -1;
-    struct SlicksAmigaRaceMenu *d=pause_fault(1)?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaRaceMenu *d=pause_fault(1)?0:acquire_parent(sizeof *d,PARENT_PAUSE);
     if(!d) return -1;
     unsigned char resource[1000]; unsigned used=0;
     long size=slicks_resource_archive_load(archive,pause_fault(2)?"missing-language":language,resource,sizeof resource);
     if(size<0 || slicks_language_table_load(resource,(unsigned)size,d->language,sizeof d->language,&used)) {
-        FreeMem(d,sizeof *d); return -1;
+        release_parent(d,PARENT_PAUSE); return -1;
     }
     for(unsigned i=0;i<6;++i) d->labels[i]=slicks_language_lookup(d->language,used,keys[i],keys[i]);
     d->state=(struct SlicksRaceMenu){row,6,-1,0};
@@ -271,7 +303,7 @@ int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *m,
     for(unsigned long i=0;i<64000;++i) m->saved[i]=m->renderer.ui.pixels[i];
     m->saved_dirty_count=0; m->track_saved_dirty=1;
     if(slicks_race_menu_render_open(&d->renderer,&d->surface,&d->state,
-        percent,d->tinted,sizeof d->tinted)) { FreeMem(d,sizeof *d); return -1; }
+        percent,d->tinted,sizeof d->tinted)) { release_parent(d,PARENT_PAUSE); return -1; }
     m->race_menu=d;
     if(slicks_amiga_race_menu_draw(m) || pause_fault(3)) {
         (void)slicks_amiga_race_menu_close(m); return -1;
@@ -477,7 +509,7 @@ int slicks_amiga_intermission_close(struct SlicksAmigaPlayerMenu *m)
     struct SlicksAmigaIntermission *d=m->intermission;
     slicks_amiga_player_menu_restore(m);
     m->renderer.fonts[0][6]=d->old_colour;
-    FreeMem(d,sizeof *d); m->intermission=0; return 0;
+    release_parent(d,PARENT_INTERMISSION); m->intermission=0; return 0;
 }
 int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct SlicksIntermissionContent *content,
     const unsigned char *source_palette,const unsigned char *dat,unsigned long dat_size,
@@ -491,11 +523,11 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     unsigned char fault=g_slicks_diag_intermission_fault; g_slicks_diag_intermission_fault=0;
     g_slicks_diag_intermission_fault_reached=0;
     if(fault==1) g_slicks_diag_intermission_fault_reached=1;
-    struct SlicksAmigaIntermission *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaIntermission *d=fault==1?0:acquire_parent(sizeof *d,PARENT_INTERMISSION);
     if(fault==2 && d) g_slicks_diag_intermission_fault_reached=2;
     /* Borrow caller-owned startup storage: no late 64 KiB heap request. */
     if(!d || fault==2 || !arena || arena_size<65536) {
-        if(d) FreeMem(d,sizeof *d);
+        if(d) release_parent(d,PARENT_INTERMISSION);
         return -1;
     }
     d->content=*content;
@@ -521,7 +553,7 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     if(result || fault==3) { (void)slicks_amiga_intermission_close(m); return -1; }
     return 0;
 before_paint:
-    FreeMem(d,sizeof *d); return -1;
+    release_parent(d,PARENT_INTERMISSION); return -1;
 }
 int slicks_amiga_intermission_key(struct SlicksAmigaPlayerMenu *m,unsigned char key)
 {
@@ -616,14 +648,14 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
     if(m->help_warning) (void)slicks_amiga_help_warning_close(m);
     if(m->track_info) release_modal(m->track_info,MODAL_TRACK_INFO);
     if(m->track_lists) {
-        FreeMem(m->track_lists,sizeof *m->track_lists);
+        release_parent(m->track_lists,PARENT_LISTS);
     }
     if(m->message) release_modal(m->message,MODAL_MESSAGE);
     if(m->help) {
         release_help(m->help);
     }
     if(m->controllers_dialog) release_modal(m->controllers_dialog,MODAL_CONTROLLERS);
-    if(m->race_menu) FreeMem(m->race_menu,sizeof *m->race_menu);
+    if(m->race_menu) release_parent(m->race_menu,PARENT_PAUSE);
     if(m->colour_dialog) release_modal(m->colour_dialog,MODAL_COLOUR);
     if(m->name_dialog) release_modal(m->name_dialog,MODAL_NAME);
     free_picker(m->picker);
@@ -1104,7 +1136,7 @@ void slicks_amiga_track_lists_close(struct SlicksAmigaPlayerMenu *m)
     if(m->message) (void)slicks_amiga_message_close(m);
     if(m->name_dialog) (void)slicks_amiga_name_dialog_close(m);
     if(m->picker) (void)slicks_amiga_profile_picker_close(m);
-    FreeMem(m->track_lists,sizeof *m->track_lists); m->track_lists=0;
+    release_parent(m->track_lists,PARENT_LISTS); m->track_lists=0;
 }
 struct SlicksSetupLoadReport slicks_amiga_track_lists_open(struct SlicksAmigaPlayerMenu *m,
     const struct SlicksAmigaTrackListCache *cache,const unsigned char *captions,unsigned char percent)
@@ -1114,7 +1146,7 @@ struct SlicksSetupLoadReport slicks_amiga_track_lists_open(struct SlicksAmigaPla
     if(!cache) return report;
     report=cache->report;
     if(report.result!=SLICKS_SETUP_LOADED) return report;
-    struct SlicksAmigaTrackLists *lists=AllocMem(sizeof *lists,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaTrackLists *lists=acquire_parent(sizeof *lists,PARENT_LISTS);
     if(!lists) { report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE; return report; }
     m->track_lists=lists;
     lists->catalogue=cache->view; /* Immutable borrow until modal close. */

@@ -176,8 +176,12 @@ information restores painted bounds and font colours before releasing storage.
 Change Cars retains its separate intermission parent. Icon staging uses bytes
 64,000–64,511 of the primary saved-page reservation, beyond the live snapshot.
 These remove four further allocation expressions without enlarging either slot.
-Only the pause, intermission and track-list parent objects still allocate in
-amiga_player_menu.c, in addition to the startup primary reservation.
+The pause, intermission and track-list parent objects now share a separate
+8,588-byte startup union after the primary menu, raising that reservation from
+87,958 to 96,546 bytes. Parents do not coexist with each other, but do coexist
+with the child union. Their acquisition, failure, release and shutdown edges
+are owner-tagged; releasing a primary owner with a live parent is rejected.
+amiga_player_menu.c now contains only the startup allocation and shutdown free.
 
 Maximum-catalogue + Workbench tests exposed two startup outcomes: menu-owner
 reservation can fail, or catalogue retention can fail first and leave a later

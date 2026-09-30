@@ -1,5 +1,27 @@
 # Development release audit
 
+## 2026-09-30 — startup-owned retained dialog parents
+
+Pause, intermission and track-list parents use a distinct owner-tagged union
+alongside the primary menu. The combined startup allocation is 96,546 bytes
+(8,588 more than before); the child overlay stays 110,096 bytes. Parent failure
+and close paths release the slot, and primary release rejects a live parent.
+The menu module now has just one AllocMem at startup and one FreeMem at shutdown.
+
+- Workbench-loaded 2 MiB/default-stack LIVEMENUH (`...-kav4unzr`): pause/Help/
+  reopen/resume passes; ten complete pixel publications pass.
+- Same configuration OPTIONSTI (`...-4bgbg5ow`): repeated intermission edits
+  and second race pass; 55 publications pass.
+- 2 MiB without Workbench, maximal catalogue TRACKSN (`...-63gvu8n7`): both
+  picker faults, recovery and race pass; 18 publications pass.
+- Workbench-loaded OPTIONSTJ (`...-ormdsevw`): intermission constructor
+  rollback/retry and two races pass with rewards applied only once.
+- Workbench-loaded LIVEMENUH allocation audit (`...-_q7cq3rq`): 139 allocation
+  calls, zero failures, zero outstanding blocks and zero ownership conflicts.
+
+All test emulators closed. Catalogue/persistence and non-menu staging remain
+B12 work; this does not claim their combined reservation is finished.
+
 ## 2026-09-30 — remaining leaf dialogs and icon staging
 
 Track Information, Change Cars and messages use the existing owner-tagged modal

@@ -164,7 +164,7 @@ struct SlicksAmigaHelpWorkspace {
 /* Exclusive modal overlay over a reconstructible, idle game cache. */
 int slicks_amiga_help_workspace_bind(void *,unsigned long,void (*)(void *),void *);
 void slicks_amiga_help_workspace_unbind(void);
-/* Open/close use Exec allocations; a cached archive permits hardware ownership.
+/* Open/close borrow startup slots; a cached archive permits hardware ownership.
  * Disk-backed archives still require an explicit OS boundary.
  * Use a dedicated help-surface object: its saved[] belongs to the race page. */
 int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,

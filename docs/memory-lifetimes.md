@@ -27,7 +27,7 @@ Target sizes from the built 68020 ELF, not host ABI sizes:
 | Prepared title background including lookahead | 64,034 | Startup to exit |
 | Two eight-plane display bitmaps | 128,000 | Startup to exit |
 | Race runtime, including maps/assets/render caches | 369,104 | Startup to exit |
-| Common menu owner / track-load staging | 87,958 | Startup-reserved exclusive workspace |
+| Common menu owner / track-load staging and retained parent | 96,546 | Startup-reserved exclusive workspace |
 | Help viewer | 46,096 | Modal overlay in startup particle cache |
 | List/profile picker | 35,132 | Nested modal lifetime |
 | Intermission dialog | 4,228 | Between races |
@@ -95,9 +95,11 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    name/colour dialogs now share the same exclusive overlay, without growing
    it. Pickers and their bounded 5,698-byte name/index payload also share it.
    Track Information, messages and Change Cars also share that child slot.
-   Pause, intermission and track-list parent storage still allocate
-   dynamically. Work out legal nesting before defining
-   unions; preserve parent save-under, labels and font state across child exit.
+   Pause, intermission and track-list parents share a separate 8,588-byte union
+   appended to the primary startup reservation. Its owner tag remains live
+   across child dialogs and must be released before the primary owner. All
+   dialog acquisition is now bounded reuse: amiga_player_menu.c contains only
+   its startup AllocMem and matching shutdown FreeMem.
 5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536
    bytes and its loader another 65,536. The redundant loader buffer is now
    eliminated: refresh reads/validates its unpublished staging directly, then
