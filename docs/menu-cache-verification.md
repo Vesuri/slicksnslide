@@ -1074,6 +1074,39 @@ and cache needed no fix for this route. This closes normal Tracks Help
 link/history/reopen publication and lifetime coverage, not every Help owner,
 language, page-scroll route or failure boundary.
 
+## Track Information Close recovery exposes memory shortage (2026-09-30)
+
+TRACKSV is an explicit input fixture for the shared preview-loader Close
+failure: open Track Information, dismiss the injected failure, retry the same
+track, close/reopen, then start the race. Its successful previews need only one
+shimmer update; it is a recovery test, not the separate long animation gate.
+`diag_track_info_close_rectangles.gdb` preserves the existing restoration,
+selection/font, reopen and race assertions and adds full-pixel captures plus
+no-teardown/no-archive-open guards while a warning or preview is active.
+
+**This gate currently fails.** The first failed close is consumed, its warning
+is dismissed, and the second open reaches the constructor with complete
+SLICKS.DAT (41,500 bytes) and 1WAY (2,129 bytes). Both the production records
+and description decoders accept the original track in a separate host check.
+The native constructor remains at stage 0 because its 67,466-byte owner
+allocation cannot fit: free memory 42,296, largest block 39,464. These memory
+queries are opt-in for the explicit diagnostic, not ordinary menu work.
+
+Final diagnostic run: `tmp/standalone-release-bmw3d09l`, stock PAL A1200,
+2 MiB Chip/no Fast, confirmed default 4 KiB stack. Earlier runs
+`c__uvnb1`, `rmlkbzgd`, `niwa8685` localized the failure;
+`7xr0hzqa` confirmed constructor input lengths. The temporary trace run
+`0dnbkx3r` stopped on an optimized-out GDB local and is not evidence about
+the Close result. All run suffixes are under `tmp/standalone-release-`.
+The actual close-failure boundary is separately verified by the intermission
+gates. No retry success or complete publication pass is claimed here.
+
+All diagnostic emulators were muted and closed. Build log:
+`tmp/track-info-close-build.log`. The open list retains this concrete memory
+defect; a promising lower-peak design is to decode the DAT images into their
+existing workspace, release the compressed source, then allocate the owner.
+That design still requires implementation and independent pixel/failure checks.
+
 ## Tracks malformed-file rejection matrix (2026-09-30)
 
 The fixture generator accepts explicit malformed variants, still refusing to

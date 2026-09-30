@@ -180,6 +180,7 @@ int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *m,
 /* One-shot diagnostic boundary faults; zero in normal runs. */
 unsigned char g_slicks_diag_track_info_fault;
 unsigned char g_slicks_diag_track_info_stage;
+unsigned char g_slicks_diag_track_info_probe;
 unsigned long g_slicks_diag_track_info_free,g_slicks_diag_track_info_largest;
 static int track_info_fault(unsigned char stage)
 {
@@ -247,7 +248,7 @@ int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksRe
     unsigned char description[64];
     if(slicks_track_records(track,track_size,&records)!=1 ||
         slicks_track_description(track,track_size,description,sizeof description)) return -1;
-    if(g_slicks_diag_track_info_fault) {
+    if(g_slicks_diag_track_info_fault || g_slicks_diag_track_info_probe) {
         g_slicks_diag_track_info_free=AvailMem(MEMF_ANY);
         g_slicks_diag_track_info_largest=AvailMem(MEMF_ANY|MEMF_LARGEST);
     }

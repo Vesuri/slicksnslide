@@ -5,8 +5,9 @@ set $closed = 0
 break open_track_info
 commands
   silent
+  printf "TRACK_INFO_FAILURE_OPEN %s\n",name
   if !$failed
-    if name[0] != 'R' || name[1] != 'A' || name[7] != 'D'
+    if $_isvoid($expect_plain_close) && (name[0] != 'R' || name[1] != 'A' || name[7] != 'D')
       quit 1
     end
     dump binary memory .run/track-info-failure-v1/before.chunky menu->renderer.ui.pixels menu->renderer.ui.pixels+64000
@@ -21,6 +22,10 @@ break slicks_diag_track_info_ready
 commands
   silent
   set $m = g_slicks_track_menu
+  printf "TRACK_INFO_FAILURE_READY failed=%u dismissed=%u cursor=%d info=%p message=%p stage=%u\n",$failed,$dismissed,g_slicks_track_state.cursor,$m->track_info,$m->message,g_slicks_diag_track_info_stage
+  if !$_isvoid($expect_plain_close)
+    printf "TRACK_INFO_RETRY_MEMORY free=%lu largest=%lu required=%lu\n",g_slicks_diag_track_info_free,g_slicks_diag_track_info_largest,sizeof(struct SlicksAmigaTrackInfo)
+  end
   if !$m || $m->error || !g_slicks_diag_profile_platform->active
     quit 1
   end
@@ -30,6 +35,10 @@ commands
       quit 1
     end
     set $failed = 1
+    if !$_isvoid($expect_plain_close) && (g_slicks_diag_plain_close_fault || g_slicks_diag_plain_close_reached!=1)
+      printf "TRACK_INFO_CLOSE_FAULT_NOT_REACHED\n"
+      quit 1
+    end
   else
     if !$dismissed || !$m->track_info || $m->message || g_slicks_track_state.cursor
       quit 1

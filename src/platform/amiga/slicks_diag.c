@@ -1887,6 +1887,7 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 /* Explicit disk boundary. Allocate the actual file length, not its upper
  * bound, so preview scratch and resident menus fit together in Chip RAM. */
 unsigned char g_slicks_diag_plain_close_fault,g_slicks_diag_plain_close_reached;
+extern unsigned char g_slicks_diag_track_info_probe;
 static unsigned char *load_plain_allocated(const char *path,unsigned long limit,
     unsigned long *size)
 {
@@ -4093,13 +4094,17 @@ int main(void)
     unsigned char track_scroll_test=(unsigned char)(argc==7 && argv[0]=='T' && argv[1]=='R' &&
         argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='P');
     tracks_test|=track_scroll_test;
+    unsigned char track_info_close_test=(unsigned char)(argc==7 && argv[0]=='T' && argv[1]=='R' &&
+        argv[2]=='A' && argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && argv[6]=='V');
+    unsigned char track_info_close_stage=0;
+    tracks_test|=track_info_close_test;
     unsigned char tracks_test_stage=0;
     unsigned char track_read_failure_test=0;
     if(argc==7 && argv[0]=='T' && argv[1]=='R' && argv[2]=='A' &&
        argv[3]=='C' && argv[4]=='K' && argv[5]=='S' && (argv[6]=='Q' || argv[6]=='C')) {
         tracks_test=1;track_read_failure_test=argv[6]=='Q'?1:2;
     }
-    unsigned char track_info_test=(unsigned char)(tracks_test && argc==7 && (argv[6]=='I' || argv[6]=='J' || argv[6]=='K'));
+    unsigned char track_info_test=(unsigned char)(tracks_test && argc==7 && (argv[6]=='I' || argv[6]=='J' || argv[6]=='K' || track_info_close_test));
     unsigned char track_info_fault_test=(unsigned char)(track_info_test && argv[6]=='K'),track_info_fault_stage=1;
     unsigned char track_info_failure_test=(unsigned char)(track_info_test && argv[6]=='J'),track_info_failure_stage=0;
     unsigned char track_lists_test=(unsigned char)(tracks_test && argc==7 && !track_info_test && !track_scroll_test);
@@ -4506,6 +4511,7 @@ int main(void)
         if(track_info_test) { platform.keys[3]=0x51; platform.key_head=4; }
         if(track_info_failure_test) platform.key_head=3;
         if(track_info_fault_test) g_slicks_diag_track_info_fault=1;
+        if(track_info_close_test) { g_slicks_diag_plain_close_fault=1;g_slicks_diag_track_info_probe=1; }
         if(track_scroll_test) {
             static const unsigned char scroll_keys[]={0x4d,0x4d,0x44,
                 0x1b,0x1f,0x1a,0x3f,0x1d,0x4d,0x3d,0x4c,0x1d,0x45,0x44};
@@ -6055,8 +6061,13 @@ int main(void)
                 platform.key_head=3; track_info_failure_stage=2;
             }
         }
+        if(track_info_close_test && !track_info_close_stage && g_slicks_track_menu &&
+           g_slicks_track_menu->message && platform.key_head==platform.key_tail) {
+            platform.key_tail=0;platform.keys[0]=0x45;platform.keys[1]=0x51;platform.key_head=2;
+            track_info_close_stage=1;
+        }
         if(track_info_test && tracks_test_stage<2 && g_slicks_track_menu && g_slicks_track_menu->track_info &&
-            g_slicks_track_menu->track_info->updates>=256 && platform.key_head==platform.key_tail) {
+            g_slicks_track_menu->track_info->updates>=(track_info_close_test?1:256) && platform.key_head==platform.key_tail) {
             platform.key_tail=0; platform.keys[0]=0x45;
             platform.keys[1]=tracks_test_stage?0x45:0x51;
             platform.key_head=2; ++tracks_test_stage;
