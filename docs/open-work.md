@@ -96,8 +96,10 @@ native caller/input/error checks.
   The current Finnish normal/Arcade registered/unregistered cadence refresh
   and phase attribution are recorded in the fidelity evidence. Glyph destination
   reuse improves the current registered Finnish normal cycle to 72 refreshes
-  for 64 intervals; Arcade still misses refreshes. Colour/state calculation
-  and remaining caller work need further attribution/reuse assessment. Keep
+  for 64 intervals. Exact Arcade palette-result reuse reduces its steady
+  registered Finnish interval to 22.54 ms, still missing refreshes; its
+  initial redraw is measured separately. Remaining colour/state and owner
+  drawing work need further attribution/reuse assessment. Keep
   instrumentation overhead distinct from normal cadence and preserve original
   palette/state semantics; the current result does not close F08.
 - F03–F05/F10/F12: finish remaining native interactive sequences and shortcuts

@@ -1226,6 +1226,12 @@ build/verify_arcade_title_pixels: tools/verify_arcade_title_pixels.c tools/verif
 verify-arcade-title-pixels: build/verify_arcade_title_pixels build/arcade_title_pixels_test.bin
 	build/verify_arcade_title_pixels
 
+.PHONY: verify-arcade-palette-cache
+build/verify_arcade_palette_cache: tools/verify_arcade_palette_cache.c src/ui/arcade_title_painter.h src/ui/arcade_title_draw.h src/ui/chunky_ui.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
+verify-arcade-palette-cache: build/verify_arcade_palette_cache
+	build/verify_arcade_palette_cache
+
 build/title_menu.elf: tools/title_menu_test.s src/ui/sui_title_menu.s Makefile
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Felf -I. -o build/title_menu.o $<

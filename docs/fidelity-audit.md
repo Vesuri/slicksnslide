@@ -2331,6 +2331,55 @@ Post-validation uninterrupted timing repeat
 `tmp/standalone-release-mr50blo4` again takes 72 refreshes for 64 normal
 intervals, with the same 56 single-/8 double-refresh histogram.
 
+## Exact Arcade palette-result reuse (2026-09-30)
+
+The Arcade title draw orchestrator requests nine nearest-colour matches per
+pulse, including eight fixed colours. Its painter now memoizes up to 64 exact
+RGB-byte keys and original matcher results in the existing retained-owner
+cache. Misses still use `slicks_ui_nearest`; capacity exhaustion starts a new
+batch instead of changing the result. Counter, font-colour and shadow updates
+still execute in their original order. No palette quantization or replacement
+colour formula was introduced.
+
+The palette identity and results are reset on every full painter call, or
+when the palette pointer changes. Reuse between pulses requires the owner's
+palette to remain immutable, matching the existing retained-pixel cache's
+unchanged-owner contract. In the production caller, `source_palette` is a
+static array loaded once from `partII` at startup; subsequent title/background,
+platform palette and painter calls read it. The background preparation changes
+image pixels, not this source palette. Menu/demo returns use full title redraws.
+An in-place palette change by a future caller must likewise request a full
+redraw; pointer equality alone is not a general mutable-palette guarantee.
+
+`verify-arcade-palette-cache` executes original DOS matcher `36fae` for 2,048
+comparisons: hits, more than 64 distinct queries, signed byte inputs, ties,
+reserved entry zero, changed palette pointers, full-redraw same-pointer
+content changes and uncached calls. It checks the original AL byte result,
+not undefined AH contents. All pass (`tmp/arcade-palette-cache-oracle.log`).
+
+Early stock-A1200/default-stack registered Finnish timing:
+`tmp/standalone-release-g1u_4u_6` takes 81 refreshes for 64 intervals,
+versus parent `ac7e8c5`'s 96. Histogram: 55 single-refresh, eight double-refresh,
+one ten-refresh entry interval. After that entry, 63 intervals take 71
+refreshes (22.54 ms mean), versus the parent's 86 (27.30 ms).
+This is title rendering only and does not claim the gameplay performance goal.
+
+The expanded original painter suite passes 3,888 full-screen/font comparisons
+across all saved languages plus fallback, font aliases, selections, player
+counts and counter edges (`tmp/arcade-palette-cache-pixels.log`). Native
+Finnish mode-5 row-zero complete cycles also pass with registration
+(`tmp/standalone-release-j90q4gql`) and without it
+(`tmp/standalone-release-b9qa5tbh`): 65 states each match all 64,000 original
+pixels, publication checks have zero errors and normal restoration is 31.
+These use fresh private data, stripped executable, stock 2 MiB/no-Fast PAL
+A1200 and confirmed 4 KiB stack. Debug audio is muted and runners close their
+emulators. Final registered timing `tmp/standalone-release-4i_wr_4o`
+repeats exactly 81 refreshes with the same histogram.
+Final unregistered timing `tmp/standalone-release-susnimm4` takes 73
+refreshes: the ten-refresh entry followed by 63 single-refresh intervals.
+Thus that sampled unregistered steady cycle reaches one update per refresh;
+registered owner rendering and other rows/languages retain their open scope.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

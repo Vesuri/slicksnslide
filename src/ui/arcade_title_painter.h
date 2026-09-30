@@ -3,9 +3,13 @@
 #include "arcade_title_draw.h"
 #include "chunky_ui.h"
 /* Valid only between pulses of an otherwise unchanged title owner. Full
- * redraws rebuild the cache; no framebuffer comparison or shadow image. */
+ * redraws rebuild the cache; no framebuffer comparison or shadow image.
+ * The owner keeps its source palette immutable between full redraws. */
 struct SlicksArcadePulseCache {
     unsigned char valid,colour[7],shadow[7];
+    const unsigned char *palette;
+    unsigned long nearest_rgb[64];
+    unsigned char nearest_index[64],nearest_count;
 };
 struct SlicksArcadeTitlePainter {
     unsigned char *logical,*fonts[4];
@@ -19,7 +23,23 @@ struct SlicksArcadeTitlePainter {
     void *context;
 };
 static inline unsigned char slicks_arcade_paint_nearest(void *p,unsigned char r,unsigned char g,unsigned char b)
-{ struct SlicksArcadeTitlePainter *s=p;struct SlicksChunkyUi ui={.palette=s->palette};return slicks_ui_nearest(&ui,r,g,b); }
+{
+    struct SlicksArcadeTitlePainter *s=p;
+    struct SlicksArcadePulseCache *c=s->cache;
+    unsigned long rgb=((unsigned long)r<<16)|((unsigned long)g<<8)|b;
+    if(c) for(unsigned i=0;i<c->nearest_count;++i)
+        if(c->nearest_rgb[i]==rgb)return c->nearest_index[i];
+    struct SlicksChunkyUi ui={.palette=s->palette};
+    unsigned char index=slicks_ui_nearest(&ui,r,g,b);
+    if(c) {
+        /* Capacity is not a semantic restriction: an unusual colour set
+         * simply starts another batch of exact original matcher results. */
+        if(c->nearest_count==64)c->nearest_count=0;
+        unsigned i=c->nearest_count++;
+        c->nearest_rgb[i]=rgb;c->nearest_index[i]=index;
+    }
+    return index;
+}
 static inline void slicks_arcade_paint_colour(void *p,unsigned font,unsigned char c)
 { ((struct SlicksArcadeTitlePainter *)p)->fonts[font][6]=c; }
 static inline void slicks_arcade_paint_shadow(void *p,unsigned char c)
@@ -55,11 +75,18 @@ static inline void slicks_arcade_paint_text(void *p,unsigned font,unsigned id,sh
         s->text(s->context,s->logical,s->fonts[font],text,x,y,flags,s->shadow);
     if(s->cache) {s->cache->colour[id]=colour;s->cache->shadow[id]=s->shadow;}
 }
+static inline void slicks_arcade_paint_cache_begin(struct SlicksArcadeTitlePainter *s)
+{
+    if(s->cache && (!s->pulse || s->cache->palette!=s->palette)) {
+        s->cache->valid=0;s->cache->nearest_count=0;s->cache->palette=s->palette;
+    }
+}
 static inline int slicks_arcade_title_paint(struct SlicksArcadeTitlePainter *s,
     unsigned char *counter,unsigned char *refresh,unsigned char selection,short players,const signed char colours[4][6])
 {
     const struct SlicksArcadeTitleDrawOps ops={slicks_arcade_paint_nearest,slicks_arcade_paint_colour,
         slicks_arcade_paint_shadow,slicks_arcade_paint_restore,slicks_arcade_paint_rectangle,slicks_arcade_paint_text,s};
+    slicks_arcade_paint_cache_begin(s);
     s->selective=(unsigned char)(s->pulse && s->cache && s->cache->valid && !*refresh);
     s->failed=0;slicks_arcade_title_draw(counter,refresh,selection,players,colours,&ops);
     if(s->cache)s->cache->valid=(unsigned char)!s->failed;
