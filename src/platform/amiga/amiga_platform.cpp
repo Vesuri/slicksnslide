@@ -41,6 +41,10 @@ static Bitmap *framework_bitmaps[SLICKS_AMIGA_VIEW_COUNT];
 static CopperList *framework_copper[SLICKS_AMIGA_VIEW_COUNT];
 static unsigned short palette_words[SLICKS_AMIGA_VIEW_COUNT][2][256];
 static unsigned char palette_valid[SLICKS_AMIGA_VIEW_COUNT];
+/* Source VGA palettes of the copper lists, for painters that tint the
+ * currently displayed view (the original reads its live DAC copy). */
+static unsigned char view_palettes[SLICKS_AMIGA_VIEW_COUNT][768];
+static unsigned short shown_view;
 extern "C" unsigned char g_slicks_diag_race_load_fault;
 static unsigned char create_fault, create_allocation, create_fault_consumed;
 static bool fail_create_allocation()
@@ -66,6 +70,8 @@ static unsigned long build_copper(unsigned short view_index,
     Bitmap *bitmap = framework_bitmaps[view_index];
     palette_valid[view_index]=0;
 
+    for (at = 0; at < 768; ++at)
+        view_palettes[view_index][at] = palette[at];
     for (colour = 0; colour < 256; ++colour) {
         unsigned long r = expand_vga_component(palette[colour * 3]);
         unsigned long g = expand_vga_component(palette[colour * 3 + 1]);
@@ -118,6 +124,7 @@ static int validate_framework_view(unsigned short view_index)
 
 static void install_copper(unsigned short view, int immediate)
 {
+    shown_view = view;
     AmigaHardware::setCopperList(*framework_copper[view], immediate != 0);
 }
 
@@ -316,8 +323,10 @@ int slicks_amiga_platform_set_view(struct SlicksAmigaPlatform *platform,
     if (build_copper(view, vga_palette) != COPPER_LONGS - 1)
         return -1;
     /* Native lifecycle fixture: reject an invalid, not-yet-installed race
-     * list through the real validator, then restore it before returning. */
-    if (view == 1 && !platform->active && g_slicks_diag_race_load_fault == 8) {
+     * list through the real validator, then restore it before returning.
+     * The loading display may still own view 0 while view 1 is built. */
+    if (view == 1 && (!platform->active || shown_view != 1) &&
+        g_slicks_diag_race_load_fault == 8) {
         g_slicks_diag_race_load_fault = 0;
         unsigned long *list = framework_copper[view]->data();
         unsigned long saved = list[11];
@@ -335,6 +344,7 @@ int slicks_amiga_platform_update_palette(struct SlicksAmigaPlatform *platform,
     if(!platform || view>=SLICKS_AMIGA_VIEW_COUNT || !rgb ||
        first>256 || count>256-first || !framework_copper[view] || !palette_valid[view]) return -1;
     CopperList *list=framework_copper[view];
+    for(unsigned c=0;c<3*count;++c) view_palettes[view][3*first+c]=rgb[c];
     for(unsigned c=0;c<count;++c) {
         list->setColor(palette_words[view][0][first+c],slicks_copper_vga_word(rgb+c*3,0),1);
         list->setColor(palette_words[view][1][first+c],slicks_copper_vga_word(rgb+c*3,1),1);
@@ -422,6 +432,13 @@ unsigned long slicks_amiga_platform_raster_time(void *context)
     } while (frame != again ||
              high != (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7));
     return frame * 313UL + line;
+}
+
+unsigned short slicks_amiga_platform_shown_view(void) { return shown_view; }
+const unsigned char *slicks_amiga_platform_view_palette(unsigned short view)
+{
+    return view < SLICKS_AMIGA_VIEW_COUNT && palette_valid[view] ?
+        view_palettes[view] : 0;
 }
 
 int slicks_amiga_platform_wait_publication(struct SlicksAmigaPlatform *platform)

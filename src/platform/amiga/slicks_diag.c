@@ -58,6 +58,8 @@
 #include "../../ui/registration_ui.h"
 #include "../../ui/help_text_dirty.h"
 #include "../../ui/menu_bitmap.h"
+#include "../../ui/loading_presentation.h"
+#include "../../ui/palette_remap.h"
 extern void slicks_draw_title_registration(unsigned char *,const unsigned char *);
 extern void slicks_tick_title_registration(unsigned char *,const unsigned char *,const unsigned char *);
 extern void slicks_advance_title_registration(const unsigned char *);
@@ -2400,6 +2402,65 @@ static void audit_weapon_hud(const struct SlicksRaceRuntime *race)
     ++g_slicks_diag_weapon_hud_checks;slicks_diag_weapon_hud_checked();
 }
 
+/* Original 1b488..1b58f paints over whatever is displayed. Read the panel
+ * rectangle back from the shown view into chunky (free until the decoder
+ * borrows it), paint there, and convert it back. 16-pixel aligned bounds. */
+#define LOADING_LEFT 96
+#define LOADING_TOP 90
+#define LOADING_RIGHT 224
+#define LOADING_BOTTOM 115
+extern void slicks_menu_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short);
+struct LoadingPainter { struct SlicksChunkyUi ui; unsigned char *font; };
+static unsigned char loading_nearest(void *context,unsigned char r,unsigned char g,unsigned char b)
+{ return slicks_ui_nearest(&((struct LoadingPainter *)context)->ui,r,g,b); }
+static void loading_colour(void *context,unsigned char index,unsigned char value)
+{ ((struct LoadingPainter *)context)->font[6+index]=value; }
+static void loading_text(void *context,const unsigned char *label,short x,short y,unsigned char flags)
+{
+    struct LoadingPainter *p=context;
+    slicks_menu_text(p->ui.pixels,p->font,label,x,y,flags);
+}
+static void loading_tint(void *context,short l,short t,short r,short b,
+    unsigned char red,unsigned char green,unsigned char blue,short percent)
+{
+    struct LoadingPainter *p=context; unsigned char table[256];
+    slicks_ui_tint_table(p->ui.palette,table,red,green,blue,percent);
+    (void)slicks_ui_remap(&p->ui,l,t,r,b,table);
+}
+static void show_loading_panel(struct SlicksAmigaPlatform *platform,unsigned char *chunky,
+    const char *track_path,signed char demo_flag)
+{
+    unsigned short view=slicks_amiga_platform_shown_view();
+    const unsigned char *palette=slicks_amiga_platform_view_palette(view);
+    struct BitMap *bitmap=platform->views[view].bitmap;
+    if(!palette || !slicks_title_small_font) return;
+    /* 1b51c..1b53d: file stem, then DS:099c. */
+    unsigned char stem[9],caption[16]; unsigned n=0;
+    const char *name=track_path;
+    for(const char *c=track_path;*c;++c) if(*c=='/' || *c==':') name=c+1;
+    while(name[n] && name[n]!='.' && n<8) { stem[n]=(unsigned char)name[n]; ++n; }
+    stem[n]=0;
+    if(slicks_loading_caption(caption,sizeof caption,stem,slicks_original_demo_loading_suffix)) return;
+    for(unsigned y=LOADING_TOP;y<LOADING_BOTTOM;++y) {
+        unsigned char *row=chunky+mult320[y];
+        for(unsigned x=LOADING_LEFT;x<LOADING_RIGHT;++x) {
+            unsigned long offset=y*bitmap->BytesPerRow+x/8;
+            unsigned char mask=(unsigned char)(0x80U>>(x&7)),colour=0;
+            for(unsigned plane=0;plane<8;++plane)
+                if(bitmap->Planes[plane][offset]&mask) colour|=(unsigned char)(1U<<plane);
+            row[x]=colour;
+        }
+    }
+    /* DS:0680 is kirj; the colour mutation persists, as in the original. */
+    struct LoadingPainter painter={{chunky,palette,0,0},slicks_title_small_font};
+    const struct SlicksLoadingPresentationOps ops={{loading_nearest,loading_colour,
+        loading_text,&painter},loading_tint};
+    slicks_loading_presentation(demo_flag,caption,slicks_original_demo_overlay,&ops);
+    slicks_amiga_platform_wait_display_blank(platform);
+    slicks_chunky_rect_to_amiga(chunky,bitmap,LOADING_LEFT,LOADING_TOP,
+        LOADING_RIGHT,LOADING_BOTTOM,0);
+}
+
 static int prepare_race(struct SlicksAmigaPlatform *platform,
                       unsigned char *logical, unsigned char *chunky,
                       unsigned short *mode_state,
@@ -2456,9 +2517,15 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_error=9; goto cleanup;
     }
 
-    /* GO may arrive with the resident title display still owned. The shop
-     * uses cached assets; hand back to AmigaOS only for the disk loader. */
-    slicks_amiga_platform_end(platform);
+    /* GO may arrive with the resident title display still owned. Keep it
+     * for the disk loader (1b488: loading panel over the shown screen),
+     * servicing AmigaOS only through the I/O window. A failed preparation
+     * still ends in the released state its callers expect. */
+    if(platform->active) {
+        show_loading_panel(platform,chunky,track_path,
+            (signed char)(title_demo.active || demo_render_only?-1:0));
+        if(slicks_amiga_platform_begin_io(platform)) slicks_amiga_platform_end(platform);
+    }
 
     if(catalogue_recovery) {
         g_slicks_diag_race_memory[0]=AvailMem(MEMF_ANY);
@@ -2753,6 +2820,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
 
 cleanup:
     slicks_resource_archive_close(&archive);
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
+    if(result!=0) slicks_amiga_platform_end(platform);
     if (font_resource)
         FreeMem(font_resource, 2048UL);
     if (car_resource)
@@ -2801,6 +2870,7 @@ static void enter_prepared_race(struct SlicksAmigaPlatform *platform,
     g_slicks_diag_display_checksum =
         checksum_bitmap(platform->views[1].bitmap);
     slicks_amiga_platform_show(platform, 1);
+    platform->publish_valid = 0;
     g_slicks_diag_ingame = 1;
     update_race_diagnostics(race);
     slicks_diag_frame_ready();
@@ -5507,7 +5577,7 @@ int main(void)
                     }
                     race_load_prompt=race_load_retry=0;
                     slicks_race_set_laps(race,selected_laps);
-                    if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
+                    if(show_view(&platform,1)) goto cleanup;
                     g_slicks_diag_ready=1;
                     enter_prepared_race(&platform,logical,race);
                     start_race_engines(&audio,race,&platform);
@@ -5672,7 +5742,7 @@ int main(void)
                             continue;
                         }
                         slicks_race_set_laps(race,selected_laps);
-                        if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
+                        if(show_view(&platform,1)) goto cleanup;
                         g_slicks_diag_ready=1;
                         enter_prepared_race(&platform,logical,race);
                         start_race_engines(&audio,race,&platform);
@@ -6252,7 +6322,7 @@ int main(void)
                     playlist_position=(unsigned short)game.next_track;
                     selected_track=(unsigned short)track_selection[playlist_position];
                     slicks_race_set_laps(race,selected_laps);
-                    if(slicks_amiga_platform_begin(&platform,1)) goto cleanup;
+                    if(show_view(&platform,1)) goto cleanup;
                     g_slicks_diag_ready=1;
                     enter_prepared_race(&platform,logical,race);
                     start_race_engines(&audio,race,&platform);
@@ -6320,7 +6390,7 @@ int main(void)
                     }
                     playlist_position = 0;
                     slicks_race_set_laps(race, selected_laps);
-                    if (slicks_amiga_platform_begin(&platform, 1) != 0)
+                    if (show_view(&platform, 1) != 0)
                         goto cleanup;
                     g_slicks_diag_ready = 1;
                     enter_prepared_race(&platform, logical, race);

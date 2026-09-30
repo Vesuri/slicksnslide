@@ -65,6 +65,9 @@ unsigned long slicks_amiga_platform_raster_time(void *platform);
  * previous publication, or return 1 at once if preparation overran it.
  * Single-buffered, so a late publication can tear inside dirty regions. */
 int slicks_amiga_platform_wait_publication(struct SlicksAmigaPlatform *platform);
+/* Last installed view, and the VGA palette behind a view's copper list. */
+unsigned short slicks_amiga_platform_shown_view(void);
+const unsigned char *slicks_amiga_platform_view_palette(unsigned short view);
 void slicks_amiga_platform_wait_display_blank(
     struct SlicksAmigaPlatform *platform);
 void slicks_amiga_platform_wait_display_end(

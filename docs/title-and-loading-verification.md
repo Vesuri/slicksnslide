@@ -54,3 +54,39 @@ Checkpoint indices: 0 entry; 1 initialization; 2 files; 3 palette; 4 clear;
 5 scenery; 10 masks; 11 diagnostic scans; 12 HUD assets; 6 car/light assets;
 7 race initialization; 8 view; 9 C2P. Timing diagnostics do not alter input,
 invent inventory or bypass the real track/asset loaders.
+
+## Original loading panel during track loads (B3, 2026-09-30)
+
+**What changed.** `prepare_race` no longer hands the display back to AmigaOS
+before track loading. When the platform owns the display:
+1. it reads the panel rectangle (x 96..223, y 90..114) back from the shown
+   view into chunky;
+2. it runs the verified painter `slicks_loading_presentation` (original
+   `1b488..1b58f`) with the view's source palette, resident `kirj.@f`
+   (DS:0680), and a caption built by `slicks_loading_caption` from the track
+   stem plus DS:099c `...`, or DS:09a0 `DEMO` for demos;
+3. it converts the rectangle back;
+4. it loads through `begin_io`/`end_io`.
+
+A failed preparation still ends in the released display state its callers
+expect. Successful callers show the race view with `show_view`. Chunky is not
+published during I/O, because the decoder borrows it.
+
+**Checks:**
+- **Pixels of the captured bitmap at the I/O window** (`amiga/diag_race_view_capture.gdb`,
+  `tools/render_bitmap_capture.py`, local `tmp/capture-load.png`): the title
+  tinted by both rectangles, with a centered `DEMO` caption.
+- **A GO race** showed `SL_A...` for `SL_A.SS` (user screenshot). The race
+  view at update 40 of that race is intact (`tmp/capture-race-setupf.png`).
+- **Demo lifecycles** 1–7, 9 and 12 pass (`tmp/b3-demo*.log`). The deliberate
+  load-failure cases report their single expected failure. Case 12's copper
+  fault injection now also applies while view 0 is still shown.
+- **SETUPF and SETUPG** late load failure, dismiss, Players and GO retry pass.
+- **Fixed-clock F1 benchmark** keeps `FINAL_STATE`.
+- **Full-frame dirty-sprite audits** (`diag_dirty_sprites.gdb`, NATURALO1..3Q)
+  pass with 600 frames each: 32/18/5 actors and 2068/1480/1854 marks
+  (`tmp/b3-audit*.log`).
+
+**Not yet established.** This is bitmap content, not visible scanout, so the
+user's one visual check remains. The other disk boundaries (intermission
+preview, records, cup image, setup save) still use the OS hand-off.

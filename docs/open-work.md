@@ -45,29 +45,11 @@ remaining step is for the user to watch one F1 race on the normal build
 If they do not accept it, the only follow-up is to convert dirty regions below
 the beam first. Do not add double buffering.
 
-### B3. Original loading screen during track loads
+### B3. Loading screen: one visual confirmation
 
-In `prepare_race` (`slicks_diag.c:2463`), replace `slicks_amiga_platform_end`
-with this sequence:
-1. keep the display;
-2. paint the original panel with `src/ui/loading_presentation.h` and
-   `slicks_loading_caption`, using the track stem and `kirj.@f`;
-3. publish it once;
-4. call `slicks_amiga_platform_begin_io`, load, then call `end_io`.
-
-Constraints:
-- Do not publish chunky between `begin_io` and `end_io`: chunky storage is
-  borrowed as the decoding arena.
-- The same path serves demos, GO/F9, retry and next-track.
-
-Accept when all of these hold:
-- one normal race entry and one demo pass their existing race-start checks;
-- the SETUPG late-failure/retry fixture still recovers;
-- the user looks once at a load (`diag_loading_io_visual.gdb`) and sees the
-  panel, not Workbench.
-
-Out of scope: the other disk boundaries (intermission preview, records, cup
-image, setup save). They keep today's OS hand-off.
+This is implemented and verified ([title-and-loading-verification.md](title-and-loading-verification.md)).
+The one remaining step is for the user to look once during a track load and
+confirm the tinted panel and caption on screen, not Workbench.
 
 ### B5. Sparse-shop fixture
 
@@ -75,28 +57,71 @@ Run one native fixture with only driver 3 human: buy one item, sell one item,
 press one ignored key. Accept when there is no crash, the transactions land on
 driver 3, and the ignored key triggers no redraw.
 
-### B6. Held-key auto-repeat in menus and Help
+### B6. Held-key auto-repeat in menus, Help and name entry
 
-The original repeats held keys:
-- the title/menu reader through its repeat timer (DS:1714 plus BIOS ticks,
-  argument 2);
-- Help through `getch` with BIOS typematic repeat.
+**The original reader.** The latched-scan reader `36ce0` works like this:
+- DS:1714 is the latch. The keyboard interrupt `36e29` stores every raw
+  byte there, make and break alike.
+- While the latch is 0x80 or above, the last-event time follows the BIOS
+  tick count.
+- On a fresh hold it returns the scan once.
+- After that it returns the scan whenever `ticks > last + arg`, then sets
+  `last = now`. So a held key repeats every `arg+1` BIOS ticks (18.2065 Hz).
+- The state is global: a key held while one dialog opens another stays
+  armed.
+- Any other make or break, including Shift, replaces the latch.
+- `36ca5` (at 1e18e, 1e53f, 1e72f, 247c9, 2497a, 24b50, 2da5e, 2df59, 2f37e,
+  2f6aa, 31157 and 3175d) clears it to 0x80.
 
-The Amiga keyboard interrupt queues raw make/break events and has no repeat
-([fidelity-audit.md](fidelity-audit.md) around line 939, "keyboard repeat
-cadence not established"; `amiga_platform.cpp` `keyboard_handler`).
+The Amiga keyboard interrupt only queues make and break events. No owner
+repeats a held key.
 
-Steps:
-1. Recover the exact delay and rate from the original title reader and its
-   callers.
-2. Use the BIOS default typematic for Help (500 ms delay, 10.9 repeats/s).
-3. Generate the repeats in the platform key queue only for the owners that
-   repeat in the original. The race does not, because it polls key state.
+| Call | Arg | Original owner | Amiga owner (`slicks_diag.c` unless noted) |
+| --- | --- | --- | --- |
+| 1e11e | 2 | Race Speed dialog | `slicks_amiga_race_speed_key` (`amiga_player_menu.c`) |
+| 1e65e | 3 | Pause menu | `slicks_race_menu_key` in `run_race_pause` |
+| 24704 | 3 | Intermission menu | `run_intermission` |
+| 24a5f | 2 | Change Cars | `slicks_amiga_change_cars_key` |
+| 26b6d | 7 | Track info preview (closes on any key) | Tracks preview |
+| 274db | column+1 | Tracks selector | `slicks_track_menu_key` |
+| 27f55 | 3 | Profile editor | `slicks_profile_editor_key` |
+| 28993 | 2 | Players menu | `slicks_player_menu_key` |
+| 293f1 | 2 | Options | `slicks_options_menu_key` |
+| 2a378 | 2 | Title | `slicks_dispatch_title_key` |
+| 2cfce | 2 | Shop | `run_shop` |
+| 2dd8b | 2 | Controllers (menu and pause) | controllers key handlers |
+| 2f5ba | 3 | Colour picker RGB edit | `slicks_colour_picker_key` |
+| 315b2 | focus_actions*4+2 | Shared list dialog (player picker, saves, track lists) | list dialog handlers |
 
-Accept when all of these hold:
-- a host test of the repeat schedule passes;
-- one native fixture holds Down on the title and in Help and shows the same
-  number of steps as the recovered schedule.
+**Help and name entry** repeat through the PC keyboard's own typematic
+instead:
+- Help sets DS:1713=0xff at 3295d. It then chains to BIOS INT 9 and reads
+  keys with `getch`.
+- Name entry sets DS:1713=1 at 2f7a9.
+- The race, the `36d8b` users (key capture and message waits) and `36d65`
+  do not repeat.
+
+**Implementation:**
+1. `src/ui/key_repeat.h`, an exact port of `36ce0`: latch, last, armed.
+2. Platform additions:
+   - a raw latch written by `keyboard_handler` and initialised to 0x80;
+   - a BIOS tick clock advanced per vblank (1193182 per 50 Hz frame against
+     65536);
+   - `slicks_amiga_platform_repeat_key(platform, arg, &raw)`;
+   - `slicks_amiga_platform_clear_latch()` at the `36ca5` sites.
+3. Each of the 14 owners calls `repeat_key` with the argument above once its
+   queue is empty.
+4. Help and name entry get a typematic model: first measure the delay and
+   rate in the DOSBox reference, expected to be about 500 ms then 10.9/s.
+
+**Accept when all of these hold:**
+- a Unicorn test runs the original `36ce0` over scripted latch and tick
+  sequences (arguments 0..7, hold, release, second key, Shift, word carry) and
+  matches `key_repeat.h` on every return and every state;
+- each owner's argument is confirmed by its existing dispatch oracle, where
+  one exists;
+- one native fixture holds Down on the title, in Tracks column 0 and in a list
+  dialog's actions, and matches the host model's step counts.
 
 ## C. Packaging
 
