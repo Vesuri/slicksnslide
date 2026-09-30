@@ -1,5 +1,28 @@
 # Development release audit
 
+## 2026-09-30 — registration display retention
+
+Registration archive/external-image reads now retain the existing game display
+inside I/O service windows. A decoded image is prepared in view 0 while the
+outgoing view is held, published black, then faded with the original timings.
+Trial-to-title reconstruction also holds the outgoing image. Missing optional
+images close their I/O window without exposing Workbench. Only actual shutdown
+restores the OS display.
+
+Stock Workbench/68020/2 MiB/no Fast/default 4 KiB-stack evidence:
+
+- `tmp/standalone-release-4jwdqbg8`: REGCHECK, three registration owners close,
+  two runtime I/O windows, restoration 31. Before/after displayed bitmap and
+  palette bytes are identical for both windows. Guards forbid teardown within
+  an owner and require OS service for its runtime file accesses.
+- `...-uhr_gl52`: REGCHECKY Help navigation/restoration passes; all six menu
+  publications match all pixels, including both restored registration views.
+- `...-xvkt7tvk` / `...-z42urjte`: REGCHECKK/L external read/Close failures
+  consumed after real I/O, no failed image presented, normal restoration.
+  The private fixture uses non-image bytes, never replacement order artwork.
+
+All owned emulators closed. Archive-directory allocations remain B12 work.
+
 ## 2026-09-30 — B9: atomic Players/Tracks image and palette transitions
 
 Title-owned Players/Tracks opens and closes copy the outgoing interleaved

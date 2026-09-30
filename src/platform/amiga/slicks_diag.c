@@ -3974,6 +3974,7 @@ static void registration_text(void *context,const unsigned char *text,short x,sh
         slicks_menu_measure(slicks_title_small_font,text),0);
 }
 __attribute__((noinline)) void slicks_diag_registration_prompt_ready(void) { __asm__ volatile("" ::: "memory"); }
+__attribute__((noinline)) void slicks_diag_registration_screen_closed(void) { __asm__ volatile("" ::: "memory"); }
 static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chunky,
     unsigned kind,unsigned short timer)
 {
@@ -3983,7 +3984,7 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     unsigned char old_colour=slicks_title_small_font[6];
     const char *name=kind==0?"loading.bmp":kind==2?"webf_ord.bmp":
         slicks_registration_exit_image(registration.name[0]);
-    slicks_amiga_platform_end(p);
+    if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
     if(slicks_resource_archive_open(&a,"SLICKS.000")) goto done;
     /* Decode-only staging: release before the registration Help dialog,
      * which borrows this same startup-reserved modal workspace. */
@@ -4007,6 +4008,7 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     if(slicks_decode_menu_bitmap(resource,(unsigned long)length,chunky,palette,&w,&h,0) || w!=320 || h!=200) goto done;
     slicks_amiga_storage_workspace_release(resource);resource=0;
     slicks_resource_archive_close(&a);
+    if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
     struct SlicksChunkyUi ui={chunky,palette,0,0};
     registration_painter.ui=(struct SlicksChunkyUi){chunky,palette,registration_dirty,0};
     registration_painter.count=0;
@@ -4015,8 +4017,10 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
         slicks_title_small_font[6]=slicks_ui_nearest(&ui,70,70,70);
         slicks_registration_trial_text(slicks_original_registration_text,0,registration_text,&registration_painter.ui);
     }
-    for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,p->views[i].bitmap,0,200);
-    if(slicks_amiga_platform_set_view(p,0,black) || slicks_amiga_platform_begin(p,0)) goto done;
+    if(hold_title_menu_display(p)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,p->views[0].bitmap,0,200);
+    if(slicks_amiga_platform_set_view(p,0,black) || show_menu(p)) goto done;
+    slicks_chunky_rows_to_amiga(chunky,p->views[1].bitmap,0,200);
     if(result_fade(p,palette,0,100,kind?5:3,timer,&view)) goto done;
     g_slicks_registration_screen=(unsigned short)(kind==0?1:kind==2?4:registration.name[0]?3:2);
     slicks_diag_registration_screen_ready();
@@ -4042,9 +4046,11 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     if(kind==1) registration_delay(p,300);
     result=0;
 done:
-    slicks_amiga_platform_end(p);slicks_title_small_font[6]=old_colour;
+    slicks_title_small_font[6]=old_colour;
     if(resource) slicks_amiga_storage_workspace_release(resource);
-    slicks_resource_archive_close(&a);g_slicks_registration_screen=0;return result;
+    slicks_resource_archive_close(&a);
+    if(p->io_active && slicks_amiga_platform_end_io(p)) result=-1;
+    g_slicks_registration_screen=0;slicks_diag_registration_screen_closed();return result;
 }
 
 /* 25965..259d7 / 2a63e..2aad5. This owns the actual archive bitmap and
@@ -5135,12 +5141,13 @@ int main(void)
     if(registration_presentation && slicks_registration_trial_expired(registration_today,
         configuration.date_code,registration.name[0])) {
         if(registration_screen(&platform,chunky,0,slicks_speed_timer_argument(configuration.field_05de))) goto cleanup;
+        if(hold_title_menu_display(&platform)) goto cleanup;
         make_title_surface(logical,title_frame,source_palette);
         redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
             selected_vehicle,track_names[selected_track],selected_laps);
         if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
     }
-    if (slicks_amiga_platform_begin(&platform, 0) != 0)
+    if (show_menu(&platform) != 0)
         goto cleanup;
     g_slicks_diag_ready = 1;
     if (service_menu_test) {

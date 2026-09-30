@@ -6,7 +6,7 @@ break slicks_diag_registration_external_loaded
 commands
   silent
   set $external_reads=$external_reads+1
-  if g_slicks_registration_external_bytes!=-1 || g_slicks_diag_profile_platform->active
+  if g_slicks_registration_external_bytes!=-1 || !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
     quit 1
   end
   if registration_external_test==1
