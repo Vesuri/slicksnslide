@@ -218,3 +218,7 @@ Other checks:
 - **`diag_display_end_limit.gdb`**, updated to count late publications, passes
   in `NATURALQB` (`tmp/b2-limit.log`): 120 publications over 120 VBlanks,
   3 late, and every on-time publication at row 257.
+
+**User acceptance (2026-09-30).** The user watched an F1 race on the normal
+build (`amiga/run.sh`, real-time clock, adaptive publication) and accepted it,
+reporting no visible tearing. B2 is closed.

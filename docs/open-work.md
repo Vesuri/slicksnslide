@@ -36,15 +36,6 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-### B2. Adaptive publication: user acceptance
-
-This is implemented and measured ([frame-pacing.md](frame-pacing.md)). The one
-remaining step is for the user to watch one F1 race on the normal build
-(`amiga/run.sh`) and accept the tearing on late frames.
-
-If they do not accept it, the only follow-up is to convert dirty regions below
-the beam first. Do not add double buffering.
-
 ### B3. Loading screen: one visual confirmation
 
 This is implemented and verified ([title-and-loading-verification.md](title-and-loading-verification.md)).
