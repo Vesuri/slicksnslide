@@ -166,9 +166,11 @@ native caller/input/error checks.
 
 ### 6. Complete the whole-port fidelity audit
 
-- F18: replace the silent 256-file track catalogue truncation. The original
-  discovery/sort oracle now proves 257 and 300 entries; audit consumers and
-  allocation failure with dynamic storage, keeping playlist limits separate.
+- F18: dynamic catalogue/selection storage now passes 300-track startup,
+  race entry and Help restoration. Finish allocation-failure and upper-bound
+  gates; remove remaining 256-track saved-game/export/staging limits against
+  original-code evidence. Extend demo diagnostics beyond their current first
+  256 selection words before claiming full large-playlist restoration.
   Resolve missing/empty directory fallback against the original startup path
   before changing the fabricated BASIC.SS entry. Complete mixed-case/name
   ordering boundaries; current oracle names are uppercase numeric stems.

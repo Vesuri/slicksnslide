@@ -26,7 +26,7 @@ and a production-screen comparison establish different things.
 | F15 | Saved language ignored by live table consumers | Original startup resolves DS:05e1 and passes it to `2b70a`, which constructs `/langN.txt`. Native title/Arcade, pause and intermission loads were hardwired to lang1. Positive supplied-language selections are now connected; startup default detection/chooser and remaining translated-label caller coverage are still open. |
 | F16 | Added global right-mouse program exit | The main loop read the right-button register and set `exit_requested` independently of the keyboard/menu owner, including during Help. Removed in the keyboard-only exit correction below. This was a native shortcut, not an original title/Help action. |
 | F17 | Shop Help drops printable input | `run_shop` supplied only scans (plus Escape ASCII) to the Help viewer. Original navigation requires ASCII for Enter/Space link activation, Backspace/“b” history and Tab/uppercase K. Corrected to use the shared keymapped Help adapter. |
-| F18 | Track catalogue silently truncates at 256 | Native `discover_tracks` stops at `SLICKS_TRACK_FILE_MAX=256`. Actual original discovery and startup sorting accept 257 and 300 controlled filenames. Not fixed yet; playlist capacity is a separate limit. |
+| F18 | Track catalogue silently truncates at 256 | Original discovery/sorting accept 257 and 300 controlled filenames. Dynamic native discovery/selection storage now passes 300-track startup/race/Help; large persistence, allocation failures and upper-bound coverage remain open. |
 
 The original language startup/caller audit confirmed the hardwired-language
 candidate as F15. Track catalogue sorting, limits,
@@ -2559,6 +2559,53 @@ exits if it remains empty. The exact path-helper behavior and native error
 presentation still need caller-level verification before a replacement.
 Mixed-case, extension and duplicate-name sorting also remain outside this
 numeric-uppercase dataset's scope.
+
+### F18 dynamic discovery and selection storage
+
+Native filenames now grow from 256 slots as needed, doubling up to the
+original caller's 10,000-entry limit. A failed growth returns failure instead
+of publishing a partial catalogue; the main owner retains and frees the old
+block. Every allocated filename block is cleared, so unused bytes do not
+depend on allocator contents. The startup owner frees the final block.
+The existing empty-directory BASIC fallback is unchanged pending its separate
+caller audit.
+
+The selected-track buffer also grows when the catalogue exceeds 256, to
+catalogue count plus two words (matching the original wrapper's allocation
+shape). Original startup selects and shuffles every track; simply raising
+the filename cap would otherwise fail All against the old selection capacity.
+Smaller catalogues retain the existing static selection storage. Dynamic
+selection storage is freed at final cleanup. The original playlist routines
+and random-number order are unchanged.
+
+`verify-track-playlist` now tests counts 257 and 300 as well as the previous
+counts, comparing entire 512-word arrays and RNG state. All 640 playlist and
+768 original GO/F9 caller cases pass (`tmp/large-catalogue-playlist-oracle.log`).
+The first larger unique-random run stopped at the old five-million instruction
+ceiling, before DOS finished selecting all tracks; the revised gate explicitly
+checks its endpoint and allows thirty million instructions. This was an
+incomplete reference execution, not an accepted mismatch or a behavior change.
+
+A private fixture copies a valid track to 300 distinct eight-character DOS
+filenames. `diag_large_track_catalogue.gdb` verifies count/capacity and saves
+the entire pre-race selection. Host inspection confirms indices 0..299 occur
+exactly once. Native STARTGO reaches the race
+(`tmp/standalone-release-8c9updl5`). Native Help open/close and normal restoration
+also pass with that catalogue (`tmp/standalone-release-wb3iw157`): two exact
+publications and byte-identical 64,000-byte parent restoration. The original
+195-file Help failure/recovery regression passes
+(`tmp/standalone-release-9tmikci7`), including six exact warning publications.
+All use stripped executables, stock PAL 68020/2 MiB Chip/no Fast and confirmed
+default 4 KiB stacks. Runs were muted and emulators closed. Build log:
+`tmp/large-catalogue-build.log`.
+
+This is not full large-catalogue completion. `championship_export`, save/load
+staging and saved-game codecs still enforce 256 tracks and need original-code
+boundary verification plus dynamic ownership. Catalogue/selection allocation
+failure gates, larger bounds, mixed-case ordering and the missing-directory
+policy remain open. Existing demo diagnostics compare only the first 256
+selection words; they must be expanded before claiming large-playlist demo
+restoration coverage.
 
 ## Adaptations to preserve or explicitly classify
 

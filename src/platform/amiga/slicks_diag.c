@@ -231,8 +231,9 @@ struct SlicksAmigaPlayerMenu *g_slicks_options_menu;
 struct SlicksAmigaPlayerMenu *g_slicks_track_menu;
 struct SlicksTrackRenderer g_slicks_track_renderer;
 struct SlicksTrackMenu g_slicks_track_state;
-static short track_selection[256];
-struct SlicksTrackPlaylist g_slicks_track_playlist={track_selection,1,256};
+static short initial_track_selection[256];
+static short *track_selection=initial_track_selection;
+struct SlicksTrackPlaylist g_slicks_track_playlist={initial_track_selection,1,256};
 volatile unsigned short g_slicks_track_action;
 void __attribute__((noinline)) slicks_diag_tracks_ready(void) { __asm__ volatile("" ::: "memory"); }
 void __attribute__((noinline)) slicks_diag_tracks_closed(void) { __asm__ volatile("" ::: "memory"); }
@@ -750,12 +751,13 @@ extern void slicks_chunky_pixels_to_amiga(
     const unsigned char *chunky, struct BitMap *bitmap,
     const struct SlicksDirtyPixel *pixels, unsigned long count);
 
-#define SLICKS_TRACK_FILE_MAX 256
+#define SLICKS_TRACK_FILE_MAX 10000
 #define SLICKS_TRACK_NAME_SIZE 12
 
 static unsigned short discover_tracks(
-    char names[SLICKS_TRACK_FILE_MAX][SLICKS_TRACK_NAME_SIZE],unsigned char legacy_basic_first)
+    char (**storage)[SLICKS_TRACK_NAME_SIZE],unsigned *capacity,unsigned char legacy_basic_first)
 {
+    char (*names)[SLICKS_TRACK_NAME_SIZE]=*storage;
     struct FileInfoBlock *info =
         (struct FileInfoBlock *)AllocDosObject(DOS_FIB, 0);
     BPTR lock = Lock((CONST_STRPTR)"TRACKS", ACCESS_READ);
@@ -777,6 +779,19 @@ static unsigned short discover_tracks(
             (source[length - 2] != 'S' && source[length - 2] != 's') ||
             (source[length - 1] != 'S' && source[length - 1] != 's'))
             continue;
+        if(count==*capacity) {
+            unsigned next=*capacity?*capacity*2:256;
+            if(next>SLICKS_TRACK_FILE_MAX)next=SLICKS_TRACK_FILE_MAX;
+            char (*grown)[SLICKS_TRACK_NAME_SIZE]=AllocMem(next*SLICKS_TRACK_NAME_SIZE,MEMF_ANY|MEMF_CLEAR);
+            if(!grown) {
+                UnLock(lock);FreeDosObject(DOS_FIB,info);
+                return 0; /* Caller retains/frees the old block; no partial catalogue. */
+            }
+            for(unsigned i=0;i<count;++i)
+                for(unsigned j=0;j<SLICKS_TRACK_NAME_SIZE;++j)grown[i][j]=names[i][j];
+            if(names)FreeMem(names,*capacity*SLICKS_TRACK_NAME_SIZE);
+            names=grown;*storage=names;*capacity=next;
+        }
         for (at = 0; at <= length; ++at)
             names[count][at] = source[at];
         ++count;
@@ -787,6 +802,11 @@ cleanup:
     if (info)
         FreeDosObject(DOS_FIB, info);
     if (!count) {
+        if(!names) {
+            names=AllocMem(SLICKS_TRACK_NAME_SIZE,MEMF_ANY|MEMF_CLEAR);
+            if(!names)return 0;
+            *storage=names;*capacity=1;
+        }
         static const char fallback[] = "BASIC.SS";
         for (at = 0; at < sizeof(fallback); ++at)
             names[0][at] = fallback[at];
@@ -3932,7 +3952,8 @@ int main(void)
     static unsigned char source_palette[768];
     static unsigned char race_palette[768];
     static unsigned short mode_state[11];
-    static char track_names[SLICKS_TRACK_FILE_MAX][SLICKS_TRACK_NAME_SIZE];
+    char (*track_names)[SLICKS_TRACK_NAME_SIZE]=0;
+    unsigned track_name_capacity=0;
     struct SlicksResourceArchive archive = {0};
     struct SlicksAmigaPlatform platform = {0};
     struct SlicksAmigaAudio audio = {0};
@@ -4433,7 +4454,16 @@ int main(void)
         goto cleanup;
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
-    track_count = discover_tracks(track_names,(unsigned char)!original_setup);
+    track_count = discover_tracks(&track_names,&track_name_capacity,(unsigned char)!original_setup);
+    if(!track_count)goto cleanup;
+    if(track_count>g_slicks_track_playlist.capacity) {
+        unsigned capacity=(unsigned)track_count+2;
+        short *selection=AllocMem(capacity*sizeof *selection,MEMF_ANY|MEMF_CLEAR);
+        if(!selection)goto cleanup;
+        track_selection=selection;
+        g_slicks_track_playlist.tracks=selection;
+        g_slicks_track_playlist.capacity=(unsigned short)capacity;
+    }
     g_slicks_track_state.random_order=slicks_original_track_random_order;
     if(original_setup) {
         /* Original startup 26164/26169: select every discovered track,
@@ -6984,6 +7014,13 @@ cleanup:
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;
     slicks_amiga_track_list_cache_free(&track_list_cache);
+    if(track_names)FreeMem(track_names,track_name_capacity*SLICKS_TRACK_NAME_SIZE);
+    if(track_selection!=initial_track_selection) {
+        FreeMem(track_selection,g_slicks_track_playlist.capacity*sizeof *track_selection);
+        track_selection=initial_track_selection;
+        g_slicks_track_playlist.tracks=initial_track_selection;
+        g_slicks_track_playlist.capacity=256;
+    }
     if (sample_resource)
         FreeMem(sample_resource, 131691UL);
     if (chunky)

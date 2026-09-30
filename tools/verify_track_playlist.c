@@ -18,12 +18,12 @@ int main(void)
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u));
     check(uc_mem_map(u,0,0x100000,UC_PROT_ALL)); check(uc_mem_write(u,0x10100,runtime,n));
     uc_hook h; check(uc_hook_add(u,&h,UC_HOOK_CODE,name_boundary,0,0x35e63,0x35e63));
-    const unsigned counts[]={0,1,2,22,195,256}; unsigned cases=0;
-    for(unsigned op=0;op<5;++op) for(unsigned c=0;c<6;++c) for(unsigned pattern=0;pattern<16;++pattern) {
+    const unsigned counts[]={0,1,2,22,195,256,257,300}; unsigned cases=0;
+    for(unsigned op=0;op<5;++op) for(unsigned c=0;c<8;++c) for(unsigned pattern=0;pattern<16;++pattern) {
         unsigned total=counts[c],initial=total/2;
         if(op==4) initial=total;
-        short list[256]; for(unsigned i=0;i<256;++i) list[i]=(short)(i<initial?initial-1-i:0x7777);
-        for(unsigned i=0;i<256;++i) word(u,0x70000+2*i,(unsigned short)list[i]);
+        short list[512]; for(unsigned i=0;i<512;++i) list[i]=(short)(i<initial?initial-1-i:0x7777);
+        for(unsigned i=0;i<512;++i) word(u,0x70000+2*i,(unsigned short)list[i]);
         unsigned long seed=(pattern*0x9e3779b9UL+c)&0xffffffffUL;
         word(u,0x3cbf0+0x2aaa,seed); word(u,0x3cbf0+0x2aac,seed>>16);
         word(u,0x3cbf0+0x62a,0); word(u,0x3cbf0+0x62c,0x7000);
@@ -32,7 +32,7 @@ int main(void)
         short track=(short)(pattern% (total?total:1)); word(u,0x3cbf0+0x10b2,track);
         unsigned char name=(pattern&2)?0:'T'; check(uc_mem_write(u,0x60000,&name,1));
         regs(u,0);
-        struct SlicksTrackPlaylist p={list,(unsigned short)initial,256}; int result;
+        struct SlicksTrackPlaylist p={list,(unsigned short)initial,512}; int result;
         unsigned start=0,end=0x278f1;
         if(op==0) { start=0x27583; result=slicks_track_playlist_toggle(&p,track,name); }
         else if(op==1) { start=0x276bb; result=slicks_track_playlist_all(&p,total); }
@@ -43,22 +43,25 @@ int main(void)
             check(uc_reg_write(u,UC_X86_REG_SP,&sp)); word(u,0x8f000,0); word(u,0x8f002,0x9000);
             result=slicks_track_playlist_shuffle(&p,&seed);
         }
-        check(uc_emu_start(u,start,end,0,5000000));
+        check(uc_emu_start(u,start,end,0,30000000));
+        uint16_t stopped_cs,stopped_ip;
+        check(uc_reg_read(u,UC_X86_REG_CS,&stopped_cs));check(uc_reg_read(u,UC_X86_REG_IP,&stopped_ip));
+        if(16U*stopped_cs+stopped_ip!=end) { fprintf(stderr,"Playlist oracle instruction limit\n");return 1; }
         unsigned long actual_seed=readword(u,0x3cbf0+0x2aaa)|((unsigned long)readword(u,0x3cbf0+0x2aac)<<16);
         if(result || p.count!=readword(u,0x3cbf0+0x90) || seed!=actual_seed) {
             fprintf(stderr,"Playlist state mismatch op=%u total=%u pattern=%u count=%u/%u seed=%lx/%lx\n",op,total,pattern,p.count,readword(u,0x3cbf0+0x90),seed,actual_seed); return 1;
         }
-        for(unsigned i=0;i<256;++i) if((unsigned short)list[i]!=readword(u,0x70000+2*i)) {
+        for(unsigned i=0;i<512;++i) if((unsigned short)list[i]!=readword(u,0x70000+2*i)) {
             fprintf(stderr,"Playlist data mismatch op=%u total=%u pattern=%u index=%u\n",op,total,pattern,i); return 1;
         }
         ++cases;
     }
     unsigned starts=0;
     for(unsigned action=2;action<=4;action+=2) for(unsigned flag=0;flag<3;++flag)
-    for(unsigned c=0;c<6;++c) for(unsigned pattern=0;pattern<16;++pattern) {
+    for(unsigned c=0;c<8;++c) for(unsigned pattern=0;pattern<16;++pattern) {
         unsigned count=counts[c];
-        short list[256];
-        for(unsigned i=0;i<256;++i) {
+        short list[512];
+        for(unsigned i=0;i<512;++i) {
             list[i]=(short)(i<count?count-1-i:0x7777);
             word(u,0x70000+2*i,(unsigned short)list[i]);
         }
@@ -69,11 +72,11 @@ int main(void)
         regs(u,0);word(u,0x8effe,0);
         check(uc_emu_start(u,action==2?0x2a4e7:0x2a4c5,
             action==2?0x2a537:0x2a566,0,5000000));
-        struct SlicksTrackPlaylist p={list,(unsigned short)count,256};
+        struct SlicksTrackPlaylist p={list,(unsigned short)count,512};
         if(slicks_title_start_shuffle(&p,action,flag==2?255:flag,&seed) ||
             seed!=(readword(u,0x3cbf0+0x2aaa)|((unsigned long)readword(u,0x3cbf0+0x2aac)<<16)) ||
             readword(u,0x3cbf0+0x90)!=count || (readword(u,0x8effe)>>8)!=99) abort();
-        for(unsigned i=0;i<256;++i) if((unsigned short)list[i]!=readword(u,0x70000+2*i)) abort();
+        for(unsigned i=0;i<512;++i) if((unsigned short)list[i]!=readword(u,0x70000+2*i)) abort();
         ++starts;
     }
     printf("Original GO/F9 caller: %u playlist/RNG/return comparisons pass\n",starts);
