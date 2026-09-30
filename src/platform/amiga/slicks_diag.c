@@ -5694,7 +5694,9 @@ int main(void)
                 if(g_slicks_demo_test_error) goto cleanup;
             }
             if((demo_lifecycle_test && demo_lifecycle_test!=8 && demo_lifecycle_test!=10 && demo_lifecycle_test!=11) || (argc && language_choice_test!=2 && !natural_results_test && !persistence_test && !shared_human_test && !volume_save_test && !arcade_save_test && !vehicle_save_test && !pause_save_test && !(sequence_test && argv[7]=='B')) || !setup_dirty) { result=0; goto cleanup; }
-            slicks_amiga_platform_end(&platform);
+            slicks_amiga_platform_wait_display_blank(&platform);
+            slicks_amiga_audio_stop(&audio);
+            if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
             if(((persistence_test && (argv[7]=='T' || argv[7]=='V')) || demo_lifecycle_test==8 || demo_lifecycle_test==10) && !failure_injected) {
                 /* Isolated diagnostic fault, using AmigaDOS throughout so
                  * emulator host-directory caching cannot affect recovery. */
@@ -5702,13 +5704,19 @@ int main(void)
                 if(!obstruction) goto cleanup;
                 UnLock(obstruction); failure_injected=1;
             }
+            unsigned char *setup_buffer=slicks_amiga_storage_workspace_acquire(SLICKS_AMIGA_SETUP_BYTES);
             g_slicks_setup_save_report=slicks_amiga_store_setup(&configuration,&g_slicks_profiles,
-                SLICKS_AMIGA_CONFIG_SIGNATURE);
+                SLICKS_AMIGA_CONFIG_SIGNATURE,setup_buffer,SLICKS_AMIGA_SETUP_BYTES);
+            slicks_amiga_storage_workspace_release(setup_buffer);
+            if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
             slicks_diag_setup_saved();
             if(g_slicks_setup_save_report.result==SLICKS_SETUP_SAVED) {
                 if(demo_lifecycle_test==8 || demo_lifecycle_test==10) {
                     unsigned char disk[142],expected[142];
-                    if(demo_test_round!=(demo_lifecycle_test==10?0:1) || load_plain_file("SLICKS.CFG",disk,sizeof disk)!=142 ||
+                    if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
+                    long disk_size=load_plain_file("SLICKS.CFG",disk,sizeof disk);
+                    if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
+                    if(demo_test_round!=(demo_lifecycle_test==10?0:1) || disk_size!=142 ||
                        slicks_save_configuration(g_slicks_demo_expected_configuration,expected,sizeof expected,
                            SLICKS_AMIGA_CONFIG_SIGNATURE)!=142) {
                         g_slicks_demo_test_error=18;slicks_diag_demo_test_done();goto cleanup;
@@ -5727,6 +5735,7 @@ int main(void)
             }
             slicks_amiga_audio_stop(&audio);
             g_slicks_diag_ingame=0;
+            if(hold_title_menu_display(&platform)) goto cleanup;
             clear_title_rectangle(logical,0,0,320,200);
             slicks_draw_title_text(logical,save_prompt==2?"SAVED - BACKUP CLEANUP FAILED":"SETUP SAVE FAILED",160,70,15);
             slicks_draw_title_text(logical,g_slicks_setup_save_report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
@@ -5734,13 +5743,13 @@ int main(void)
             slicks_draw_title_text(logical,save_prompt==2?"ENTER TO EXIT":"ENTER RETRIES - ESC RETURNS",160,110,15);
             slicks_convert_to_amiga(logical,chunky,platform.views[0].bitmap);
             if(slicks_amiga_platform_set_view(&platform,0,source_palette) ||
-               slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+               show_menu(&platform)) goto cleanup;
             slicks_diag_setup_save_failed();
             if(failure_injected==1) {
-                slicks_amiga_platform_end(&platform);
+                if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
                 if(!DeleteFile((CONST_STRPTR)"SLICKS.CFG.new")) goto cleanup;
                 failure_injected=2;
-                if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
             }
             if(persistence_test && save_prompt==1) {
                 /* Diagnostic retry is still ordinary input; the fault and
@@ -5873,6 +5882,7 @@ int main(void)
                     exit_requested=1;
                 } else if(code==0x45) {
                     save_prompt=0;
+                    if(hold_title_menu_display(&platform)) goto cleanup;
                     /* Return to the title even when the exit request originated
                      * inside a modal or race. Edited profile data stays alive.
                      * All assets are resident; retain hardware ownership. */

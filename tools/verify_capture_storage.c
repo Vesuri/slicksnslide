@@ -12,6 +12,9 @@ int main(void)
     assert(slicks_amiga_store_capture(pixels,palette,0,sizeof scratch).io_error==ERROR_NO_FREE_STORE);
     assert(slicks_amiga_store_capture(pixels,palette,scratch,sizeof scratch-1).io_error==ERROR_NO_FREE_STORE);
     assert(!operation && !allocations);
+    assert(slicks_amiga_store_setup(0,0,0,0,SLICKS_AMIGA_SETUP_BYTES).io_error==ERROR_NO_FREE_STORE);
+    assert(slicks_amiga_store_setup(0,0,0,scratch,SLICKS_AMIGA_SETUP_BYTES-1).io_error==ERROR_NO_FREE_STORE);
+    assert(!operation && !allocations);
     unsigned calls=0;
     for(unsigned fail=0;fail<=calls+1;++fail) {
         memset(files,0,sizeof files); operation=error=0;

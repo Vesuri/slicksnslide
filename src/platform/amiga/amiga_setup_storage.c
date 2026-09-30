@@ -128,12 +128,14 @@ done:
 }
 
 struct SlicksSetupStorageReport slicks_amiga_store_setup(
-    const struct SlicksConfiguration *configuration,const struct SlicksPlayerProfiles *profiles,unsigned char signature)
+    const struct SlicksConfiguration *configuration,const struct SlicksPlayerProfiles *profiles,unsigned char signature,
+    unsigned char *buffer,unsigned long buffer_size)
 {
     struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,0};
     const unsigned long capacity=3UL+58UL*(SLICKS_PROFILE_MAX-3);
-    unsigned char *buffer=AllocMem(142+capacity,MEMF_ANY);
-    if(!buffer) { report.io_error=ERROR_NO_FREE_STORE; return report; }
+    if(!buffer || buffer_size<SLICKS_AMIGA_SETUP_BYTES) {
+        report.io_error=ERROR_NO_FREE_STORE; return report;
+    }
     int cfg=slicks_save_configuration(configuration,buffer,142,signature);
     int plr=slicks_save_player_profiles(profiles,buffer+142,capacity);
     if(cfg>0 && plr>0) {
@@ -143,7 +145,7 @@ struct SlicksSetupStorageReport slicks_amiga_store_setup(
         const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
         report.result=store_files(files,2,&ops);
     }
-    FreeMem(buffer,142+capacity); return report;
+    return report;
 }
 
 /* Read to EOF, including a one-byte overflow probe. Do not mistake an I/O

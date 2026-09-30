@@ -123,6 +123,13 @@ are used as preview output. The arena API explicitly borrows rather than owns.
 
 ### Intermission staging layout
 
+Exit setup saving borrows 5,771 bytes of modal storage, separate from live
+configuration/profiles, and releases it before any warning or registration
+presentation. The normal exit action comes from the title; demo persistence
+diagnostics may save while a race exists but have no active modal child.
+Both failure/retry and failure/cancel/reopen/save have native ownership and
+disk round-trip coverage. Insufficient caller scratch fails before disk I/O.
+
 Shop capture borrows 65,078 bytes from modal storage only on the normal shop
 input path (no Help/message child). Its primary parent and chunky source do
 not alias the lease. The lease is released before opening a write-failure

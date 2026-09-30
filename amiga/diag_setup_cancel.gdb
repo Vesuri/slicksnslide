@@ -15,6 +15,9 @@ break slicks_amiga_store_setup
 commands
   silent
   set $attempts = $attempts+1
+  if !buffer || buffer_size<5771 || !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
+    quit 1
+  end
   if $attempts > 2
     quit 1
   end
@@ -50,9 +53,8 @@ end
 break slicks_diag_setup_save_cancelled
 commands
   silent
-  # The diagnostic removes its CFG.new obstruction once after the warning.
-  # Cancellation itself must not restore the OS a second time.
-  if $ends != $failure_ends+1
+  # The diagnostic removes its CFG.new obstruction using retained I/O too.
+  if $ends != $failure_ends || $ends
     printf "SAVE_CANCEL_UNEXPECTED_TEARDOWN ends=%u at_failure=%u\n",$ends,$failure_ends
     quit 1
   end

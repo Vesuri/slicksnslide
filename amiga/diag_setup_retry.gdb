@@ -5,6 +5,9 @@ break slicks_amiga_store_setup
 commands
   silent
   set $attempts = $attempts+1
+  if !buffer || buffer_size<5771 || !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
+    quit 1
+  end
   if $attempts > 2
     printf "SETUP_RETRY_LOOP_FAILED\n"
     quit 1

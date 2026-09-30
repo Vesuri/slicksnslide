@@ -1,5 +1,29 @@
 # Development release audit
 
+## 2026-09-30 — reserved setup encoding and retained save recovery
+
+Setup saving borrows 5,771 bytes of modal storage for the maximum CFG/PLR
+encoding. The adapter rejects absent/short caller scratch before I/O. The
+caller stops audio in blanking, services the save under the retained display,
+releases scratch, and closes the I/O window before presentation. A failure
+screen is built offscreen; cancellation also holds the warning while drawing
+the title. Diagnostic obstruction removal uses the same retained I/O service.
+
+- Host setup transaction suite: 2,600 success/single/double failure cases pass.
+  Missing/short setup scratch also passes the production-adapter checks.
+- Stock Workbench/68020/2 MiB/no Fast/4 KiB stack:
+  `tmp/standalone-release-2wj601la` (PLAYERSV) passes failure, cancellation,
+  title return, Players reopen with edits and successful second save.
+  Profiles/session bytes match across cancellation; no teardown occurs there.
+- `...-0oext16d` (PLAYERST) passes direct failure/retry/save/restoration.
+  Each run has three I/O windows (save, diagnostic obstruction removal, retry);
+  all six before/after bitmap/palette pairs are byte-identical.
+- `...-8w01w588` (SETUPR) restarts the saved data and validates selected profile,
+  vehicle, colours and race handoff. An earlier `...-dnnitl9a` native check also
+  passed but the harness expected a misspelled marker; the clean rerun passes.
+
+All test emulators closed; no user installation or saves were modified.
+
 ## 2026-09-30 — shop capture uses reserved storage and retained display
 
 The shop's original screenshot feature borrows 65,078 bytes from the modal

@@ -1,0 +1,2 @@
+source diag_setup_display_io.gdb
+source diag_setup_cancel.gdb

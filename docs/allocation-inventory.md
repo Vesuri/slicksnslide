@@ -52,7 +52,7 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
 | Operation | Sites | Required coexistence / replacement |
 | --- | ---: | --- |
 | store_capture | 1 | Baseline site removed: explicit 65,078-byte caller scratch from modal storage; source chunky remains live and separate |
-| store_setup | 1 | 142 + 3 + 58 × (PROFILE_MAX−3); retain live profiles/configuration during atomic replacement |
+| store_setup | 1 | Baseline site removed: explicit 5,771-byte caller scratch from modal storage; live profiles/configuration retained during atomic replacement |
 | load_track_lists | 1 | Up to 65,536; preserve caller output on failure |
 | track_list_cache_refresh | 2 | 65,536 staging plus retained next.size; old cache must remain valid until successful validation/publication |
 | store_track_lists | 1 | 65,536 output alongside immutable old catalogue and selection |

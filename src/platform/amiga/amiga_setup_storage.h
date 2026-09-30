@@ -18,7 +18,9 @@ struct SlicksSetupStorageReport {
 /* AmigaOS must be available. Uses original CFG/PLR encoders; signature
  * policy and dirty-state/UI handling remain the caller's responsibility. */
 struct SlicksSetupStorageReport slicks_amiga_store_setup(
-    const struct SlicksConfiguration *,const struct SlicksPlayerProfiles *,unsigned char);
+    const struct SlicksConfiguration *,const struct SlicksPlayerProfiles *,unsigned char,
+    unsigned char *,unsigned long);
+#define SLICKS_AMIGA_SETUP_BYTES (142UL+3UL+58UL*(SLICKS_PROFILE_MAX-3))
 /* Shop Scroll Lock: first free TUNING00..98.BMP; never replace a capture.
  * Caller supplies at least SLICKS_CAPTURE_SIZE bytes, separate from pixels. */
 struct SlicksSetupStorageReport slicks_amiga_store_capture(
