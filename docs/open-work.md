@@ -170,7 +170,11 @@ native caller/input/error checks.
   race entry and Help restoration. Initial/growing name-buffer and selection
   allocation failures pass native no-partial-startup/owned-buffer cleanup gates.
   Directory-object allocation failure also passes without fallback or takeover;
-  the upper-bound gate remains. The native
+  the upper-bound gate remains: the 10,001-file native fixture timed out after
+  600 seconds without reaching race preparation. Add phase checkpoints to
+  locate the delay before retrying or changing the implementation; the timeout
+  proves neither successful 10,000-track startup nor a specific bottleneck.
+  The native
   intermission Save path now saves all 300 selected tracks
   with dynamic backing and passes cancel/reopen/save/exit on the default stack;
   codec/export capacity tests also reach 10,000 on the host. Finish the Load

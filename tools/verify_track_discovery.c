@@ -69,20 +69,21 @@ int main(void)
     const char *const mixed[]={"z.SS","A0.SS","A!.SS","A.SS","AA.SS","a.SS",
         "a!.ss","Z.ss","EIGHT888.SS","DUP.SS","DUP.SS","_ONE.SS"};
     const char *const sorted[]={"A","A!","A0","AA","DUP","DUP","EIGHT888","Z","_ONE","a","a!","z"};
-    const unsigned counts[]={0,1,195,256,257,300,sizeof mixed/sizeof mixed[0]};
+    const unsigned counts[]={0,1,195,256,257,300,301,sizeof mixed/sizeof mixed[0]};
     for(unsigned c=0;c<sizeof counts/sizeof counts[0];++c) {
         d=(struct Discovery){.count=counts[c]};regs(u,0);uint16_t cs=0x2e0f,ax;
+        unsigned limit=c==6?300:10000,kept=d.count<limit?d.count:limit;
         if(c==sizeof counts/sizeof counts[0]-1)d.names=mixed;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));
         word(u,0x8ef04,0);word(u,0x8ef06,0x7000);
         word(u,0x8ef08,0);word(u,0x8ef0a,0x7100);
-        word(u,0x8ef0c,1);word(u,0x8ef0e,10000);
+        word(u,0x8ef0c,1);word(u,0x8ef0e,limit);
         check(uc_mem_write(u,0x70000,"*.SS",5));
         check(uc_emu_start(u,0x35d28,0x35e62,0,1000000));
         endpoint(u,0x35e62);
         check(uc_reg_read(u,UC_X86_REG_AX,&ax));
-        if(ax!=d.count || farptr(u,0x71000)!=(d.count?0x60000:0))abort();
-        for(unsigned i=0;i<d.count;++i) {
+        if(ax!=kept || farptr(u,0x71000)!=(kept?0x60000:0))abort();
+        for(unsigned i=0;i<kept;++i) {
             char expected[13]={0},actual[9];snprintf(expected,sizeof expected,"T%07u",d.count-i);
             check(uc_mem_read(u,0x60000+9*i,actual,9));
             if(d.names) {
@@ -92,14 +93,14 @@ int main(void)
                 if(!memchr(actual,0,sizeof actual) || strcmp(actual,expected))abort();
             } else if(memcmp(actual,expected,9))abort();
         }
-        printf("Original discovery count=%u: enumeration order retained, 9-byte stems\n",d.count);
+        printf("Original discovery entries=%u limit=%u kept=%u: enumeration order retained, 9-byte stems\n",d.count,limit,kept);
         /* Startup subsequently calls the real catalogue sorter at 2612a. */
         word(u,0x3cbf0+0x4da4,0);word(u,0x3cbf0+0x4da6,0x6000);
-        word(u,0x3cbf0+0x4da8,d.count);regs(u,0);
+        word(u,0x3cbf0+0x4da8,kept);regs(u,0);
         check(uc_emu_start(u,0x2c301,0x2c41b,0,100000000));
         endpoint(u,0x2c41b);
-        for(unsigned i=0;i<d.count;++i) {
-            char expected[13]={0},actual[9];snprintf(expected,sizeof expected,"T%07u",i+1);
+        for(unsigned i=0;i<kept;++i) {
+            char expected[13]={0},actual[9];snprintf(expected,sizeof expected,"T%07u",d.count-kept+i+1);
             check(uc_mem_read(u,0x60000+9*i,actual,9));
             if(d.names) {
                 if(!memchr(actual,0,sizeof actual) || strcmp(actual,sorted[i]))abort();
@@ -107,7 +108,7 @@ int main(void)
             }
             if(memcmp(actual,expected,9)) { fprintf(stderr,"Sort mismatch at %u: %.9s\n",i,actual);abort(); }
         }
-        printf("Original startup sorter: %u stems in ascending order\n",d.count);
+        printf("Original startup sorter: %u stems in ascending order\n",kept);
         if(d.names) {
             const char *native[sizeof mixed/sizeof mixed[0]];
             memcpy(native,mixed,sizeof native);

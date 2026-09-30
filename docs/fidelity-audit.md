@@ -2869,6 +2869,27 @@ It passes on stock 68020/2 MiB/no Fast/default 4 KiB stack in
 This is controlled API-return failure, not actual global memory exhaustion.
 Build log: `tmp/track-directory-allocation-build.log`.
 
+### F18 follow-up: configured cap and incomplete native upper-bound run
+
+`verify-track-discovery` now also supplies 301 enumeration entries with an
+explicit cap of 300 to the original routine. It returns exactly the first
+300 enumerated stems, and the original startup sorter orders those retained
+entries correctly. All earlier discovery/order/fallback cases still pass.
+This verifies the cap boundary without claiming original DOS allocation or
+segmented-address safety for 10,000 actual names. The discovery routine uses
+16-bit byte-offset/allocation-growth fields; its 10,000-entry caller argument
+alone must not be treated as a full large-DOS-catalogue safety proof.
+
+A private native fixture (`tmp/catalogue-limit-cpKFIy`) contains 10,001 valid
+track copies. The stock 68020/2 MiB/no Fast/default 4 KiB STARTGO run
+`tmp/standalone-release-p5ednf65` remained live and CPU-active but did not reach
+the race-preparation gate within the runner's 600-second limit. The runner
+then terminated the test and closed its owned emulator. No selection dump or
+successful race entry was produced. This is incomplete upper-bound evidence,
+not a pass, an established out-of-memory failure, or proof that sorting alone
+caused the delay. Startup phase checkpoints are the next diagnostic step;
+the same expensive full run should not simply be repeated unchanged.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
