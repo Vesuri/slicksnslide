@@ -135,6 +135,15 @@ entry route is resolved. No before/after championship-state comparison or
 fresh-process resume is established by this batch, and no invented menu row
 was reinstated. The private fixture contains the test save for later checks.
 
+2026-09-30, decision D1 (keep Load hidden, as the original does): the
+`CHAMPLOAD`, `CHAMPLOADW` and `CHAMPFAIL` fixtures and their debugger scripts
+were removed, together with the uncommitted dynamic Load-storage draft
+(archived locally as `tmp/load-storage-draft-20260930.patch`). The
+unreachable Load handler itself stays, mirroring the original's. After the
+removal, `CHAMPSAVE` then `CHAMPEDIT` in one shared run directory passed
+(`NATIVE_CHAMPIONSHIP_MENU_SAVE_EXIT_OK`,
+`NATIVE_CHAMPIONSHIP_RESAVE_OVERWRITE_DELETE_CANCEL_OK`; `tmp/b4-{save,edit}.log`).
+
 Current-build full-frame racing audits also pass 600 updates each on F1
 (`tmp/standalone-release-cl_xj10f`, 32 actors, 2,068 marks), CITY
 (`tmp/standalone-release-o6qr7np5`, 18 actors, 1,480 marks), and WHACKO

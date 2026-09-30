@@ -181,7 +181,6 @@ volatile signed char g_slicks_shop_rejection_item;
 static unsigned char mode_transition_test;
 volatile unsigned short g_slicks_diag_mode_case;
 static unsigned char shop_transition_test,shop_transition_phase;
-static unsigned char shop_resume_test;
 /* NATURALW-only parameter: 1..8 exercise each weapon; 9 buys two and cycles.
  * Cases 7/8 test the registered branch, never normal setup. */
 volatile unsigned short g_slicks_diag_weapon_case;
@@ -1301,12 +1300,6 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
         else keys[count++]=0x44;
         championship_test_keys(p,keys,count); return;
     }
-    if(championship_test==4) {
-        unsigned char keys[2]={0x44,0x45};
-        if(g_slicks_diag_saved_phase==3) ++championship_dialog_step;
-        if(g_slicks_diag_saved_phase==1 && championship_dialog_step) keys[0]=0x45;
-        championship_test_keys(p,keys,championship_dialog_step?2:1); return;
-    }
     if(g_slicks_diag_saved_phase==1) {
         static const unsigned char cancel[]={0x45,0x44},accept[]={0x44};
         if(championship_test==6 && championship_dialog_step) {
@@ -2142,7 +2135,7 @@ static void poll_driver_devices(struct SlicksRaceRuntime *race,unsigned short ti
        (race->frame_count==120 || race->frame_count==121))
         slicks_driver_key(race->driver_controls,c->keys,g_slicks_setup_session.players.order,
             (unsigned char)(c->keys[4]|(race->frame_count==121?128:0)));
-    if(shop_test && !shop_resume_test && shop_transition_test!=5 && (!shop_transition_test || !shop_track_position) &&
+    if(shop_test && shop_transition_test!=5 && (!shop_transition_test || !shop_track_position) &&
        (race->frame_count==150 || race->frame_count==release))
         slicks_driver_key(race->driver_controls,c->keys,g_slicks_setup_session.players.order,
             (unsigned char)(c->keys[1]|(race->frame_count==release?128:0)));
@@ -2259,7 +2252,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             platform->key_head=3;
         } else if(g_slicks_diag_weapon_case) {
             unsigned n=0;
-            if(!shop_resume_test && (!shop_transition_test || !shop_track_position)) {
+            if(!shop_transition_test || !shop_track_position) {
                 if(g_slicks_diag_weapon_case==9) {
                     platform->keys[n++]=0x44;platform->keys[n++]=0x44;
                     platform->keys[n++]=0x4d;
@@ -4471,9 +4464,10 @@ int main(void)
     title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
         argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
         (argv[5]=='G' && argv[6]=='O'?1:argv[5]=='F' && argv[6]=='9'?2:0):0);
-    shop_resume_test=(unsigned char)(argc==10 && argv[9]=='W');
-    if((argc==9 || shop_resume_test) && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
-        championship_test=(unsigned char)(argv[5]=='S'?(argv[8]=='F'?6:1):argv[5]=='L'?2:argv[5]=='E'?3:argv[5]=='F'?4:0);
+    /* Load fixtures (CHAMPLOAD/CHAMPLOADW/CHAMPFAIL) are gone: the original
+     * never reaches title row 4, so saved games have no Load entry (D1). */
+    if(argc==9 && argv[0]=='C' && argv[1]=='H' && argv[2]=='A' && argv[3]=='M' && argv[4]=='P')
+        championship_test=(unsigned char)(argv[5]=='S'?(argv[8]=='F'?6:1):argv[5]=='E'?3:0);
     championship_delete_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='D');
     if(championship_delete_test) championship_test=6;
     championship_scan_test=(unsigned char)(championship_test==1 && argc==9 ?
@@ -4482,7 +4476,6 @@ int main(void)
     championship_cleanup_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='B');
     if(championship_test==1 && argc==9 && argv[8]=='M')g_slicks_diag_save_buffer_fault=1;
     if(championship_cleanup_test) { championship_test=6; g_slicks_diag_backup_protect=1; }
-    if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || title_start_test || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
         struct DateStamp now;
@@ -4502,8 +4495,9 @@ int main(void)
         if(configuration.options[3]>=1 && configuration.options[3]<=100)
             selected_laps=(unsigned short)configuration.options[3];
     }
-    /* Preserve the existing default pending the original startup chooser;
-     * positive saved selections must not silently become English. */
+    /* D3: a negative saved selector means English. The original runs KEYB
+     * and picks language 2 only for code 358; DOS KEYB has no Amiga
+     * equivalent. Positive saved selections must not become English. */
     (void)slicks_language_resource(menu_language_name,configuration.field_05e1);
     if(display_allocation_test) {
         g_slicks_display_allocation_checks=slicks_amiga_platform_check_create_failures(GfxBase);
@@ -4863,10 +4857,9 @@ int main(void)
     }
     slicks_diag_frame_ready();
     if(championship_test) {
-        static const unsigned char save[]={0x4d,0x4d,0x44},load[]={0x4d,0x4d,0x4d,0x4d,0x44};
-        unsigned char start_new=(unsigned char)(championship_test==1 || championship_test==3 || championship_test==6);
+        static const unsigned char save[]={0x4d,0x4d,0x44};
         if(championship_test==3) championship_dialog_step=1; /* Skip obsolete Load dialog phase. */
-        championship_test_keys(&platform,start_new?save:load,start_new?3:5);
+        championship_test_keys(&platform,save,3);
     }
     if(setup_reload_test || natural_results_test) {
         platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
@@ -5316,12 +5309,8 @@ int main(void)
             championship_test_stage=1;
         }
         if(championship_test && g_slicks_diag_ingame && race->frame_count>=40 && championship_test_stage<2) {
-            unsigned char key=championship_test==2?0x59:0x58;
+            unsigned char key=0x58;
             championship_test_keys(&platform,&key,1); championship_test_stage=2;
-        }
-        if(championship_test==2 && championship_test_stage==2 && !g_slicks_diag_ingame) {
-            static const unsigned char keys[]={0x45};
-            championship_test_keys(&platform,keys,1); championship_test_stage=3;
         }
         if (!g_slicks_diag_ingame)
             slicks_amiga_platform_wait_vblank(&platform);

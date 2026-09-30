@@ -136,14 +136,8 @@ elif [ "${SLICKS_CHAMPIONSHIP:-}" = save ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVE\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = save-fail ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPSAVF\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_CHAMPIONSHIP:-}" = weapons ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPLOADW\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_CHAMPIONSHIP:-}" = load ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPLOAD\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_CHAMPIONSHIP:-}" = edit ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPEDIT\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_CHAMPIONSHIP:-}" = fail ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CHAMPFAIL\n' > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_PROFILE_DIALOG_FAILURE:-}" ]; then
   case "$SLICKS_PROFILE_DIALOG_FAILURE" in NF|NL|CF|CL) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PLAYERS%s\n' "$SLICKS_PROFILE_DIALOG_FAILURE" > "$DH0/s/startup-sequence"

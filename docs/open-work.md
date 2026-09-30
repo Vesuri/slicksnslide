@@ -13,21 +13,15 @@ known defect were removed on 2026-09-30. Their evidence stays in
 
 Working rules are in [development-verification.md](development-verification.md).
 
-## A. Decisions (recommended defaults; confirm or override)
+## A. Decisions (made 2026-09-30)
 
-- [ ] **D1 — Load Game entry: keep it hidden, as the original does.**
-  - A reachability proof over 17,152 title transitions finds no route to the
-    Load handler at `2a51e` ([fidelity-audit.md](fidelity-audit.md)).
-  - Saving at intermission stays.
-  - Consequence: B4 deletes the Load draft and CHAMPLOAD.
-- [ ] **D2 — Sparse shop: safe active-player mapping.**
-  - The Amiga build already maps real driver IDs to packed columns and rejects
-    unmatched columns. No new code is needed; B5 is the only work.
-- [ ] **D3 — Negative saved language selector: English.**
-  - This matches the original on every keyboard except KEYB code 358.
-  - It is already the Amiga behavior (`slicks_diag.c`, around line 4505). The
-    only work is to replace that "pending the original startup chooser"
-    comment with the decision and a reference to this item.
+- **D1:** Load Game stays hidden, as in the original. Saving at intermission
+  stays. Done: the Load fixtures and the Load draft were removed
+  ([release-verification.md](release-verification.md)).
+- **D2:** Sparse shop uses safe active-player mapping (already implemented;
+  see B5).
+- **D3:** A negative saved language selector means English. Done: recorded in
+  `slicks_diag.c`.
 
 ## B. Fixes
 
@@ -104,18 +98,7 @@ Accept when all of these hold:
 Out of scope: the other disk boundaries (intermission preview, records, cup
 image, setup save). They keep today's OS hand-off.
 
-### B4. Remove the unreachable Load path (after D1)
-
-- Revert the uncommitted `menu_selection==4` storage draft in `slicks_diag.c`.
-  It is dead code, allocates about 100 KB up front and frees through a
-  mismatched path.
-- Delete the CHAMPLOAD fixture and its `release-verification.md` entry. It
-  targets a title row that no longer exists.
-- Keep the intermission Save tests.
-
-Accept when `make` and the existing championship save fixtures pass.
-
-### B5. Sparse-shop fixture (after D2)
+### B5. Sparse-shop fixture
 
 Run one native fixture with only driver 3 human: buy one item, sell one item,
 press one ignored key. Accept when there is no crash, the transactions land on
