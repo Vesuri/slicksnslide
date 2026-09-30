@@ -50,7 +50,7 @@ Version: 0.1 (30.09.2026), chosen by the user, in all `$VER` strings.
 ## D. Release gate (run once, after B and C)
 
 - [x] **D-1.** Run `make release-check` from a clean tree and confirm it passes.
-- [ ] **D-2.** Run F1, CITY and WHACKO full-frame display audits on the release
+- [x] **D-2.** Run F1, CITY and WHACKO full-frame display audits on the release
   candidate, plus the `make -C amiga RETCHECK=1` retention check, and confirm
   both pass.
 - [ ] **D-3.** Do one manual FS-UAE session on a stock PAL A1200 configuration

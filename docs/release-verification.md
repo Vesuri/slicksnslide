@@ -1,5 +1,35 @@
 # Development release audit
 
+## 2026-09-30 — ship gate D-2 passed
+
+The exact stripped D-1 candidate passes all three full-frame display audits
+with `SLICKS_LIVE_STATS=0`: F1, CITY and WHACKO each cover 600 updates, with
+32/18/5 actors and 2068/1480/1854 marks respectively. The debugger uses the
+preserved matching release ELF, not a subsequently rebuilt diagnostic ELF.
+
+After the diagnostic-only allocation repair in 68efb9c, all four RETCHECK
+fixtures pass on PAL A1200 with 2 MiB Chip and no Fast RAM:
+
+| Track | Race comparisons | HUD comparisons | Geometry comparisons |
+| --- | ---: | ---: | ---: |
+| BASIC | 603 | 700 | 0 |
+| F1 | 603 | 700 | 575 |
+| CITY | 603 | 700 | 603 |
+| WHACKO | 603 | 700 | 0 |
+
+Every surface, particle, immutable-map, HUD and geometry mismatch counter is
+zero. Zero geometry counts on BASIC/WHACKO are not claimed as geometry coverage;
+F1 and CITY exercise that path. Logs: `tmp/release-render-73f9c03/display-*.log`,
+`retention-*.log`, `snapshot-host.log` and `retention-remaining.log`.
+
+The normal build was then rebuilt cleanly and stripped. It is byte-identical
+to the preserved D-1 candidate, SHA256
+`a25d8cc46aa4f64a2fa807ae7a02d2bfb0529731440cd7f44411161aea6888e8`.
+Thus the diagnostic repair does not change the already audited release payload.
+All automated emulators were muted and closed. D-2 is complete; the actual
+manual Installer/Play/gameplay/exit and WHDLoad session is still D-3, not covered
+by these automated results. No archive was published and no version tag made.
+
 ## 2026-09-30 — retention diagnostic allocation repair
 
 The release-gate RETCHECK run initially reached 700 updates with zero actual
