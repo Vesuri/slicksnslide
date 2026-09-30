@@ -1,5 +1,21 @@
 # Development release audit
 
+## 2026-09-30 — reserved trophy staging and retained trophy I/O
+
+Championship results borrow the modal storage lease for the 64,003-byte trophy
+image, release it before constructing the results surface, and load through
+begin_io/end_io instead of restoring Workbench. Failed loading also closes
+the archive, releases the lease and closes the I/O window before returning.
+The original fade to black remains; this is not a new blank/loading screen.
+
+`tmp/standalone-release-wbbjz31a`: Workbench, stock PAL 68020/2 MiB/no Fast,
+default 4 KiB stack, OPTIONSBC / diag_championship_rectangles passes two-race
+results-to-title flow. The strengthened resident assertions forbid teardown
+throughout the trophy owner and require active display, I/O service and null
+OS ActiView during archive access. All 49 captured publications (including
+both trophy bitmaps) match their 64,000 chunky pixels. Emulator closed.
+Archive directory allocation remains B12 work.
+
 ## 2026-09-30 — reserve the large menu block before cache fragmentation
 
 Move the unchanged 96,546-byte menu reservation to immediately after release

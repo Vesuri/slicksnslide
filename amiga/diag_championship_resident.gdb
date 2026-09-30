@@ -28,7 +28,7 @@ end
 break *slicks_amiga_platform_end
 commands
   silent
-  if ($cup_owned && !$cup_io) || $title_pending
+  if $cup_owned || $title_pending
     printf "CUP_RAM_TRANSITION_TEARDOWN\n"
     quit 1
   end
@@ -38,7 +38,7 @@ break slicks_resource_archive_open
 commands
   silent
   if $cup_owned
-    if !$cup_io || g_slicks_diag_profile_platform->active
+    if !$cup_io || !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
       quit 1
     end
     set $cup_loads = $cup_loads+1
@@ -48,7 +48,7 @@ end
 break slicks_resource_archive_close
 commands
   silent
-  if $cup_owned && archive->file && g_slicks_diag_profile_platform->active
+  if $cup_owned && archive->file && (!g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active)
     printf "CUP_FILE_CLOSE_WITH_HARDWARE_OWNED\n"
     quit 1
   end
@@ -57,7 +57,7 @@ end
 break slicks_diag_standings_ready
 commands
   silent
-  if g_slicks_diag_standings_phase != $cup_phases+1
+  if g_slicks_diag_standings_phase != $cup_phases+1 || g_slicks_diag_profile_platform->io_active
     quit 1
   end
   set $cup_phases = $cup_phases+1

@@ -39,7 +39,7 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
 | run_intermission saved_tracks | 1 | 8 × track count; must coexist with save encoding, intermission parent and filename dialog |
 | run_record_results | 1 | 8,192; transactional track-file input, reserve independently of retained display |
 | registration_screen | 1 | Baseline site removed: 70,000-byte modal storage lease, released before registration Help and on failure; no runtime image allocation |
-| run_championship_results | 1 | 64,003; ending image staging, same phase-exclusive family |
+| run_championship_results | 1 | Baseline site removed: 64,003-byte modal storage lease, released before results surface creation and on failure |
 | main title asset/frame | 2 | 64,003 and TITLE_FRAME_ALLOCATION_BYTES; startup source and persistent title |
 | main fonts | 1 | Three size-dependent allocations from one expression; startup/resident |
 | main logical/chunky/race | 3 | 262,144; CHUNKY_ALLOCATION_BYTES; sizeof race; startup/resident |

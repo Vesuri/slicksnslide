@@ -4055,15 +4055,16 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
     if(result_fade(platform,race_palette,100,0,2,timer,&view)) goto done;
     if(!nonzero) { result=0; goto done; }
     slicks_diag_standings_io();
-    slicks_amiga_platform_end(platform);
+    if(slicks_amiga_platform_begin_io(platform)) goto done;
     if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
-    bitmap=AllocMem(64003,MEMF_ANY);
+    bitmap=slicks_amiga_storage_workspace_acquire(64003);
     if(!bitmap || slicks_resource_archive_load(&archive,"sskuppi.@I",bitmap,64003)!=64003 ||
        bitmap[0]!=1 || bitmap[1]!=64 || bitmap[2]!=200 ||
        slicks_resource_archive_load(&archive,"sskuppi.@p",palette,768)!=768) goto done;
     for(unsigned long i=0;i<64000;++i) chunky[i]=bitmap[i+3];
-    FreeMem(bitmap,64003); bitmap=0;
+    slicks_amiga_storage_workspace_release(bitmap); bitmap=0;
     slicks_resource_archive_close(&archive);
+    if(slicks_amiga_platform_end_io(platform)) goto done;
     if(slicks_resource_archive_cached(&archive,menu_cache)) goto done;
     m=slicks_amiga_help_surface_create(&archive,chunky,palette);
     slicks_resource_archive_close(&archive);
@@ -4083,7 +4084,7 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
         &g_slicks_diag_standings)) goto done;
     *setup_dirty=1;
     for(unsigned i=0;i<2;++i) slicks_chunky_rows_to_amiga(chunky,platform->views[i].bitmap,0,200);
-    if(slicks_amiga_platform_set_view(platform,0,black) || slicks_amiga_platform_begin(platform,0)) goto done;
+    if(slicks_amiga_platform_set_view(platform,0,black) || show_menu(platform)) goto done;
     view=0;
     if(result_fade(platform,palette,0,100,4,timer,&view)) goto done;
     g_slicks_diag_standings_phase=2; slicks_diag_standings_ready();
@@ -4092,11 +4093,12 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
     result=0;
 done:
     g_slicks_diag_standings_menu=0;
+    slicks_resource_archive_close(&archive);
+    if(bitmap) slicks_amiga_storage_workspace_release(bitmap);
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
     if(!result && (slicks_amiga_platform_set_view(platform,0,black) ||
                    slicks_amiga_platform_set_view(platform,1,black))) result=-1;
     slicks_amiga_player_menu_destroy(m);
-    slicks_resource_archive_close(&archive);
-    if(bitmap) FreeMem(bitmap,64003);
     /* Both palettes remain black until the caller has drawn the title. */
     slicks_diag_standings_closed();
     return result;

@@ -113,8 +113,9 @@ are used as preview output. The arena API explicitly borrows rather than owns.
 6. **Registration/ending screens:** Registration's 70,000-byte decode input
    now uses the modal storage lease, released after decode and before Help.
    Chunky/palette output does not alias that lease. Failed loads/decodes also
-   release it. Ending's 64,003-byte staging and archive directories remain;
-   preserve whichever screen is actually displayed during I/O.
+   release it. Trophy's 64,003-byte staging uses the same lease, released
+   before creating the results surface; its file access retains the faded
+   game display. Archive directories remain to reserve.
 7. **Startup-only ownership:** bitmaps/copper, PCM banks, compressed menu cache,
    fonts and main images can retain their existing startup allocation/exit-free
    pattern. Audit framework and OS calls separately, rather than routing Chip
