@@ -110,9 +110,11 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    Reserve catalogue/transaction capacity at launch; bound dynamic name tables,
    profile editing, save/load and screenshot encoding without losing atomic
    new/backup file replacement or original data support.
-6. **Registration/ending screens:** 64,003/70,000-byte image resource buffers,
-   plus a menu surface. Reuse preparation scratch while preserving whichever
-   screen is actually displayed during I/O.
+6. **Registration/ending screens:** Registration's 70,000-byte decode input
+   now uses the modal storage lease, released after decode and before Help.
+   Chunky/palette output does not alias that lease. Failed loads/decodes also
+   release it. Ending's 64,003-byte staging and archive directories remain;
+   preserve whichever screen is actually displayed during I/O.
 7. **Startup-only ownership:** bitmaps/copper, PCM banks, compressed menu cache,
    fonts and main images can retain their existing startup allocation/exit-free
    pattern. Audit framework and OS calls separately, rather than routing Chip

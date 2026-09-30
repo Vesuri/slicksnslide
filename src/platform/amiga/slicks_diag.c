@@ -3969,7 +3969,9 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
         slicks_registration_exit_image(registration.name[0]);
     slicks_amiga_platform_end(p);
     if(slicks_resource_archive_open(&a,"SLICKS.000")) goto done;
-    resource=AllocMem(70000,MEMF_ANY);
+    /* Decode-only staging: release before the registration Help dialog,
+     * which borrows this same startup-reserved modal workspace. */
+    resource=slicks_amiga_storage_workspace_acquire(70000);
     if(!resource) goto done;
     long length=slicks_resource_archive_load(&a,name,resource,70000);
     if(length<0) {
@@ -3987,7 +3989,8 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     }
     if(length<0) { result=kind==0?-1:0;goto done; }
     if(slicks_decode_menu_bitmap(resource,(unsigned long)length,chunky,palette,&w,&h,0) || w!=320 || h!=200) goto done;
-    FreeMem(resource,70000);resource=0;slicks_resource_archive_close(&a);
+    slicks_amiga_storage_workspace_release(resource);resource=0;
+    slicks_resource_archive_close(&a);
     struct SlicksChunkyUi ui={chunky,palette,0,0};
     registration_painter.ui=(struct SlicksChunkyUi){chunky,palette,registration_dirty,0};
     registration_painter.count=0;
@@ -4024,7 +4027,7 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     result=0;
 done:
     slicks_amiga_platform_end(p);slicks_title_small_font[6]=old_colour;
-    if(resource) FreeMem(resource,70000);
+    if(resource) slicks_amiga_storage_workspace_release(resource);
     slicks_resource_archive_close(&a);g_slicks_registration_screen=0;return result;
 }
 

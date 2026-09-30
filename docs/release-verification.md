@@ -1,5 +1,23 @@
 # Development release audit
 
+## 2026-09-30 — registration decode staging reservation
+
+Registration BMP decoding now leases 70,000 bytes from the startup-reserved
+modal storage overlay. It releases the lease immediately after decoding,
+before fading, input or registration Help, and on every failed load/decode.
+No new startup bytes are required; archive-directory allocation and display
+teardown are still separate B12/B10 work.
+
+- Stock Workbench/2 MiB/no-Fast/4-KiB-stack REGCHECKY passes registration Help
+  opening, navigation, closure and restoration in
+  `tmp/standalone-release-zs5bawb5`. Before/after Help chunky images are identical.
+- Its full allocation audit (`...-nh7zyz4d`) passes cleanup and modal ownership.
+- The maximal-catalogue repeat (`...-5fvknh2m`) fails the startup 96,546-byte
+  menu reservation, unlike the earlier run that reached registration. It has
+  zero outstanding blocks and zero ownership conflicts, but is not a launch
+  pass. Startup headroom/allocation layout remains unresolved; do not infer
+  robust fit from the earlier single successful reservation.
+
 ## 2026-09-30 — retained track-list I/O and reserved transaction scratch
 
 Track-list save/delete and refresh use display-retaining OS-service windows.
