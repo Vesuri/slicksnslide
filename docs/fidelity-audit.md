@@ -248,6 +248,49 @@ on missing `KICKSTART` before launching; it is not a test result.
 This does not establish all native per-language menu/input routes or close
 the remaining title-row localization audit.
 
+### F15 native pause caller across all saved languages (2026-09-30)
+
+The language oracle now checks supplied resource/table sizes against the
+smallest actual caller buffers: intermission's 512-byte resource staging and
+pause's 1000-byte decoded table. All eight fit; the maxima are 434 raw and
+388 decoded bytes (Finnish). No buffer change is needed. The existing original
+decoder/lookup, chooser/default-code and capacity-atomicity checks still pass.
+Log: `tmp/language-caller-capacities.log`.
+
+`diag_pause_language.gdb` extends LIVEMENUH's actual race/pause/Help/resume
+sequence with read-only captures of the copied language table and all six
+live label strings, at pause entry and after each of two Help closes. Each
+label must point into the live owner's table. Optional arguments to
+`verify_language_table LANGUAGE RUN/.run/pause-language` compare those tables
+with original DOS decoder output and each string with the result of executing
+the original language wrapper for the six real pause keys. This checks the
+values consumed by the painter, not just the selected resource filename.
+
+Actual saved configurations pass for all eight supplied languages:
+
+| Saved language | Native run under `tmp/standalone-release-` |
+| --- | --- |
+| 1 | `oc55yctx` |
+| 2 | `idcmbs_w` |
+| 3 | `1bikldf8` |
+| 4 | `1189yfrc` |
+| 5 | `hllpkh3b` |
+| 6 | `31ta4u2x` |
+| 7 | `8ogdn3eu` |
+| 8 | `kdwwmt1b` |
+
+All 24 copied tables and 144 label strings match the original. Each native
+run passes ten whole-display publication comparisons, both exact Help-parent
+restorations, exact race-background/car-state restoration, frozen modal clocks,
+resumed simulation/engines and system restoration 31. Runs use stock PAL
+A1200, 2 MiB Chip/no Fast and a confirmed default 4 KiB stack. Audio is muted
+and all owned emulators closed. Per-run original-label logs are in
+`language-oracle.log` for the seven matrix runs; Finnish was invoked directly.
+
+This closes saved-language selection and nested-Help label lifetime for the
+pause owner. Automatic negative-selector policy, other owners' native language
+routes and whole-port fidelity remain separate. No production code changed.
+
 ### F15 ordinary title labels (2026-09-29)
 
 Original `298fc` calls `36227` on a constructed `menuN` key. The native

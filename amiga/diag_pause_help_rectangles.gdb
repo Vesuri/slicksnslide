@@ -40,6 +40,22 @@ commands
     printf "PAUSE_HELP_ADVANCED_RACE\n"
     quit 1
   end
+  if !$_isvoid($check_pause_language) && ($steps==0 || $steps==7 || $steps==9)
+    set $d=$m->race_menu
+    if !$d || menu_language_name[4]<49 || menu_language_name[4]>56
+      quit 1
+    end
+    printf "PAUSE_LANGUAGE_CAPTURE step=%u language=%u\n",$steps,menu_language_name[4]-48
+    eval "dump binary memory .run/pause-language/%u.table %p %p",$steps,$d->language,$d->language+1000
+    set $i=0
+    while $i<6
+      if $d->labels[$i] < &$d->language[0] || $d->labels[$i]>=&$d->language[0]+1000
+        quit 1
+      end
+      eval "dump binary memory .run/pause-language/%u.%u.label %p %p",$steps,$i,$d->labels[$i],$d->labels[$i]+64
+      set $i=$i+1
+    end
+  end
   if ($steps>=2 && $steps<=6) || $steps==8
     set $v=$m->help
     if !$v || !$v->renderer.active || $v->navigation.done

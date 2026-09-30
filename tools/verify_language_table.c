@@ -41,8 +41,13 @@ static void run_language(uc_engine *u,unsigned entry,const unsigned *args,unsign
     check(uc_reg_read(u,UC_X86_REG_IP,&ip)); check(uc_reg_read(u,UC_X86_REG_SP,&sp));
     REQUIRE(ip==0 && sp==0xf004);
 }
-int main(void)
+int main(int argc,char **argv)
 {
+    unsigned captured_language=0,capture_checks=0;
+    if(argc!=1) {
+        if(argc!=3 || argv[1][0]<'1' || argv[1][0]>'8' || argv[1][1])return 2;
+        captured_language=(unsigned)(argv[1][0]-'0');
+    }
     unsigned char runtime[300000],resource[2000],native[2000],actual[2000];
     FILE *f=fopen("disasm/runtime.bin","rb"); REQUIRE(f);
     size_t n=fread(runtime,1,sizeof runtime,f); fclose(f); REQUIRE(n && n<sizeof runtime);
@@ -102,11 +107,27 @@ int main(void)
         } else { source=synthetic; source_size=sizeof synthetic-1; }
         unsigned used=0;
         REQUIRE(!slicks_language_table_load(source,source_size,native,sizeof native,&used));
+        if(variant<8) {
+            /* Smallest live staging buffer is intermission's 512 bytes;
+             * smallest decoded owner buffer is pause's 1000 bytes. */
+            REQUIRE(source_size<=512 && used<=1000);
+            printf("Language %u: resource=%u decoded=%u bytes\n",variant+1,source_size,used);
+        }
         const unsigned args[]={0,0x6000,0,0x6100};
         run_language(u,0x3601a,args,4);
         uint16_t ax,dx; check(uc_reg_read(u,UC_X86_REG_AX,&ax)); REQUIRE(!(ax&255));
         REQUIRE(get(u,0x61000)==0 && get(u,0x61002)==0x7000);
         check(uc_mem_read(u,0x70000,actual,used)); REQUIRE(!memcmp(native,actual,used));
+        if(captured_language==variant+1) {
+            const unsigned steps[]={0,7,9};
+            for(unsigned i=0;i<3;++i) {
+                char path[1024];unsigned char captured[1000];
+                snprintf(path,sizeof path,"%s/%u.table",argv[2],steps[i]);
+                FILE *input=fopen(path,"rb");REQUIRE(input);
+                REQUIRE(used<=sizeof captured && fread(captured,1,sizeof captured,input)==sizeof captured);
+                REQUIRE(fclose(input)==0 && !memcmp(captured,actual,used));++capture_checks;
+            }
+        }
         for(unsigned k=0;k<sizeof keys/sizeof keys[0];++k) {
             check(uc_mem_write(u,0x62000,keys[k],strlen(keys[k])+1));
             const unsigned lookup[]={0,0x7000,0,0x6200};
@@ -124,6 +145,19 @@ int main(void)
                 const unsigned char *fallback=(const unsigned char *)keys[k];
                 const unsigned char *resolved=slicks_language_lookup(enabled?native:0,used,fallback,fallback);
                 REQUIRE(dx*16U+ax==(resolved==fallback?0x62000:0x70000+(unsigned)(resolved-native)));
+                if(captured_language==variant+1 && enabled && k<6) {
+                    unsigned char original[64];check(uc_mem_read(u,dx*16U+ax,original,sizeof original));
+                    REQUIRE(memchr(original,0,sizeof original));
+                    const unsigned steps[]={0,7,9};
+                    for(unsigned i=0;i<3;++i) {
+                        char path[1024];unsigned char captured[64];
+                        snprintf(path,sizeof path,"%s/%u.%u.label",argv[2],steps[i],k);
+                        FILE *input=fopen(path,"rb");REQUIRE(input);
+                        REQUIRE(fread(captured,1,sizeof captured,input)==sizeof captured && fclose(input)==0);
+                        REQUIRE(memchr(captured,0,sizeof captured) && !strcmp((char *)captured,(char *)original));
+                        ++capture_checks;
+                    }
+                }
             }
             ++cases;
         }
@@ -133,5 +167,9 @@ int main(void)
         for(unsigned i=0;i<sizeof sentinel;++i) REQUIRE(sentinel[i]==0xa5);
     }
     check(uc_close(u)); printf("Original language loader: 8 archive languages + duplicate/empty/multiline/terminator fixture; %u lookups, %u fallback wrappers and atomic capacity failures pass\n",cases,cases*2);
+    if(captured_language) {
+        REQUIRE(capture_checks==21);
+        printf("Native pause language %u: three live tables and 18 labels match original loader/wrapper output\n",captured_language);
+    }
     return 0;
 }

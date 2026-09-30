@@ -181,7 +181,10 @@ Implementation and completed verification evidence are separate in
   F15: positive saved language selections now feed existing title/Arcade,
   pause and intermission language-table consumers. Implement the original
   startup negative-selector default policy, and audit the other
-  label callers; honoring positive selections does not complete localization.
+  label callers outside the documented native coverage; honoring positive
+  selections does not complete localization. Pause's all-eight-language
+  selection/Help-return check is recorded in fidelity-audit.md; concentrate
+  remaining native language work on other owners.
   Arcade painter pixels/font state now match original lookup and drawing code
   for all eight language tables plus missing-table fallback; other menu callers
   and target-side per-language selection coverage remain separate.
