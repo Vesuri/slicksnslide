@@ -3116,6 +3116,10 @@ load_records:
     slicks_amiga_platform_end(platform);
     records=(struct SlicksTrackRecords){0};
     bytes=AllocMem(8192,MEMF_ANY);
+    if(g_slicks_diag_record_faults&4) {
+        g_slicks_diag_record_faults&=(unsigned char)~4;
+        g_slicks_diag_plain_close_fault=1;
+    }
     long size=bytes?load_plain_file(g_slicks_diag_record_faults&1?"missing-post-race-track":path,bytes,8192):-1;
     g_slicks_diag_record_faults&=(unsigned char)~1;
     if(size<0 || size>=8192 || slicks_track_records(bytes,(unsigned long)size,&records)<0) {
@@ -4062,8 +4066,11 @@ int main(void)
     unsigned char mixed_setup_test=(unsigned char)(persistence_test && argv[7]=='W');
     unsigned char combined_test=(unsigned char)(persistence_test && argv[7]=='U'),combined_stage=0;
     unsigned char failure_injected=0;
-    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L'));
-    if(record_recovery_test) { g_slicks_diag_record_faults=3; g_slicks_diag_record_skip=argv[8]=='S'?1:argv[8]=='L'?2:0; }
+    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V'));
+    if(record_recovery_test) {
+        g_slicks_diag_record_faults=(argv[8]=='C' || argv[8]=='V')?6:3;
+        g_slicks_diag_record_skip=argv[8]=='S'?1:(argv[8]=='L' || argv[8]=='V')?2:0;
+    }
     unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'));
     unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='M'?4:argv[8]=='L'?3:argv[8]=='K'?2:1):0);
     mode_transition_test=(unsigned char)(argc==9 && argv[0]=='O' && argv[1]=='P' &&

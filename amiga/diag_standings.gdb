@@ -11,6 +11,10 @@ commands
   set $record_warning_owned = 1
   if g_slicks_diag_record_results_phase == 4
     set $read_errors = $read_errors+1
+    if !$_isvoid($expect_record_close) && (g_slicks_diag_plain_close_fault || g_slicks_diag_plain_close_reached!=1)
+      printf "RECORD_CLOSE_FAULT_NOT_REACHED\n"
+      quit 1
+    end
   else
     if g_slicks_diag_record_results_phase != 5
       quit 1
@@ -109,6 +113,10 @@ commands
   end
   if ($read_errors || $save_errors) && ($read_errors != 1 || $save_errors != $expected_save_errors || $record_inserts != (g_slicks_diag_record_skip == 2 ? 1 : 2))
     printf "RECORD_RECOVERY_FAILED reads=%u saves=%u inserts=%u\n",$read_errors,$save_errors,$record_inserts
+    quit 1
+  end
+  if !$_isvoid($expect_record_close) && $read_errors!=1
+    printf "RECORD_CLOSE_WARNING_MISSING\n"
     quit 1
   end
   printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK reads=%u saves=%u inserts=%u returns=%u\n",$read_errors,$save_errors,$record_inserts,$record_returns

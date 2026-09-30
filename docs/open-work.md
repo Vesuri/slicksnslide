@@ -50,7 +50,9 @@ Implementation and completed verification evidence are separate in
   shop sparse-selection policy/native coverage
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
-  intermission/results error routes.
+  intermission/results error routes outside the documented read/Close
+  Retry/Skip checks, including remaining allocation-failure lifetimes and
+  warning-screen publication bounds.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
   native sparse participation after resolving the policy question. Native

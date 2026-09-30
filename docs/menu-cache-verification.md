@@ -1153,6 +1153,38 @@ opens/closes and race entry pass. All 11 full-surface publication comparisons
 pass and the warning background restores byte-identically. Both diagnostic
 emulators were muted and closed.
 
+### Post-race record Close failure caller checks (2026-09-30)
+
+OPTIONSBC and OPTIONSBV add diagnostic-only post-race read faults: after
+opening and reading the actual track, the shared loader closes the real
+handle and substitutes a failed Close result. Unlike the older missing-path
+fixture, these exercise rejection after bytes reached the destination.
+BC chooses Retry; BV chooses Skip. Both retain the existing one-shot write
+failure to check that later save recovery remains independent of read recovery.
+`diag_record_close_recovery.gdb` requires the Close fault to have been consumed
+at the read warning and exactly one read warning before normal exit.
+
+Retry passes in `tmp/standalone-release-c0hr1bez`: one read warning, one save
+warning, two record insertions and two owner returns, followed by championship
+statistics/persistence and system restoration 31. `check_record_return.py`
+independently decodes both race bitmaps and verifies all 64,000 source pixels
+and all eight bitplanes unchanged across both owners.
+
+Skip passes in `tmp/standalone-release-41u_p4v1` with one read warning,
+no save warning, only one record insertion and two owner returns. The second
+track needs no record write, so the one-shot write fault remains unconsumed;
+this run does not cover a post-skip write retry.
+Both independent return-image checks pass here as well. Both runs use stock
+PAL 68020, 2 MiB Chip/no Fast RAM and confirmed default 4 KiB stack. The
+muted harnesses close their emulators. This closes the checked-read caller's
+Retry/Skip coverage; it does not establish every results allocation failure
+or warning-screen publication bound.
+
+The original-code host gates also pass: 25,272 complete post-race
+qualification/insertion/rank/date/trailer cases, 4,096 finish-statistic cases,
+and 65,536 championship score/order/tie/shared-profile/wrapping-statistic
+cases. Logs: `tmp/record-close-build.log`, `tmp/record-close-host.log`.
+
 ### Preview staging implementation and evidence
 
 The preview API now separates DAT decoding from drawing. The production
