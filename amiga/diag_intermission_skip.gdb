@@ -25,6 +25,10 @@ commands
   end
   set $warnings = $warnings+1
   set $warning_owned = 1
+  if !$_isvoid($expect_plain_close) && (g_slicks_diag_plain_close_fault || g_slicks_diag_plain_close_reached!=1)
+    printf "INTERMISSION_CLOSE_FAULT_NOT_REACHED\n"
+    quit 1
+  end
   continue
 end
 break slicks_diag_intermission_checkpoint

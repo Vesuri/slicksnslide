@@ -347,6 +347,43 @@ and Change Cars input comparisons, plus the composition/lifetime harnesses
 (the latter use stub assets and are not independent pixel evidence). No
 selection, rendering or reward policy was changed by this return-path edit.
 
+## Preview Close rejection and intermission recovery (2026-09-30)
+
+`load_plain_allocated` now checks the DOS Close result before publishing a
+successfully read preview buffer. On failure it frees the staged allocation
+with its actual length, returns NULL and leaves the output length zero.
+Previously it returned the data despite the failed close. This affects the
+shared preview loader, not the separately verified setup-storage adapter.
+
+Explicit OPTIONSTL/OPTIONSTM diagnostics arm a one-shot fault immediately
+before intermission preparation. A real read and real handle close complete,
+then the diagnostic substitutes a failed Close result. This exercises the
+production rejection/free path without leaking the actual file handle; normal
+launches leave the fault control zero. The existing allocation-free warning
+offers retry or End Match. No ordinary rendering or gameplay policy changes.
+
+Native checks on stock PAL A1200, 2 MiB Chip/no Fast and confirmed default
+4 KiB stack pass:
+
+- Retry: `tmp/standalone-release-quda5uh5`, with the strengthened exactly-one
+  failure-notice assertion. The fault is consumed and its close boundary
+  reached; retry opens intermission and starts the second race. The complete
+  session before/after retry is byte-identical, both pause returns restore
+  car state and race pixels exactly, rewards occur once per race and normal
+  system restoration is 31.
+- End Match: `tmp/standalone-release-m8rh7y8t`, one consumed Close fault and
+  one warning, no successful intermission open or second race load, preserved
+  display ownership through warning dismissal and normal system restoration.
+
+Earlier retry run `tmp/standalone-release-wiid8oev` also reached the warning
+and passed the state comparisons, but exposed that the old retry gate only
+checked a warning *if* reached. The shared gate now requires exactly one when
+invoked as a retry fixture; absence of the fault cannot silently pass.
+These are controlled Close-result failures, not naturally occurring filesystem
+errors or exhaustive checks of other preview I/O failures. Both final runs
+are muted and all owned emulators closed. Build log:
+`tmp/preview-close-build.log`.
+
 ## Intermission cleanup sizes and fixed-order recovery regression (2026-09-30)
 
 The final `run_intermission` cleanup now frees preview DAT/track buffers using

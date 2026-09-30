@@ -1886,6 +1886,7 @@ static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 
 /* Explicit disk boundary. Allocate the actual file length, not its upper
  * bound, so preview scratch and resident menus fit together in Chip RAM. */
+unsigned char g_slicks_diag_plain_close_fault,g_slicks_diag_plain_close_reached;
 static unsigned char *load_plain_allocated(const char *path,unsigned long limit,
     unsigned long *size)
 {
@@ -1901,7 +1902,13 @@ static unsigned char *load_plain_allocated(const char *path,unsigned long limit,
             FreeMem(bytes,(unsigned long)length); bytes=0;
         }
     }
-    Close(file);
+    LONG closed=Close(file);
+    /* Explicit preview-I/O diagnostic only; never leak the actual handle. */
+    if(g_slicks_diag_plain_close_fault && bytes) {
+        g_slicks_diag_plain_close_fault=0;g_slicks_diag_plain_close_reached=1;
+        closed=0;
+    }
+    if(!closed && bytes) { FreeMem(bytes,(unsigned long)length);bytes=0; }
     if(bytes) *size=(unsigned long)length;
     return bytes;
 }
@@ -2879,7 +2886,7 @@ static int intermission_retry_notice(struct SlicksAmigaPlatform *platform,struct
     if(slicks_amiga_platform_begin(platform,0)) goto done;
     platform->key_tail=platform->key_head;
     slicks_diag_intermission_retry();
-    if(diagnostic) { platform->key_tail=0; platform->keys[0]=diagnostic==4?0x45:0x44; platform->key_head=1; }
+    if(diagnostic) { platform->key_tail=0; platform->keys[0]=(diagnostic==4 || diagnostic==6)?0x45:0x44; platform->key_head=1; }
     for(;;) {
         unsigned short raw;
         slicks_amiga_platform_wait_vblank(platform);
@@ -2899,7 +2906,7 @@ static void intermission_test_key(struct SlicksAmigaPlatform *platform,unsigned 
     static const unsigned char edits[]={0x51,0x4e,0x4d,0x4e,0x45,0x51,0x4e,0x44,0x58};
     if(diagnostic==2 && step<sizeof edits) {
         platform->key_tail=0; platform->keys[0]=edits[step]; platform->key_head=1;
-    } else if((diagnostic==1 || diagnostic==3) && !step) {
+    } else if((diagnostic==1 || diagnostic==3 || diagnostic==5) && !step) {
         platform->key_tail=0; platform->keys[0]=0x58; platform->key_head=1;
     }
 }
@@ -2916,6 +2923,7 @@ static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRa
     struct SlicksIntermissionContent content={.track_index=position,.track_total=total,
         .track_name=next_name,.slash=(const unsigned char *)"/"};
     if(diagnostic==3 || diagnostic==4) g_slicks_diag_intermission_fault=3;
+    if(diagnostic==5 || diagnostic==6) g_slicks_diag_plain_close_fault=1;
 retry:
     slicks_amiga_platform_end(platform);
     /* Synchronous menu owner; keep decode staging off the default 4K stack. */
@@ -4042,8 +4050,8 @@ int main(void)
     unsigned char failure_injected=0;
     unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L'));
     if(record_recovery_test) { g_slicks_diag_record_faults=3; g_slicks_diag_record_skip=argv[8]=='S'?1:argv[8]=='L'?2:0; }
-    unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K'));
-    unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='K'?2:1):0);
+    unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'));
+    unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='M'?4:argv[8]=='L'?3:argv[8]=='K'?2:1):0);
     mode_transition_test=(unsigned char)(argc==9 && argv[0]=='O' && argv[1]=='P' &&
         argv[2]=='T' && argv[3]=='I' && argv[4]=='O' && argv[5]=='N' && argv[6]=='S' &&
         argv[7]=='T' && argv[8]>='0' && argv[8]<='5');
@@ -5290,7 +5298,7 @@ int main(void)
                     if(!platform.active && slicks_amiga_platform_begin(&platform,0)) goto cleanup;
                     slicks_amiga_platform_show(&platform, 0);
                     g_slicks_diag_ingame = 0;
-                    if(completion_return_test || shop_transition_test || intermission_retry_test==2 || (sequence_test && !pause_transition_test)) {
+                    if(completion_return_test || shop_transition_test || intermission_retry_test==2 || intermission_retry_test==4 || (sequence_test && !pause_transition_test)) {
                         /* Complete the natural-race diagnostic with normal
                          * title Escape input, then verify system restoration. */
                         platform.key_tail=0; platform.keys[0]=0x45; platform.key_head=1;

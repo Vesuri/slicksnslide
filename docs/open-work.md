@@ -50,10 +50,6 @@ Implementation and completed verification evidence are separate in
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
-  In particular, the preview `load_plain_allocated` helper ignores the DOS
-  Close result after reading data. Reject a failed close, release its staged
-  allocation, and verify the caller's retry/End Match behavior separately
-  from constructor-failure recovery. Do not publish data from failed I/O.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
   native sparse participation after resolving the policy question. Native

@@ -115,6 +115,10 @@ end
 break slicks_diag_system_restored
 commands
   silent
+  if !$_isvoid($expected_retries) && $retries!=$expected_retries
+    printf "INTERMISSION_RETRY_COUNT_FAILED actual=%u expected=%u\n",$retries,$expected_retries
+    quit 1
+  end
   if !$returned || $intermissions != 1 || g_slicks_diag_restore_status != 0x1f
     printf "PAUSE_TRANSITION_FAILED\n"
     quit 1
