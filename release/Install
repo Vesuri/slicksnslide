@@ -1,4 +1,5 @@
-; Slicks native + optional WHDLoad installation, Installer V43+.
+; Slicks WHDLoad installation, Installer V43+.
+; WHDLoad Install Template conventions, adapted as in Vette's installer.
 ; $VER: Install 0.1 (30.09.2026)
 (set @app-name "Slicks")
 (if (< @installer-version (* 43 65536))
@@ -6,14 +7,8 @@
 (welcome)
 (set #source (pathonly @icon))
 (set @execute-dir #source)
-(set #whd
-  (askbool
-    (prompt "Install the optional WHDLoad launch icon as well as standalone Play?")
-    (help "Standalone Play needs AmigaOS 3.x, AGA and SetPatch. WHDLoad also needs WHDLoad 17+, a supported Kickstart 3.1 image/RTB and additional Fast RAM. Both use the same data and saves.")
-    (choices "Yes" "No") (default 0)))
-(if #whd
-  ((if (<> 0 (run "cd SYS:\nWhich WHDLoad >NIL:"))
-     (abort "Install WHDLoad 17 or newer in the command path, or choose standalone installation."))
+(if (<> 0 (run "cd SYS:\nWhich WHDLoad >NIL:"))
+  (abort "Install WHDLoad 17 or newer first. It must be accessible via the command path. See https://www.whdload.de/"))
    (set #kick-ready 0)
    (if (and (exists "Devs:Kickstarts/kick40068.A1200") (exists "Devs:Kickstarts/kick40068.A1200.RTB")) (set #kick-ready 1))
    (if (and (exists "Devs:Kickstarts/kick40068.A4000") (exists "Devs:Kickstarts/kick40068.A4000.RTB")) (set #kick-ready 1))
@@ -23,7 +18,7 @@
       (if (and (exists "WHDCOMMON:kick40068.A4000") (exists "WHDCOMMON:kick40068.A4000.RTB")) (set #kick-ready 1))
       (if (and (exists "WHDCOMMON:kick40063.A600") (exists "WHDCOMMON:kick40063.A600.RTB")) (set #kick-ready 1))))
    (if (= #kick-ready 0)
-     (message "The WHDLoad icon needs a Kickstart 3.1 image and matching .RTB file in Devs:Kickstarts or WHDCOMMON: before playing. See ReadMe for supported image names. Standalone Play does not need them." (all)))))
+     (message "WHDLoad needs a Kickstart 3.1 image and matching .RTB file in Devs:Kickstarts or WHDCOMMON: before playing. See ReadMe for supported image names." (all)))
 (set #parent
   (askdir
     (prompt "Where should Slicks be installed? A Slicks drawer will be created here.")
@@ -32,12 +27,14 @@
 (set #dest (tackon #parent "Slicks"))
 (set #data (tackon #dest "data"))
 (set #install-data 1)
-(if (and (exists (tackon #data "SLICKS.000")) (exists (tackon #data "SLICKS.DAT")))
+(if (and (= (exists (tackon #data "SLICKS.000")) 1)
+         (= (exists (tackon #data "SLICKS.DAT")) 1)
+         (= (exists (tackon #data "TRACKS")) 2))
   (set #install-data
     (askbool
-      (prompt "Reinstall original data and tracks, or keep the existing data?")
-      (help "Keep preserves modified tracks and their records. Reinstall replaces the 195 supplied tracks and both data files, but never configuration, profiles, championships or your key.")
-      (choices "Reinstall" "Keep") (default 0))))
+      (prompt "The original game data files are already installed. Reinstall them or use the existing files?")
+      (help "Use existing skips the ZIP and temporary drawer questions and preserves modified tracks and records. Reinstall replaces the 195 supplied tracks and both data files, but never configuration, profiles, championships or your key.")
+      (choices "Reinstall" "Use existing") (default 0))))
 (if #install-data
   (
     (set #archive
@@ -67,13 +64,16 @@
 (complete 80)
 (copyfiles (source (tackon #source "Slicks")) (dest #data) (help @copyfiles-help))
 (copyfiles (source (tackon #source "Play")) (dest #dest) (help @copyfiles-help))
-(copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Play.info") (help @copyfiles-help))
-(tooltype (dest (tackon #dest "Play")) (setdefaulttool "C:IconX") (setstack 16384) (noposition))
-(if #whd
-  ((copyfiles (source (tackon #source "Slicks.slave")) (dest #dest) (help @copyfiles-help))
-   (copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "SlicksWHDLoad.info") (help @copyfiles-help))
-   (tooltype (dest (tackon #dest "SlicksWHDLoad")) (setdefaulttool "WHDLoad")
-     (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "") (setstack 16384) (noposition))))
+(copyfiles (source (tackon #source "Slicks.slave")) (dest #dest) (help @copyfiles-help))
+(copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Slicks.info") (help @copyfiles-help))
+; Explicit default tool, Slave and PreLoad, as in the WHDLoad Install Template.
+(tooltype (dest (tackon #dest "Slicks")) (setdefaulttool "WHDLoad")
+  (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "") (setstack 16384) (noposition))
+; Retire the previous launch icons on upgrades; never remove game data/saves.
+(if (= (exists (tackon #dest "Play.info")) 1)
+  (delete (tackon #dest "Play.info") (optional "force")))
+(if (= (exists (tackon #dest "SlicksWHDLoad.info")) 1)
+  (delete (tackon #dest "SlicksWHDLoad.info") (optional "force")))
 (copyfiles (source (tackon #source "ReadMe")) (dest #dest) (infos) (help @copyfiles-help))
 (set @default-dest #dest)
 (complete 100)

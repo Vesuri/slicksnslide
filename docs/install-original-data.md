@@ -7,17 +7,19 @@ end-user instructions are [release/ReadMe](../release/ReadMe).
 Download the installer LHA and the publisher's unchanged
 [Slix151.zip](https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip).
 Unpack the LHA on an Amiga and run Install with Installer 43+. No external
-UnZip utility or host-side conversion is required. Standalone installation
-does not require WHDLoad. Installer/IconX/SetPatch are user-supplied OS tools.
+UnZip utility or host-side conversion is required. The Installer follows the
+WHDLoad Install Template/Vette workflow and requires WHDLoad in the command
+path. Standalone manual installation below does not require WHDLoad.
+Installer and SetPatch are user-supplied OS tools.
 
 Installed layout:
 
 ```text
 Slicks/
-  Play, Play.info               IconX script (standalone)
+  Play                         standalone Shell script (no icon)
   ReadMe, ReadMe.info
-  Slicks.slave                  optional WHDLoad launch
-  SlicksWHDLoad.info            optional WHDLoad project icon
+  Slicks.slave                  WHDLoad launch
+  Slicks.info                   sole game icon (WHDLoad)
   data/
     Slicks                     native game executable
     SLICKS.000, SLICKS.DAT      untouched publisher originals
@@ -38,12 +40,16 @@ own partial outputs on failure/cancellation. Existing user directories are never
 recursively deleted by the helper.
 
 Installer extracts to a unique disk staging drawer. Only after success does it
-copy data to the selected installation. Keep is the default for existing data;
-it preserves modified tracks/records. Reinstall replaces the supplied tracks,
+copy data to the selected installation. Use existing is the default when both
+data files and the TRACKS drawer exist; it skips ZIP/scratch questions and
+preserves modified tracks/records. Reinstall replaces the supplied tracks,
 not keys, profiles, settings or championships. A copy-stage disk error is not an
 atomic whole-directory transaction: retain the verified staging drawer and rerun.
 Use disk scratch, not RAM:/T:, on a 2 MiB machine. No private key is read by
 installation, packaging or extraction tests.
+Upgrades remove only the obsolete `Play.info` and `SlicksWHDLoad.info` launch
+icons, replacing them with the standard `Slicks.info` WHDLoad icon. The installer
+does not offer to delete the whole drawer containing keys, profiles and saves.
 
 ## Manual installation without Installer 43
 
@@ -90,7 +96,9 @@ Tests:
 make -C tools/install-data test
 python3 tools/install-data/test_amiga.py
 python3 tools/install-data/test_installer_script.py /local/Installer --package dist/Slicks-0.1.lha
-python3 tools/install-data/test_installer_script.py /local/Installer --whd --keep  # needs KICKSTART (amiga/env.sh)
+python3 tools/install-data/test_installer_script.py /local/Installer --keep  # needs KICKSTART (amiga/env.sh)
+python3 tools/install-data/test_installer_script.py /local/Installer --reinstall
+python3 tools/install-data/test_installer_script.py /local/Installer --no-whd
 python3 tools/test_standalone_release.py /local/test-install/Slicks
 python3 tools/check_release.py dist/Slicks-0.1.lha
 ```

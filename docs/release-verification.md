@@ -1,5 +1,44 @@
 # Development release audit
 
+## 2026-09-30 — WHDLoad-only icon and existing-data installer workflow
+
+At the user's request, the installer now follows the WHDLoad Install Template
+and Vette conventions: mandatory WHDLoad path check, standard `Slicks.info`
+project icon with `Slave=Slicks.slave` and `PreLoad`, and no optional-launcher
+question or standalone icon. The uniconed `Play` script remains usable through
+`Execute Play`. Upgrades remove only the old `Play.info` and
+`SlicksWHDLoad.info`; data, keys and saves are not deleted.
+
+The default `Use existing` choice skips both ZIP and scratch questions when
+the two original files and TRACKS drawer are present. `Reinstall` refreshes
+the publisher's files without removing user settings, profiles, championships,
+keys or custom tracks. The whole-drawer deletion prompt remains deliberately
+absent to protect those files.
+
+The exact candidate `tmp/installer-whd-candidate/Slicks-0.1.lha` passes the
+independent 12-member LH5 package/CRC/source/version audit. It is 281,199 bytes,
+SHA256 `88bfe7925c6bb1fab2a57755e37055dbfeb2ed535149c413273e0d36f4b7f875`.
+The native executable remains byte-identical to the D-1/D-2 candidate; the
+change is confined to the installer, documentation and installer tests.
+
+Real Installer checks using this archive pass on 2 MiB Chip/no Fast:
+
+| Case | Local fixture under tmp/ | Result |
+| --- | --- | --- |
+| Use existing | installer-script-nba46zx_ | ZIP/scratch branches would abort if reached; neither is reached. Modified records and all user-file placeholders survive; old icons disappear. |
+| Fresh install | installer-script-c5bs1bdi | All 197 original files, native executable, slave, single WHDLoad icon and staging cleanup match. |
+| Reinstall | installer-script-n8yr4d5j | Original track restored; configuration, profile, championship, key placeholder and custom track survive. |
+| Missing TRACKS drawer | installer-script-r1krdmnq | Incomplete installation is repaired by extraction, not falsely reused. |
+| Missing WHDLoad | installer-script-v8ri8nfn | Prerequisite failure branch reached before installation writes; fatal requester replaced with a marker and quiet exit for unattended testing. |
+
+The user also supplied a screenshot of the unmodified fatal requester from
+the deliberate missing-WHDLoad fixture `installer-script-w5jfmvu8`, confirming
+the expected visible error. That fixture was closed rather than left waiting
+for dismissal. All other test emulators closed automatically. The earlier
+manual installer session was stopped because its workflow was superseded;
+D-3 still requires a new manual session, now using Execute Play for standalone.
+No private key was used, no release tag was made, and `dist/` was not replaced.
+
 ## 2026-09-30 — ship gate D-2 passed
 
 The exact stripped D-1 candidate passes all three full-frame display audits

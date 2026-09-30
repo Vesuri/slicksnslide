@@ -67,6 +67,10 @@ def main():
     assert b"MultiView\0" in payloads["ReadMe.info"]
     assert b'(settooltype "Slave" "Slicks.slave")' in payloads["Install"]
     assert b'(set #dest (tackon #parent "Slicks"))' in payloads["Install"]
+    assert b'(newname "Slicks.info")' in payloads["Install"]
+    assert b'(newname "Play.info")' not in payloads["Install"]
+    assert b'(set #whd' not in payloads["Install"]
+    assert b'(choices "Reinstall" "Use existing") (default 0)' in payloads["Install"]
     for heading in (b"Requirements",b"Installation",b"Display",b"Controls",b"History",b"Contact"):
         assert b" "+heading+b":\n -"+b"-"*len(heading) in payloads["ReadMe"], heading
     assert b"version "+version+b" (" in payloads["ReadMe"], "ReadMe history lacks this version"

@@ -14,14 +14,15 @@
  Requirements:
  -------------
  Standalone: PAL A1200, 68020, AGA, 2 MiB Chip RAM, AmigaOS 3.x and SetPatch.
- Installation requires Installer V43 or later; IconX launches Play from
- Workbench. These are Amiga system tools, not included in this archive.
+ The WHDLoad installer requires Installer V43 or later and WHDLoad 17+.
+ These system tools are not included in this archive. For standalone use,
+ see the manual installation instructions below; no WHDLoad is needed.
  Close other applications on a 2 MiB machine. Allow about 1 MB free RAM for
  the extraction helper, at least 2 MB temporary disk space and 3 MB
  destination space. Do not choose RAM: or T: as the temporary drawer on a
  memory-constrained Amiga.
 
- The optional WHDLoad icon requires WHDLoad version 17.0 or better and extra
+ The WHDLoad icon requires WHDLoad version 17.0 or better and extra
  Fast RAM. The slave reserves 2 MiB ChipMem plus 1 MiB expansion memory and
  512 KiB Kickstart space; the host system, WHDLoad and PRELOAD need additional
  memory. Tested with 2 MiB Chip and 4 MiB Fast RAM, including PRELOAD.
@@ -49,11 +50,17 @@
  It never installs the DOS executable, DOSBox, configuration or a
  registration key. No host computer, UnZip utility or PC emulator is needed.
 
- Choose Keep when asked about existing data to preserve modified tracks and
- records; Reinstall replaces the 195 supplied tracks and both data files.
+ Choose Use existing when asked about installed data to skip the ZIP and
+ temporary-drawer questions and preserve modified tracks and records.
+ Reinstall replaces the 195 supplied tracks and both data files.
  Updating the port keeps keys and saves. Failed extraction does not replace
  installed files. If copying fails due to disk space, retain the staging
  drawer and rerun the installer.
+
+ For standalone installation without WHDLoad, create a destination drawer and
+ run SlicksInstallData Slix151.zip <destination>/data from a Shell. Copy the
+ supplied Slicks executable into data/ and Play into its parent. To update
+ existing data, simply replace the native executable and Play script.
 
 
  Display:
@@ -66,8 +73,10 @@
 
  Playing and quitting:
  ---------------------
- Double-click Play for standalone, or SlicksWHDLoad if you chose that option.
- From a Shell: CD to the installed Slicks drawer, then Execute Play.
+ Double-click Slicks for WHDLoad. The installer creates one game icon.
+ For standalone: CD to the installed Slicks drawer, then Execute Play from
+ a Shell. Play deliberately has no Workbench icon. Updates remove the old
+ Play.info and SlicksWHDLoad.info launch icons, but keep the game data.
  The installed data/ drawer holds the native executable, original data,
  tracks, configuration, driver profiles, saved championships and an optional
  SLICKS.REK. Both launch methods share these files; keep the drawer writable.

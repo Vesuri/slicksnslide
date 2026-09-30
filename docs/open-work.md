@@ -43,7 +43,8 @@ Done 2026-09-30 in the Vette layout ([install-original-data.md](install-original
 
 Vette's "remove existing drawer" prompt is deliberately not copied: the Slicks
 drawer holds the user's key, profiles and championships, and the existing
-Reinstall/Keep data prompt already covers updates.
+Reinstall/Use existing data prompt already covers updates. The installer now
+creates only the standard Slicks WHDLoad icon; standalone uses Execute Play.
 
 Version: 0.1 (30.09.2026), chosen by the user, in all `$VER` strings.
 
@@ -56,7 +57,7 @@ Version: 0.1 (30.09.2026), chosen by the user, in all `$VER` strings.
 - [ ] **D-3.** Do one manual FS-UAE session on a stock PAL A1200 configuration
   (68020, 2 MiB Chip, no Fast RAM), in this order:
   1. install from `Slix151.zip` with the Installer;
-  2. start with `Play`;
+  2. start standalone from a Shell with `Execute Play` (no standalone icon);
   3. let the idle demo run, then return;
   4. start one race and finish it;
   5. save a championship at intermission;
