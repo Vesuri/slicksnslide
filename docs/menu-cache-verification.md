@@ -2166,6 +2166,39 @@ pages, or every title input route.
 
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
+### Full-size save/restore classification after records fix (2026-09-30)
+
+Source inspection at 0ace48f traced all six production call sites of
+`slicks_amiga_player_menu_restore`, including the records caller added by that
+commit. None relies on its untracked/full-screen fallback:
+
+| Restore caller | Lifetime-tracking initialization |
+| --- | --- |
+| Pause close | `slicks_amiga_race_menu_open` captures its background, clears the lifetime list and enables tracking before rendering. |
+| Intermission close | `slicks_amiga_intermission_open` does the same before opening its renderer. |
+| Profile editor close | The Players owner enables tracking after preparing its original background; it remains enabled through editor drawing. |
+| Players delete-confirmation return | Uses that same initialized Players owner. |
+| Players picker no-action return | Uses that same initialized Players owner. |
+| Post-race records table close | `run_record_results` now enables tracking before tint/table drawing. |
+
+There are three calls inside `amiga_player_menu.c` and three in
+`slicks_diag.c`. The fallback remains defensive API behavior; this source
+audit is not authorization to delete it.
+
+The remaining explicit 64,000-byte loops in the platform menu paths capture
+save-under snapshots (Players/shop/pause/intermission/Track Information),
+initialize a newly loaded full-screen image, or compare diagnostic surfaces.
+The full-screen copies in the racing loop are inside `SLICKS_RETENTION_CHECK`
+and belong to its reference/snapshot comparison, not ordinary menu work.
+The UI renderer headers for Players, Tracks and Options likewise capture
+their prepared backgrounds rather than restoring them on every selection.
+
+This closes the source inventory of explicit full-screen menu restore loops
+in these files. It does not prove every caller's painter bounds: remaining
+native input, failure and language routes stay open. Nor does it narrow the
+initial full-screen C2P at an owner transition when the destination bitmap is
+stale; the inventory below explains those separate boundaries.
+
 Inspection of `slicks_diag.c` distinguishes full-screen initialization from
 ordinary menu updates. The following direct `slicks_chunky_rows_to_amiga`
 callers require destination-background validity before they can be narrowed:

@@ -71,9 +71,12 @@ Implementation and completed verification evidence are separate in
   failures and malformed Help navigation now have native publication/return
   coverage, with their bounded fault cases recorded in the evidence document.
   Title timing, shortcuts and demo fidelity remain separate open items below.
-  Audit remaining full-width text callbacks, full-screen modal
-  restores and direct row-converter bypasses separately from the shared
-  publisher. The registered title-owner pulse now uses verified glyph bounds;
+  Audit remaining full-width text callbacks and direct row-converter
+  bypasses separately from the shared publisher. The explicit full-screen
+  restore source inventory is complete for the platform menu files: all six
+  shared-restore production callers enable lifetime bounds. Finish their
+  remaining native painter/input/failure coverage rather than treating that
+  source classification as a whole-menu pass. The registered title-owner pulse now uses verified glyph bounds;
   the ordinary menu-text callback also uses native-store-verified glyph bounds,
   with current Players-menu publication coverage. Its other owners and other
   callbacks still need their own caller coverage.
