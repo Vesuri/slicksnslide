@@ -2166,6 +2166,42 @@ pages, or every title input route.
 
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
+### Text adapters and remaining VGA full converters (2026-09-30)
+
+Inspection at cc5dd31 traced the C font-bridge callers across
+`amiga_player_menu.c`, `amiga_shop.c` and `slicks_diag.c`. Ordinary menu text,
+records, standings, Help, shop labels, Arcade text and registration text all
+report individual glyph bounds through `slicks_font_text_dirty` (Help uses its
+spacing adapter). Normal title selection and owner pulses use that same
+producer. None of these adapters retains an unconditional full-width dirty
+report. Caller/language/failure coverage is still separate from this source
+inventory.
+
+The emergency text adapter intentionally has no individual report: its
+message-dialog owner tints and saves the enclosing rectangle, and exposes that
+rectangle through `slicks_amiga_emergency_warning_bounds`. Registration Help
+failure publishes and restores those bounds directly; other recovery owners
+must initialize their destination view as classified below. This is a
+rectangle-owned warning, not an ordinary untracked text publication. The title
+Help failure similarly saves/clears/publishes its explicit (20,90)-(300,112)
+warning rectangle.
+
+The three remaining C callers of `slicks_convert_to_amiga` are:
+
+- `show_race_load_error`: clears and replaces the entire logical image.
+- Setup-save failure: clears and replaces the entire logical image.
+- `redraw_service_options`: the legacy diagnostic menu. Its entry is behind
+  `!original_setup`; a normal no-argument launch sets `original_setup=1` and
+  enters the real Options owner instead. Do not mistake this diagnostic path
+  for ordinary Options selection redraws.
+
+The separate `slicks_chunky_rows_to_amiga` inventory below remains applicable;
+no production conversion was removed by this audit. Current host checks pass:
+`verify-standings-dirty` checks all native stores for 7,776 strings,
+`verify-help-dirty` covers lifetime restoration/overflow/callback reuse, and
+`verify-menu-dirty` covers 40,000 clipped coverage steps. These do not establish
+remaining native owner transitions or warning-allocation lifetimes.
+
 ### Full-size save/restore classification after records fix (2026-09-30)
 
 Source inspection at 0ace48f traced all six production call sites of

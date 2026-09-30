@@ -71,8 +71,11 @@ Implementation and completed verification evidence are separate in
   failures and malformed Help navigation now have native publication/return
   coverage, with their bounded fault cases recorded in the evidence document.
   Title timing, shortcuts and demo fidelity remain separate open items below.
-  Audit remaining full-width text callbacks and direct row-converter
-  bypasses separately from the shared publisher. The explicit full-screen
+  Text-adapter and direct full-converter source inventories are complete:
+  ordinary text callbacks use glyph bounds; remaining full conversions are
+  screen replacements, view initialization or diagnostic-only paths. Verify
+  their remaining native caller/failure coverage rather than treating source
+  classification as a whole-menu pass. The explicit full-screen
   restore source inventory is complete for the platform menu files: all six
   shared-restore production callers enable lifetime bounds. Finish their
   remaining native painter/input/failure coverage rather than treating that
