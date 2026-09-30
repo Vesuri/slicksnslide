@@ -1779,6 +1779,31 @@ registered-key coverage. The normal case's captures are preserved under
 `.run/menu-rectangles-registration-help-current`; failure captures use
 `.run/menu-rectangles`.
 
+### Registration Help saved-background allocation failure (2026-09-30)
+
+`REGCHECKN` reaches the separate saved-background allocation fault after the
+viewer itself has allocated. `diag_registration_help_backing.gdb` checks the
+fault was consumed exactly once, the viewer is not published, and the normal
+warning/dismissal/exit path completes. It retains the existing keyless optional
+image and system-restoration checks. The shared registration Help gate now also
+rejects archive reopening during Help ownership, alongside its display-teardown
+guard.
+
+`tmp/standalone-release-jny6bqzk` passes on stock PAL 68020/2 MiB/no Fast/default
+4 KiB stack. Warning and dismissal each publish only (64,96)..(256,110), 2,688
+pixels. Both publications and the two returned display buffers match all
+64,000 chunky pixels; the registration image before/after Help is identical.
+Restoration status is 31. This is a controlled allocation-null boundary, not
+actual global heap exhaustion or an exhaustive leak check. It uses keyless
+data and captures no private registration information.
+
+Build: `tmp/registration-help-backing-build.log`. Audio was muted and the
+runner closed its emulator. The independent Load draft remains uncommitted
+and unexercised.
+The normal modifier/history route also passes on this build with the added
+archive-open guard (`tmp/standalone-release-ukvo3s5_`): seven exact publications,
+byte-identical parent restoration and normal system restoration.
+
 ## Registered title-owner bounds (2026-09-29)
 
 The owner-name pulse previously dirtied the full `(0,190)..(320,200)` strip.

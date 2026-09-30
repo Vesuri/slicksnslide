@@ -86,7 +86,10 @@ native caller/input/error checks.
   Registration Help's confirmed stuck-modifier caller defect (F19) is fixed:
   a native before/after test covers Shift release, lowercase history, exact
   publications, parent restoration and normal exit. Other registration input
-  routes remain separate from that check.
+  routes remain separate from that check. Its separate saved-background
+  allocation failure now also passes bounded warning publication, exact
+  parent restoration, resident ownership and normal-exit checks with keyless
+  data; do not repeat it as an unverified allocation branch.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

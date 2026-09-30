@@ -7,7 +7,17 @@ set $optional=0
 set $registration_help_owned=0
 init-if-undefined $capture_registration_return = 0
 init-if-undefined $registration_help_failure = 0
+init-if-undefined $registration_help_backing_failure = 0
 set $warnings=0
+break *slicks_resource_archive_open
+commands
+  silent
+  if $registration_help_owned
+    printf "REGISTRATION_HELP_UNEXPECTED_ARCHIVE_OPEN\n"
+    quit 1
+  end
+  continue
+end
 break *slicks_amiga_platform_end
 commands
   silent
@@ -76,6 +86,12 @@ commands
     quit 1
   end
   set $warnings=$warnings+1
+  if $registration_help_backing_failure
+    if registration_help_test!=8 || g_slicks_diag_help_fail_backing || g_slicks_diag_help_backing_fault_reached!=1
+      printf "REGISTRATION_HELP_BACKING_FAULT_NOT_REACHED\n"
+      quit 1
+    end
+  end
   continue
 end
 break slicks_diag_registration_help_closed
@@ -104,6 +120,9 @@ commands
   printf "REGISTRATION_EXIT_HELP_RESTORE_OK registered=%d\n",g_slicks_registration_status
   if $registration_help_failure
     printf "REGISTRATION_HELP_ALLOCATION_WARNING_RESTORE_OK\n"
+  end
+  if $registration_help_backing_failure
+    printf "REGISTRATION_HELP_BACKING_WARNING_RESTORE_OK\n"
   end
   quit
 end

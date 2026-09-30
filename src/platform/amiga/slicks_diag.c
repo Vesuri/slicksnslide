@@ -3614,6 +3614,10 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     if(registration_help_test!=5) m=slicks_amiga_help_surface_create(&a,chunky,palette);
     if(!m) goto unavailable;
     if(registration_help_test==3) g_slicks_diag_help_fail_allocation=1;
+    if(registration_help_test==8) {
+        extern unsigned char g_slicks_diag_help_fail_backing;
+        g_slicks_diag_help_fail_backing=1;
+    }
     if(open_help(p,m,slicks_registration_help_topic)) goto done;
     if(registration_help_test==6) {
         if(!m->help || !m->help->chapter_length) goto done;
@@ -4212,10 +4216,10 @@ int main(void)
         registration_external_test=(unsigned char)(argv[8]=='K'?1:2);
         argc=8; /* Ordinary REGCHECK exit flow; only external I/O is faulted. */
     }
-    if((argc==8 || (argc==9 && (argv[8]=='M' || argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+    if((argc==8 || (argc==9 && (argv[8]=='N' || argv[8]=='M' || argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:argv[8]=='C'?5:6;
-        else if(argc==9) registration_help_test=argv[8]=='M'?7:argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
+        else if(argc==9) registration_help_test=argv[8]=='N'?8:argv[8]=='M'?7:argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
         registration_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic state, never a normal-game override.
