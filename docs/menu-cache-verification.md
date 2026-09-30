@@ -347,6 +347,41 @@ and Change Cars input comparisons, plus the composition/lifetime harnesses
 (the latter use stub assets and are not independent pixel evidence). No
 selection, rendering or reward policy was changed by this return-path edit.
 
+## Intermission cleanup sizes and fixed-order recovery regression (2026-09-30)
+
+The final `run_intermission` cleanup now frees preview DAT/track buffers using
+their recorded allocation lengths (`ds`/`ts`), consistently with
+`load_plain_allocated` and the successful/retry cleanup paths. The old final
+cleanup retained maximum-size constants after allocation changed to actual
+file lengths. Existing paths currently clear the pointers before reaching
+that final cleanup, so this is a defensive contract correction, not proof of
+a previously triggered heap corruption or a cause of visible menu glitches.
+
+Fresh retry validation exposed an unrelated stale fixture assumption: its
+ordinary GO can shuffle the selected BASIC/BASICTRK playlist because Random
+Order defaults to enabled. The first two attempts
+(`tmp/standalone-release-2cmo8nad`, `tmp/standalone-release-1as1c77f`) stopped
+before intermission; the added diagnostic identified BASICTRK as the first
+track rather than the expected BASIC. The sequence fixture now disables
+Random Order through the actual Tracks action before clearing/selecting its
+two tracks. The transition gate requires it disabled and retains its exact
+path/order assertions. Normal GO shuffle behavior is unchanged.
+
+Final stripped-binary checks on stock PAL A1200, 2 MiB Chip/no Fast and
+confirmed default 4 KiB stack pass:
+
+- OPTIONSTJ, `tmp/standalone-release-cj8xjnpx`: failed construction, owned
+  retry notice, successful retry, second race and normal exit. Session bytes
+  before/after retry match; both pause returns restore race pixels and car
+  state byte-for-byte. Reward/start/load counts and system restoration pass.
+- OPTIONSTK, `tmp/standalone-release-4pcjida6`: failed construction, owned
+  warning close, End Match, no second load/race and normal system restoration.
+
+Both muted emulators closed. Build log: `tmp/intermission-cleanup-build.log`.
+These are lifecycle/state/restoration checks, not new full-bitplane pixel
+audits or proof of every preparation failure. The preview loader's unchecked
+Close result is a separate remaining I/O boundary to address.
+
 ## Intermission recovery warning return
 
 The allocation-free retry notice no longer releases hardware before restoring

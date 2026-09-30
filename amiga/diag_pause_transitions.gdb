@@ -24,10 +24,12 @@ break prepare_race
 commands
   silent
   set $loads = $loads+1
-  if !session || $loads > 2 || new_game != ($loads == 1) || g_slicks_track_playlist.count != 2
+  if !session || $loads > 2 || new_game != ($loads == 1) || g_slicks_track_playlist.count != 2 || g_slicks_track_state.random_order
+    printf "PAUSE_TRANSITION_LOAD_STATE_FAILED load=%u session=%p new=%u count=%u\n",$loads,session,new_game,g_slicks_track_playlist.count
     quit 1
   end
   if track_path[7] != 'B' || track_path[8] != 'A' || track_path[9] != 'S' || track_path[10] != 'I' || track_path[11] != 'C' || ($loads == 1 && track_path[12] != '.') || ($loads == 2 && track_path[12] != 'T')
+    printf "PAUSE_TRANSITION_LOAD_PATH_FAILED load=%u path=%s\n",$loads,track_path
     quit 1
   end
   if $loads == 2

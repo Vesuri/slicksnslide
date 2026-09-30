@@ -3022,8 +3022,8 @@ unavailable:
 done:
     slicks_amiga_player_menu_destroy(m); g_slicks_diag_intermission_menu=0;
     slicks_resource_archive_close(&archive);
-    if(dat) FreeMem(dat,65536);
-    if(track) FreeMem(track,8192);
+    if(dat) FreeMem(dat,ds);
+    if(track) FreeMem(track,ts);
     if(language) FreeMem(language,2048);
     if(result>=0) {
         if(platform->active) {
@@ -6163,8 +6163,9 @@ int main(void)
         }
         if(sequence_test && options_test_stage==1 && g_slicks_track_menu &&
             platform.key_head==platform.key_tail) {
-            /* Initial selection is All: use the native Clear action first. */
-            static const unsigned char keys[]={0x4e,0x4d,0x4d,0x4d,0x44,
+            /* Fixed-order fixture: disable Random Order through its real
+             * action, then Clear. Ordinary GO correctly shuffles otherwise. */
+            static const unsigned char keys[]={0x4e,0x4d,0x44,0x4d,0x4d,0x44,
                 0x4f,0x3d};
             platform.key_tail=0;
             for(unsigned i=0;i<sizeof keys;++i) platform.keys[i]=keys[i];
