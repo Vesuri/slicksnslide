@@ -440,6 +440,8 @@ struct SlicksRaceRuntime {
     unsigned char physics_clock_started;
 };
 
+/* Reconstructible cache; modal Help may borrow its bytes while racing stops. */
+void slicks_race_rebuild_particle_visibility(struct SlicksRaceRuntime *);
 /* Original DS:0459 / DS:0bff. The palette supplied to set_status_palette
  * remains live for the race, including palette animation. */
 int slicks_race_set_demo(struct SlicksRaceRuntime *,signed char,

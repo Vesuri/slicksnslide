@@ -58,6 +58,46 @@ static struct SlicksAmigaPlayerMenu *acquire_menu(void)
     if(bytes) for(unsigned long i=0;i<sizeof(struct SlicksAmigaPlayerMenu);++i) bytes[i]=0;
     return (struct SlicksAmigaPlayerMenu *)bytes;
 }
+static struct SlicksAmigaHelpWorkspace *help_workspace;
+static unsigned char help_workspace_busy;
+static void (*help_workspace_restore)(void *);
+static void *help_workspace_context;
+int slicks_amiga_help_workspace_bind(void *bytes,unsigned long capacity,
+    void (*restore)(void *),void *context)
+{
+    if(help_workspace || !bytes || capacity<sizeof *help_workspace || !restore) return -1;
+    help_workspace=bytes; help_workspace_restore=restore; help_workspace_context=context;
+    help_workspace_busy=0;
+    return 0;
+}
+void slicks_amiga_help_workspace_unbind(void)
+{
+    if(help_workspace_busy) ++g_slicks_menu_workspace_conflicts;
+    help_workspace=0; help_workspace_restore=0; help_workspace_context=0;
+    help_workspace_busy=0;
+}
+static struct SlicksHelpViewer *acquire_help(void)
+{
+    if(!help_workspace || help_workspace_busy) {
+        ++g_slicks_menu_workspace_conflicts;
+        return 0;
+    }
+    help_workspace_busy=1;
+    unsigned char *bytes=(unsigned char *)&help_workspace->viewer;
+    for(unsigned long i=0;i<sizeof help_workspace->viewer;++i) bytes[i]=0;
+    return &help_workspace->viewer;
+}
+static void release_help(struct SlicksHelpViewer *viewer)
+{
+    if(!viewer) return;
+    if(!help_workspace || viewer!=&help_workspace->viewer || !help_workspace_busy) {
+        ++g_slicks_menu_workspace_conflicts;
+        return;
+    }
+    /* No viewer/backing access after restoring the overlaid terrain cache. */
+    help_workspace_busy=0;
+    help_workspace_restore(help_workspace_context);
+}
 
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 extern void slicks_menu_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short);
@@ -563,9 +603,7 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
     }
     if(m->message) FreeMem(m->message,sizeof *m->message);
     if(m->help) {
-        unsigned char *saved=m->help->renderer.saved.pixels;
-        if(saved && saved!=m->saved) FreeMem(saved,64000);
-        FreeMem(m->help,sizeof *m->help);
+        release_help(m->help);
     }
     if(m->controllers_dialog) FreeMem(m->controllers_dialog,sizeof *m->controllers_dialog);
     if(m->race_menu) FreeMem(m->race_menu,sizeof *m->race_menu);
@@ -727,7 +765,7 @@ static int help_open_backing(struct SlicksAmigaPlayerMenu *m,struct SlicksResour
     const unsigned char *topic,unsigned char borrow)
 {
     if(!m || m->help || !archive || !topic || prepare_keymap(m)) return -1;
-    struct SlicksHelpViewer *v=g_slicks_diag_help_fail_allocation?0:AllocMem(sizeof *v,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksHelpViewer *v=g_slicks_diag_help_fail_allocation?0:acquire_help();
     g_slicks_diag_help_fail_allocation=0;
     if(!v) return -1;
     unsigned char *saved;
@@ -735,8 +773,8 @@ static int help_open_backing(struct SlicksAmigaPlayerMenu *m,struct SlicksResour
         g_slicks_diag_help_fail_backing=0;
         ++g_slicks_diag_help_backing_fault_reached;
         saved=0;
-    } else saved=borrow?m->saved:AllocMem(64000,MEMF_ANY);
-    if(!saved) { FreeMem(v,sizeof *v); return -1; }
+    } else saved=borrow?m->saved:help_workspace->saved;
+    if(!saved) { release_help(v); return -1; }
     long size=slicks_resource_archive_load(archive,"HELP.TXT",v->source,sizeof v->source);
     if(size<0 || slicks_amiga_help_renderer_init(m,&v->renderer)) goto failed;
     v->source_size=(unsigned)size;
@@ -746,8 +784,7 @@ static int help_open_backing(struct SlicksAmigaPlayerMenu *m,struct SlicksResour
     }
     m->help=v; return 0;
 failed:
-    if(!borrow) FreeMem(saved,64000);
-    FreeMem(v,sizeof *v); return -1;
+    release_help(v); return -1;
 }
 int slicks_amiga_help_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,const unsigned char *topic)
 { return help_open_backing(m,archive,topic,0); }
@@ -759,9 +796,7 @@ int slicks_amiga_help_close(struct SlicksAmigaPlayerMenu *m)
 {
     if(!m || !m->help) return -1;
     int result=slicks_help_renderer_close(&m->help->renderer);
-    unsigned char *saved=m->help->renderer.saved.pixels;
-    if(saved && saved!=m->saved) FreeMem(saved,64000);
-    FreeMem(m->help,sizeof *m->help); m->help=0; return result;
+    release_help(m->help); m->help=0; return result;
 }
 static short picker_measure(void *context,const unsigned char *font,const unsigned char *s)
 {

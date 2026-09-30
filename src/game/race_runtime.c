@@ -4211,7 +4211,7 @@ int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
     return 0;
 }
 
-static void prepare_particle_visibility(struct SlicksRaceRuntime *race)
+void slicks_race_rebuild_particle_visibility(struct SlicksRaceRuntime *race)
 {
     _Static_assert(SLICKS_PARTICLE_VISIBILITY_SIZE==SLICKS_SCREEN_WIDTH*SLICKS_POINT_HEIGHT,
                    "particle visibility covers the native point bounds");
@@ -4233,7 +4233,7 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         if (race->cars[car].vehicle >= SLICKS_VEHICLE_COUNT)
             return -1;
     race->chunky = chunky;
-    prepare_particle_visibility(race);
+    slicks_race_rebuild_particle_visibility(race);
     slicks_race_invalidate_retention(race);
     race->car_render_cache.ready=0;
     race->car_display_ready=0;

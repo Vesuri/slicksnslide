@@ -23,7 +23,7 @@ Target sizes from the built 68020 ELF, not host ABI sizes:
 | Two eight-plane display bitmaps | 128,000 | Startup to exit |
 | Race runtime, including maps/assets/render caches | 369,104 | Startup to exit |
 | Common menu owner / track-load staging | 87,958 | Startup-reserved exclusive workspace |
-| Help viewer | 46,096 | Nested modal lifetime |
+| Help viewer | 46,096 | Modal overlay in startup particle cache |
 | List/profile picker | 35,132 | Nested modal lifetime |
 | Intermission dialog | 4,228 | Between races |
 | Track navigation decode staging | 3,018 | Track preparation |
@@ -36,8 +36,8 @@ That is one tested path, not the program's worst-case total RAM requirement;
 it excludes the loader's executable segments and OS-owned memory.
 
 The common menu owner includes a 65,536-byte saved-page/decode buffer and three 6,000-byte
-font arrays. These dominate small menus too. Nested Help can add a separate
-64,000-byte save-under. Never sum all dialog sizes as though all were live
+font arrays. These dominate small menus too. Nested Help's 64,000-byte save-under
+now shares the particle-cache modal overlay. Never sum all dialog sizes as though all were live
 together, but never assume nested dialogs can overwrite their parent.
 
 The race allocation includes a 117,760-byte particle visibility lookup,
@@ -75,8 +75,15 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    workspace. Preparation now shares the inactive primary menu slot only after
    shop destruction, with explicit acquire/release ownership and a compile-time
    capacity check. No five staging allocations remain in `prepare_race`.
-4. **Nested dialogs:** fixed Help, picker, controllers, name/colour, messages,
-   Change Cars and intermission storage. Work out legal nesting before defining
+4. **Nested dialogs:** Help now borrows 110,096 bytes from the startup-owned
+   117,760-byte particle visibility cache. The viewer and 64,000-byte parent
+   snapshot have exclusive modal ownership. Racing is stopped during Help;
+   release reconstructs the cache from unchanged terrain maps before any race
+   update can resume. At initial title startup `race->started` is explicitly
+   zero; no uninitialized terrain is read. Binding capacity is checked at
+   compile time and startup, and no heap fallback exists. Picker, controllers,
+   name/colour, messages, Change Cars and intermission storage still allocate
+   dynamically. Work out legal nesting before defining
    unions; preserve parent save-under, labels and font state across child exit.
 5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536
    bytes and its loader another 65,536. The redundant loader buffer is now

@@ -2150,6 +2150,11 @@ static unsigned char *load_plain_allocated(const char *path,unsigned long limit,
     return bytes;
 }
 
+static void restore_help_particle_cache(void *context)
+{
+    struct SlicksRaceRuntime *race=context;
+    if(race->started) slicks_race_rebuild_particle_visibility(race);
+}
 static int open_track_info(struct SlicksAmigaPlayerMenu *menu,
     const char *path,const unsigned char *name)
 {
@@ -4796,6 +4801,11 @@ int main(void)
     race = (struct SlicksRaceRuntime *)AllocMem(sizeof(*race), MEMF_ANY);
     if (!race)
         goto cleanup;
+    race->started=0;
+    _Static_assert(sizeof(struct SlicksAmigaHelpWorkspace)<=sizeof race->particle_visibility,
+        "Modal Help must fit the startup particle visibility cache");
+    if(slicks_amiga_help_workspace_bind(race->particle_visibility,sizeof race->particle_visibility,
+        restore_help_particle_cache,race)) goto cleanup;
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
     track_count = discover_tracks(&track_names,&track_name_capacity,(unsigned char)!original_setup);
@@ -7455,6 +7465,7 @@ cleanup:
     slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
     g_slicks_options_renderer.surface=0;
     slicks_amiga_menu_workspace_destroy();
+    slicks_amiga_help_workspace_unbind();
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;

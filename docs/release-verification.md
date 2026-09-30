@@ -1,5 +1,33 @@
 # Development release audit
 
+## 2026-09-30 — startup-owned nested Help overlay
+
+Help's viewer and parent snapshot now use an exclusive 110,096-byte overlay
+inside the already allocated 117,760-byte particle visibility cache. No new
+permanent allocation is added and Help no longer makes either of its former
+46,096/64,000-byte allocations. On close, failure or parent destruction, its
+release callback rebuilds the cache if a race has started; title-start Help
+does not read uninitialized terrain. Simulation never runs while modal Help
+owns the overlay. Capacity and ownership are checked; there is no heap fallback.
+
+- `tmp/standalone-release-7q2u2u7o`: the previously failing Workbench-loaded
+  stock-2-MiB shop fixture passes all 12 construction failure cases, Help,
+  purchases/sales, driver switching and race entry. All ten full-screen
+  publications match their chunky images.
+- `tmp/standalone-release-bc8mawbt`: LIVEMENUH passes pause, Help contents/history,
+  close/reopen, resume and normal exit on stock/default-stack configuration.
+  Before/after particle visibility, cars and the restored race image compare
+  byte-for-byte equal. All ten full-screen publications match their chunky
+  images. Workspace ownership conflicts remain zero.
+- `tmp/standalone-release-0d0h8lxk`: the LIVEMENUH allocation audit passes
+  with 140 allocations, zero failed allocations, zero outstanding allocations
+  on exit and zero workspace ownership conflicts.
+- `make verify-particle-draw`: full-byte map rebuilds, 524,288 native visibility
+  cases, 4,096 single and 256+256 ordered/actor-chain drawing cases pass.
+
+Other nested-dialog and persistence allocations remain on B12; this is not a
+claim that all game-owned runtime allocations have been removed.
+
 ## 2026-09-30 — reuse primary save-under during construction
 
 The startup menu reservation grows by 1,536 bytes to 87,958 bytes. Before a

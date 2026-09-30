@@ -35,6 +35,7 @@ commands
     set $status=status_clock.ticks
     dump binary memory .run/pause-help/before.cars &$r->cars (char *)&$r->cars+sizeof($r->cars)
     dump binary memory .run/pause-help/before.race $m->saved $m->saved+64000
+    dump binary memory .run/pause-help/before.visibility &$r->particle_visibility (char *)&$r->particle_visibility+sizeof($r->particle_visibility)
   end
   if $r->frame_count!=$frame || $r->game_clock_ticks!=$clock || status_clock.ticks!=$status
     printf "PAUSE_HELP_ADVANCED_RACE\n"
@@ -97,6 +98,11 @@ commands
   end
   dump binary memory .run/pause-help/after.cars &$r->cars (char *)&$r->cars+sizeof($r->cars)
   dump binary memory .run/pause-help/after.race $m->renderer.ui.pixels $m->renderer.ui.pixels+64000
+  dump binary memory .run/pause-help/after.visibility &$r->particle_visibility (char *)&$r->particle_visibility+sizeof($r->particle_visibility)
+  if g_slicks_menu_workspace_conflicts
+    printf "HELP_WORKSPACE_OWNERSHIP_FAILED\n"
+    quit 1
+  end
   set $closed=1
   continue
 end

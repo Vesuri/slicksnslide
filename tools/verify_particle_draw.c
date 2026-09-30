@@ -14,7 +14,7 @@ static unsigned particle_stride=24;
 static void upload_visibility(uc_engine *u,struct SlicksRaceRuntime *race)
 {
     static unsigned char words[SLICKS_PARTICLE_VISIBILITY_SIZE*2];
-    prepare_particle_visibility(race);
+    slicks_race_rebuild_particle_visibility(race);
     for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at)
         be16(words+at*2,race->particle_visibility[at]);
     ck(uc_mem_write(u,0xa0000,words,sizeof words));
@@ -76,7 +76,7 @@ int main(int argc,char **argv)
             race.surface_map[at]=(unsigned char)key;
             race.particle_visibility[at]=0xbeef;
         }
-        prepare_particle_visibility(&race);
+        slicks_race_rebuild_particle_visibility(&race);
         for(unsigned at=0;at<SLICKS_PARTICLE_VISIBILITY_SIZE;++at) {
             unsigned key=(at+pass*SLICKS_PARTICLE_VISIBILITY_SIZE)&65535;
             if(race.particle_visibility[at]!=((key>>8)*8+(key&7)))
