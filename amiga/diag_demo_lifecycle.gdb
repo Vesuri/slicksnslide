@@ -75,6 +75,15 @@ break slicks_diag_demo_test_done
 commands
   silent
   set $demo_done=$demo_done+1
+  if !$_isvoid($expected_demo_tracks)
+    if demo_expected_playlist_count!=$expected_demo_tracks || g_slicks_track_playlist.count!=$expected_demo_tracks || demo_expected_playlist_capacity<$expected_demo_tracks || demo_expected_playlist_capacity!=g_slicks_track_playlist.capacity
+      printf "LARGE_DEMO_SNAPSHOT_TRUNCATED\n"
+      quit 1
+    end
+    dump binary memory .run/large-demo/expected.bin demo_expected_playlist demo_expected_playlist+demo_expected_playlist_capacity
+    dump binary memory .run/large-demo/actual.bin track_selection track_selection+g_slicks_track_playlist.capacity
+    printf "LARGE_DEMO_SNAPSHOT words=%u count=%u\n",demo_expected_playlist_capacity,demo_expected_playlist_count
+  end
   if display_allocation_test && g_slicks_display_allocation_checks!=10
     printf "DISPLAY_ALLOCATION_CLEANUP_FAILED result=%d\n",g_slicks_display_allocation_checks
     quit 1

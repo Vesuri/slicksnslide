@@ -176,8 +176,10 @@ native caller/input/error checks.
   caller-owned storage. Save-name-buffer allocation failure now passes a native
   warning/retry/cancel/reopen/save/exit gate and exact publications; remaining
   Load allocations and larger native bounds still need verification.
-  Extend demo diagnostics beyond their current first
-  256 selection words before claiming full large-playlist restoration.
+  Demo diagnostics now compare the entire playlist backing, rather than the
+  first 256 words. The 300-track two-cycle, direct-exit and preparation-failure/
+  retry cases restore all 302 backing words exactly; other menu/error/language demo
+  coverage remains in item 3.
   A working-tree Load-caller draft now uses dynamic names/indices, frees names
   after staging, and adopts indices only after successful race preparation.
   Host codec/resolution/storage regressions pass; native Load-entry and

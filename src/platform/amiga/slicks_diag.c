@@ -145,7 +145,8 @@ volatile unsigned long g_slicks_loading_io_bytes,g_slicks_loading_io_hash;
 volatile unsigned char g_slicks_loading_io_checks;
 volatile unsigned char g_slicks_demo_natural_returns;
 const struct SlicksConfiguration *g_slicks_demo_expected_configuration;
-static const short *demo_expected_playlist;
+static short *demo_expected_playlist;
+static unsigned short demo_expected_playlist_capacity;
 static unsigned short demo_expected_playlist_count;
 volatile unsigned char g_slicks_demo_saved_roundtrip;
 volatile unsigned long g_slicks_demo_return_frames[2],g_slicks_demo_return_clocks[2],g_slicks_demo_return_deadlines[2];
@@ -235,6 +236,13 @@ struct SlicksTrackMenu g_slicks_track_state;
 static short initial_track_selection[256];
 static short *track_selection=initial_track_selection;
 struct SlicksTrackPlaylist g_slicks_track_playlist={initial_track_selection,1,256};
+static int demo_playlist_unchanged(void)
+{
+    if(!demo_expected_playlist || demo_expected_playlist_capacity!=g_slicks_track_playlist.capacity)return 0;
+    for(unsigned i=0;i<demo_expected_playlist_capacity;++i)
+        if(track_selection[i]!=demo_expected_playlist[i])return 0;
+    return 1;
+}
 volatile unsigned short g_slicks_track_action;
 void __attribute__((noinline)) slicks_diag_tracks_ready(void) { __asm__ volatile("" ::: "memory"); }
 void __attribute__((noinline)) slicks_diag_tracks_closed(void) { __asm__ volatile("" ::: "memory"); }
@@ -4961,7 +4969,7 @@ int main(void)
                 g_slicks_demo_test_error=14;slicks_diag_demo_test_done();goto cleanup;
             }
             static struct SlicksConfiguration before;
-            static short playlist_before[256];static unsigned short count_before;
+            static unsigned short count_before;
             static unsigned long idle_test_started;
             static unsigned long menu_wait_started;
             static unsigned char save_edit_done;
@@ -5008,8 +5016,15 @@ int main(void)
                 }
                 before=configuration;count_before=g_slicks_track_playlist.count;
                 g_slicks_demo_expected_configuration=&before;
-                for(unsigned i=0;i<256;++i) playlist_before[i]=track_selection[i];
-                demo_expected_playlist=playlist_before;demo_expected_playlist_count=count_before;
+                if(demo_expected_playlist_capacity!=g_slicks_track_playlist.capacity) {
+                    short *snapshot=AllocMem(g_slicks_track_playlist.capacity*sizeof(short),MEMF_ANY);
+                    if(!snapshot)goto cleanup;
+                    if(demo_expected_playlist)FreeMem(demo_expected_playlist,demo_expected_playlist_capacity*sizeof(short));
+                    demo_expected_playlist=snapshot;
+                    demo_expected_playlist_capacity=g_slicks_track_playlist.capacity;
+                }
+                for(unsigned i=0;i<demo_expected_playlist_capacity;++i)demo_expected_playlist[i]=track_selection[i];
+                demo_expected_playlist_count=count_before;
                 static const unsigned char keys[]={0x60,0x51,0xd1,0xe0};
                 unsigned char shifts=0;platform.key_tail=0;
                 for(unsigned i=0;i<sizeof keys;++i)
@@ -5036,8 +5051,7 @@ int main(void)
                 const unsigned char *expected=(const unsigned char *)&before;
                 for(unsigned i=0;i<sizeof before;++i)
                     if(actual[i]!=expected[i]) g_slicks_demo_test_error=2;
-                for(unsigned i=0;i<256;++i)
-                    if(track_selection[i]!=playlist_before[i]) g_slicks_demo_test_error=3;
+                if(!demo_playlist_unchanged())g_slicks_demo_test_error=3;
                 if(title_demo.active || race->demo_flag ||
                    g_slicks_track_playlist.count!=count_before) g_slicks_demo_test_error=4;
                 if(g_slicks_demo_test_error) {slicks_diag_demo_test_done();goto cleanup;}
@@ -5105,8 +5119,7 @@ int main(void)
                 const unsigned char *expected=(const unsigned char *)&before;
                 for(unsigned i=0;i<sizeof before;++i)
                     if(actual[i]!=expected[i]) g_slicks_demo_test_error=2;
-                for(unsigned i=0;i<256;++i)
-                    if(track_selection[i]!=playlist_before[i]) g_slicks_demo_test_error=3;
+                if(!demo_playlist_unchanged())g_slicks_demo_test_error=3;
                 if(title_demo.active || race->demo_flag ||
                    g_slicks_track_playlist.count!=count_before) g_slicks_demo_test_error=4;
                 if(++demo_test_round<2 && !g_slicks_demo_test_error) demo_test_stage=0;
@@ -5228,8 +5241,7 @@ int main(void)
                 else {
                     for(unsigned i=0;i<sizeof configuration;++i)
                         if(actual[i]!=expected[i]) g_slicks_demo_test_error=2;
-                    for(unsigned i=0;i<256;++i)
-                        if(track_selection[i]!=demo_expected_playlist[i]) g_slicks_demo_test_error=3;
+                    if(!demo_playlist_unchanged())g_slicks_demo_test_error=3;
                     if(g_slicks_track_playlist.count!=demo_expected_playlist_count) g_slicks_demo_test_error=4;
                 }
                 slicks_diag_demo_test_done();
@@ -7031,6 +7043,10 @@ cleanup:
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;
     slicks_amiga_track_list_cache_free(&track_list_cache);
+    if(demo_expected_playlist) {
+        FreeMem(demo_expected_playlist,demo_expected_playlist_capacity*sizeof(short));
+        demo_expected_playlist=0;demo_expected_playlist_capacity=0;
+    }
     if(track_names)FreeMem(track_names,track_name_capacity*SLICKS_TRACK_NAME_SIZE);
     if(track_selection!=initial_track_selection) {
         FreeMem(track_selection,g_slicks_track_playlist.capacity*sizeof *track_selection);

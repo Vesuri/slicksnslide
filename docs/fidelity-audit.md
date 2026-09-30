@@ -2754,6 +2754,35 @@ is present in the tested working tree but is not exercised by this Save test.
 No native Load-allocation recovery or original DOS failure-layout fidelity
 is claimed by this defensive native warning check.
 
+### F18 follow-up: full-capacity demo playlist verification
+
+The diagnostic snapshot is now allocated to the actual playlist capacity,
+instead of a static 256-word buffer. Every former fixed-size comparison uses
+the same capacity-checked full-array helper, including unused tail words.
+Snapshot allocation is diagnostic-only and released by final cleanup; normal
+gameplay does not allocate this buffer. Capacity changes fail the check rather
+than permitting an out-of-bounds comparison or silently ignoring entries.
+
+With 300 tracks, the allocated backing has 302 words. `DEMOEXT` passes its
+single-demo direct-exit route in `tmp/standalone-release-zyqb1qf5` (one start,
+two data views). `DEMOERR` passes one failed preparation followed by one
+successful demo in `tmp/standalone-release-zllgeuo8` (one load failure, one
+start, two views). `DEMOF12` separately passes two starts/four data views and
+two normal title returns in `tmp/standalone-release-wwyt0tj_`. All reach system
+restore mask 31; independent dump
+comparison finds all 604 bytes identical. The native checks also require the
+300-track count and full-capacity snapshot. These are distinct from idle,
+natural-completion and every persistence/error-route coverage.
+
+The first attempt `tmp/standalone-release-ctyruf_a` installed two completion
+breakpoints at the same address; only the added capture commands ran, so the
+existing lifecycle counter remained zero. That run is not a passing lifecycle
+gate. The checked-in fixture now selects the large-playlist assertion inside
+the existing single completion breakpoint. Runs are muted, stock
+68020/2 MiB/no Fast/default 4 KiB stack, with owned emulators closed after each
+completed test. Build log: `tmp/large-demo-build.log`. The independent Load
+draft remains in the tested tree and is not exercised by these routes.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
