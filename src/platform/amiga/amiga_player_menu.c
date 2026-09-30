@@ -242,7 +242,16 @@ int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksRe
     const unsigned char *name,unsigned char percent,unsigned char separator,signed char date_order,
     unsigned char *arena)
 {
-    if(!m || !archive || !name || !arena || m->track_info || m->message || m->track_lists) return -1;
+    struct TrackSprite sprites[SLICKS_TRACK_PREVIEW_SPRITES];
+    if(slicks_prepare_track_preview(dat,dat_size,arena,65536,sprites))return -1;
+    return slicks_amiga_track_info_open_prepared(m,archive,track,track_size,name,
+        percent,separator,date_order,sprites);
+}
+int slicks_amiga_track_info_open_prepared(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,
+    const unsigned char *track,unsigned long track_size,const unsigned char *name,
+    unsigned char percent,unsigned char separator,signed char date_order,const struct TrackSprite *sprites)
+{
+    if(!m || !archive || !name || !sprites || m->track_info || m->message || m->track_lists) return -1;
     g_slicks_diag_track_info_stage=0;
     struct SlicksTrackRecords records;
     unsigned char description[64];
@@ -274,7 +283,7 @@ int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksRe
         .text=records_text,.icon=records_icon,.context=m};
     if(slicks_track_info_render(&renderer,&records,name,description,percent,separator,date_order)) goto failed;
     d->phase=5;
-    if(slicks_build_track_preview(ui,dat,dat_size,track,track_size,arena,65536,245,20)) goto failed;
+    if(slicks_draw_track_preview(ui,sprites,track,track_size,245,20)) goto failed;
     for(unsigned y=0;y<40;++y) for(unsigned x=0;x<64;++x)
         d->preview[y*64+x]=ui->pixels[mult320[y+20]+x+245];
     d->phase=6; return 0;

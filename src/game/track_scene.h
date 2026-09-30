@@ -13,6 +13,16 @@
 
 struct SlicksChunkyUi;
 struct SlicksTrackNavigation;
+#define SLICKS_TRACK_PREVIEW_SPRITES 110
+/* Descriptors borrow only decoded arena bytes, never the compressed DAT. */
+struct TrackSprite {
+    const unsigned char *pixels;
+    unsigned short width,height;
+};
+int slicks_prepare_track_preview(const unsigned char *,unsigned long,
+    unsigned char *,unsigned long,struct TrackSprite *);
+int slicks_draw_track_preview(struct SlicksChunkyUi *,const struct TrackSprite *,
+    const unsigned char *,unsigned long,short,short);
 /* Production scenery pass. Material maps/pit routes must subsequently be
  * built from the original /masks resource, never sampled before that pass. */
 int slicks_build_track_visuals(unsigned char *logical,

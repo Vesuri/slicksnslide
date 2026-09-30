@@ -1084,7 +1084,7 @@ shimmer update; it is a recovery test, not the separate long animation gate.
 selection/font, reopen and race assertions and adds full-pixel captures plus
 no-teardown/no-archive-open guards while a warning or preview is active.
 
-**This gate currently fails.** The first failed close is consumed, its warning
+**This gate failed before the staged-preview fix below.** The first failed close is consumed, its warning
 is dismissed, and the second open reaches the constructor with complete
 SLICKS.DAT (41,500 bytes) and 1WAY (2,129 bytes). Both the production records
 and description decoders accept the original track in a separate host check.
@@ -1102,10 +1102,52 @@ The actual close-failure boundary is separately verified by the intermission
 gates. No retry success or complete publication pass is claimed here.
 
 All diagnostic emulators were muted and closed. Build log:
-`tmp/track-info-close-build.log`. The open list retains this concrete memory
-defect; a promising lower-peak design is to decode the DAT images into their
-existing workspace, release the compressed source, then allocate the owner.
-That design still requires implementation and independent pixel/failure checks.
+`tmp/track-info-close-build.log`. This established the need to decode the DAT
+images into their existing workspace, release the compressed source, then
+allocate the owner; the following change implements that design.
+
+## Staged Track Information assets fit the stock memory budget (2026-09-30)
+
+The preview API now separates DAT decoding from drawing. The production
+Track Information caller frees the compressed DAT after decoding, before
+allocating the 67,466-byte save-under owner. Its 110 descriptors borrow only
+the decoded arena; static synchronous staging avoids adding 880 bytes to the
+default 4 KiB stack. Neither descriptors nor the arena are retained by the
+finished dialog. The existing combined preview entry remains available.
+
+TRACKSV now passes on stock PAL 68020/2 MiB Chip/no Fast RAM and default
+4 KiB stack: `tmp/standalone-release-ay9rz_5y`. After the controlled Close
+failure, dismissal and both subsequent opens succeed. Before each owner
+allocation, free memory is 82,520 bytes and the largest block is 79,688,
+versus 42,296/39,464 in the failing build. The measured free-memory gain is
+40,224 bytes (including code/data-size differences, not just the freed DAT).
+All 11 publications decode to the complete 64,000-pixel chunky surface;
+the warning's before/after surfaces are byte-identical. Active-warning and
+active-preview guards reject archive reopen or display teardown.
+
+TRACKSK with `diag_track_info_faults_rectangles.gdb` also passes:
+`tmp/standalone-release-89drbh3u`. All five failure boundaries are reached,
+dismissed and followed by successful open/animate/close/reopen and race entry.
+Each of the five restored surfaces equals its parent byte-for-byte; all 25
+publications match all pixels. The successful visits retain the existing
+256-sample shimmer requirement.
+
+The ordinary TRACKSI open/animate/close/reopen/race gate passes separately
+in `tmp/standalone-release-klod4li0`, with all 15 publications matching every
+pixel. All three native runs confirm the 4 KiB stack; their muted emulators
+were closed by the harness and no test emulator remained afterward.
+
+`verify-track-preview-scene` additionally poisons the compressed staging
+buffer after preparation and before drawing. Both staged and combined APIs
+match the original instruction execution on all 194 supported supplied
+tracks; RAILROAD's invalid selectors remain rejected without drawing.
+The separate preview-pixel, failure and shimmer suites pass, including
+228 scaler comparisons and 1,024 sequential shimmer/RNG comparisons.
+Build/host logs: `tmp/preview-staging-build.log`,
+`tmp/preview-staging-host.log`; the poison-source oracle was rerun afterward.
+
+These are preview lifetime, recovery and display checks, not a full release
+freeze or verification of all menu owners.
 
 ## Tracks malformed-file rejection matrix (2026-09-30)
 

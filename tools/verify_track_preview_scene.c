@@ -55,6 +55,8 @@ static void pixels_boundary(uc_engine *u,uint64_t address,uint32_t size,void *p)
 int main(void)
 {
     static unsigned char runtime[300000],dat[65536],oracle_arena[512000],native_arena[512000];
+    static unsigned char compressed[65536],staged_pixels[64000];
+    static struct TrackSprite staged[SLICKS_TRACK_PREVIEW_SPRITES];
     FILE *f=fopen("disasm/runtime.bin","rb"); REQUIRE(f);
     size_t n=fread(runtime,1,sizeof runtime,f); fclose(f); REQUIRE(n && n<sizeof runtime);
     uc_engine *u; check(uc_open(UC_ARCH_X86,UC_MODE_16,&u)); check(uc_mem_map(u,0,0x100000,UC_PROT_ALL));
@@ -82,17 +84,27 @@ int main(void)
         f=fopen(path,"rb"); REQUIRE(f); length=(unsigned)fread(bytes,1,sizeof bytes,f); fclose(f); REQUIRE(length<sizeof bytes);
         for(unsigned i=0;i<64000;++i) oracle_pixels[i]=native_pixels[i]=(unsigned char)(i*17+i/320);
         struct SlicksChunkyUi ui={native_pixels,0,0,0};
+        memcpy(compressed,dat,dat_size);
+        REQUIRE(!slicks_prepare_track_preview(compressed,dat_size,native_arena,sizeof native_arena,staged));
+        /* Model freeing/reusing the compressed allocation before drawing.
+         * Only the decoded arena may be borrowed across this boundary. */
+        memset(compressed,0xa5,sizeof compressed);
+        memcpy(staged_pixels,native_pixels,sizeof staged_pixels);
+        struct SlicksChunkyUi staged_ui={staged_pixels,0,0,0};
+        int staged_result=slicks_draw_track_preview(&staged_ui,staged,bytes,length,origin_x,origin_y);
         struct SlicksTrackPreview candidate;
         REQUIRE(!slicks_track_preview_open(&candidate,bytes,length));
         unsigned unsupported=0;
         for(unsigned i=0;i<candidate.count;++i)
             if(candidate.objects[5*i+3]<110 && candidate.objects[5*i+4]>3) ++unsupported;
         if(unsupported) {
+            REQUIRE(staged_result==-1 && !memcmp(oracle_pixels,staged_pixels,64000));
             REQUIRE(!strcmp(entry->d_name,"RAILROAD.SS") && unsupported==5);
             REQUIRE(slicks_build_track_preview(&ui,dat,dat_size,bytes,length,native_arena,sizeof native_arena,origin_x,origin_y)==-1);
             REQUIRE(!memcmp(oracle_pixels,native_pixels,64000)); ++rejected; continue;
         }
         run(u,0x1a32d);
+        REQUIRE(!staged_result && !memcmp(oracle_pixels,staged_pixels,64000));
         REQUIRE(!slicks_build_track_preview(&ui,dat,dat_size,bytes,length,native_arena,sizeof native_arena,origin_x,origin_y));
         if(memcmp(oracle_pixels,native_pixels,64000)) {
             for(unsigned i=0;i<64000;++i) if(oracle_pixels[i]!=native_pixels[i]) {

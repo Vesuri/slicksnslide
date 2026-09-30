@@ -50,15 +50,6 @@ Implementation and completed verification evidence are separate in
   (ignored-key and Help-return redundant draws are removed and verified),
   remaining saved-game recovery,
   intermission/results error routes.
-  **Track Information retry exceeds the 2 MiB memory budget.** TRACKSV's
-  controlled preview-Close failure is dismissed correctly, but the following
-  valid 1WAY preview cannot allocate its 67,466-byte owner: 42,296 bytes free,
-  largest block 39,464. Reorder preview asset preparation so the 41,500-byte
-  compressed DAT buffer can be released before allocating the screen snapshot
-  (or establish an equally faithful lower-peak design). Preserve preview pixels,
-  shimmer, save-under restoration and all partial-failure cleanup. The new
-  `diag_track_info_close_rectangles.gdb` is a known-failing gate, not a pass;
-  rerun it plus original preview composition and existing allocation-fault gates.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
   native sparse participation after resolving the policy question. Native

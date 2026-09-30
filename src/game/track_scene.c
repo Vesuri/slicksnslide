@@ -4,15 +4,10 @@
 #include "../graphics/row_offsets.h"
 #include "../ui/track_info.h"
 
-#define SLICKS_SPRITE_COUNT 110
+#define SLICKS_SPRITE_COUNT SLICKS_TRACK_PREVIEW_SPRITES
 #define SLICKS_PLANE_SIZE 0x10000UL
 #define SLICKS_STRIDE 100U
 
-struct TrackSprite {
-    const unsigned char *pixels;
-    unsigned short width;
-    unsigned short height;
-};
 
 static unsigned short read_be16(const unsigned char *source)
 {
@@ -135,12 +130,27 @@ int slicks_build_track_preview(struct SlicksChunkyUi *ui,
     const unsigned char *track,unsigned long track_size,
     unsigned char *arena,unsigned long arena_size,short x,short y)
 {
-    struct SlicksTrackPreview preview;
     struct TrackSprite sprites[SLICKS_SPRITE_COUNT];
     if(!ui || !ui->pixels || !dat || !arena) return -1;
+    struct SlicksTrackPreview preview;
     int result=slicks_track_preview_open(&preview,track,track_size);
     if(result) return result;
-    if(decode_dat_images(dat,dat_size,arena,arena_size,sprites)) return -1;
+    if(slicks_prepare_track_preview(dat,dat_size,arena,arena_size,sprites)) return -1;
+    return slicks_draw_track_preview(ui,sprites,track,track_size,x,y);
+}
+int slicks_prepare_track_preview(const unsigned char *dat,unsigned long dat_size,
+    unsigned char *arena,unsigned long arena_size,struct TrackSprite *sprites)
+{
+    if(!dat || !arena || !sprites)return -1;
+    return decode_dat_images(dat,dat_size,arena,arena_size,sprites);
+}
+int slicks_draw_track_preview(struct SlicksChunkyUi *ui,const struct TrackSprite *sprites,
+    const unsigned char *track,unsigned long track_size,short x,short y)
+{
+    struct SlicksTrackPreview preview;
+    if(!ui || !ui->pixels || !sprites)return -1;
+    int result=slicks_track_preview_open(&preview,track,track_size);
+    if(result)return result;
     /* An invalid rotation would select outside the original four resource
      * banks. Reject it before modifying the menu; never silently mask it. */
     for(unsigned i=0;i<preview.count;++i)

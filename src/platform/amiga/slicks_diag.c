@@ -1922,10 +1922,15 @@ static int open_track_info(struct SlicksAmigaPlayerMenu *menu,
     unsigned char *arena=AllocMem(65536,MEMF_ANY);
     unsigned char *dat=arena?load_plain_allocated("SLICKS.DAT",65536,&ds):0;
     unsigned char *track=dat?load_plain_allocated(path,8192,&ts):0;
+    /* Synchronous menu boundary: keep descriptor staging off the 4K stack.
+     * Decode first, then release compressed input before the large save-under. */
+    static struct TrackSprite sprites[SLICKS_TRACK_PREVIEW_SPRITES];
     int result=-1;
-    if(dat && track && !slicks_resource_archive_cached(&archive,menu_cache)) {
-            result=slicks_amiga_track_info_open(menu,&archive,dat,ds,track,ts,
-                name,slicks_original_players_footer_percent,slicks_original_date_separator,slicks_original_date_order,arena);
+    if(dat && track && !slicks_prepare_track_preview(dat,ds,arena,65536,sprites)) {
+        FreeMem(dat,ds);dat=0;
+        if(!slicks_resource_archive_cached(&archive,menu_cache))
+            result=slicks_amiga_track_info_open_prepared(menu,&archive,track,ts,
+                name,slicks_original_players_footer_percent,slicks_original_date_separator,slicks_original_date_order,sprites);
     }
     if(dat) FreeMem(dat,ds);
     if(track) FreeMem(track,ts);

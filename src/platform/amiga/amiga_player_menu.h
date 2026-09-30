@@ -228,6 +228,10 @@ int slicks_amiga_profile_editor_draw(struct SlicksAmigaPlayerMenu *,struct Slick
 int slicks_amiga_profile_editor_close(struct SlicksAmigaPlayerMenu *,struct SlicksPlayerProfiles *);
 int slicks_amiga_name_dialog_open(struct SlicksAmigaPlayerMenu *,const unsigned char *,unsigned char);
 struct SlicksTrackRecords;
+struct TrackSprite;
+int slicks_amiga_track_info_open_prepared(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,
+    const unsigned char *,unsigned long,const unsigned char *,unsigned char,unsigned char,signed char,
+    const struct TrackSprite *);
 int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *,struct SlicksResourceArchive *,
     const unsigned char *,unsigned long,const unsigned char *,unsigned long,
     const unsigned char *,unsigned char,unsigned char,signed char,
