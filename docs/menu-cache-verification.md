@@ -1006,6 +1006,26 @@ the remaining F10/F11/F12/input/demo callers. No production change was needed.
 
 ## Players picker and Help publication coverage
 
+### Saved Finnish Players Help paging (2026-09-30)
+
+`diag_help_pages_finnish.gdb` runs OPTIONSK with a real saved language-3
+configuration. The shared page fixture now forbids archive reopen and display
+teardown from Help entry through close, requires active takeover at every
+page/close checkpoint, and optionally asserts the selected language resource.
+This checks the Finnish parent-menu route; it does not claim that Help body
+text itself is translated.
+
+Run `tmp/standalone-release-9tpja4x9` passes on stock PAL A1200, 2 MiB
+Chip/no Fast RAM with confirmed default 4 KiB stack. All four Help checkpoints
+select `lang3.txt`; previous/next page and Contents assertions pass, followed
+by normal system restoration 31. All six publications independently match
+all 64,000 chunky pixels, and the complete before/after Help background is
+byte-identical. The earlier `h0p3bo99` run passed without the explicit language
+assertion and is not the final gate. Both muted emulator sessions were closed.
+Other languages, owners and input routes remain separate coverage work.
+
+### Earlier English and picker coverage
+
 Fresh muted native runs with the shared complete bitplane decoder pass:
 
 - `SLICKS_PLAYER_MENU=3`, `diag_profile_picker_rectangles.gdb`: 12

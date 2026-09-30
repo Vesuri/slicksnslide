@@ -1,13 +1,46 @@
 set $ready = 0
 set $closed = 0
+set $help_page_guard = 0
+break open_help
+commands
+  silent
+  if !g_slicks_player_menu || !g_slicks_diag_profile_platform->active
+    quit 1
+  end
+  set $help_page_guard = 1
+  continue
+end
+break slicks_resource_archive_open
+commands
+  silent
+  if $help_page_guard
+    printf "HELP_PAGE_UNEXPECTED_ARCHIVE_OPEN\n"
+    quit 1
+  end
+  continue
+end
+break slicks_amiga_platform_end
+commands
+  silent
+  if $help_page_guard
+    printf "HELP_PAGE_UNEXPECTED_DISPLAY_TEARDOWN\n"
+    quit 1
+  end
+  continue
+end
 break slicks_diag_help_ready
 commands
   silent
   set $v = g_slicks_player_menu->help
-  if !$v || !$v->renderer.active || $v->navigation.done
+  if !$v || !$v->renderer.active || $v->navigation.done || !g_slicks_diag_profile_platform->active
     quit 1
   end
   set $ready = $ready+1
+  if !$_isvoid($expected_help_language) && menu_language_name[4] != 48+$expected_help_language
+    printf "HELP_PAGE_WRONG_LANGUAGE\n"
+    quit 1
+  end
+  printf "HELP_PAGE_LANGUAGE %s\n",menu_language_name
   printf "HELP_PAGE_READY %u chapter=%lu page=%d\n", $ready, $v->navigation.chapter, $v->navigation.page
   if $ready == 1
     set $initial_chapter = $v->navigation.chapter
@@ -31,10 +64,11 @@ end
 break slicks_diag_help_closed
 commands
   silent
-  if g_slicks_player_menu->help
+  if g_slicks_player_menu->help || !g_slicks_diag_profile_platform->active
     quit 1
   end
   set $closed = $closed+1
+  set $help_page_guard = 0
   set $pixels = g_slicks_player_menu->renderer.ui.pixels
   dump binary memory .run/help-pages-v1/after.chunky $pixels $pixels+64000
   continue
