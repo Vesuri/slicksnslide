@@ -1,365 +1,172 @@
 # Open work
 
-Updated 2026-09-30. Actionable open and deferred work only.
-Historical experiments, rejections and verification evidence are in
-[performance-profiling.md](performance-profiling.md).
-Installer/packaging evidence is in [release-verification.md](release-verification.md),
-with usage in [install-original-data.md](install-original-data.md).
+Updated 2026-09-30. Only unfinished work is listed here. An unchecked item
+may require implementation, verification, or both; it is not necessarily a
+known defect. Active work covers menus, presentation, resident asset loading
+and fidelity. Gameplay optimization is paused.
 
-## Active goal
+Completed work and results belong in [menu-cache-verification.md](menu-cache-verification.md),
+[fidelity-audit.md](fidelity-audit.md), [registration-support.md](registration-support.md),
+[performance-profiling.md](performance-profiling.md) and
+[release-verification.md](release-verification.md). Consult these to identify
+uncovered cases, not to repeat completed checks. Working rules are in
+[development-verification.md](development-verification.md).
 
-Work through the actionable menu/presentation, caching and fidelity-audit
-items below. Commit verified pieces and keep historical evidence separate.
-The explicitly paused performance backlog and deferred manual tests remain
-paused/deferred; completing the active list does not meet the 50 FPS target.
+## Decisions needed
 
-## Retained performance goal and measurements
+- [ ] **D1 — Load Game entry:** choose whether to preserve the original's hidden
+  Load entry or expose it as an explicit Amiga adaptation. The supplied executable
+  hides the title row; no other usable entry has been established. This determines
+  the permitted entry and scope of section 4.
+- [ ] **D2 — Sparse shop participation:** choose safe active-player mapping or
+  rejection of setups with inactive slots between active players. Do not reproduce
+  the original's unsafe packed-column indexing.
+- [ ] **D3 — Automatic language:** choose English or the language chooser for the
+  negative saved-language selector. DOS KEYB detection has no agreed Amiga
+  equivalent. Preserve positive saved choices and the zero-selector chooser.
 
-Finish the performance handoff with verified implementation or measured
-rejection of each proposal and resolve its verification debt. Closing
-experiments alone is not completion: faithful general gameplay, including
-particle-heavy frames, must take at most 20 ms / 312 PAL raster lines per
-update on a stock A1200 (68020, 2 MiB Chip RAM, no Fast RAM).
-Preserve behaviour, effects, permanent marks, audio and rendering order.
+## Active work
 
-Latest accepted bounded-actor-scan benchmark, work lines per 603 updates /
-worst: BASIC 142797/348, F1 167671/409, CITY 138919/327, WHACKO 146604/367.
-The phase checks reach F1 413 and WHACKO 384, so the
-worst observed F1 update still needs about a 24% reduction. These are sampled
-maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
+### 1. Original loading screen
 
-## Registration verification
+- [ ] Verify that the custom display remains visibly correct while AmigaOS services
+  disk I/O. Use `amiga/diag_loading_io_visual.gdb` after 50 OS-serviced refreshes.
+  This needs a usable capture or manual observation; unchanged bitmap memory is
+  not proof of correct visible output.
+- [ ] Connect the original loading painter and filename/suffix builder to race
+  and demo preparation. Preserve the track stem, font selection and resource
+  lifetime across startup and subsequent loads.
+- [ ] Keep the loading image visible throughout disk access. Verify failures,
+  retry, cleanup and system restoration. Do not publish chunky storage while
+  it is borrowed as the track-decoding arena.
 
-- The optional external `webf_ord.bmp` order-form image needs a visual check
-  if matching original data becomes available; it is absent from the supplied
-  archive. Do not substitute another image and call this check complete.
+### 2. Menu drawing and disk-free navigation
 
-Implementation and completed verification evidence are separate in
-[registration-support.md](registration-support.md).
+- [ ] Verify uncovered selection, scrolling, nested-dialog, restoration and
+  transition paths for each menu owner. Check actual pixels and producer-reported
+  dirty rectangles: preserve X/Y bounds, merge overlaps, and convert only covered
+  aligned blocks. Fully initialize stale or completely replaced views.
+- [ ] Finish uncovered Help input, page, language and error paths, including
+  remaining shared text-bounds adapters and the six saved-background restore
+  callers. Check exact parent restoration and successful reopen/retry.
+- [ ] Verify remaining allocation lifetimes and warning layouts in saved-game,
+  setup, intermission and results screens.
+- [ ] After D2, verify sparse shop selection and transactions. Ignored keys and
+  rejected transactions must not trigger unnecessary restores or redraws.
+- [ ] Verify that every remaining RAM-only menu path avoids disk access and
+  display teardown. Use [menu-resident-assets.md](menu-resident-assets.md) to
+  distinguish navigation from legitimate track/exit-image/cup loads and saves.
+  Track-list and saved-name caches may refresh at explicit transactions, not
+  through hidden navigation-time rereads.
 
-## Menu loading, presentation and fidelity
+### 3. Title and demo fidelity
 
-The requirements below remain open. Use [menu-cache-verification.md](menu-cache-verification.md)
-and [fidelity-audit.md](fidelity-audit.md) for completed evidence and its exact
-scope; do not repeat a completed matrix merely because another route is open.
-Source inventories and isolated painter tests do not substitute for remaining
-native caller/input/error checks.
+- [ ] **F08 — Animation cadence:** compare remaining registration/language
+  combinations with the original and assess remaining owner-text/state drawing
+  costs. Separate missed-refresh measurements from instrumented timings. Preserve
+  palette/animation semantics; the DOS animation rate is CPU-dependent.
+- [ ] **F03–F05/F10/F12 — Input and transitions:** finish uncovered native
+  shortcut, Help, demo, mode, language, error and applicable mouse-input sequences
+  against the original callers. Do not introduce unsupported menu rows or actions.
+- [ ] Verify remaining font-selection and font-pointer lifetimes through dialogs,
+  transitions, failures and language changes, including indirect original callers.
+- [ ] Finish demo-return, persistence and error-presentation checks. Compare
+  returned title pixels with the prepared startup background (original DS:4c1c).
+  Verify finish rewards independently of skipped track/results branches; preserve
+  shared random-number state and reward ordering.
 
-### 1. Integrate the original loading presentation
+### 4. Saved-game entry, capacity and recovery
 
-- Verify visible scanout during the existing diagnostic `begin_io`/`end_io`
-  handoff before using it for production loading. Unchanged bitmap bytes and a
-  null OS View are insufficient. The pending visual checkpoint is
-  `diag_loading_io_visual.gdb`, after 50 OS-serviced refreshes; capture limitations
-  and the unanswered manual check are recorded in the fidelity evidence.
-- Connect the original loading painter and filename/suffix builder to race/demo
-  preparation, preserving the actual track stem, caller font alias and display
-  lifetime. `verify-loading-pixels` verifies the isolated painter, not integration.
-  Audit alias lifetime after startup and later transitions.
-- Keep the custom image visible while real disk I/O is serviced; drawing it
-  before the existing full platform teardown does not meet this requirement.
-  Verify preparation failures, retry, cleanup and final system restoration.
+- [ ] Resolve D1, then establish and verify the permitted Load entry without
+  inventing title/intermission rows. Keep static reachability assumptions separate
+  from observed runtime behavior.
+- [ ] Replace `CHAMPLOAD`'s obsolete four-Down title-selection sequence with the
+  permitted entry. Until then it is not a release test.
+- [ ] Finish dynamic Load name/index storage and transactional playlist replacement
+  after successful preparation. Validate the working-tree draft natively, including
+  allocation failure, cancellation, rejected saves, preparation failure and retry.
+- [ ] Finish uncovered load/edit, save-recovery and cached-dialog sequences, plus
+  native save/load capacity checks up to the supported 10,000 tracks. Preserve
+  genuine intermission Save entry, repeated editing, file safety and retained-display
+  returns.
+- [ ] If D1 permits a synchronous Load dialog, verify that cancellation after a
+  long picker/notice visit restarts the full title idle-demo interval.
 
-### 2. Finish menu publication and resident-navigation coverage
+### 5. Localization
 
-- For every menu owner and remaining input/failure route, verify producer dirty
-  bounds and native pixels for selection, scrolling, nested dialogs, restoration
-  and transitions. Preserve both X and Y bounds, merge overlaps, and C2P only
-  covered aligned blocks. Retain full initialization when the destination view
-  is stale or the whole screen is replaced.
-- Complete remaining Help owners/page/language/error routes and owner-specific
-  navigation outside the documented matrices. Check remaining callers of the
-  shared glyph-bound text adapters and all six lifetime-tracked restore callers;
-  the source inventories themselves are complete.
-  Options/Players/Tracks now cover separate nested-Help background-allocation
-  failure as well as missing data and viewer allocation, including exact parent
-  restoration and successful retry; other owners remain separate coverage.
-  Shop Help's lost-character caller is corrected and native Enter/Space plus
-  Backspace/b history is covered. A malformed-chapter navigation failure now
-  restores the shop, warns and permits a verified reopen/race retry. Viewer and
-  background allocation failures also have exact-restoration/reopen gates with
-  no archive reopen or display teardown. Remaining page/language/error sequences
-  still need their own evidence. The Finnish-configured shop now also covers
-  Contents → General Instructions, both bracket/keypad page aliases, Tab and
-  Shift+K, full shop restoration and race entry with exact native publications;
-  this does not claim a translated Help body or all languages/chapters.
-  Registration Help's confirmed stuck-modifier caller defect (F19) is fixed:
-  a native before/after test covers Shift release, lowercase history, exact
-  publications, parent restoration and normal exit. Other registration input
-  routes remain separate from that check. Its separate saved-background
-  allocation failure now also passes bounded warning publication, exact
-  parent restoration, resident ownership and normal-exit checks with keyless
-  data; do not repeat it as an unverified allocation branch.
-  Pause Help now ignores modifier-only events after updating key state; its
-  Shift-release/lowercase-history/reopen/resume route passes exact publication,
-  parent/race restoration and resident-ownership checks. Other input routes
-  and languages remain separate coverage.
-- Complete unverified allocation lifetimes and warning layouts in saved-game,
-  setup, intermission and other results owners. Records read/view preparation,
-  repeated view retries and its writer-buffer allocation already have separate
-  completed matrices. Do not infer other owners from those checks.
-- Verify sparse shop participation after decision D2 below. Preserve all ordinary
-  selection/transaction semantics; do not reintroduce blanket background restores
-  or redraws for ignored keys and rejected transactions.
-- Extend no-I/O/no-display-teardown assertions across every RAM-only owner, and
-  fix any offending routes found. The explicit platform-end call-site inventory
-  is complete after the Clear Records fix; remaining work here is native route
-  coverage, not repeating that source inventory. Use the startup-resident inventory
-  (the GO/next-track/retry-to-shop timing classification is corrected in the
-  later evidence; these resident transitions now have native gates)
-  in [menu-resident-assets.md](menu-resident-assets.md). Keep actual track/exit
-  image loads, cup loads and saves as explicit disk boundaries.
-- Verify cached Load-owner transitions and recovery after D1 is resolved.
-  SLICKS.TRK and saved-name snapshots refresh only at explicit transactions;
-  external repairs require restart, not hidden navigation-time rereads.
+- [ ] **F15 — Automatic selection:** implement and verify the D3 policy without
+  guessing a host-locale mapping for DOS KEYB.
+- [ ] Audit uncovered localized-label callers and native input, error and resource
+  lifetimes. Isolated all-language painter comparisons do not establish live
+  caller behavior.
+- [ ] Finish remaining real console-handler error and cleanup checks for the startup
+  chooser. Preserve original labels, clamped navigation, acceptance, save/restart
+  persistence and rejection when interactive input is unavailable.
 
-### 3. Finish title and demo fidelity checks
+### 6. Remaining whole-port fidelity audit
 
-- F08: compare remaining title animation cadence with the original, whose rate
-  is CPU-dependent. Do not invent a universal DOS rate. Measure title-pulse cost
-  and missed refreshes, and cover remaining registration/language combinations
-  outside the complete-cycle evidence. This is menu work, not permission to
-  resume paused gameplay optimization.
-  The current Finnish normal/Arcade registered/unregistered cadence refresh
-  and phase attribution are recorded in the fidelity evidence. Glyph destination
-  reuse improves the current registered Finnish normal cycle to 72 refreshes
-  for 64 intervals. Exact Arcade palette-result reuse reduces its steady
-  registered Finnish interval to 22.54 ms, still missing refreshes; its
-  initial redraw is measured separately. Remaining colour/state and owner
-  drawing work need reuse assessment. The refreshed Arcade subphase profile
-  attributes about 180 lines to each changed owner-name draw, plus roughly
-  17 state / 18 label-setup lines per pulse. Startup-resolved language-label
-  pointers were screened and removed: parent and candidate both took 81
-  refreshes with the identical interval histogram. Do not repeat that candidate
-  unchanged. Immutable small-font offset reuse now passes cached/uncached glyph
-  oracles and both native title-cycle pixel comparisons; repeated registered
-  Finnish Arcade timing improves only from 81 to 80 refreshes per 64 intervals.
-  Remaining owner drawing and state work still need assessment. Keep
-  instrumentation overhead distinct from normal cadence and preserve original
-  palette/state semantics; the current result does not close F08.
-- F03–F05/F10/F12: finish remaining native interactive sequences and shortcuts
-  against original callers, including remaining Help/demo/input routes and
-  applicable mouse behavior. GO across all saved modes and F9 from every
-  visible row in all six modes have completed native matrices; do not repeat
-  those as remaining row coverage.
-  The F2/F1 Help sequence also passes every visible row in unregistered
-  Finnish modes 0 and 5, with exact parent restoration and resident publication;
-  other mode/language/error routes remain separate coverage.
-  Do not add an F2 title action or revive removed native-only menu rows.
-  Native-only left-button title activation and global right-button program
-  exit have been removed; do not reintroduce either as original behavior.
-- Finish remaining caller/font-alias lifetime checks for other dialogs,
-  transitions, failure and language routes. Ordinary Options/Players/Tracks
-  and Arcade Settings nested-Help title returns are covered in the evidence.
-  Encoded font-loader references alone do not prove computed/indirect original
-  paths; keep that limitation explicit.
-- Extend demo return/persistence/error presentation coverage where it remains
-  unverified. Construct reference title pixels from DS:4c1c's actual producer:
-  the prepared startup background, not a snapshot taken immediately before a demo.
-- Preserve finish-event rewards separately from later skipped track/results
-  branches; never rewind the shared RNG. Existing demo entry/views/returns do not
-  establish every persistence/error route.
-- Once D1 provides a valid synchronous Load dialog route, verify that a long
-  picker/notice visit followed by cancellation restarts the full idle interval.
+- [ ] Turn broad coverage gaps into an explicit list of unverified production
+  routes and acceptance tests using [fidelity-audit.md](fidelity-audit.md).
+  Include actual callers, parameters and overrides, not only isolated helpers.
+  Link overlaps to sections 1–5 instead of creating duplicate work.
+- [ ] Investigate each remaining route against the DOS original. Classify findings
+  as defects, unverified requirements or authorized adaptations; fix confirmed
+  differences and verify the real call path. Do not claim whole-game fidelity
+  until that coverage is established.
 
-### 4. Finish saved-game entry and recovery verification
+### 7. Final release validation and package
 
-- Resolve D1 before changing Load Game reachability. Recheck remaining load/edit,
-  rejection and recovery routes without inventing visible title/intermission rows.
-- Replace `CHAMPLOAD`'s obsolete four-Down title selection only after a valid
-  entry exists; it is not a usable release gate in its present form.
-- Extend native saved-game recovery/load coverage and the cached-owner checks
-  in item 2. Preserve genuine intermission Save entry, cancellation/repeated
-  editing, transactional file safety and retained-display returns.
-- Keep static reachability evidence distinct from unproven computed targets or
-  runtime patches; a reference scan alone does not establish another Load entry.
+- [ ] After production fixes settle, validate the stripped executable on a stock
+  PAL A1200: 68020, 2 MiB Chip RAM, no Fast RAM, default 4 KiB stack. Cover startup,
+  menus/Help/returns, race entry, championship save/exit, demos, affected failure
+  recovery and normal system restoration.
+- [ ] Run F1, CITY and WHACKO full-frame display audits on the release candidate,
+  plus retention checks for any drawing-order or saved-pixel changes.
+- [ ] Validate Installer, Keep/WHDLoad, Reinstall, installed Play and package
+  contents. Check WHDLoad startup, idle demo, racing with and without PRELOAD,
+  and normal exit at its documented memory configuration. A stock-2-MiB WHDLoad
+  claim requires testing that configuration.
+- [ ] Rebuild the installer archive after applicable release checks pass, following
+  [release-verification.md](release-verification.md) and
+  [install-original-data.md](install-original-data.md). Exclude private keys,
+  original executable/data and captures.
 
-### 5. Finish localization boundaries and callers
+## Paused: gameplay performance
 
-- F15: resolve D3 and implement the negative-selector automatic default policy.
-  Do not guess a host-locale mapping for DOS KEYB.
-- Audit remaining label callers and native owner/language/input/error lifetimes.
-  Positive saved selections, all-language painter comparisons and the direct
-  language-wrapper inventory do not establish every live caller.
-- Preserve the zero-selector chooser's original labels, clamped navigation and
-  acceptance behavior, save/restart persistence and non-interactive rejection.
-  Keep controlled API-fault checks distinct from actual console-handler recovery;
-  finish any remaining real error/cleanup routes not covered by the evidence.
+Do not resume without the user's instruction. The target remains at most
+20 ms / 312 PAL raster lines per update, including particle-heavy gameplay,
+on a stock A1200 with no Fast RAM. Preserve behavior, effects, permanent marks,
+audio and drawing order; averages or easy frames do not satisfy the target.
 
-### 6. Complete the whole-port fidelity audit
+- [ ] **Particle pipeline:** reduce repeated scans and Chip-RAM traffic across
+  restoration, ordering, advancement and drawing. For unmoved-particle retention,
+  prove bookkeeping costs less than the work saved. Preserve underlays, permanent
+  marks, slot reuse and ordering. See [point-retention-design.md](point-retention-design.md).
+- [ ] **F1 track sprites:** reduce conflict processing, validation, group rebuilding
+  and late restoration. Prove removed checks redundant; preserve atomic group
+  retention, reverse restoration, initial saved-actor fallback and overflow rules.
+- [ ] **Register-oriented 68020 simulation blocks:** profile and select larger car
+  preparation/finishing, checkpoint, layer and clock blocks. Reduce stacked arguments,
+  saves and repeated memory access across helper boundaries. Preserve signed/wrapping
+  arithmetic, all-car-motion-before-tails order, callback invalidation,
+  emission/progress/collision/effects ordering and final contact latches. Extend
+  shadow checks to flag/Arcade/finish effects, lap-limit queries and reward callbacks.
+- [ ] **C2P/publication (secondary):** pursue only designs that reduce total memory
+  or instruction cost, counting platform publications and initial rectangles.
+  Verify coverage and exact pixels.
+- [ ] **Completion proof:** benchmark BASIC, F1, CITY and WHACKO, including heavy
+  particles, HUD-clock phases and known transitions (F1 481/551/613; WHACKO 685/688).
+  Refresh profiles after substantial changes. Keep optimizing until measured worst
+  updates meet the target with fidelity intact. Consult historical rejection
+  evidence before proposing experiments.
 
-- F18: dynamic catalogue/selection storage now passes 300-track startup,
-  race entry and Help restoration. Initial/growing name-buffer and selection
-  allocation failures pass native no-partial-startup/owned-buffer cleanup gates.
-  Directory-object allocation failure also passes without fallback or takeover;
-  the 10,000-track upper-bound race-entry gate now also passes after sharing
-  decoding scratch with the enlarged chunky allocation. Late preparation
-  failure/retry and F1/CITY/WHACKO full-frame audits pass. Evidence, memory
-  lifetimes and superseded allocation failures are in `menu-cache-verification.md`;
-  catalogue startup memory is no longer an open implementation item.
-  The native
-  intermission Save path now saves all 300 selected tracks
-  with dynamic backing and passes cancel/reopen/save/exit on the default stack;
-  codec/export capacity tests also reach 10,000 on the host. Finish the Load
-  caller's remaining 256-track backing and capacity, including transactional
-  playlist replacement after preparation. Resume indices already use explicit
-  caller-owned storage. Save-name-buffer allocation failure now passes a native
-  warning/retry/cancel/reopen/save/exit gate and exact publications; remaining
-  Load allocations and larger native bounds still need verification.
-  Demo diagnostics now compare the entire playlist backing, rather than the
-  first 256 words. The 300-track two-cycle, direct-exit and preparation-failure/
-  retry cases restore all 302 backing words exactly; other menu/error/language demo
-  coverage remains in item 3.
-  A working-tree Load-caller draft now uses dynamic names/indices, frees names
-  after staging, and adopts indices only after successful race preparation.
-  Host codec/resolution/storage regressions pass; native Load-entry and
-  allocation/preparation-failure validation remain unproven pending D1.
-  Do not treat the draft or its successful build as completion of this gate.
-  Missing/empty TRACKS now falls back to the current directory like DOS;
-  if both contain no tracks, startup rejects without fabricating BASIC.SS or
-  taking over the display. Native fallback/precedence/empty cases pass.
-  The stem-versus-extension
-  sorting defect is fixed: original comparisons cover case, punctuation,
-  prefixes, duplicates and eight-byte stems; native startup covers eight
-  distinct boundary filenames.
-- Review every remaining subsystem in the coverage matrix/discrepancy ledger in
-  [fidelity-audit.md](fidelity-audit.md), including production callers, parameters
-  and overrides, not only isolated translated helpers.
-- Classify each finding as a confirmed defect, an unverified requirement or a
-  user-authorized adaptation. Fix confirmed differences against the original DOS
-  execution and verify the real call path.
-- Keep feature completeness unclaimed until remaining coverage is established.
-  Completed narrow fixtures must not be used as whole-menu or whole-port proof.
+## Blocked or deferred
 
-### 7. Refresh final release gates and package
-
-- After production fixes settle, rerun the current stripped executable on a stock
-  A1200 with 2 MiB Chip/no Fast and the default 4 KiB stack: startup, native menu/
-  Help and return paths, race entry, championship save/exit, demo lifecycle,
-  affected recovery/lifetime gates and normal system restoration.
-- Refresh F1/CITY/WHACKO full-frame display audits on the release candidate.
-  Apply the verification rules below for any rendering/order changes.
-- Rerun Installer, Keep/WHDLoad, Reinstall, package-content audit and installed
-  Play startup. Verify WHDLoad startup/idle demo, racing with and without PRELOAD,
-  and normal exit at its documented configuration; the prior WHDLoad evidence
-  used 4 MiB Fast RAM and is not a stock-2-MiB claim.
-- Use [release-verification.md](release-verification.md) for the full workflow
-  and [install-original-data.md](install-original-data.md) for installation.
-  Repack the installer only after the final applicable gates pass. Historical
-  runs and the existing dist archive are not a current release freeze.
-- Keep private keys and original executable/data/captures out of the repository
-  and installer package.
-
-## Decisions awaiting the user
-
-- **D1 — Load Game entry:** the supplied original hides the title row and the
-  current reachability audit has found no other usable entry. Choose preserving
-  that original limitation or exposing Load as an explicit Amiga adaptation.
-  Implementation and load/rejection/idle-return tests depend on this.
-- **D2 — Sparse shop participation:** original execution can select an invalid
-  packed column and return an uninitialized driver byte. Choose retaining the
-  safe active-player mapping or rejecting sparse setups. Do not reproduce
-  unsafe indexing. Native sparse-participation coverage follows the decision.
-- **D3 — Automatic language:** choose an Amiga policy for the original negative
-  selector/DOS KEYB boundary (English default versus the explicit chooser).
-  Positive saved selections and zero-selector behavior must remain intact.
-
-## Remaining performance work
-
-Optimization is stopped at the user's request. No experiment is active;
-the production build is restored to the latest accepted implementation.
-The remaining items below are a backlog, not work currently being executed.
-The 50 FPS target remains unmet.
-
-1. **Particle pipeline and memory traffic.** Examine substantial native
-   blocks spanning restoration, ordering, advancement and drawing. Reduce
-   repeated scans and Chip-RAM accesses; keep pointers/intermediates in
-   registers across boundaries. For unmoved-particle retention, establish
-   a bookkeeping cost below the saved restore/redraw work before integration.
-   Preserve underlays, permanent-mark baking, slot reuse and exact ordering.
-   Design constraints and screens are in
-   [point-retention-design.md](point-retention-design.md).
-   Do not repeat the measured slow C retention policies or compact-pool
-   integration unchanged.
-   A new design must reduce per-point work or whole traversals, not merely
-   combine existing restore dispatchers. Use mixed-chain oracle cases and
-   RETCHECK before accepting target performance results. The isolated mixed
-   restoration entry is available, but is not linked into production;
-   its rejected integration must not be repeated unchanged.
-
-2. **F1 sprite overhead.** Reduce conflict processing, repeated validation,
-   group rebuilding and late restoration. Inspect complete hot paths, not
-   just argument setup. Preserve atomic group retention, reverse restoration
-   order, initial saved-actor fallback and sprite/overflow boundaries.
-   Prove any removed check redundant. Whole-list reuse is not a justified
-   worst-frame fix; incremental maintenance needs writer coverage and a
-   break-even measurement.
-
-3. **Coherent register-resident 68020 simulation blocks.** Use refreshed
-   profiles to select remaining car preparation, per-car tails, checkpoint,
-   layer and clock work. Avoid stacked arguments, repeated saves/restores,
-   large-offset loads and redundant byte accesses across helper boundaries.
-   Preserve all-car-motion-before-tails order and callback invalidation.
-   Reuse coordinates only with exact signed/wrapping semantics.
-   Surface-table/cache/fusion experiments are closed; do not spend further
-   iterations on that narrow family. Previous isolated assembly or C
-   experiments do not settle the value of a larger register-oriented design.
-   Before another rewrite, quantify the selected block's cost and expected
-   savings, and explain the regressions recorded in the profiling document.
-   Do not repeat the rejected standalone or wider finishing integrations
-   unchanged. The tested isolated `src/game/car_progress.s` register entry
-   remains available but is not linked into gameplay. Keep emission,
-   progress, collision, surface/damage/effects and final contact-latch order.
-   Integration still needs real flag/Arcade/finish side-effect comparisons,
-   stateful lap-limit query order and external reward callback handling in
-   the shadow harness. Screen performance before those expensive runs.
-
-4. **C2P/publication, secondary priority.** Only pursue a new design with
-   evidence of reduced total memory/instruction cost. The eight-pixel/hybrid
-   integration and area-aware merge variants must not be repeated unchanged.
-   Include platform publications and initial rectangles in area measurements.
-   Use the independent coverage oracles and exact pixel comparisons.
-
-5. **End-to-end completion proof.** Benchmark accepted changes on BASIC, F1,
-   CITY and WHACKO, including particle-heavy updates and HUD-clock phases.
-   Keep known transition regressions (especially F1 481/551/613 and WHACKO
-   685/688) in scope. Refresh CPU profiles after substantial changes; sparse
-   samples at a single update cannot establish precise cost percentages.
-   Continue optimization until measured worst updates meet 312 lines with
-   fidelity intact; do not redefine the target around means or easy cases.
-
-## Verification and working rules
-
-- Fail-fast order: build/quick correctness smoke tests, parent performance
-  comparison, then expensive correctness/rendering validation only for
-  promising candidates, followed by final timing confirmation. Do not pay
-  for full validation of a candidate already rejected by performance.
-- Current profiling baseline is
-  `tmp/pcprof-post-bound-{f1,whacko}-20260928`, captured from 7eeeb1f
-  with exact companion ELFs and zero missed samples.
-  The profiling document records all earlier measurements and rejected work.
-- Compare `amiga/bench_tracks.sh` against an exact parent-build control;
-  FINAL_STATE must match. Use uninterrupted timing, not debugger-stopped runs.
-  Include HUD phases when timing variation could obscure a regression.
-- Native routines require independent Unicorn/host oracles. Simulation
-  changes also require `amiga/shadow_check.sh` at the relevant sites.
-  All-site mask is 0x3fe; surface tail is site 9 / SHADOW_SITES=512.
-- Rendering changes require F1/CITY/WHACKO display audits:
-  `SLICKS_LIVE_STATS=0 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 ./debug.sh "" diag_dirty_sprites.gdb`.
-  Drawing-order/retention changes additionally require RETCHECK and
-  `diag_retention_check.gdb`, with the independent geometry/legacy path.
-- Expensive diagnostics remain opt-in; time all normal-game work.
-  Force relevant object rebuilds when changing SHADOW/RETCHECK flags.
-- Never rebuild an ELF in use by an emulator. Debug runs are muted; keep
-  run.sh audible. Close every emulator session started for this work.
-- Commit each verified piece as Vesa Halttunen <vesuri@jormas.com>, with
-  hooks/signing disabled and no co-author trailer. Push only when asked.
-  Never commit original executables, dumps, traces, screenshots or other
-  byte-derived game material.
-
-## Deferred
-
-- Manual joystick press/steer/release verification: deferred by the user.
-  Do not restart without agreement.
-- General-purpose translator expansion: exhaustive entry-point coverage,
-  semantic IR/backend completion and unexercised DOS/runtime paths.
+- [ ] **Registration order-form image:** visually verify optional external
+  `webf_ord.bmp` if matching original data becomes available. It is absent from
+  the supplied archive; a substitute does not satisfy this check.
+- [ ] **Manual joystick test:** verify press/steer/release only when the user agrees
+  to resume this deferred test.
+- [ ] **General-purpose translator expansion:** exhaustive entry-point coverage,
+  semantic IR/backend completion and unexercised DOS/runtime paths. Deferred
+  separately from the game's active menu/fidelity work.
