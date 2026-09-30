@@ -837,6 +837,60 @@ full-screen conversion, but is broader than an unchanged/pulse-only update
 needs. Any selective replacement must retain font/alias state, refresh-counter
 semantics, player-count colours, translated labels and registered-owner order.
 
+### Selective Arcade pulse painting (2026-09-30)
+
+The Arcade painter now accepts an explicit pulse-only mode and a 15-byte
+cache of the seven text commands' foreground/shadow indices. The original
+draw orchestration still advances the counter, resolves palette colours,
+changes font colours/aliases and consumes refresh state on every call.
+Once refresh reaches zero, steady pulses omit unchanged background/rectangle
+painting and text whose ink is unchanged. Full input/owner redraws bypass
+suppression and rebuild the cache. The caller only enables pulse mode at the
+idle title-loop call, not selection, player-count, Options-return or other
+complete redraws. The cache assumes unchanged text/font/palette/geometry
+between those full redraws; it is not a generic scene cache.
+
+The native text callback now reports actual glyph bounds, including alignment,
+tabs/newlines and the horizontal shadow, rather than depending on the old
+background crop to cover all text writes. No framebuffer comparison,
+screen-sized cache or row bitmap controls publication. Registered-owner
+painting/order remains unchanged by this piece.
+
+The original-pixel oracle now runs three successive updates for each existing
+language/alias/row/player-count/counter-edge case, comparing the entire screen
+and every byte of all three fonts after each update. All 3,888 comparisons
+pass. The native-bridge test fixture also defines the unrelated colour-only
+bridge symbol needed to rebuild its isolated font entry; that entry still
+executes real native font code. Logs: `tmp/arcade-selective-host.log`,
+`tmp/arcade-selective-build.log`.
+
+English unregistered full-cycle runs pass all 65 original-wrapper frames each:
+
+| Row | Native run under `tmp/standalone-release-` | Display publications, baseline → selective |
+| --- | --- | --- |
+| 0 | `xq79vgtt` | 74 → 23 |
+| 1 | `xdr7l6_c` | 76 → 23 |
+
+These are publication counts, not frame-time measurements. Both retain two
+startup full-screen publications, no subsequent full-screen pulse conversion,
+zero display errors and final restoration 31.
+
+Registered Finnish row 1 also passes all 65 original-wrapper compositions in
+`tmp/standalone-release-4qlsjqgk` (`registered=65`), including the actual owner
+name and its ordering. It has 75 publications because owner painting remains
+unconditional; this result is not a claim that registered pulses avoid all
+redundant publication. The private key/name captures remain ignored local
+test data. The capture's entry message is now named `TITLE_PULSE_PAINTER_ENTRY`:
+calling the wrapper no longer necessarily means a complete body redraw.
+
+Finnish REGCHECKB transition run `tmp/standalone-release-kvx9uw04` passes
+all four Arcade player-count states, one Options round trip and the expected
+two-human/two-computer race handoff. Its 39 title display checks have zero
+errors, its child-menu publication matches all pixels, and exit restores 31.
+This verifies full redraws replace cached pulse state at those transitions.
+All four native candidate runs use stock PAL A1200, 2 MiB Chip/no Fast RAM,
+confirmed 4 KiB stack and muted audio; their owned emulators are closed.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused

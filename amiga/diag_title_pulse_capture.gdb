@@ -9,7 +9,7 @@ commands
   silent
   set $return_selection=selection
   if g_slicks_diag_ready && selection==g_slicks_diag_title_pulse_row
-    printf "TITLE_PULSE_COMPLETE_REDRAW row=%u\n",selection
+    printf "TITLE_PULSE_PAINTER_ENTRY row=%u\n",selection
   end
   continue
 end

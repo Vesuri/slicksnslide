@@ -12,6 +12,7 @@ sui_title_menu:
 sgfx_title_pages:
 sgfx_title_crop:
 sui_title_step:
+sui_title_colours:
 sui_title_tail:
 sui_title_dispatch:
 sgfx_mode_setup:

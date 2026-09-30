@@ -76,18 +76,22 @@ int main(void)
         word(u,0x3cbf0+0x6bd4,0x2000*alias);word(u,0x3cbf0+0x6bd6,0x6000);
         word(u,0x3cbf0+0xf1a,players);word(u,0x3cbf0+0xfa,120);word(u,0x3cbf0+0x102,3);
         unsigned char counter=edges[tick],refresh=tick&1?0:2;
+        struct SlicksArcadePulseCache cache={0};
+        for(unsigned pass=0;pass<3;++pass) {
         check(uc_mem_write(u,0x3cbf0+0x6b4e,&counter,1));check(uc_mem_write(u,0x3cbf0+0x1146,&refresh,1));
         uint16_t cs=0x266c,ds=0x3cbf,ss=0x8000,sp=0xf000;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
         word(u,0x8f000,0);word(u,0x8f002,0x9000);word(u,0x8f004,row);
         check(uc_emu_start(u,0x29afa,0x90000,0,2000000));
         struct SlicksArcadeTitlePainter painter={.logical=logical,.fonts={fonts[0],fonts[1],fonts[2],fonts[alias]},.background=background,.palette=palette,
-            .players=players_label,.settings=settings_label,.summary=summary,.seconds=120,.tracks=3,.text=planar_text,.context=&native};
+            .players=players_label,.settings=settings_label,.summary=summary,.seconds=120,.tracks=3,.text=planar_text,.context=&native,
+            .cache=&cache,.pulse=(unsigned char)(pass!=0)};
         if(slicks_arcade_title_paint(&painter,&counter,&refresh,row,players,(const signed char (*)[6])(runtime+0x3cbf0-0x10100+0x433)))abort();
         for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)if(v.pixels[y*320+x]!=logical[(x&3)*65536+y*100+(x>>2)]){
             fprintf(stderr,"Arcade pixel mismatch language=%u alias=%u row=%u players=%u tick=%u at %u,%u DOS=%u native=%u\n",language,alias,row,players,edges[tick],x,y,v.pixels[y*320+x],logical[(x&3)*65536+y*100+(x>>2)]);return 1;}
         for(unsigned i=0;i<3;++i){unsigned char actual[8192];check(uc_mem_read(u,0x60000+0x2000*i,actual,native.sizes[i]));if(memcmp(actual,fonts[i],native.sizes[i])){fprintf(stderr,"Arcade font state mismatch alias=%u font=%u\n",alias,i);return 1;}}
         ++cases;
+        }
     }
     }
     uc_close(u);uc_close(native.cpu);printf("Original Arcade title pixels: %u full-screen and complete-font comparisons pass\n",cases);return 0;

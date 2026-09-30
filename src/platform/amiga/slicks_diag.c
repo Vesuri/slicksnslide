@@ -931,7 +931,15 @@ static void arcade_dirty(void *p,short l,short t,short r,short b)
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 static void arcade_text(void *p,unsigned char *logical,const unsigned char *font,
     const unsigned char *text,short x,short y,unsigned short flags,unsigned short shadow)
-{(void)p;slicks_title_font_text(logical,font,text,x,y,flags,shadow);__asm volatile("" ::: "memory");}
+{
+    (void)p;slicks_title_font_text(logical,font,text,x,y,flags,shadow);
+    struct SlicksChunkyUi bounds={0,0,arcade_dirty,0};
+    slicks_font_text_dirty(&bounds,font,text,x,y,1,(unsigned char)flags,
+        slicks_menu_measure(font,text),0);
+    __asm volatile("" ::: "memory");
+}
+static struct SlicksArcadePulseCache title_arcade_cache;
+static unsigned char title_arcade_pulse;
 static void redraw_title_configuration(
     struct SlicksAmigaPlatform *platform, unsigned char *logical,
     unsigned char *chunky, const unsigned char *palette,
@@ -955,7 +963,8 @@ static void redraw_title_configuration(
             .settings=slicks_language_lookup(title_language,title_language_used,(const unsigned char *)"settings",(const unsigned char *)"SETTINGS"),
             .summary=slicks_language_lookup(title_language,title_language_used,(const unsigned char *)"arcade.settingstext",(const unsigned char *)"%d SECS\n%d TRACKS"),
             .seconds=title_configuration->options[13],.tracks=title_configuration->options[14],
-            .text=arcade_text,.dirty=arcade_dirty};
+            .text=arcade_text,.dirty=arcade_dirty,
+            .cache=&title_arcade_cache,.pulse=title_arcade_pulse};
         if(slicks_arcade_title_paint(&painter,&slicks_title_counter,&title_arcade_refresh,(unsigned char)selection,
             setup_resources.override_count,(const signed char (*)[6])slicks_original_fallback_colours)) g_slicks_diag_force_exit=1;
         slicks_title_third_color=painter.shadow;
@@ -6261,8 +6270,10 @@ int main(void)
                 pulse_normal_title(&platform,logical,chunky,source_palette,menu_selection);
             } else {
                 slicks_tick_title_registration(logical,registration.name,source_palette);
+                title_arcade_pulse=1;
                 redraw_title_configuration(&platform,logical,chunky,source_palette,
                     menu_selection,selected_vehicle,track_path,0);
+                title_arcade_pulse=0;
             }
         }
         if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_lists) {
