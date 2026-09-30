@@ -46,7 +46,8 @@ drawer holds the user's key, profiles and championships, and the existing
 Reinstall/Use existing data prompt already covers updates. The installer now
 creates only the standard Slicks WHDLoad icon; standalone uses Execute Play.
 
-Version: 0.1 (30.09.2026), chosen by the user, in all `$VER` strings.
+Final release version: **0.90 (30.09.2026)**, requested by the user. The current
+validation candidate still says 0.1; apply the final version after D-3 passes.
 
 ## D. Release gate (run once, after B and C)
 
@@ -64,8 +65,13 @@ Version: 0.1 (30.09.2026), chosen by the user, in all `$VER` strings.
   6. quit to Workbench;
   7. repeat steps 2–4 and 6 from the WHDLoad icon, with and without PRELOAD, at
      the memory configuration `docs/whdload.md` documents.
-- [ ] **D-4.** Build the archive, record the hashes in
-  [release-verification.md](release-verification.md), and tag the version in git.
+- [ ] **D-4.** Change VERSION and all game/slave/Installer/ReadMe version strings
+  to **0.90 (30.09.2026)**, rebuild and audit **Slicks-0.90.lha**, record the hashes
+  in [release-verification.md](release-verification.md), and tag the version in git.
+  Follow the sibling WHDLoad packages: installer drawer/icon, native executable,
+  production slave, game icon template, Install/ReadMe and their icons, data
+  extraction helper and required licences. Keep Slicks' uniconed Play script and
+  credits; exclude original game data, keys, saves, ROMs and diagnostic binaries.
 
 ## Not in ship scope
 
