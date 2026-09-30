@@ -2476,3 +2476,49 @@ If a caller is changed to reuse a view already containing its background,
 that invariant and the resulting partial publication need separate pixel
 coverage. The actionable list retains remaining error-route and lifetime
 checks; this inventory narrows where to look for selection-time overdraw.
+
+## Clear Records resident confirmation and notices (2026-09-30)
+
+Found and removed unconditional platform teardown on entry to the Clear
+Records question and every message dismissal. Message open/close uses the
+existing Options fonts, palette, save-under memory and dirty bounds; it has
+no disk dependency. Opening/cancelling the question, acknowledging completion,
+and moving through the failure/path notices now retain hardware ownership.
+`show_menu` handles either retained ownership or the return from actual I/O.
+Only affirmative Y confirmation releases ownership before the real track-file
+transactions. This does not implement the still-gated display-retaining disk
+I/O handoff or change clearing, confirmation or recovery semantics.
+
+The new resident guard rejects parent `3f568fc` at the first question entry:
+`tmp/standalone-release-ejxdvd8o`, `CLEAR_RAM_MENU_TEARDOWN phase=0 ready=0`.
+The first fixed run's source-level platform-end breakpoint resolved to two
+addresses, double-counting the legitimate confirmed-I/O call. The guard now
+uses the exact function entry; that diagnostic issue is not a second teardown.
+Final gates require exactly one OS handoff while Options is owned and require
+every storage-adapter call to run with takeover inactive.
+
+Fresh copied-data fixtures, stripped executable, stock PAL 68020/2 MiB Chip/no
+Fast, confirmed 4096-byte stack, muted and closed emulators:
+
+- Success: `tmp/standalone-release-l9w6gjum`, fixture
+  `tmp/clear-resident-final-RcV9hD`. Cancel writes nothing; reopen/confirm
+  performs 195 adapter calls; completion and normal restoration 31 pass.
+  All 25 captured menu publications match all 64,000 authoritative chunky
+  pixels. `verify_cleared_tracks` confirms all 195 complete files match the
+  expected serializer output with no `.new`/`.bak` artifacts.
+- Partial failure: `tmp/standalone-release-0voy9f74`, fixture
+  `tmp/clear-resident-partial-d4hbaW`. The current sorted catalogue clears
+  `1WAY.SS`, then refuses the pre-existing `66.SS.new` recovery artifact.
+  Both warning and filename notice appear; returning to Options and normal
+  restoration 31 pass. All 26 menu publications match all 64,000 pixels.
+  Host comparisons confirm `1WAY.SS` matches the success run, the remaining
+  194 tracks match the reference byte-for-byte, and the sole recovery artifact
+  remains byte-identical to the original copied `66.SS`.
+
+The older failure fixture assumed BASIC first and 1WAY second. Its current
+run `qu0rw7ch` correctly stopped at the first track (one adapter call, zero
+changes), contradicting that stale two-call expectation. The fixture comment
+now names `66.SS.new` to exercise partial completion under current ordering.
+Reference/user track files were never cleared; all writes were to isolated
+copies. Build log: `tmp/clear-resident-build.log`. This closes this specific
+RAM-only transition defect, not the remaining owner/failure coverage.

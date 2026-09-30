@@ -1,0 +1,2 @@
+source diag_clear_records_resident_guard.gdb
+source diag_clear_records.gdb

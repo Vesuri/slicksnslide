@@ -1,4 +1,5 @@
-# Isolated fixture: TRACKS/1WAY.SS.new must exist before this run.
+# Isolated fixture: TRACKS/66.SS.new must exist before this run.
+# Current sorted catalogue: 1WAY.SS commits first, then 66.SS fails recovery.
 set $ready = 0
 set $cancelled = 0
 set $writes = 0
@@ -9,6 +10,10 @@ commands
     quit 1
   end
   set $writes = $writes+1
+  if g_slicks_diag_profile_platform->active
+    printf "CLEAR_DISK_WRITE_WITH_TAKEOVER\n"
+    quit 1
+  end
   continue
 end
 break slicks_diag_track_clear_cancelled
@@ -48,6 +53,11 @@ end
 break slicks_diag_system_restored
 commands
   silent
+  if !$_isvoid($clear_io_windows)
+    if $clear_io_windows!=1
+      quit 1
+    end
+  end
   if $ready != 4 || !$cancelled || $writes != 2 || g_slicks_track_clear_phase || g_slicks_diag_restore_status != 0x1f
     printf "CLEAR_FAILURE_INCOMPLETE ready=%u writes=%u phase=%u restore=%x\n", $ready, $writes, g_slicks_track_clear_phase, g_slicks_diag_restore_status
     quit 1

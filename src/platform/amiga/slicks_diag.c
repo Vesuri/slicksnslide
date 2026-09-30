@@ -1571,7 +1571,7 @@ static int present_track_clear_message(struct SlicksAmigaPlatform *platform,cons
 {
     if(slicks_amiga_message_open(g_slicks_options_menu,message,slicks_original_players_footer_percent)) return -1;
     present_menu_surface(platform,g_slicks_options_menu);
-    if(slicks_amiga_platform_begin(platform,0)) return -1;
+    if(show_menu(platform)) return -1;
     slicks_diag_track_clear_ready(); return 0;
 }
 
@@ -5599,9 +5599,11 @@ int main(void)
                     if(g_slicks_options_menu->message) {
                         unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(code);
                         if(!scan || raw>=0x60) continue;
-                        slicks_amiga_platform_end(&platform);
                         if(slicks_amiga_message_close(g_slicks_options_menu)) goto cleanup;
                         if(g_slicks_track_clear_phase==1 && scan==0x15) {
+                            /* Only confirmed clearing touches disk. Cancellation
+                             * and warning/path notices retain the live display. */
+                            slicks_amiga_platform_end(&platform);
                             static char path[SLICKS_TRACK_NAME_SIZE+8];
                             g_slicks_track_clear_report=(struct SlicksSetupStorageReport){SLICKS_SETUP_SAVED,0,0};
                             g_slicks_track_clear_changed=0;
@@ -5627,7 +5629,7 @@ int main(void)
                             unsigned char cancelled=(unsigned char)(g_slicks_track_clear_phase==1);
                             g_slicks_track_clear_phase=0;
                             present_menu_surface(&platform,g_slicks_options_menu);
-                            if(slicks_amiga_platform_begin(&platform,0)) goto cleanup;
+                            if(show_menu(&platform)) goto cleanup;
                             if(cancelled) slicks_diag_track_clear_cancelled();
                         }
                         continue;
@@ -5672,7 +5674,6 @@ int main(void)
                     } else if(g_slicks_options_action==SLICKS_OPTIONS_HELP) {
                         if(open_help(&platform,g_slicks_options_menu,(const unsigned char *)"options")) goto cleanup;
                     } else if(g_slicks_options_action==SLICKS_OPTIONS_CLEAR_RECORDS) {
-                        slicks_amiga_platform_end(&platform);
                         g_slicks_track_clear_phase=1;
                         if(present_track_clear_message(&platform,slicks_original_clear_question)) goto cleanup;
                     } else {

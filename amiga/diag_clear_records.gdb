@@ -9,6 +9,10 @@ commands
     quit 1
   end
   set $writes = $writes+1
+  if g_slicks_diag_profile_platform->active
+    printf "CLEAR_DISK_WRITE_WITH_TAKEOVER\n"
+    quit 1
+  end
   continue
 end
 break slicks_diag_track_clear_cancelled
@@ -48,6 +52,11 @@ end
 break slicks_diag_system_restored
 commands
   silent
+  if !$_isvoid($clear_io_windows)
+    if $clear_io_windows!=1
+      quit 1
+    end
+  end
   if $ready != 3 || !$cancelled || !$writes || g_slicks_diag_restore_status != 0x1f
     printf "CLEAR_INCOMPLETE ready=%u cancelled=%u writes=%u phase=%u restore=%x\n", $ready, $cancelled, $writes, g_slicks_track_clear_phase, g_slicks_diag_restore_status
     quit 1
