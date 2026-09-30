@@ -1,5 +1,20 @@
 # Development release audit
 
+## 2026-10-01 — final storage and PCM regression sweep
+
+At 19f7c23, the host suites for setup storage/load, saved-game storage,
+track-list storage, track records, capture storage and resource archives all
+pass. Coverage includes 2,600 setup transaction cases, 254 setup-load checks,
+1,431 saved-game write faults and 2,309 read/truncation cases, the maximum
+10,000-track zero-allocation roundtrip, 324 saved-list fault cases, 1,176 cases
+each for record publication and track storage, 984 capture faults, and 1,193
+cache-construction failures. Reserved archive rereads remain byte-exact and
+allocation-free; failed refreshes retain recoverable catalogue state.
+
+The audio suite also passes all 44 startup PCM allocation failures with full
+cleanup, alongside sample-bank, one-shot, channel-priority and pitch checks.
+These are host adapter tests, not substitutes for the native release workflow.
+
 ## 2026-10-01 — strict menu recovery and insufficient-memory checks
 
 - `tmp/standalone-release-8_glb40e`: PLAYERSV on Workbench-loaded stock PAL

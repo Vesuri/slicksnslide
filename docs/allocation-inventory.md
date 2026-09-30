@@ -31,8 +31,10 @@ interactive play. The startup expressions are track discovery/playlist storage
 chunky/race storage (3), and sample decode input (1). Track discovery and setup
 loading have no later production callers.
 
-Linked C++ allocating callers are startup Bitmap/CopperList wrappers and the
-framework's static blitter queue. The current ELF has no `Bitmap::allocate`,
+Linked C++ allocating callers are startup Bitmap/CopperList wrappers. The
+framework's static blitter queue allocates only with `USE_BLITTER_QUEUE`, which
+the normal build does not define; its pointer is otherwise null. The current
+ELF has no `Bitmap::allocate`,
 `CopperList::allocate`, `Sprite::allocate`, `Util::allocateMemoryPool`, or
 owning Palette24Bit constructor/setColors symbols. Their imported source is
 not a runtime allocation path in this executable. The allocator stores the
