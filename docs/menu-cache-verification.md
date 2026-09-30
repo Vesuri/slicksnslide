@@ -1128,6 +1128,33 @@ allocate the owner; the following change implements that design.
 
 ## Staged Track Information assets fit the stock memory budget (2026-09-30)
 
+### Fixed-buffer asset reads also reject Close failure (2026-09-30)
+
+The subsequent I/O audit found that `load_plain_file`, used by race DAT/track
+loading and post-race record reads, returned the Read length even when Close
+failed. It now returns failure in that case. Both fixed-buffer and allocated
+preview reads share checked Close handling; the explicit diagnostic always
+closes the real handle before substituting a failed result.
+
+DEMOCLO uses the existing demo-load error/retry sequence, but fails the close
+of a real positive-length DAT read instead of trying a missing track. The
+missing-track injection is suppressed for this case, and the debugger gate
+requires that the Close fault was consumed. Run
+`tmp/standalone-release-wf7s8l8s` passes `diag_demo_close_failure.gdb` on
+stock PAL A1200, 2 MiB Chip/no Fast, default 4 KiB stack: exactly one load
+warning, one subsequent successful demo start, two data views, restored
+configuration/playlist and final system restoration 31. Build log:
+`tmp/plain-close-build.log`. This establishes the DAT caller's recovery path;
+it does not stand in for native post-race record-warning coverage.
+
+The shared allocated-preview path is rechecked separately with TRACKSV in
+`tmp/standalone-release-axz6ihzu`: warning dismissal, two successful preview
+opens/closes and race entry pass. All 11 full-surface publication comparisons
+pass and the warning background restores byte-identically. Both diagnostic
+emulators were muted and closed.
+
+### Preview staging implementation and evidence
+
 The preview API now separates DAT decoding from drawing. The production
 Track Information caller frees the compressed DAT after decoding, before
 allocating the 67,466-byte save-under owner. Its 110 descriptors borrow only

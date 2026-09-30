@@ -11,6 +11,10 @@ commands
     quit 1
   end
   set $demo_load_failures=$demo_load_failures+1
+  if !$_isvoid($expected_plain_close) && (g_slicks_diag_plain_close_fault || g_slicks_diag_plain_close_reached!=1)
+    printf "DEMO_CLOSE_FAILURE_NOT_REACHED\n"
+    quit 1
+  end
   continue
 end
 break *slicks_race_start

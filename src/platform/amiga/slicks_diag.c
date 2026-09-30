@@ -1870,6 +1870,17 @@ static unsigned long checksum_surface_map(const unsigned char *surface_map)
     return checksum;
 }
 
+unsigned char g_slicks_diag_plain_close_fault,g_slicks_diag_plain_close_reached;
+static LONG close_plain_file(BPTR file,int valid)
+{
+    LONG closed=Close(file);
+    /* Explicit I/O fixture only; always release the real handle first. */
+    if(g_slicks_diag_plain_close_fault && valid) {
+        g_slicks_diag_plain_close_fault=0;g_slicks_diag_plain_close_reached=1;
+        closed=0;
+    }
+    return closed;
+}
 static long load_plain_file(const char *path, void *destination,
                             unsigned long capacity)
 {
@@ -1878,15 +1889,13 @@ static long load_plain_file(const char *path, void *destination,
     if (!file)
         return -1;
     size = Read(file, destination, (LONG)capacity);
-    Close(file);
-    return size;
+    return close_plain_file(file,size>0)?size:-1;
 }
 
 static void update_race_diagnostics(const struct SlicksRaceRuntime *race);
 
 /* Explicit disk boundary. Allocate the actual file length, not its upper
  * bound, so preview scratch and resident menus fit together in Chip RAM. */
-unsigned char g_slicks_diag_plain_close_fault,g_slicks_diag_plain_close_reached;
 extern unsigned char g_slicks_diag_track_info_probe;
 static unsigned char *load_plain_allocated(const char *path,unsigned long limit,
     unsigned long *size)
@@ -1903,12 +1912,7 @@ static unsigned char *load_plain_allocated(const char *path,unsigned long limit,
             FreeMem(bytes,(unsigned long)length); bytes=0;
         }
     }
-    LONG closed=Close(file);
-    /* Explicit preview-I/O diagnostic only; never leak the actual handle. */
-    if(g_slicks_diag_plain_close_fault && bytes) {
-        g_slicks_diag_plain_close_fault=0;g_slicks_diag_plain_close_reached=1;
-        closed=0;
-    }
+    LONG closed=close_plain_file(file,bytes!=0);
     if(!closed && bytes) { FreeMem(bytes,(unsigned long)length);bytes=0; }
     if(bytes) *size=(unsigned long)length;
     return bytes;
@@ -3896,6 +3900,10 @@ int main(void)
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
        argv[4]=='E' && argv[5]=='R' && argv[6]=='R') {
         demo_lifecycle_test=6;argc=0;argv="";
+    }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='C' && argv[5]=='L' && argv[6]=='O') {
+        demo_lifecycle_test=6;g_slicks_diag_plain_close_fault=1;argc=0;argv="";
     }
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
        argv[4]=='H' && argv[5]=='U' && argv[6]=='D') {
@@ -5901,7 +5909,7 @@ int main(void)
                     track_path = selected_track_path;
                     /* Existing real loader failure boundaries; only the first
                      * diagnostic attempt fails. The next uses real resources. */
-                    if((demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9 || demo_lifecycle_test==12) && !demo_test_round)
+                    if((demo_lifecycle_test==6 || demo_lifecycle_test==7 || demo_lifecycle_test==9 || demo_lifecycle_test==12) && !demo_test_round && !g_slicks_diag_plain_close_fault)
                         g_slicks_diag_race_load_fault=demo_lifecycle_test==12?8:demo_lifecycle_test==9?1:demo_lifecycle_test==6?2:6;
                     if (prepare_race(&platform, logical, chunky, mode_state,
                                      race, track_path, race_palette, selected_vehicle,

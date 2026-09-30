@@ -1566,6 +1566,16 @@ earlier checkpoint run completed (`tmp/loading-io-visual.log` was subsequently
 reused by the failed Lua capture attempt); neither run establishes visible
 scanout. All emulators started for these attempts were closed.
 
+The 2026-09-30 recheck on 4a159af also passes both complete I/O/demo cycles
+and final restoration: `tmp/standalone-release-uvx96q5_` (earlier repeat
+`u87_t_sc`). The desktop controller still cannot select the command-line
+FS-UAE app. A process-specific CoreGraphics lookup did locate its window,
+but window-specific `screencapture` failed with “could not create image from
+window”; no screenshot evidence was obtained. A new manual visual question
+was sent. This is still not a visible-scanout pass, and ordinary loading
+integration remains open. Both owned test emulators exited; unrelated Revs
+or other emulator sessions were not touched.
+
 ## Natural demo completion and title return (2026-09-29)
 
 `DEMOEND` / `SLICKS_DEMO_LIFECYCLE_TEST=5` starts demos through the ordinary
