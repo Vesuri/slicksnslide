@@ -22,17 +22,9 @@ Working rules are in [development-verification.md](development-verification.md).
   see B5).
 - **D3:** A negative saved language selector means English. Done: recorded in
   `slicks_diag.c`.
-- [ ] **D4 — Speed change during a race.**
-  - The original's pause-menu Speed child reprograms the PIT through `7bc2`,
-    which zeroes the tick counter at `74bc`. The race loop's saved counter
-    (BP-58) is not reset.
-  - As a result, the next update's batch is negative (`fe73..fe8b` compares
-    signed values, and the cap only limits the positive side). It runs no
-    physics substeps, but it subtracts time from the game clock and adds it
-    back to the countdown.
-  - The port restarts the phase and carries on with a positive batch.
-  - Choose one: reproduce the glitch, or keep the clock monotonic as an
-    explicit adaptation.
+- **D4:** A speed change during a race keeps the game clock monotonic, an
+  explicit adaptation of the original's negative-batch glitch. Done: recorded
+  in `slicks_race_set_timer` and [fidelity-audit.md](fidelity-audit.md).
 
 ## B. Fixes
 

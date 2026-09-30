@@ -3213,3 +3213,15 @@ The saved-game list picker now also uses its `315b2` argument.
 **Evidence.** A target probe held Down in title Help. The first repeat came at
 press+25 vblanks and the schedule then advanced 4.6 vblanks per repeat. The
 Help owner consumed only one key per 25 vblanks, which is open item B6.
+
+## Speed change during a race: monotonic clock (D4, 2026-09-30)
+
+The pause-menu Speed child closes through `37bc2`, which reprograms the PIT
+and zeroes the tick counter at DS:74bc. The race loop's saved count (BP-58)
+is not reset, so the original's next batch (`fe73..fe8b`, signed, capped only
+on the positive side) is negative: that update runs no physics substeps but
+subtracts from the game clock, refunding Arcade countdown time.
+
+Decision (user, 2026-09-30): keep the clock monotonic. `slicks_race_set_timer`
+restarts only the tick phase; the next batch is positive. This is a
+deliberate adaptation, not a reproduction.

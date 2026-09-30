@@ -2780,6 +2780,9 @@ static void emit_contact_particles(struct SlicksRaceRuntime *race,
 void slicks_race_set_timer(struct SlicksRaceRuntime *race,unsigned short argument)
 {
     if(!race) return;
+    /* Adaptation (D4): 37bc2 zeroes the tick counter but the race loop keeps
+     * its saved count, so the original's next batch is negative and refunds
+     * game time. The port restarts only the phase; time stays monotonic. */
     race->physics_tick_phase=0;
     race->physics_tick_period=slicks_timer_divisor(argument)*50UL;
     race->physics_timer_disabled=(unsigned char)((short)argument<100);
