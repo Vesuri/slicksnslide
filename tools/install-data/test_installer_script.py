@@ -30,6 +30,7 @@ def main():
     reinstall='--reinstall' in sys.argv
     no_whd='--no-whd' in sys.argv
     incomplete='--missing-tracks' in sys.argv
+    ram_temp='--ram-temp' in sys.argv
     base=Path(tempfile.mkdtemp(prefix='installer-script-',dir=ROOT/'tmp'))
     boot=base/'boot';(boot/'s').mkdir(parents=True);(base/'state').mkdir();(base/'out').mkdir();(base/'scratch').mkdir()
     dest=base/'out/Slicks';expected=expected_files()
@@ -44,18 +45,19 @@ def main():
         (dest/'data/TEST.SSS').write_bytes(b'keep championship')
         if not incomplete:(dest/'data/TRACKS/CUSTOM.SS').write_bytes(b'keep custom track')
         (dest/'Play.info').write_bytes(b'legacy standalone icon')
+        (dest/'Play').write_bytes(b'legacy standalone script')
         (dest/'SlicksWHDLoad.info').write_bytes(b'legacy WHDLoad icon')
         if not incomplete:(dest/'data/TRACKS/BASIC.SS').write_bytes(b'user modified track and records')
         if keep:expected['TRACKS/BASIC.SS']=b'user modified track and records'
     for source,name in ((installer,'Installer'),(ROOT/'build/install-data/SlicksInstallData.exe','SlicksInstallData'),
       (ROOT/'amiga/out/SlicksDiag.exe','Slicks'),(ROOT/'build/whdload/Slicks.slave','Slicks.slave'),
-      (Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad','WHDLoad'),(ROOT/'release/Play','Play'),(ROOT/'release/ReadMe','ReadMe')):
+      (Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad','WHDLoad'),(ROOT/'release/ReadMe','ReadMe')):
         if not (no_whd and name=='WHDLoad'):shutil.copyfile(source,boot/name)
     (boot/'Install.info').write_bytes(installer_icon());(boot/'Slicks.inf').write_bytes(installer_icon(game=True));(boot/'ReadMe.info').write_bytes(readme_icon())
     script=(ROOT/'release/Install').read_text()
     if '--package' in sys.argv:
         package=Path(sys.argv[sys.argv.index('--package')+1]).resolve()
-        for name in ('Slicks','SlicksInstallData','Slicks.slave','Slicks.inf','Install.info','ReadMe.info','Play','ReadMe','Install'):
+        for name in ('Slicks','SlicksInstallData','Slicks.slave','Slicks.inf','Install.info','ReadMe.info','ReadMe','Install'):
             data=subprocess.run(['lha','pq',str(package),'Slicks Install/'+name],check=True,capture_output=True).stdout
             (boot/name).write_bytes(data)
         script=(boot/'Install').read_text()
@@ -72,14 +74,14 @@ def main():
         script=replace_form(script,'(message "WHDLoad needs','(set #kick-warned 1)')
     script=replace_form(script,'(set #parent','(set #parent "DH2:out")')
     script=replace_form(script,'(set #archive','(abort "Use existing unexpectedly asked for ZIP")' if keep else '(set #archive "DH1:tmp/Slix151-release.zip")')
-    script=replace_form(script,'(set #temp','(abort "Use existing unexpectedly asked for scratch")' if keep else '(set #temp "DH2:scratch")')
+    script=replace_form(script,'(set #temp','(abort "Use existing unexpectedly asked for scratch")' if keep else '(set #temp "'+('T:' if ram_temp else 'DH2:scratch')+'")')
     script=replace_form(script,'(set #install-data\n    (askbool',f'(set #install-data {int(reinstall)})')
     script=replace_form(script,'(exit)','(exit (quiet))')
     (boot/'Install').write_text(script)
-    (boot/'s/startup-sequence').write_text('CD DH0:\nStack 16384\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME Slicks MINUSER NOVICE DEFUSER NOVICE LOGFILE DH2:installer.log NOPRETEND >DH2:console.log\nEcho done >DH2:finished\n')
+    (boot/'s/startup-sequence').write_text('CD DH0:\nStack 16384\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nMakeDir RAM:T\nAssign T: RAM:T\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME Slicks MINUSER AVERAGE DEFUSER AVERAGE LOGFILE DH2:installer.log NOPRETEND >DH2:console.log\nList T: ALL >DH2:temp-after.log\nEcho done >DH2:finished\n')
     print('Fixture:',base,flush=True)
     with (base/'emulator.log').open('w') as log:
-        emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory=0',
+        emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory='+('4096' if ram_temp else '0'),
           '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10',
           '--hard_drive_1='+str(ROOT),'--hard_drive_2='+str(base),'--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=dict(os.environ,SDL_AUDIODRIVER='dummy'))
@@ -97,7 +99,7 @@ def main():
                 return
             for name,data in expected.items():assert (dest/'data'/name).read_bytes()==data,name
             assert (dest/'data/Slicks').read_bytes()==(boot/'Slicks').read_bytes(),report
-            assert (dest/'Play').read_bytes()==(boot/'Play').read_bytes()
+            assert not (dest/'Play').exists()
             assert not (dest/'Play.info').exists()
             assert not (dest/'SlicksWHDLoad.info').exists()
             icon=(dest/'Slicks.info').read_bytes()
@@ -110,7 +112,8 @@ def main():
                 assert (dest/'data/TEST.SSS').read_bytes()==b'keep championship'
                 if not incomplete:assert (dest/'data/TRACKS/CUSTOM.SS').read_bytes()==b'keep custom track'
             assert not list((base/'scratch').glob('.slicks-data-*'))
-            print(f'PASS: real Installer, 2 MiB/no Fast, keep={keep}, reinstall={reinstall}; expected data, executable, one WHDLoad icon, preservation and cleanup')
+            assert '.slicks-data-' not in (base/'temp-after.log').read_text(errors='replace')
+            print(f'PASS: real Installer, 2 MiB Chip, RAM temp={ram_temp}, keep={keep}, reinstall={reinstall}; expected data, executable, one WHDLoad icon, preservation and cleanup')
         finally:
             emu.terminate()
             try:emu.wait(timeout=5)

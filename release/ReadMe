@@ -19,8 +19,8 @@
  see the manual installation instructions below; no WHDLoad is needed.
  Close other applications on a 2 MiB machine. Allow about 1 MB free RAM for
  the extraction helper, at least 2 MB temporary disk space and 3 MB
- destination space. Do not choose RAM: or T: as the temporary drawer on a
- memory-constrained Amiga.
+ destination space. RAM: or RAM-backed T: may be used for temporary files
+ when enough additional memory is available. Use disk on a 2 MB machine.
 
  The WHDLoad icon requires WHDLoad version 17.0 or better and extra
  Fast RAM. The slave reserves 2 MiB ChipMem plus 1 MiB expansion memory and
@@ -59,8 +59,8 @@
 
  For standalone installation without WHDLoad, create a destination drawer and
  run SlicksInstallData Slix151.zip <destination>/data from a Shell. Copy the
- supplied Slicks executable into data/ and Play into its parent. To update
- existing data, simply replace the native executable and Play script.
+ supplied Slicks executable into data/. To update existing data, simply
+ replace the native executable.
 
 
  Display:
@@ -74,8 +74,9 @@
  Playing and quitting:
  ---------------------
  Double-click Slicks for WHDLoad. The installer creates one game icon.
- For standalone: CD to the installed Slicks drawer, then Execute Play from
- a Shell. Play deliberately has no Workbench icon. Updates remove the old
+ For standalone: CD to the installed Slicks/data drawer, then run Slicks
+ from a Shell. SetPatch should have run during system startup. No Play
+ script or stack increase is required. Updates remove the old Play script,
  Play.info and SlicksWHDLoad.info launch icons, but keep the game data.
  The installed data/ drawer holds the native executable, original data,
  tracks, configuration, driver profiles, saved championships and an optional

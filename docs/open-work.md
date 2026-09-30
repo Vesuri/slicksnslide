@@ -44,7 +44,8 @@ Done 2026-09-30 in the Vette layout ([install-original-data.md](install-original
 Vette's "remove existing drawer" prompt is deliberately not copied: the Slicks
 drawer holds the user's key, profiles and championships, and the existing
 Reinstall/Use existing data prompt already covers updates. The installer now
-creates only the standard Slicks WHDLoad icon; standalone uses Execute Play.
+creates only the standard Slicks WHDLoad icon; standalone runs `data/Slicks`
+directly, without a Play script or stack increase.
 
 Final release version: **0.90 (30.09.2026)**, requested by the user. The current
 validation candidate still says 0.1; apply the final version after D-3 passes.
@@ -58,20 +59,24 @@ validation candidate still says 0.1; apply the final version after D-3 passes.
 - [ ] **D-3.** Do one manual FS-UAE session on a stock PAL A1200 configuration
   (68020, 2 MiB Chip, no Fast RAM), in this order:
   1. install from `Slix151.zip` with the Installer;
-  2. start standalone from a Shell with `Execute Play` (no standalone icon);
+  2. start standalone from its data drawer with `Slicks`, default 4 KB stack;
   3. let the idle demo run, then return;
-  4. start one race and finish it;
+  4. open Players, then start one race and finish it;
   5. save a championship at intermission;
   6. quit to Workbench;
   7. repeat steps 2–4 and 6 from the WHDLoad icon, with and without PRELOAD, at
      the memory configuration `docs/whdload.md` documents.
+  **Current blocker:** after a naturally completed demo, opening Players exited
+  the game in the user's stock-A1200 session, and immediate relaunch failed.
+  Reproduce and fix the cause; verify allocation cleanup on normal and failed
+  exits, repeated launch in the same OS session, and 4 KB stack operation.
 - [ ] **D-4.** Change VERSION and all game/slave/Installer/ReadMe version strings
   to **0.90 (30.09.2026)**, rebuild and audit **Slicks-0.90.lha**, record the hashes
   in [release-verification.md](release-verification.md), and tag the version in git.
   Follow the sibling WHDLoad packages: installer drawer/icon, native executable,
   production slave, game icon template, Install/ReadMe and their icons, data
-  extraction helper and required licences. Keep Slicks' uniconed Play script and
-  credits; exclude original game data, keys, saves, ROMs and diagnostic binaries.
+  extraction helper, credits and required licences. Exclude Play scripts,
+  original game data, keys, saves, ROMs and diagnostic binaries.
 
 ## Not in ship scope
 

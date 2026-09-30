@@ -1,8 +1,0 @@
-; Run through IconX, or Execute Play from the installed Slicks drawer.
-FailAt 21
-Stack 16384
-If EXISTS C:SetPatch
-  C:SetPatch QUIET
-EndIf
-CD data
-Slicks

@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-09-30 — direct executable launch and RAM temporary directory
+
+Removed the Play script from the package and installer. Upgrades also remove
+the obsolete installed script. Standalone instructions now run `Slicks` from
+the data drawer, without increasing the Shell stack. The existing template icon
+already sets `MINUSER=AVERAGE` (Intermediate); a new archive assertion protects
+it. The earlier manual fixture incorrectly overrode that setting with NOVICE
+on its command line. Installer test launches now use AVERAGE explicitly.
+
+Real Installer tests passed using the updated sources:
+
+- `tmp/installer-script-zoncd5dx`: stock 2 MiB/no Fast, Use existing preserves
+  modified tracks and user-file placeholders, removes legacy Play/icons, and
+  never asks for ZIP or scratch storage.
+- `tmp/installer-script-ms9rlngg`: 2 MiB Chip plus 4 MiB Fast, fresh extraction
+  through `T:` assigned to `RAM:T`. All 197 original files match and temporary
+  staging is removed. RAM-backed temporary storage is supported, not prohibited;
+  on a stock 2 MiB system disk scratch remains the memory-saving recommendation.
+- `tmp/installer-direct-candidate/Slicks-0.1.lha`: independent audit passes with
+  exactly 11 allowlisted members and no Play script (281,069 bytes).
+
+These packaging checks do **not** close the manual release gate. The user saw
+the menu, completed an idle demo, then selecting Players exited and relaunch
+failed. Memory cleanup and direct 4 KiB-stack lifecycle verification are still
+under investigation; neither success nor a memory-leak diagnosis is claimed.
+
 ## 2026-09-30 — WHDLoad-only icon and existing-data installer workflow
 
 At the user's request, the installer now follows the WHDLoad Install Template

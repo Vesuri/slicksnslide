@@ -42,8 +42,8 @@
         (help "Download Slix151.zip from https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip . No external UnZip program is required.")
         (default "Slix151.zip")))
     (set #temp
-      (askdir (prompt "Select a hard-disk temporary drawer with at least 2 MB free.")
-        (help "Use a disk drawer on a 2 MB Amiga. The helper needs about 1 MB RAM; staging on RAM: or T: can exhaust memory.")
+      (askdir (prompt "Select a temporary drawer with at least 2 MB free.")
+        (help "RAM: and RAM-backed T: are supported if enough memory is available for staging plus about 1 MB for the helper. A disk drawer is recommended on a 2 MB Amiga.")
         (default #parent)))
     (if (= @pretend 0)
       ((set #attempt 0)
@@ -63,13 +63,14 @@
 (makedir #data (help @makedir-help))
 (complete 80)
 (copyfiles (source (tackon #source "Slicks")) (dest #data) (help @copyfiles-help))
-(copyfiles (source (tackon #source "Play")) (dest #dest) (help @copyfiles-help))
 (copyfiles (source (tackon #source "Slicks.slave")) (dest #dest) (help @copyfiles-help))
 (copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Slicks.info") (help @copyfiles-help))
 ; Explicit default tool, Slave and PreLoad, as in the WHDLoad Install Template.
 (tooltype (dest (tackon #dest "Slicks")) (setdefaulttool "WHDLoad")
   (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "") (setstack 16384) (noposition))
 ; Retire the previous launch icons on upgrades; never remove game data/saves.
+(if (= (exists (tackon #dest "Play")) 1)
+  (delete (tackon #dest "Play") (optional "force")))
 (if (= (exists (tackon #dest "Play.info")) 1)
   (delete (tackon #dest "Play.info") (optional "force")))
 (if (= (exists (tackon #dest "SlicksWHDLoad.info")) 1)

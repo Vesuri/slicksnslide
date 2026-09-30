@@ -16,7 +16,6 @@ Installed layout:
 
 ```text
 Slicks/
-  Play                         standalone Shell script (no icon)
   ReadMe, ReadMe.info
   Slicks.slave                  WHDLoad launch
   Slicks.info                   sole game icon (WHDLoad)
@@ -39,24 +38,27 @@ never allocates the whole ZIP, rejects an existing destination, and removes its
 own partial outputs on failure/cancellation. Existing user directories are never
 recursively deleted by the helper.
 
-Installer extracts to a unique disk staging drawer. Only after success does it
+Installer extracts to a unique staging drawer. Only after success does it
 copy data to the selected installation. Use existing is the default when both
 data files and the TRACKS drawer exist; it skips ZIP/scratch questions and
 preserves modified tracks/records. Reinstall replaces the supplied tracks,
 not keys, profiles, settings or championships. A copy-stage disk error is not an
 atomic whole-directory transaction: retain the verified staging drawer and rerun.
-Use disk scratch, not RAM:/T:, on a 2 MiB machine. No private key is read by
+RAM: and RAM-backed T: are supported when enough memory is available for both
+staging and the helper; disk scratch is recommended on a 2 MiB machine.
+No private key is read by
 installation, packaging or extraction tests.
-Upgrades remove only the obsolete `Play.info` and `SlicksWHDLoad.info` launch
-icons, replacing them with the standard `Slicks.info` WHDLoad icon. The installer
+Upgrades remove the obsolete `Play` script, `Play.info` and `SlicksWHDLoad.info`
+launch icons, replacing them with the standard `Slicks.info` WHDLoad icon. The installer
 does not offer to delete the whole drawer containing keys, profiles and saves.
 
 ## Manual installation without Installer 43
 
 From the unpacked installer drawer, create a fresh destination parent and run
 `SlicksInstallData Slix151.zip <destination>/data`. Copy the supplied native
-`Slicks` executable to that data drawer and `Play` to its parent. Change to the
-parent and `Execute Play`. This uses ordinary AmigaDOS tools; no WHDLoad or
+`Slicks` executable to that data drawer. Change to the data drawer and run
+`Slicks` directly on the default 4096-byte Shell stack. SetPatch should already
+have run at system startup. This uses ordinary AmigaDOS tools; no WHDLoad or
 Installer program is required. For Workbench icons use the normal installer.
 If installing manually under WHDLoad, put `Slicks.slave` beside `data`, then run
 `WHDLoad Slicks.slave PRELOAD`. Requirements are in [whdload.md](whdload.md).
@@ -78,7 +80,7 @@ setjmp/longjmp. I/O, startup and SHA-256 scaffolding follow the Vette installer.
 LH5 encoding uses LHa for UNIX (`LHA` override; default shared local installation),
 not extraction-only Homebrew Lhasa. The auditor separately decompresses with
 Lhasa, verifies every header/payload CRC, exact membership and source identity.
-The archive has 12 allowlisted members including the drawer icon. No recursive
+The archive has 11 allowlisted members including the drawer icon. No recursive
 asset collection, original files, keys, saves, ROMs, RTBs or WHDLoad binary.
 Icons follow Vette/Rescue on Fractalus; see [icon provenance](../release/icons/README.md).
 

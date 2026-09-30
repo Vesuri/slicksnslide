@@ -8,7 +8,7 @@ from pathlib import Path
 from package_release import ORIGINAL_HASHES, PREFIX, crc16
 from installer_icon import installer_icon, readme_icon
 
-REQUIRED = {"Slicks", "Slicks.slave", "Slicks.inf", "SlicksInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt", "CREDITS.txt", "Play"}
+REQUIRED = {"Slicks", "Slicks.slave", "Slicks.inf", "SlicksInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt", "CREDITS.txt"}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -52,9 +52,11 @@ def main():
     assert payloads["Slicks"] == (root/"build/release/Slicks").read_bytes()
     assert payloads["Slicks.slave"] == (root/"build/whdload/Slicks.slave").read_bytes()
     assert payloads["SlicksInstallData"] == (root/"build/install-data/SlicksInstallData.exe").read_bytes()
-    for name in ("Install","Play","ReadMe"):
+    for name in ("Install","ReadMe"):
         assert payloads[name] == (root/"release"/name).read_bytes()
     assert b"APPNAME=Slicks\0" in payloads["Install.info"]
+    assert b"MINUSER=AVERAGE\0" in payloads["Install.info"]
+    assert b"MINUSER=NOVICE\0" not in payloads["Install.info"]
     assert payloads["Slicks.inf"]==installer_icon(game=True)
     assert payloads["ReadMe.info"]==readme_icon()
     assert b"Mark Adler" in payloads["puff-license.txt"]

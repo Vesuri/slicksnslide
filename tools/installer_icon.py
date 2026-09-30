@@ -18,6 +18,9 @@ def installer_icon(game=False):
         # as RoF.inf in the reference package. No synthetic replacement artwork.
         return template_icon('game.inf.b64')
     data = template_icon('install.info.b64')
+    # AVERAGE is Installer's Intermediate level. Do not override it with
+    # NOVICE when launching Installer from test or manual startup scripts.
+    assert b'MINUSER=AVERAGE\0' in data
     old = b'APPNAME=Rescue on Fractalus!\0'
     new = b'APPNAME=Slicks\0'
     field = struct.pack('>I', len(old)) + old
