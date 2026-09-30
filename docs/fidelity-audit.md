@@ -2181,6 +2181,44 @@ to add the missing diagnostic shop input; only the twelve final runs above
 constitute the matrix. Normal-game routing was not changed. Other starting
 rows, Help shortcuts and demo routes retain their separate coverage scope.
 
+## Native F9 from every visible title row (2026-09-30)
+
+The explicit `STARTF9[ROW]` diagnostic navigates from the initial title using
+ordinary Down events (skipping hidden internal row 4), then sends F9. It does
+not assign the selection, bypass title dispatch or use automatic race launch.
+The native start branch records the actual selected row; the read-only gate
+checks it against the requested row, along with one race start, the saved
+game mode, no active demo/submenu and no race-preparation error.
+The existing unsuffixed STARTGO/STARTF9 fixtures retain their input sequences.
+
+All 32 applicable mode/row combinations pass. Modes 0–4 cover rows
+0,1,2,3,5,6; Arcade covers rows 0,1. The following run suffixes are under
+`tmp/standalone-release-`, in that row order:
+
+| Saved mode | Run suffixes |
+| --- | --- |
+| 0 | `0w1onsri`, `7uk89xam`, `u94l1lg2`, `s6c9wbp2`, `r92ixto1`, `739nfce4` |
+| 1 | `fgf3da4a`, `max0n9l4`, `314lxv9k`, `fxym2oi5`, `ohnwpsg4`, `e30dhzvs` |
+| 2 | `7j7ljznb`, `atxun84d`, `fkkj2mjp`, `0u7m1oud`, `6ax4cj65`, `hm1l0jqf` |
+| 3 | `200f1yfj`, `hdzogjxb`, `8vxsjx2u`, `v12n_qpk`, `06r8hesc`, `s3giy_h0` |
+| 4 | `0tia6z8s`, `3c1hvmq8`, `4115cvr7`, `w6o0q3x7`, `tx59v_mf`, `mtj3j_65` |
+| 5 | `aixkqzg9`, `nv2_ofh_` |
+
+Each run uses a fresh copied-data fixture, saved Finnish configuration,
+no registration key, stripped executable, stock PAL 68020 with 2 MiB Chip/no
+Fast and a confirmed 4096-byte stack. Shop preparation retains the existing
+fixture's ordinary Escape input. The harness closes each muted emulator after
+the checked race-entry boundary; this is not a race-completion or normal-exit
+test. No user configuration/records are modified.
+
+The original-code navigation/reachability/action-map suite also passes:
+17,920 navigation cases, 51,200 mode-dispatch cases and 655,360 action-map
+cases (`tmp/title-f9-rows-oracle.log`). Its hidden-Load boundary remains
+explicit. Native row coverage does not make hidden Load reachable or establish
+other Help/demo shortcuts, error returns or all localization lifetimes.
+Production title input semantics were unchanged. Build log:
+`tmp/title-f9-rows-build.log`.
+
 ## Current native title cadence refresh (2026-09-30)
 
 Measured production HEAD `901e786` without an in-loop debugger breakpoint:

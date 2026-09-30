@@ -103,8 +103,10 @@ native caller/input/error checks.
   instrumentation overhead distinct from normal cadence and preserve original
   palette/state semantics; the current result does not close F08.
 - F03–F05/F10/F12: finish remaining native interactive sequences and shortcuts
-  against original callers, including other starting rows beyond the checked
-  GO/F9 matrix, remaining demo/input routes and applicable mouse behavior.
+  against original callers, including remaining Help/demo/input routes and
+  applicable mouse behavior. GO across all saved modes and F9 from every
+  visible row in all six modes have completed native matrices; do not repeat
+  those as remaining row coverage.
   Do not add an F2 title action or revive removed native-only menu rows.
 - Finish remaining caller/font-alias lifetime checks for other dialogs,
   transitions, failure and language routes. Ordinary Options/Players/Tracks

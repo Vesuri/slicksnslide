@@ -167,6 +167,8 @@ static unsigned char shop_test;
 static unsigned char shop_create_failure_test;
 static unsigned char shop_live_failure_test;
 static unsigned char title_start_test;
+static unsigned char title_start_downs=2;
+unsigned short g_slicks_diag_title_start_row=0xffff,g_slicks_diag_title_start_seen=0xffff;
 /* Explicit NATURALWX/Y/Z boundary fixtures; never enabled by normal launches. */
 static unsigned char shop_rejection_test;
 volatile signed char g_slicks_shop_rejection_item;
@@ -4236,6 +4238,15 @@ int main(void)
         title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]=='9'?0:argv[5]-'0');
         language_choice_test=(unsigned char)(argv[5]=='9'?2:argv[5]=='0');
     }
+    /* Explicit F9 row fixture, using real Down events and skipping hidden Load. */
+    if(argc==8 && argv[0]=='S' && argv[1]=='T' && argv[2]=='A' && argv[3]=='R' &&
+       argv[4]=='T' && argv[5]=='F' && argv[6]=='9' && argv[7]>='0' &&
+       argv[7]<='6' && argv[7]!='4') {
+        g_slicks_diag_title_start_row=(unsigned short)(argv[7]-'0');
+        title_start_downs=(unsigned char)(g_slicks_diag_title_start_row-
+            (g_slicks_diag_title_start_row>4));
+        argc=7;
+    }
     title_start_test=(unsigned char)(argc==7 && argv[0]=='S' && argv[1]=='T' &&
         argv[2]=='A' && argv[3]=='R' && argv[4]=='T' ?
         (argv[5]=='G' && argv[6]=='O'?1:argv[5]=='F' && argv[6]=='9'?2:0):0);
@@ -4643,8 +4654,8 @@ int main(void)
         platform.key_tail=0;
         if(title_start_test==1) { platform.keys[0]=0x44; platform.key_head=1; }
         else {
-            platform.keys[0]=0x4d; platform.keys[1]=0x4d;
-            platform.keys[2]=0x58; platform.key_head=3;
+            for(unsigned i=0;i<title_start_downs;++i)platform.keys[i]=0x4d;
+            platform.keys[title_start_downs]=0x58; platform.key_head=title_start_downs+1;
         }
     }
     if(title_help_test) {
@@ -5994,6 +6005,7 @@ int main(void)
                 /* Original F9 (2a4c5) returns 99 regardless of the selected
                  * row, sharing the GO playlist/player preparation tail. */
                 if (action == 4 || (action == 5 && original_setup) || (action == 2 && menu_selection == 0)) {
+                    if(title_start_test)g_slicks_diag_title_start_seen=menu_selection;
                     g_slicks_diag_ready = 0;
                     if(action==5) {
                         demo_track=selected_track;demo_vehicle=selected_vehicle;demo_laps=selected_laps;
