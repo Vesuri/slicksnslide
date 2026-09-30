@@ -36,9 +36,13 @@ commands
     quit 1
   end
   set $ready = $ready+1
-  if !$_isvoid($expected_help_language) && menu_language_name[4] != 48+$expected_help_language
-    printf "HELP_PAGE_WRONG_LANGUAGE\n"
-    quit 1
+  # Keep the optional arithmetic inside a separate command block: this GDB
+  # rejects the void operand even in the RHS of a false logical conjunction.
+  if !$_isvoid($expected_help_language)
+    if menu_language_name[4] != 48+$expected_help_language
+      printf "HELP_PAGE_WRONG_LANGUAGE\n"
+      quit 1
+    end
   end
   printf "HELP_PAGE_LANGUAGE %s\n",menu_language_name
   printf "HELP_PAGE_READY %u chapter=%lu page=%d\n", $ready, $v->navigation.chapter, $v->navigation.page

@@ -1006,6 +1006,41 @@ the remaining F10/F11/F12/input/demo callers. No production change was needed.
 
 ## Players picker and Help publication coverage
 
+### Saved-language Players Help matrix (2026-09-30)
+
+At 4692007, OPTIONSK now passes with fresh saved configurations for all eight
+supplied languages. Each run uses `diag_help_page_rectangles.gdb` (language 3
+uses the explicit Finnish wrapper), default 4 KiB stack, stock PAL 68020,
+2 MiB Chip/no Fast and muted audio. The host additionally requires exactly
+four `HELP_PAGE_LANGUAGE langN.txt` lines for the requested saved language,
+compares the entire before/after Help background, and independently decodes
+every captured bitplane publication.
+
+| Saved language | Run under `tmp/standalone-release-` | Publications |
+| --- | --- | --- |
+| 1 | `pzp7jnhd` | 6 |
+| 2 | `mmdjaz6h` | 6 |
+| 3 | `sft4mk5w` | 6 |
+| 4 | `tvoc5i0v` | 6 |
+| 5 | `cow7kiue` | 6 |
+| 6 | `0h25nnep` | 6 |
+| 7 | `96v4ov6c` | 6 |
+| 8 | `jdz3y2up` | 6 |
+
+All 48 publications match all 64,000 chunky pixels. Every run passes previous
+page, next page, Contents, exact parent restoration and final system restore
+31, with archive-reopen/display-teardown guards active throughout the Help
+visit. The harness closes each owned emulator. This completes the supplied
+saved-language matrix for this Players paging route, not every Help owner,
+link/history path or error case; the Help body itself is not claimed translated.
+
+The first attempt (`c7yxwsn8`) exposed a fixture defect: GDB rejected arithmetic
+with the unset optional `$expected_help_language` even on the right-hand side
+of a false conjunction. A nested command block now guards that arithmetic.
+The final matrix exercises both unset-variable and explicit-language paths;
+the initial failed attempt is not a rendering pass. Production code and ELF
+were unchanged during these runs.
+
 ### Saved Finnish Players Help paging (2026-09-30)
 
 `diag_help_pages_finnish.gdb` runs OPTIONSK with a real saved language-3
