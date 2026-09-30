@@ -22,10 +22,27 @@ uint16_t AmigaHardware::octants[4] = {
     OCTANT4 | LINEMODE
 };
 
+#ifdef USE_BLITTER_QUEUE
 uint16_t* AmigaHardware::blitterQueueBuffer = new uint16_t[BLITTER_QUEUE_SIZE + 1];
-uint16_t* AmigaHardware::blitterQueueBufferEnd = blitterQueueBuffer + BLITTER_QUEUE_SIZE;
+uint16_t* AmigaHardware::blitterQueueBufferEnd = blitterQueueBuffer ? blitterQueueBuffer + BLITTER_QUEUE_SIZE : 0;
+#else
+/* The unqueued implementation below never uses this storage. */
+uint16_t* AmigaHardware::blitterQueueBuffer = 0;
+uint16_t* AmigaHardware::blitterQueueBufferEnd = 0;
+#endif
 uint16_t* AmigaHardware::blitterQueueToBeBlitted = blitterQueueBuffer;
 uint16_t* AmigaHardware::blitterQueueAddPosition = blitterQueueBuffer;
+
+void AmigaHardware::releaseBlitterQueue()
+{
+    /* Application shutdown only, after stopping DMA/restoring the OS.
+     * The raw static pointer has no destructor; otherwise every launch
+     * leaks 49,158 requested bytes including the allocation header. */
+    delete[] blitterQueueBuffer;
+    blitterQueueBuffer = blitterQueueBufferEnd = 0;
+    blitterQueueToBeBlitted = blitterQueueAddPosition = 0;
+    hasQueuedBlits = false;
+}
 
 void AmigaHardware::setCopperList(const CopperList& copperList, bool immediate)
 {

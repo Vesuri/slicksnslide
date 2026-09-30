@@ -141,6 +141,7 @@ static unsigned char title_arcade_refresh=2;
 static struct SlicksTitleDemo title_demo;
 static unsigned char demo_render_only;
 static unsigned char demo_lifecycle_test,demo_test_stage,demo_test_round;
+static unsigned char demo_players_test;
 static unsigned char display_allocation_test;
 int g_slicks_display_allocation_checks;
 volatile unsigned char g_slicks_demo_test_error,g_slicks_demo_test_views;
@@ -755,11 +756,32 @@ static void slicks_diag_profile_race(unsigned char phase)
     g_slicks_diag_profile_race_at = now;
 }
 
+#ifdef SLICKS_STACK_CHECK
+/* Diagnostic build only. Native writes are required: this FS-UAE debugger
+ * cannot reliably plant a watermark. No stack extension or heap allocation. */
+volatile unsigned long g_slicks_stack_unused;
+static unsigned long *stack_check_lower;
+static unsigned long *stack_check_limit;
+static void finish_stack_check(void)
+{
+    unsigned long *at=stack_check_lower;
+    while(at<stack_check_limit && *at==0xa55a39c6UL) ++at;
+    g_slicks_stack_unused=(unsigned long)((unsigned char *)at-(unsigned char *)stack_check_lower);
+}
+#endif
 __attribute__((constructor)) static void initialize_sysbase(void)
 {
     struct ExecBase *base;
     __asm volatile("move.l 4.w,%0" : "=a"(base));
     SysBase = base;
+#ifdef SLICKS_STACK_CHECK
+    unsigned char *sp;
+    __asm volatile("move.l %%sp,%0" : "=a"(sp));
+    stack_check_lower=(unsigned long *)base->ThisTask->tc_SPLower;
+    stack_check_limit=(unsigned long *)((unsigned long)(sp-64)&~3UL);
+    for(unsigned long *at=stack_check_lower;(unsigned char *)(at+1)<sp-64;++at)
+        *at=0xa55a39c6UL;
+#endif
 }
 
 extern void slicks_draw_title_pages(unsigned char *planes,
@@ -4222,6 +4244,8 @@ static void restore_demo_configuration(struct SlicksConfiguration *configuration
     slicks_setup_select(&g_slicks_setup_session,configuration,&setup_resources,0);
 }
 
+extern void slicks_amiga_framework_shutdown(void);
+
 int main(void)
 {
     int argc = 0;
@@ -4373,6 +4397,10 @@ int main(void)
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
        argv[4]=='E' && argv[5]=='N' && argv[6]=='D') {
         demo_lifecycle_test=5;argc=0;argv="";
+    }
+    if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
+       argv[4]=='P' && argv[5]=='L' && argv[6]=='R') {
+        demo_lifecycle_test=5;demo_players_test=1;argc=0;argv="";
     }
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
        argv[4]=='E' && argv[5]=='R' && argv[6]=='R') {
@@ -5439,8 +5467,19 @@ int main(void)
                 if(++demo_test_round<2 && !g_slicks_demo_test_error) demo_test_stage=0;
                 else {
                     slicks_diag_demo_test_done();exit_requested=1;demo_test_stage=5;
+                    if(demo_players_test && !g_slicks_demo_test_error) {
+                        demo_lifecycle_test=0;exit_requested=0;demo_players_test=2;
+                        platform.key_tail=0;platform.keys[0]=0x4d;
+                        platform.keys[1]=0x44;platform.key_head=2;
+                    }
                 }
             }
+        }
+        if(demo_players_test==2 && g_slicks_player_menu) {
+            platform.key_tail=0;platform.keys[0]=0x45;platform.key_head=1;
+            demo_players_test=3;
+        } else if(demo_players_test==3 && !g_slicks_player_menu) {
+            demo_players_test=4;g_slicks_diag_force_exit=1;
         }
         if(registration_test && title_dirty_test) {
             static const unsigned char keys[]={0x4d,0x4d,0x4f,0x4e,0x4c,0x4c,0x45};
@@ -7457,5 +7496,9 @@ cleanup:
         CloseLibrary((struct Library *)DOSBase);
     GfxBase = 0;
     DOSBase = 0;
+    slicks_amiga_framework_shutdown();
+#ifdef SLICKS_STACK_CHECK
+    finish_stack_check();
+#endif
     return result;
 }

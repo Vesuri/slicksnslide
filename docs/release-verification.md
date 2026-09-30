@@ -1,5 +1,69 @@
 # Development release audit
 
+## 2026-09-30 — allocation ownership and default-stack lifecycle
+
+The framework allocated its 24,577-word blitter queue unconditionally in a
+startup constructor, even though Slicks builds without `USE_BLITTER_QUEUE`.
+Its raw static pointer had no destructor or explicit shutdown free. The old
+release audit `tmp/standalone-release-4781m6ij/debug.log` confirms exactly
+49,158 requested bytes outstanding after returning to DOS. In the same
+Workbench-loaded 2 MiB test, a menu-surface request of 86,422 bytes failed.
+That run's attempted debugger-written stack watermark is **invalid**: this
+FS-UAE build does not reliably apply target-memory writes. It is not evidence
+of stack overflow.
+
+The queue allocation is now conditional on actually using queued blitting.
+There is also an explicit final shutdown release for builds that do enable it.
+The platform's existing takeover, copper and bitmap implementation is unchanged.
+The fix saves roughly 48 KiB during play and avoids leaking it at every exit.
+
+`tools/memory_audit.py` observes real Exec AllocMem/FreeMem calls from before
+constructors until return to DOS. It checks ownership and exact free sizes,
+including allocations made by C++ new. It uses a host-side debugger driver,
+not a tracking allocation on the Amiga, and does not write game memory.
+The native DEMOPLR fixture completes two demos naturally, opens/closes Players
+through ordinary input events, and exits. The previous debugger-injected input
+attempts were discarded, not counted as passing evidence.
+
+Passed local fixtures (`tmp/standalone-release-*`):
+
+- `jsskk5u2`: normal build, Workbench loaded, 2 MiB Chip/no Fast, 4096-byte
+  Shell stack, two natural demos then Players; 161 allocations, zero failures,
+  zero outstanding at successful exit.
+- `ke0l7jnf`: deliberately restricted 1 MiB Chip, genuine allocation failure;
+  return code 20, 19 attempts/one failure, zero outstanding allocations.
+- `x4vdm7sd`: native STACKCHECK watermark, same demo/Players sequence; 692
+  bottom-of-stack bytes remain untouched, zero outstanding allocations.
+  One optional 64 KiB request fails and its normal fallback succeeds.
+- `ek3ac_fx`: STACKCHECK, DISPMEM's ten display-construction failure boundaries
+  followed by demo/exit; 692 untouched stack bytes. Three direct launches in
+  the **same** Workbench session all return successfully. After each, Avail
+  FLUSH reports exactly 1,891,720 free Chip bytes and a 1,890,792-byte largest
+  block. No accumulating leak or fragmentation is observed.
+- `vjqrkoq0`: restored normal build, two complete DEMOPLR launches in the same
+  Workbench session. The first audit confirms Players stage 4, two natural demo
+  returns, zero demo-state errors and zero outstanding allocations. Both
+  launches return successfully; free Chip bytes/largest block are the same
+  1,891,720/1,890,792 after each. No stack instrumentation is in this binary.
+
+STACKCHECK=1 is diagnostic-only and writes its watermark natively before main;
+it neither extends the stack nor allocates a replacement. Mode stamps force
+recompilation when toggling it. These are measured exercised paths, not a
+mathematical maximum for every possible input. Debuggers and emulators used
+for these completed tests were closed. All runs were muted.
+
+Repeat after building/copying the matching executable into a private install:
+
+```
+. amiga/env.sh
+python3 tools/test_standalone_release.py PRIVATE_INSTALL --workbench --args DEMOPLR --allocation-audit --audit-players --marker ALLOCATION_CLEANUP_OK
+python3 tools/test_standalone_release.py PRIVATE_INSTALL --workbench --args DISPMEM --allocation-audit --repeat 3 --marker ALLOCATION_CLEANUP_OK
+python3 tools/test_standalone_release.py PRIVATE_INSTALL --workbench --args DEMORET --allocation-audit --chip-memory 1024 --expect-failure --marker ALLOCATION_CLEANUP_OK
+```
+
+For the watermark, build `make -C amiga STACKCHECK=1`, run with the matching
+binary, then restore `make -C amiga STACKCHECK=0` before release packaging.
+
 ## 2026-09-30 — direct executable launch and RAM temporary directory
 
 Removed the Play script from the package and installer. Upgrades also remove

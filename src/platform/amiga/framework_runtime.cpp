@@ -1,5 +1,11 @@
 #include <exec/memory.h>
 #include <proto/exec.h>
+#include "framework/AmigaHardware.h"
+
+extern "C" void slicks_amiga_framework_shutdown(void)
+{
+    AmigaHardware::releaseBlitterQueue();
+}
 
 void *operator new(unsigned long size)
 {

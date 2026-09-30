@@ -15,6 +15,7 @@ public:
     static uint16_t bplcon3BaseValue;
     static bool hasAGAChipSet;
     static bool hasQueuedBlits;
+    static void releaseBlitterQueue();
 #if defined(ASSEMBLER) && defined(__SASC)
     __asm static void* getVBR(void);
 #else

@@ -52,7 +52,8 @@ validation candidate still says 0.1; apply the final version after D-3 passes.
 
 ## D. Release gate (run once, after B and C)
 
-- [x] **D-1.** Run `make release-check` from a clean tree and confirm it passes.
+- [ ] **D-1.** Rerun `make release-check` from a clean tree after the shutdown
+  allocation fix and confirm it passes.
 - [x] **D-2.** Run F1, CITY and WHACKO full-frame display audits on the release
   candidate, plus the `make -C amiga RETCHECK=1` retention check, and confirm
   both pass.
@@ -66,10 +67,10 @@ validation candidate still says 0.1; apply the final version after D-3 passes.
   6. quit to Workbench;
   7. repeat steps 2–4 and 6 from the WHDLoad icon, with and without PRELOAD, at
      the memory configuration `docs/whdload.md` documents.
-  **Current blocker:** after a naturally completed demo, opening Players exited
-  the game in the user's stock-A1200 session, and immediate relaunch failed.
-  Reproduce and fix the cause; verify allocation cleanup on normal and failed
-  exits, repeated launch in the same OS session, and 4 KB stack operation.
+  **Resume point:** retry the corrected build after a natural demo, open
+  Players, and continue the race/save/quit checklist. Automated cleanup,
+  allocation-failure, repeated-launch and default-4-KB-stack checks are now
+  covered; they do not replace the user's manual session.
 - [ ] **D-4.** Change VERSION and all game/slave/Installer/ReadMe version strings
   to **0.90 (30.09.2026)**, rebuild and audit **Slicks-0.90.lha**, record the hashes
   in [release-verification.md](release-verification.md), and tag the version in git.
