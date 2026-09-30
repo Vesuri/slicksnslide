@@ -2,6 +2,8 @@ set $standings = 0
 set $saved = 0
 set $read_errors = 0
 set $save_errors = 0
+set $table_errors = 0
+set $table_views = 0
 set $record_inserts = 0
 set $expected_save_errors = 0
 source diag_records_resident.gdb
@@ -16,13 +18,21 @@ commands
       quit 1
     end
   else
-    if g_slicks_diag_record_results_phase != 5
-      quit 1
+    if g_slicks_diag_record_results_phase == 6
+      set $table_errors = $table_errors+1
+      if g_slicks_diag_record_menu || g_slicks_diag_surface_create_fault || (g_slicks_diag_record_faults & 16) || $record_inserts != 1
+        printf "RECORD_TABLE_PARTIAL_CLEANUP_FAILED\n"
+        quit 1
+      end
+    else
+      if g_slicks_diag_record_results_phase != 5
+        quit 1
+      end
+      set $save_errors = $save_errors+1
     end
-    set $save_errors = $save_errors+1
   end
   printf "RECORD_RECOVERY phase=%u skip=%u\n",g_slicks_diag_record_results_phase,g_slicks_diag_record_skip
-  set $warning_index=$read_errors+$save_errors
+  set $warning_index=$read_errors+$save_errors+$table_errors
   set $warning_planes=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
   eval "dump binary memory .run/record-warnings/%u.chunky %p %p",$warning_index,$record_pixels,$record_pixels+64000
   eval "dump binary memory .run/record-warnings/%u.planar %p %p",$warning_index,$warning_planes,$warning_planes+64000
@@ -35,6 +45,7 @@ commands
     set $record_closing = 1
   end
   if g_slicks_diag_record_results_phase == 2
+    set $table_views = $table_views+1
     set $record_menu=g_slicks_diag_record_menu
     if !$record_menu || !$record_menu->track_saved_dirty || !$record_menu->saved_dirty_count
       printf "RECORD_RESTORE_BOUNDS_MISSING\n"
@@ -141,6 +152,13 @@ commands
   if !$_isvoid($expect_record_close) && $read_errors!=1
     printf "RECORD_CLOSE_WARNING_MISSING\n"
     quit 1
+  end
+  if !$_isvoid($expect_record_table)
+    if $table_errors != 1 || $read_errors || $save_errors || $record_inserts != 2 || $table_views != (g_slicks_diag_record_skip == 3 ? 1 : 2) || g_slicks_diag_record_faults
+      printf "RECORD_TABLE_RECOVERY_FAILED errors=%u inserts=%u views=%u\n",$table_errors,$record_inserts,$table_views
+      quit 1
+    end
+    printf "RECORD_TABLE_RECOVERY_OK errors=%u inserts=%u views=%u\n",$table_errors,$record_inserts,$table_views
   end
   printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK reads=%u saves=%u inserts=%u returns=%u\n",$read_errors,$save_errors,$record_inserts,$record_returns
   quit

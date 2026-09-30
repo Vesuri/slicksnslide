@@ -2234,6 +2234,57 @@ pages, or every title input route.
 
 ## Direct full-screen publication inventory (source audit, 2026-09-29)
 
+### Post-race records view allocation recovery (2026-09-30)
+
+Source inspection found that `run_record_results` returned a fatal error if
+the records owner/font/icon preparation failed, even though no table pixels
+had been drawn yet. It now destroys the incomplete owner, closes the cached
+archive handle and offers the allocation-free platform Retry/Skip warning.
+Retry starts at presentation preparation, after record qualification/insertion;
+Skip bypasses only the table and still reaches the normal record save. This
+is defensive Amiga resource-error handling, not a claim about an original DOS
+error dialog. Successful ordinary presentation and record calculations are
+unchanged.
+
+The warning and subsequent table use `show_menu` to retain existing takeover
+on Retry; active publications wait for display blank. The initial candidate
+(`lrqt4wtn`) incorrectly called `platform_begin` a second time and was rejected
+by the full-flow gate. The final candidate below fixes that lifecycle error.
+
+New OPTIONSBT/OPTIONSBU fixtures fail the second-font temporary allocation
+after owner/first-font preparation (existing surface fault stage 5), then
+Retry or Skip. `diag_record_table_recovery.gdb` requires the fault consumed,
+one view warning, exactly two result insertions across two races, two table
+views for Retry or one for Skip, complete championship statistics/save/exit
+and system restoration 31. The shared records fixture captures the warning
+and verifies bounded table restoration as before.
+
+| Choice | Run under `tmp/standalone-release-` | Inserts / table views |
+| --- | --- | --- |
+| Retry | `6xj9evdy` | 2 / 2 |
+| Skip table | `ea2_mu_9` | 2 / 1 |
+
+Both pass on stock PAL 68020, 2 MiB Chip/no Fast, default 4 KiB stack and
+muted audio. Both warnings match every chunky pixel after independent planar
+decoding; both race returns preserve all 64,000 source pixels and every race
+bitplane byte. Each displayed table restores 25,200 pixels, not the whole
+screen. The persisted BASIC.SS differs from the supplied original and is
+byte-identical between Retry and Skip; the other track files also match
+between fixtures (FS-UAE's BASIC.SS.uaem metadata differs). Fixtures are
+`tmp/record-table-final-GDzgfY` and `tmp/record-table-final-r2bb8U`.
+
+Host gates pass 25,272 original post-race qualification/insertion/rank/date
+comparisons and 2,048 original record-writer full-file/working-table cases.
+Logs: `tmp/record-table-build.log`, `tmp/record-table-host.log`. Other allocation
+sites, malformed resources and repeated failures remain distinct coverage;
+this test deliberately verifies partial font preparation, not every allocator.
+
+The shared warning regression OPTIONSBC (`t4zro3g7`) also passes on the final
+candidate: one real track-Close failure, one record-save failure, two insertions
+and two exact race returns. Both warning publications independently match all
+pixels, championship statistics/save/exit and restoration 31 pass. All three
+final candidate emulators were closed by the harness.
+
 ### Text adapters and remaining VGA full converters (2026-09-30)
 
 Inspection at cc5dd31 traced the C font-bridge callers across

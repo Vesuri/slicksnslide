@@ -3078,13 +3078,15 @@ static int record_retry_notice(struct SlicksAmigaPlatform *platform,struct Slick
 {
     if(!race->font.ready || slicks_amiga_emergency_warning_open(chunky,palette,race->font.runtime,message)) return -1;
     int result=-1;
+    if(platform->active) slicks_amiga_platform_wait_display_blank(platform);
     slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
-    if(slicks_amiga_platform_set_view(platform,0,palette) || slicks_amiga_platform_begin(platform,0)) goto done;
+    if(slicks_amiga_platform_set_view(platform,0,palette) || show_menu(platform)) goto done;
     platform->key_tail=platform->key_head;
     slicks_diag_record_recovery_ready();
     if(diagnostic) {
         unsigned char skip=(g_slicks_diag_record_skip==1 && g_slicks_diag_record_results_phase==5) ||
-            (g_slicks_diag_record_skip==2 && g_slicks_diag_record_results_phase==4);
+            (g_slicks_diag_record_skip==2 && g_slicks_diag_record_results_phase==4) ||
+            (g_slicks_diag_record_skip==3 && g_slicks_diag_record_results_phase==6);
         platform->key_tail=0; platform->keys[0]=skip?0x45:0x44; platform->key_head=1;
     }
     for(;;) {
@@ -3156,9 +3158,28 @@ load_records:
     g_slicks_diag_record_table=records;
     g_slicks_diag_record_results_phase=1; slicks_diag_record_results_ready();
     if(outcome.show) {
+prepare_table:
         if(slicks_resource_archive_cached(&archive,menu_cache)) goto done;
+        if(g_slicks_diag_record_faults&16) {
+            /* Fail the second font's temporary allocation after the owner
+             * and first font have been allocated, exercising partial cleanup. */
+            g_slicks_diag_record_faults&=(unsigned char)~16;
+            g_slicks_diag_surface_create_fault=5;
+        }
         m=slicks_amiga_race_surface_create(&archive,chunky,palette);
-        if(!m || slicks_amiga_records_icons_load(m,&archive)) goto done;
+        if(!m || slicks_amiga_records_icons_load(m,&archive)) {
+            /* No table pixels have been painted. Release the failed attempt
+             * before using the allocation-free warning; keep the calculated
+             * records so Retry cannot insert the same results twice. */
+            slicks_amiga_player_menu_destroy(m); m=0;
+            slicks_resource_archive_close(&archive);
+            g_slicks_diag_record_results_phase=6;
+            int choice=record_retry_notice(platform,race,chunky,palette,
+                (const unsigned char *)"RECORD VIEW FAILED: ENTER RETRY / ESC SKIP",diagnostic);
+            if(choice<0) goto done;
+            if(choice) goto prepare_table;
+            goto save_records;
+        }
         for(unsigned long i=0;i<64000;++i) m->saved[i]=chunky[i];
         m->saved_dirty_count=0; m->track_saved_dirty=1;
         unsigned char table[256];
@@ -3168,10 +3189,11 @@ load_records:
                 slicks_original_date_separator,slicks_original_date_order)) goto done;
         /* Race rendering used view 1. View 0 can still contain a previous
          * menu: initialize its background as well as the records overlay. */
+        if(platform->active) slicks_amiga_platform_wait_display_blank(platform);
         slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
         slicks_amiga_player_menu_clear_dirty(m);
         if(slicks_amiga_platform_set_view(platform,0,palette) ||
-           slicks_amiga_platform_begin(platform,0)) goto done;
+           show_menu(platform)) goto done;
         platform->key_tail=platform->key_head;
         if(diagnostic) g_slicks_diag_record_menu=m;
         g_slicks_diag_record_results_phase=2; slicks_diag_record_results_ready();
@@ -3179,6 +3201,7 @@ load_records:
         slicks_amiga_player_menu_restore(m);
         g_slicks_diag_record_menu=0;
     }
+save_records:
     if(outcome.changed) {
         for(;;) {
             slicks_amiga_platform_end(platform);
@@ -4080,10 +4103,10 @@ int main(void)
     unsigned char mixed_setup_test=(unsigned char)(persistence_test && argv[7]=='W');
     unsigned char combined_test=(unsigned char)(persistence_test && argv[7]=='U'),combined_stage=0;
     unsigned char failure_injected=0;
-    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V'));
+    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V' || argv[8]=='T' || argv[8]=='U'));
     if(record_recovery_test) {
-        g_slicks_diag_record_faults=(argv[8]=='C' || argv[8]=='V')?6:3;
-        g_slicks_diag_record_skip=argv[8]=='S'?1:(argv[8]=='L' || argv[8]=='V')?2:0;
+        g_slicks_diag_record_faults=(argv[8]=='T' || argv[8]=='U')?16:(argv[8]=='C' || argv[8]=='V')?6:3;
+        g_slicks_diag_record_skip=argv[8]=='U'?3:argv[8]=='S'?1:(argv[8]=='L' || argv[8]=='V')?2:0;
     }
     unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'));
     unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='M'?4:argv[8]=='L'?3:argv[8]=='K'?2:1):0);
