@@ -1,5 +1,40 @@
 # Development release audit
 
+## 2026-10-01 — final native memory workflow; B12 closed
+
+All runs below use the stripped executable with SHA-256
+`cd579a700f6490e32e61c9832f2bb79aca0649469e26fb696943a3278fe15282`.
+
+- `tmp/standalone-release-i4n7z5me`: DEMOPLR, Workbench-loaded PAL A1200,
+  2 MiB Chip/no Fast/default 4 KiB stack. Two natural demo returns and Players
+  open/close pass, then the entire launch is repeated in the same OS session.
+  First-launch audit: 131 allocations, zero failures, return 0, no outstanding
+  blocks or workspace conflicts. The extra allocation is the explicitly
+  diagnostic playlist snapshot; this run does not claim startup-only mode.
+  Both launches leave exactly 1,891,728 Chip bytes available and a 1,890,816-byte
+  largest block. No cumulative loss or fragmentation appears in this test.
+- `...-vafppvog` CHAMPSAVE then `...-rlg49zof` CHAMPEDIT: same stock settings,
+  strict startup-only allocation audits pass. Each has 130 startup allocations,
+  zero failed/outstanding blocks, return 0 and no workspace conflicts. Saving,
+  editing/deletion and cancellation reuse the reservations.
+- `tmp/whdload-test-mo5up_ag` and `...-qav2v3yw`: stripped game launches and
+  returns normally through the diagnostic exit slave, with and without PRELOAD
+  respectively; 2 MiB Chip plus documented 4 MiB Fast. These checks do not
+  replace the production-icon manual race workflow.
+- Every emulator started for these checks has exited.
+
+B12 completion evidence combines the current source/caller census (all
+remaining production allocations are startup-only), target-sized lifetime
+layout and ownership guards, bounded/zero-allocation host storage tests,
+native strict save/edit/error-recovery audits, low-memory launch cleanup,
+natural-demo/menu/relaunch cleanup and the clean release/package check.
+The nine diagnostic-only source allocation expressions are expressly outside
+the normal-game contract. OS filesystem/library internals remain OS-owned;
+their errors are recoverable, not guaranteed away by startup reservations.
+
+B11's final manual intermission/save retry and the broader D-3 release checklist
+remain open. This closes memory ownership, not those separate observations.
+
 ## 2026-10-01 — clean release-check after startup-memory migrations
 
 `make release-check` passes at 4aa7262. This includes the timing/physics,

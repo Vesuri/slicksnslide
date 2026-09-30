@@ -1,6 +1,6 @@
 # Open work — ship list
 
-Updated 2026-09-30. This is the complete, finite list of work between now and
+Updated 2026-10-01. This is the complete, finite list of work between now and
 release. Close each item exactly as written, commit it, and tick it off.
 
 **Adding an item requires a demonstrated defect.** That means a reproduced
@@ -28,7 +28,7 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-B1–B10 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
+B1–B10 and B12 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and
 [release-verification.md](release-verification.md).
 
@@ -40,16 +40,10 @@ B1–B10 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
   the 65,536-byte preview arena allocation in `slicks_amiga_intermission_open`
   as the failure, after data and menu allocations succeed. Preview now borrows
   the dead VGA race image's startup allocation; stock-2-MiB intermission/edit/
-  next-race and pixel-publication checks pass. Finish championship save and
-  end-to-end release validation with this build.
-
-- [ ] **B12. Startup-owned runtime memory:** User requested reserving all
-  game-owned runtime storage before entering the game, with a clear launch
-  failure when it cannot fit. Replace late allocations with bounded, reusable
-  workspaces whose simultaneous lifetimes are proved. Cover menus and nested
-  dialogs, preparation, persistence, catalogue growth and ending screens;
-  preserve disk-error recovery. Audit remaining OS allocation calls after
-  startup and verify cleanup. Inventory/design: [memory-lifetimes.md](memory-lifetimes.md).
+  next-race and pixel-publication checks pass. The rebuilt stripped release
+  also passes championship save/edit with zero post-startup allocations and
+  clean shutdown. Finish the manual intermission/save retry and end-to-end
+  release checklist below; automated results do not count as manual observation.
 
 ## C. Packaging
 

@@ -9,10 +9,11 @@ out. Reserve by simultaneous lifetime and reject unsupported catalogue sizes
 before gameplay. Disk/OS operations can still fail independently and must retain
 their recoverable error handling; startup reservation cannot guarantee disk I/O.
 
-The allocation migrations are implemented. Final validation is still in
-progress: B12 remains open until the source/lifetime audit and native release
-workflow have been reconciled against this layout. Completed evidence is in
+The allocation migrations and B12 validation are complete. The source/caller
+census, bounded workspace layout, failure tests and native allocation/relaunch
+audits establish the normal-game startup-ownership contract. Evidence is in
 [release-verification.md](release-verification.md).
+The manual release workflow is a separate open gate.
 
 The complete direct-allocation census and finite migration groups are in
 [allocation-inventory.md](allocation-inventory.md). Complete its nesting/phase
