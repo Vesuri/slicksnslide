@@ -2158,8 +2158,10 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         if(shop_help_input_test) {
             static const unsigned char help_keys[]={0x50,0x50,0x44,0x41,0x40,0x35,0x45,0x45};
             static const unsigned char failure_keys[]={0x50,0x4d,0x44,0x50,0x45,0x45};
+            static const unsigned char allocation_keys[]={0x50,0x44,0x50,0x45,0x45};
             const unsigned char *keys=shop_help_input_test==2?failure_keys:help_keys;
             unsigned count=shop_help_input_test==2?sizeof failure_keys:sizeof help_keys;
+            if(shop_help_input_test>=3) { keys=allocation_keys;count=sizeof allocation_keys; }
             for(unsigned i=0;i<count;++i) platform->keys[i]=keys[i];
             platform->key_head=count;
         } else if(shop_rejection_test) {
@@ -2194,7 +2196,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             if(m->help_warning) {
                 if(slicks_amiga_help_warning_close(m)) goto done;
                 present_menu_surface(platform,m);
-                if(shop_help_input_test==2) slicks_diag_help_warning_closed();
+                if(shop_help_input_test>=2) slicks_diag_help_warning_closed();
                 continue;
             }
             if(m->help) {
@@ -2223,6 +2225,12 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
             signed char old_driver=state.driver,old_row=state.row;
             enum SlicksShopAction action=slicks_shop_key(&state,session->players.participation,scan);
             if(action==SLICKS_SHOP_HELP) {
+                if(shop_help_input_test>=3 && !shop_help_fault_sent) {
+                    extern unsigned char g_slicks_diag_help_fail_backing;
+                    if(shop_help_input_test==3) g_slicks_diag_help_fail_allocation=1;
+                    else g_slicks_diag_help_fail_backing=1;
+                    shop_help_fault_sent=1;
+                }
                 if(slicks_amiga_help_open(m,&archive,slicks_original_shop_help) &&
                     slicks_amiga_help_warning_open(m)) goto done;
                 if(shop_test && m->help) g_slicks_shop_help_phase=1;
@@ -2234,6 +2242,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                 }
                 present_menu_surface(platform,m);
                 if(show_menu(platform)) goto done;
+                if(shop_help_input_test>=3 && m->help_warning) slicks_diag_help_failed();
             } else if(action==SLICKS_SHOP_CAPTURE) {
                 /* File I/O is performed only while AmigaOS owns the machine. */
                 slicks_amiga_platform_end(platform);
@@ -4133,8 +4142,8 @@ int main(void)
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char rejection_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='X' && argv[8]<='Z');
     unsigned char shop_failure_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]=='F');
-    if(argc==9 && argv[7]=='W' && (argv[8]=='H' || argv[8]=='J'))
-        shop_help_input_test=(unsigned char)(argv[8]=='H'?1:2);
+    if(argc==9 && argv[7]=='W' && (argv[8]=='H' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L'))
+        shop_help_input_test=(unsigned char)(argv[8]=='H'?1:argv[8]=='J'?2:argv[8]=='K'?3:4);
     unsigned char actor_case_test=(unsigned char)((argc==9 || (argc==10 && argv[9]=='Q')) && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;

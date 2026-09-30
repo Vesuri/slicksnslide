@@ -2644,6 +2644,31 @@ Build log: `tmp/shop-help-recovery-build.log`. Both muted runners closed their
 emulators. These stop at race entry rather than asserting normal program exit.
 Other shop allocation/page/language failure routes remain separate coverage.
 
+### Shop Help allocation and resident-recovery gates
+
+The shop fixture now also covers failed viewer allocation (`NATURALWK`) and
+failed separate 64,000-byte backing allocation (`NATURALWL`). Both use the
+existing one-shot allocation hooks before the first F1 open; the second F1
+attempt uses real allocations. The extended `diag_shop_help_recovery.gdb`
+requires hook consumption (and one reached backing fault for WL), one warning,
+one dismissal, two open attempts, unchanged cash and successful race entry.
+It rejects any archive reopen or display teardown from the first Help attempt
+through successful Help closure. The marker is now
+`SHOP_HELP_RECOVERY_RACE_OK case=N`, shared with the malformed-chapter case.
+
+Fresh stripped-executable/default-4-KiB-stack stock PAL A1200 runs pass:
+
+- Malformed chapter / case 2: `tmp/standalone-release-rekjq3w1`, six publications.
+- Viewer allocation / case 3: `tmp/standalone-release-i91kb_o8`, five publications.
+- Background allocation / case 4: `tmp/standalone-release-5f4hzue3`, five publications.
+
+All 16 publications match their chunky surfaces across all 64,000 pixels.
+Each warning dismissal restores the complete pre-Help shop image exactly.
+Build log: `tmp/shop-help-allocation-build.log`. Runs were muted and their
+emulators closed. These allocation fault/reopen checks do not constitute an
+exhaustive heap-leak audit, other language/page coverage, or normal program-exit
+proof: the gates finish at successful race entry.
+
 ## Remaining platform teardown call-site inventory (2026-09-30)
 
 After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in

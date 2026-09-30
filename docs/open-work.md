@@ -76,8 +76,10 @@ native caller/input/error checks.
   restoration and successful retry; other owners remain separate coverage.
   Shop Help's lost-character caller is corrected and native Enter/Space plus
   Backspace/b history is covered. A malformed-chapter navigation failure now
-  restores the shop, warns and permits a verified reopen/race retry; remaining
-  page/language/allocation-error sequences still need their own evidence.
+  restores the shop, warns and permits a verified reopen/race retry. Viewer and
+  background allocation failures also have exact-restoration/reopen gates with
+  no archive reopen or display teardown. Remaining page/language/error sequences
+  still need their own evidence.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

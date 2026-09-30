@@ -2,6 +2,24 @@ source diag_menu_rectangles.gdb
 set $help_opens=0
 set $warnings=0
 set $dismissed=0
+break *slicks_resource_archive_open
+commands
+  silent
+  if $help_opens && g_slicks_shop_help_phase!=2
+    printf "SHOP_HELP_RECOVERY_DISK_OPEN\n"
+    quit 1
+  end
+  continue
+end
+break *slicks_amiga_platform_end
+commands
+  silent
+  if $help_opens && g_slicks_shop_help_phase!=2
+    printf "SHOP_HELP_RECOVERY_TEARDOWN\n"
+    quit 1
+  end
+  continue
+end
 break *slicks_amiga_help_open
 commands
   silent
@@ -17,6 +35,12 @@ break slicks_diag_help_failed
 commands
   silent
   if !$owner->help_warning || $owner->help || !shop_help_fault_sent || !g_slicks_diag_profile_platform->active
+    quit 1
+  end
+  if g_slicks_diag_help_fail_allocation || g_slicks_diag_help_fail_backing
+    quit 1
+  end
+  if shop_help_input_test==4 && g_slicks_diag_help_backing_fault_reached!=1
     quit 1
   end
   set $warnings=$warnings+1
@@ -38,7 +62,7 @@ commands
   if $warnings!=1 || $dismissed!=1 || $help_opens!=2 || g_slicks_shop_help_phase!=2 || g_slicks_diag_race_error
     quit 1
   end
-  printf "SHOP_HELP_PARSE_RECOVERY_RACE_OK\n"
+  printf "SHOP_HELP_RECOVERY_RACE_OK case=%u\n",shop_help_input_test
   quit
 end
 break slicks_diag_system_restored
