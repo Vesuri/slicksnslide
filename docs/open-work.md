@@ -74,6 +74,9 @@ native caller/input/error checks.
   Options/Players/Tracks now cover separate nested-Help background-allocation
   failure as well as missing data and viewer allocation, including exact parent
   restoration and successful retry; other owners remain separate coverage.
+  Shop Help's lost-character caller is corrected and native Enter/Space plus
+  Backspace/b history is covered; remaining page/language/error sequences
+  still need their own evidence.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

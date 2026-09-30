@@ -25,6 +25,7 @@ and a production-screen comparison establish different things.
 | F14 | Missing prepared-title background tints | Original `261e8..2623d` shades two rectangles before capturing DS:4c1c. Native startup previously converted the untouched artwork, affecting 10,837 pixels with the supplied artwork/palette. Corrected with one-time preparation; evidence below. |
 | F15 | Saved language ignored by live table consumers | Original startup resolves DS:05e1 and passes it to `2b70a`, which constructs `/langN.txt`. Native title/Arcade, pause and intermission loads were hardwired to lang1. Positive supplied-language selections are now connected; startup default detection/chooser and remaining translated-label caller coverage are still open. |
 | F16 | Added global right-mouse program exit | The main loop read the right-button register and set `exit_requested` independently of the keyboard/menu owner, including during Help. Removed in the keyboard-only exit correction below. This was a native shortcut, not an original title/Help action. |
+| F17 | Shop Help drops printable input | `run_shop` supplied only scans (plus Escape ASCII) to the Help viewer. Original navigation requires ASCII for Enter/Space link activation, Backspace/“b” history and Tab/uppercase K. Corrected to use the shared keymapped Help adapter. |
 
 The original language startup/caller audit confirmed the hardwired-language
 candidate as F15. Track catalogue sorting, limits,
@@ -2492,6 +2493,39 @@ Runs were muted and emulators closed. No manual joystick testing was resumed.
 Historical player-setup notes describing the right-mouse shortcut record its
 former behavior, not the current interface. Other owner/input coverage remains
 open; removal of this shortcut is not a whole-input-system fidelity claim.
+
+## F17: shop Help character-aware input (2026-09-30)
+
+The shop's nested Help caller passed `scan==1?27:0` as its character, unlike
+the other interactive Help owners. Thus the isolated original navigation
+oracle could pass while this caller could not activate links or use history.
+It now feeds raw make/release events to `slicks_amiga_menu_character` before
+filtering releases, then uses `slicks_amiga_help_key` for Help. This retains
+modifier releases, separates printable ASCII from extended scans and gives
+the approved Page Up/Down aliases precedence over printable brackets. The
+shop's own scan-based transactions and capture shortcut remain unchanged.
+
+`NATURALWH` is an explicit input fixture: open shop Help, F1 to Contents,
+Enter, Backspace, Space, lowercase b, Escape from Help, Escape from shop.
+The read-only `diag_shop_help_input.gdb` requires the actual ASCII/scan pairs,
+history pushes on both link activations, exact chapter/history return on both
+back commands, completed Help closure and successful race entry. The native
+trace visits chapter 348, follows `contacting` to 12558, and returns to 348
+twice. It passes at `tmp/standalone-release-w1vqarc5`, with eight publications
+whose reconstructed planar pixels match all 64,000 chunky pixels each.
+
+The ordinary `NATURALW` shop transaction/Help/race regression also passes
+(`tmp/standalone-release-t8scq13h`): expected draw count, driver changes,
+cash, inventory and initial race weapon selection are preserved. Both runs
+use the stripped executable, stock PAL 68020/2 MiB Chip/no Fast and confirmed
+default 4 KiB stack. They stop at race entry, not a normal-exit checkpoint;
+the muted runners close their emulators.
+
+`verify-help-navigation` passes 816 original DOS key/page/link/history cases;
+`verify-amiga-key-scan` passes the shared adapter suite. Logs:
+`tmp/shop-help-input-oracle.log`, `tmp/shop-help-key-adapter.log`,
+`tmp/shop-help-input-build.log`. This closes the confirmed lost-character
+caller defect, not every shop Help language/page/error sequence.
 
 ## Adaptations to preserve or explicitly classify
 

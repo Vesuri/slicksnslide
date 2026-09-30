@@ -190,6 +190,10 @@ static short shop_track_position;
 static short shop_track_total;
 volatile unsigned short g_slicks_shop_test_phase;
 volatile unsigned short g_slicks_shop_help_phase;
+static unsigned char shop_help_input_test;
+struct SlicksHelpViewer *g_slicks_shop_help_viewer;
+unsigned short g_slicks_shop_help_ascii,g_slicks_shop_help_scan;
+__attribute__((noinline)) void slicks_diag_shop_help_key(void) { __asm__ volatile("" ::: "memory"); }
 struct SlicksShopMenu *g_slicks_shop_menu;
 void __attribute__((noinline)) slicks_diag_shop_ready(void) { __asm__ volatile("" ::: "memory"); }
 
@@ -2150,7 +2154,11 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     if(shop_test) {
         static const unsigned char keys[]={0x20,0x4c,0x4d,0x4c,0x4e,0x4f,0x41,0x5f,0x5f,0x44,0x44,0x41,0x50,0x45,0x45};
         platform->key_tail=0;
-        if(shop_rejection_test) {
+        if(shop_help_input_test) {
+            static const unsigned char help_keys[]={0x50,0x50,0x44,0x41,0x40,0x35,0x45,0x45};
+            for(unsigned i=0;i<sizeof help_keys;++i) platform->keys[i]=help_keys[i];
+            platform->key_head=sizeof help_keys;
+        } else if(shop_rejection_test) {
             platform->keys[0]=0x44;platform->keys[1]=0x44;platform->keys[2]=0x45;
             platform->key_head=3;
         } else if(g_slicks_diag_weapon_case) {
@@ -2174,6 +2182,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         slicks_amiga_platform_wait_vblank(platform);
         if(g_slicks_diag_force_exit) goto done;
         while(slicks_amiga_platform_poll_key(platform,&raw)) {
+            unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
             if(raw&128) continue;
             /* Classic keyboards have no Scroll Lock. Help is the shop-only
              * capture shortcut; F1 retains the original help viewer. */
@@ -2184,7 +2193,14 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                 continue;
             }
             if(m->help) {
-                if(slicks_help_viewer_key(m->help,scan==1?27:0,scan)) goto done;
+                struct SlicksAmigaHelpKey key=slicks_amiga_help_key((unsigned char)raw,character);
+                if(!(key.ascii || key.scan)) continue;
+                if(slicks_help_viewer_key(m->help,key.ascii,key.scan)) goto done;
+                if(shop_help_input_test) {
+                    g_slicks_shop_help_viewer=m->help;
+                    g_slicks_shop_help_ascii=key.ascii;g_slicks_shop_help_scan=key.scan;
+                    slicks_diag_shop_help_key();
+                }
                 if(m->help->navigation.done) {
                     if(slicks_amiga_help_close(m)) goto done;
                     if(shop_test) g_slicks_shop_help_phase=2;
@@ -4100,11 +4116,12 @@ int main(void)
     unsigned char weapon_case_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='1' && argv[8]<='9');
     unsigned char rejection_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]>='X' && argv[8]<='Z');
     unsigned char shop_failure_case=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]=='F');
+    shop_help_input_test=(unsigned char)(argc==9 && argv[7]=='W' && argv[8]=='H');
     unsigned char actor_case_test=(unsigned char)((argc==9 || (argc==10 && argv[9]=='Q')) && argv[7]=='O' && argv[8]>='0' && argv[8]<='3');
     unsigned char gameplay_benchmark=(unsigned char)(argc==9 && (argv[7]=='M' || argv[7]=='B' || argv[7]=='S' || (argv[7]>='1' && argv[7]<='6')) && argv[8]>='0' && argv[8]<='3');
     if(gameplay_benchmark && argv[7]!='M')continuous_diagnostics=0;
     unsigned char audio_pcm_test=(unsigned char)(argc==9 && argv[7]=='Q' && argv[8]=='B');
-    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || rejection_case || shop_failure_case || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
+    unsigned char natural_results_test=(unsigned char)((argc==8 || weapon_case_test || rejection_case || shop_failure_case || shop_help_input_test || actor_case_test || audio_pcm_test || gameplay_benchmark) && argv[0]=='N' && argv[1]=='A' &&
         argv[2]=='T' && argv[3]=='U' && argv[4]=='R' && argv[5]=='A' && argv[6]=='L' &&
         (argv[7]=='D' || argv[7]=='F' || argv[7]=='W' || argv[7]=='P' || argv[7]=='R' || argv[7]=='E' || argv[7]=='C' || argv[7]=='A' || argv[7]=='T' || argv[7]=='I' || argv[7]=='Q' || argv[7]=='O' || gameplay_benchmark));
     if(natural_results_test) shop_transition_test=argv[7]=='P'?1:argv[7]=='R'?2:argv[7]=='E'?3:argv[7]=='C'?4:argv[7]=='A'?5:0;
