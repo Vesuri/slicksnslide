@@ -186,6 +186,8 @@ elif [ "${SLICKS_TRACK_MENU:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKSL\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_TRACK_MENU:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag TRACKS\n' > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HELP_MENU:-0}" = 9 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HELPK\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_HELP_MENU:-0}" = 8 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag OPTIONSN\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_HELP_MENU:-0}" = 7 ]; then

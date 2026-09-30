@@ -38,7 +38,7 @@ static void pixel(uc_engine *uc,uc_mem_type type,uint64_t address,int size,int64
 
 int main(int argc,char **argv)
 {
-    static unsigned char runtime[300000],code[4096],resource[8192],font[8192],native[64000];
+    static unsigned char runtime[300000],code[16384],resource[8192],font[8192],native[64000];
     if(argc<4 || argc>6) return 2;
     unsigned planar=argc==6;
     const char *font_name=argc>=5?argv[4]:"pieni.@f";

@@ -8,6 +8,8 @@ sui_font_glyph equ sui_font_glyph_planar
 	xref sui_font_glyph
 	endif
 	xref	sui_font_measure
+	xref	sui_font_cache
+SUI_GLYPH_CACHE_MAP	set	8+2*256
 
 ; 301ab..302b5 string routine plus 3000f's character/highlight wrapper.
 ; a0 = chunky, a1 = runtime font, a2 = string
@@ -60,16 +62,13 @@ sui_font_string:
 	moveq	#0,d7
 	move.b	5(a1),d7
 	lea	6(a1,d7.w),a3
-	moveq	#0,d2
 	moveq	#0,d7
 	move.b	(a1),d7
-.lookup:
+	bsr.l	sui_font_cache	; first matching code, or count if absent
+	moveq	#0,d2
+	move.b	SUI_GLYPH_CACHE_MAP(a4,d6.w),d2
 	cmp.w	d7,d2
 	bge	.advance
-	cmp.b	(a3,d2.w),d6
-	beq.s	.glyph
-	addq.w	#1,d2
-	bra.s	.lookup
 .glyph:
 	btst	#2,-7(a6)
 	beq.s	.normal_draw

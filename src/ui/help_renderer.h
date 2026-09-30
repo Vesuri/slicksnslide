@@ -18,6 +18,10 @@ struct SlicksHelpRenderer {
     void (*parent_dirty)(void *,short,short,short,short);
     void *parent_dirty_context;
     unsigned char old_colour,active;
+    /* Link-only redraw of an unchanged page: every line is still parsed for
+     * its formatting state, but only lines holding either link are drawn. */
+    unsigned char partial;
+    short partial_old,partial_new;
 };
 static inline void slicks_help_renderer_dirty(void *context,short l,short t,short r,short b)
 {
@@ -71,12 +75,30 @@ static inline short slicks_help_renderer_measure(void *context,const unsigned ch
 { struct SlicksHelpRenderer *r=context; return r->measure(r->context,r->font,text,spacing); }
 static inline short slicks_help_renderer_text(void *context,const unsigned char *text,short x,short y,signed char spacing)
 { struct SlicksHelpRenderer *r=context; return r->text(r->context,&r->ui,r->font,text,x,y,spacing); }
+static inline void slicks_help_renderer_skip_rectangle(void *context,short left,short top,short right,short bottom,unsigned char colour)
+{ (void)context; (void)left; (void)top; (void)right; (void)bottom; (void)colour; }
+static inline short slicks_help_renderer_skip_measure(void *context,const unsigned char *text,signed char spacing)
+{ (void)context; (void)text; (void)spacing; return 0; }
+static inline short slicks_help_renderer_skip_text(void *context,const unsigned char *text,short x,short y,signed char spacing)
+{ (void)context; (void)text; (void)x; (void)y; (void)spacing; return 0; }
 static inline int slicks_help_renderer_line(struct SlicksHelpRenderer *r,const unsigned char *line,short *y)
 {
     if(!r || !r->font || !r->ui.pixels || !r->ui.palette || !r->measure || !r->text) return -1;
     const struct SlicksHelpDrawOps ops={r,slicks_help_renderer_colour,slicks_help_renderer_nearest,
         slicks_help_renderer_rectangle,slicks_help_renderer_measure,slicks_help_renderer_text};
     r->style.height=r->font[2];
+    if(r->partial) {
+        /* Selection affects only the highlight of this line's own links;
+         * colour, window and topic state are identical either way. A line
+         * without either link would redraw the pixels already shown. */
+        const struct SlicksHelpDrawOps skip={r,slicks_help_renderer_colour,slicks_help_renderer_nearest,
+            slicks_help_renderer_skip_rectangle,slicks_help_renderer_skip_measure,slicks_help_renderer_skip_text};
+        struct SlicksHelpStyle before=r->style; unsigned char colour=r->font[6]; short at=*y;
+        if(slicks_help_draw_line(&r->style,line,y,&skip)) return -1;
+        short first=before.links,end=r->style.links;
+        if((r->partial_old<first || r->partial_old>=end) && (r->partial_new<first || r->partial_new>=end)) return 0;
+        r->style=before; r->font[6]=colour; *y=at;
+    }
     return slicks_help_draw_line(&r->style,line,y,&ops);
 }
 /* Original 32abc..32b5d. Arrow glyphs use the fifth default palette query. */
@@ -119,7 +141,7 @@ static inline int slicks_help_renderer_page(struct SlicksHelpRenderer *r,
     struct SlicksHelpStyle *s=&r->style;
     s->next[0]=s->previous[0]=0; s->centred=0; s->total_links=s->links=0;
     short y=(short)(s->top+4);
-    slicks_ui_rectangle(&r->ui,s->left,s->top,s->right,y,s->colours[0]);
+    if(!r->partial) slicks_ui_rectangle(&r->ui,s->left,s->top,s->right,y,s->colours[0]);
     for(unsigned h=0;h<header_count;++h)
         if(slicks_help_renderer_line(r,headers[h],&y)) return -1;
     unsigned at=0,current_page=0;
@@ -138,7 +160,7 @@ static inline int slicks_help_renderer_page(struct SlicksHelpRenderer *r,
             break;
         }
     }
-    slicks_ui_rectangle(&r->ui,s->left,y,s->right,(short)(s->bottom+4),s->colours[0]);
+    if(!r->partial) slicks_ui_rectangle(&r->ui,s->left,y,s->right,(short)(s->bottom+4),s->colours[0]);
     return 0;
 }
 #endif

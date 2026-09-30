@@ -74,7 +74,7 @@ OBJECTS = obj/slicks_diag.o obj/amiga_saved_files.o obj/amiga_platform.o obj/fra
 	obj/sui_title_step.o obj/sui_color_slot.o obj/sui_bevel.o obj/sui_text.o \
 	obj/sui_title_menu.o obj/sui_title_tail.o \
 	obj/sui_title_dispatch.o \
-	obj/sui_font_glyph.o obj/sui_font_measure.o obj/sui_font_string.o \
+	obj/sui_font_glyph.o obj/sui_font_cache.o obj/sui_font_measure.o obj/sui_font_string.o \
 	obj/sui_font_glyph_planar.o obj/sui_font_string_planar.o \
 	obj/sui_menu_bridge.o \
 	obj/sgfx_mult320.o \
@@ -329,6 +329,9 @@ obj/sui_font_glyph_planar.o: $(REPO)/src/ui/sui_font_glyph_planar.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sui_font_glyph.o: $(REPO)/src/ui/sui_font_glyph.s | obj
+	$(VASM) $(VASMFLAGS) -o $@ $<
+
+obj/sui_font_cache.o: $(REPO)/src/ui/sui_font_cache.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 obj/sgfx_mult320.o: $(REPO)/src/graphics/sgfx_mult320.s | obj

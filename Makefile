@@ -694,6 +694,12 @@ build/verify_help_navigation: tools/verify_help_navigation.c tools/verify_option
 verify-help-navigation: build/verify_help_navigation
 	build/verify_help_navigation
 
+.PHONY: verify-help-partial
+build/verify_help_partial: tools/verify_help_partial.c tools/host_archive.h $(wildcard src/ui/*.h) | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-help-partial: build/verify_help_partial
+	build/verify_help_partial
+
 .PHONY: verify-help-refresh
 build/verify_help_refresh: tools/verify_help_refresh.c tools/verify_help_navigation.c tools/verify_options_menu.c $(wildcard src/ui/help_*.h) | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
@@ -1014,13 +1020,13 @@ verify-font-planar-cache: build/verify_font_glyph build/font_planar_test.bin
 	SLICKS_FONT_CACHE=1 build/verify_font_glyph build/font_planar_test.bin unused unused iso.@f planar
 	SLICKS_FONT_CACHE=1 build/verify_font_glyph build/font_planar_test.bin unused unused pieni.@f planar
 	SLICKS_FONT_CACHE=1 build/verify_font_glyph build/font_planar_test.bin unused unused kirj.@f planar
-build/sui_font_glyph.bin: tools/font_glyph_test.s src/ui/sui_font_glyph.s src/graphics/sgfx_mult320.s
+build/sui_font_glyph.bin: tools/font_glyph_test.s src/ui/sui_font_glyph.s src/ui/sui_font_cache.s src/graphics/sgfx_mult320.s
 	@mkdir -p build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
-build/sui_font_measure.bin: src/ui/sui_font_measure.s
+build/sui_font_measure.bin: tools/font_measure_test.s src/ui/sui_font_measure.s src/ui/sui_font_cache.s
 	@mkdir -p build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
-build/font_string_test.bin: tools/font_string_test.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph.s src/ui/sui_menu_bridge.s src/graphics/sgfx_mult320.s
+build/font_string_test.bin: tools/font_string_test.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph.s src/ui/sui_font_cache.s src/ui/sui_menu_bridge.s src/graphics/sgfx_mult320.s
 	@mkdir -p build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
 build/verify_font_glyph: tools/verify_font_glyph.c tools/host_archive.h src/ui/font_resource.h src/ui/font_offsets.h
@@ -1239,7 +1245,7 @@ verify-arcade-title: build/verify_arcade_title
 	build/verify_arcade_title
 
 .PHONY: verify-arcade-title-pixels
-build/arcade_title_pixels_test.bin: tools/arcade_title_pixels_test.s src/platform/amiga/native_bridge.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph_planar.s | build
+build/arcade_title_pixels_test.bin: tools/arcade_title_pixels_test.s src/platform/amiga/native_bridge.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_cache.s src/ui/sui_font_glyph_planar.s | build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
 build/verify_arcade_title_pixels: tools/verify_arcade_title_pixels.c tools/verify_palette_remap.c src/ui/arcade_title_painter.h src/ui/arcade_title_draw.h src/ui/title_background.h src/ui/language_table.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
@@ -1266,7 +1272,7 @@ build/verify_title_menu: tools/verify_title_menu.c tools/host_archive.h src/ui/l
 verify-title-menu: build/title_menu.elf build/verify_title_menu
 	build/verify_title_menu build/title_menu.elf
 
-build/title_menu_pixels_test.elf: tools/title_menu_pixels_test.s src/ui/sui_title_menu.s src/ui/sui_text.s src/ui/sui_bevel.s src/util/sutil_palette_nearest.s src/graphics/sgfx_span_fill.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph_planar.s | build
+build/title_menu_pixels_test.elf: tools/title_menu_pixels_test.s src/ui/sui_title_menu.s src/ui/sui_text.s src/ui/sui_bevel.s src/util/sutil_palette_nearest.s src/graphics/sgfx_span_fill.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_cache.s src/ui/sui_font_glyph_planar.s | build
 	$(VASM) -quiet -m68020 -Felf -I. -o build/title_menu_pixels_test.o $<
 	$(M68K_CC) -nostdlib -Wl,--section-start=code=0,--section-start=data=0x10000,-e,sui_title_menu build/title_menu_pixels_test.o -o $@
 build/verify_title_menu_pixels: tools/verify_title_menu_pixels.c tools/verify_palette_remap.c tools/host_archive.h src/ui/language_table.h src/ui/title_background.h src/ui/help_text_dirty.h | build

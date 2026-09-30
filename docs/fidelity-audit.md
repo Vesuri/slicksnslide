@@ -3225,3 +3225,32 @@ subtracts from the game clock, refunding Arcade countdown time.
 Decision (user, 2026-09-30): keep the clock monotonic. `slicks_race_set_timer`
 restarts only the tick phase; the next batch is positive. This is a
 deliberate adaptation, not a reproduction.
+
+## Help key rate (B6, 2026-09-30)
+
+**Measurement.** `HELPK` (`SLICKS_HELP_MENU=9`, `diag_help_key_cost.gdb`)
+opens title Help and queues 12 link moves. Each move cost 6,870 raster lines
+of redraw plus 950 of publication, about 0.5 s. Inside the redraw, text took
+70% and rectangle fills 18%. Most of the text cost came from the original
+glyph routine (`2fef2`), which sums the padded sizes of every preceding glyph
+for each character, and from linear code searches in the string and measure
+routines.
+
+**Fixes (pixel-identical).**
+- `sui_font_cache.s` caches the glyph offsets and the character->glyph map
+  for the four most recent fonts. Entries are keyed by address and header
+  bytes, and font decoding flushes them. `verify-font-glyph`,
+  `verify-arcade-title-pixels` and `verify-title-menu-pixels` still match the
+  original.
+- A link-only change on an unchanged page still parses every line for its
+  formatting state, but draws only the lines holding the old or new link. The
+  original redraws the whole page, and the pixels differ only there.
+  `verify-help-partial` drives a partial and a full-redraw viewer over the
+  real HELP.TXT with 56,000 keys (31,266 link-only redraws) and compares
+  pixels and state after every key. It catches a mutation that skips the old
+  link's line.
+
+**Result.** A key costs about 1,035 lines of drawing plus 215 of publication
+(80 ms), under the 92 ms typematic period. The ten target Help fixtures pass:
+title, nested Options and Players, page keys, failure recovery and title Help
+failure.

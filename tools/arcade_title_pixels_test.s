@@ -4,6 +4,7 @@
 SLICKS_FONT_PLANAR equ 1
 	include "src/ui/sui_font_string.s"
 	include "src/ui/sui_font_measure.s"
+	include "src/ui/sui_font_cache.s"
 	include "src/ui/sui_font_glyph_planar.s"
 sui_font_string:
 sui_draw_text:

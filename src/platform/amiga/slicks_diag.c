@@ -273,6 +273,8 @@ void __attribute__((noinline)) slicks_diag_help_test_ready(void) { __asm__ volat
 static unsigned char help_fail_archive;
 static unsigned char help_fail_surface;
 unsigned char g_slicks_title_help_warning;
+/* HELPK: raster lines per menu key, [0] drawing and [1] publication. */
+unsigned long g_slicks_diag_key_cost[16][2]; unsigned g_slicks_diag_key_cost_count;
 static unsigned char title_help_saved[280*22];
 struct SlicksSetupLoadReport g_slicks_setup_load_report;
 struct SlicksSetupStorageReport g_slicks_setup_save_report;
@@ -4609,9 +4611,14 @@ int main(void)
     unsigned char title_help_test=(unsigned char)((argc==4 || (argc==5 && (argv[4]=='F' || argv[4]=='A'))) && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P');
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='F'),title_help_failure_stage=0;
     unsigned char title_help_arcade_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='A');
+    unsigned char help_cost_test=0;
     if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
        argv[4]=='Q' && argv[5]>='0' && argv[5]<='6' && argv[5]!='4') {
         title_help_test=1;g_slicks_diag_title_help_row=(unsigned short)(argv[5]-'0');
+    }
+    /* HELPK: B6 Help per-key cost; title Help, 12 queued Downs, Escape. */
+    if(argc==5 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' && argv[4]=='K') {
+        title_help_test=1; help_cost_test=1;
     }
     if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
        argv[4]=='L' && argv[5]>='0' && argv[5]<='9') {
@@ -5074,6 +5081,13 @@ int main(void)
             static const unsigned char arcade_keys[]={0x51,0x50,0x45,0x4d,0x51,0x50,0x45,0x45};
             for(unsigned i=0;i<sizeof arcade_keys;++i) platform.keys[i]=arcade_keys[i];
             platform.key_head=sizeof arcade_keys;
+        }
+        if(help_cost_test) {
+            unsigned steps=0;
+            platform.keys[steps++]=0x50;
+            while(steps<13) platform.keys[steps++]=0x4d;
+            platform.keys[steps++]=0x45; platform.keys[steps++]=0x45;
+            platform.key_head=steps;
         }
         if(g_slicks_diag_title_help_row!=0xffff) {
             unsigned steps=g_slicks_diag_title_help_row-(g_slicks_diag_title_help_row>4);
@@ -5918,6 +5932,7 @@ int main(void)
                     /* DOS getch returns printable ASCII or an extended scan,
                      * never both. Amiga modifier events have neither. */
                     if(key.ascii || key.scan) {
+                        unsigned long cost_at=slicks_amiga_platform_raster_time(&platform);
                         if(slicks_help_viewer_key(input_menu->help,key.ascii,key.scan)) {
                             if(slicks_amiga_help_close(input_menu) || slicks_amiga_help_warning_open(input_menu)) goto cleanup;
                             present_menu_surface(&platform,input_menu);
@@ -5933,7 +5948,14 @@ int main(void)
                             if(show_menu(&platform)) goto cleanup;
                             slicks_diag_help_closed();
                         } else {
-                            present_menu_surface(&platform,input_menu); slicks_diag_help_ready();
+                            unsigned long cost_drawn=slicks_amiga_platform_raster_time(&platform);
+                            present_menu_surface(&platform,input_menu);
+                            if(g_slicks_diag_key_cost_count<16) {
+                                g_slicks_diag_key_cost[g_slicks_diag_key_cost_count][0]=cost_drawn-cost_at;
+                                g_slicks_diag_key_cost[g_slicks_diag_key_cost_count++][1]=
+                                    slicks_amiga_platform_raster_time(&platform)-cost_drawn;
+                            }
+                            slicks_diag_help_ready();
                         }
                     }
                     continue;

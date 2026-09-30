@@ -28,25 +28,6 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-### B6. Help key-handling rate
-
-The typematic repeat for Help and name entry is implemented: a 500 ms delay,
-then 10.9 repeats/s, the AT default, since the original never programs it.
-
-A probe with Down held in title Help showed the scheduler due every 4.6
-vblanks, but the main loop took a key only every 25 vblanks. So Help processes
-held keys at about 2 per second.
-
-Steps:
-1. Measure why one Help key costs about 0.5 s on the target: redraw,
-   publication or a wait.
-2. Compare with the original's Help scrolling speed under DOSBox at a
-   286-class setting.
-3. Fix it if the port is slower than the original.
-
-Accept when Help's per-key cost is measured, and either matches the original
-or is fixed.
-
 ## C. Packaging
 
 Done 2026-09-30 in the Vette layout ([install-original-data.md](install-original-data.md)):

@@ -11,6 +11,7 @@ struct SlicksHelpViewer {
     unsigned source_size,chapter_length;
     unsigned long loaded_chapter;
     short drawn_page,drawn_selection;
+    unsigned char no_partial; /* Tests: force the original full redraw. */
 };
 /* Original 32a35..32abc: reload only on chapter change; a new page/chapter
  * takes the configured initial link, whereas a link-only redraw preserves it. */
@@ -26,8 +27,14 @@ static inline int slicks_help_viewer_refresh(struct SlicksHelpViewer *v)
     for(unsigned pass=0;pass<2;++pass) {
         if(v->drawn_page!=n->page || v->drawn_selection!=s->selected || n->redraw) {
             if(v->drawn_page!=n->page || n->redraw<0) s->selected=(short)((signed char)s->link_mode-1);
-            if(slicks_help_renderer_page(&v->renderer,v->headers,v->info.headers,v->chapter,v->chapter_length,
-                (unsigned short)n->page,&n->next_page)) return -1;
+            /* The original redraws the whole page for a link change; the
+             * pixels differ only on the old and new links' lines. */
+            v->renderer.partial=(unsigned char)(!v->no_partial && v->drawn_page==n->page && !n->redraw);
+            v->renderer.partial_old=v->drawn_selection; v->renderer.partial_new=s->selected;
+            int failed=slicks_help_renderer_page(&v->renderer,v->headers,v->info.headers,v->chapter,v->chapter_length,
+                (unsigned short)n->page,&n->next_page);
+            v->renderer.partial=0;
+            if(failed) return -1;
             n->redraw=0;
             if(s->selected>=s->total_links) { s->selected=0; n->redraw=1; }
             v->drawn_selection=s->selected; v->drawn_page=n->page;

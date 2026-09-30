@@ -18,6 +18,9 @@ static inline long slicks_font_resource_size(const unsigned char *resource,unsig
     }
     return packed==size?(long)padded:-1;
 }
+#ifdef __m68k__
+extern void sui_font_glyph_flush(void);
+#endif
 static inline long slicks_decode_font_resource(const unsigned char *resource,
     unsigned long size,unsigned char *runtime,unsigned long capacity)
 {
@@ -35,6 +38,9 @@ static inline long slicks_decode_font_resource(const unsigned char *resource,
             destination+=stride;
         }
     }
+#ifdef __m68k__
+    sui_font_glyph_flush(); /* Offsets cached by address in sui_font_glyph. */
+#endif
     return required;
 }
 #endif

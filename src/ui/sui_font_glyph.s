@@ -1,6 +1,10 @@
 	section	code
 	xdef	sui_font_glyph
+	xref	sui_font_cache
 	xref	mult320
+
+; Glyph offsets come from sui_font_cache (identical to 2ff0c..2ff2b).
+SUI_GLYPH_CACHE_OFFSETS	set	8
 
 ; Native translation of 2fef2..3000e (original font glyph rasterizer).
 ; a0 = authoritative 320-wide chunky surface, a1 = original runtime font
@@ -26,17 +30,10 @@ sui_font_glyph:
 	move.b	2(a1),d4		; height
 	moveq	#0,d6
 	moveq	#0,d7
-.preceding:
-	cmp.w	d2,d6
-	bge.s	.selected
-	moveq	#0,d5
-	move.b	(a2,d6.w),d5
-	addq.w	#3,d5
-	and.w	#$fffc,d5
-	mulu.w	d4,d5
-	add.w	d5,d7		; original low-word offset accumulation
-	addq.w	#1,d6
-	bra.s	.preceding
+	bsr.l	sui_font_cache
+.cached:
+	moveq	#0,d7
+	move.w	SUI_GLYPH_CACHE_OFFSETS(a4,d2.w*2),d7
 .selected:
 	adda.l	d7,a3
 	moveq	#0,d3
@@ -130,3 +127,4 @@ sui_font_glyph:
 	addq.w	#1,d0
 	addq.w	#1,d6
 	bra.s	.clip_column
+

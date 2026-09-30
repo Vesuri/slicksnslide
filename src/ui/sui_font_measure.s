@@ -1,5 +1,7 @@
 	section	code
 	xdef	sui_font_measure
+	xref	sui_font_cache
+SUI_GLYPH_CACHE_MAP	set	8+2*256
 
 ; Native translation of 300e5..301aa (including its glyph-zero and tab rules).
 ; a1 = runtime font, a2 = NUL-terminated bytes, d0.w = initial tab position,
@@ -7,6 +9,8 @@
 ; Returns d0.w = measured width. Preserves every other register.
 sui_font_measure:
 	movem.l	d1-d7/a0-a6,-(sp)
+	bsr.l	sui_font_cache
+	lea	SUI_GLYPH_CACHE_MAP(a4),a5	; first matching code, or count
 	move.w	d0,d7
 	moveq	#0,d6
 	ext.w	d3
@@ -26,13 +30,9 @@ sui_font_measure:
 	cmpi.b	#10,d2
 	beq.s	.done
 	moveq	#0,d5
-.lookup:
+	move.b	(a5,d2.w),d5
 	cmp.w	d1,d5
 	bge.s	.missing
-	cmp.b	(a3,d5.w),d2
-	beq.s	.found
-	addq.w	#1,d5
-	bra.s	.lookup
 .found:
 	tst.w	d5		; original tests index > 0, not >= 0
 	beq.s	.missing
