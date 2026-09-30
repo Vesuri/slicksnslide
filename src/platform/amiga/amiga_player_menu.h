@@ -70,7 +70,7 @@ struct SlicksAmigaNameDialog {
 struct SlicksAmigaProfilePicker {
     struct SlicksListRenderer renderer;
     unsigned char original[15200],tinted[14896],caption[4096];
-    unsigned char *owned_names; /* Owned packed names, or track-title offset table. */
+    unsigned char *owned_names; /* Modal-slot packed names or track-title offsets; never heap-owned. */
     unsigned long owned_names_size;
     struct SlicksSavedRectangle scrollbar_saved;
     unsigned char scrollbar_background[800];
@@ -150,6 +150,12 @@ struct SlicksAmigaHelpWorkspace {
         struct SlicksAmigaControllersDialog controllers;
         struct SlicksAmigaNameDialog name;
         struct SlicksAmigaColourDialog colour;
+        struct {
+            struct SlicksAmigaProfilePicker picker;
+            /* Maximum validated catalogue title offsets; also covers 40x9
+             * saved filenames. Aligned naturally after the picker owner. */
+            unsigned short picker_names[(SLICKS_AMIGA_TRACK_LIST_BYTES-8)/23];
+        };
     };
 };
 /* Exclusive modal overlay over a reconstructible, idle game cache. */

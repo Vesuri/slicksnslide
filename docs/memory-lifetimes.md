@@ -92,7 +92,8 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    zero; no uninitialized terrain is read. Binding capacity is checked at
    compile time and startup, and no heap fallback exists. Controllers and
    name/colour dialogs now share the same exclusive overlay, without growing
-   it. Picker, messages, Change Cars and intermission storage still allocate
+   it. Pickers and their bounded 5,698-byte name/index payload also share it.
+   Messages, Change Cars and intermission storage still allocate
    dynamically. Work out legal nesting before defining
    unions; preserve parent save-under, labels and font state across child exit.
 5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536

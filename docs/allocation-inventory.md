@@ -162,6 +162,19 @@ No additional startup bytes are needed. The existing diagnostic allocation
 failure hooks now exercise acquisition failure, without introducing a heap
 fallback. Other children and retained parents are not converted yet.
 
+The three picker constructors and their filename/index payloads now also use
+this slot. The aligned payload is 5,698 bytes, covering the maximum validated
+track-list title offsets and all 40 saved filenames. The union remains 110,096
+bytes. Picker release does not free the borrowed payload. Track-list state and
+the retained catalogue remain separate; choice closes the picker before name
+entry or confirmation. Five further allocation expressions are removed.
+
+Maximum-catalogue + Workbench tests exposed two startup outcomes: menu-owner
+reservation can fail, or catalogue retention can fail first and leave a later
+recoverable warning. This is not the final B12 all-or-nothing contract. Reserve
+the combined required budget before publishing any live menu; distinguish
+memory reservation failure from recoverable filesystem errors.
+
 This matrix separates child payloads from longer-lived parent, catalogue and
 transaction data. The remaining work is placing those parents/payloads and
 transactions into bounded spans and proving the combined peak, not treating

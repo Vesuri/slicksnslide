@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-09-30 — reserved picker and name/index payloads
+
+The three picker constructors borrow the existing modal slot, with a separate
+aligned payload inside that union. Its 5,698 bytes cover the maximum validated
+catalogue offsets and 40 saved filenames. Total modal size remains 110,096.
+No picker or payload FreeMem remains; failure hooks still reject acquisition
+and preserve their error reports.
+
+- `tmp/standalone-release-wndnhdsu`: PLAYERSK accept/reopen/cancel passes on
+  Workbench-loaded 2 MiB/default stack; all 12 publications match chunky.
+- `...-r5r89k83`: maximal synthetic catalogue, TRACKSN, both acquisition
+  failure boundaries, dismissal/retry and race pass; all 18 publications
+  match. This is 2 MiB **without Workbench loaded**, not a Workbench pass.
+- `...-3e17051f`: CHAMPSAVE passes real intermission, picker/name/write and
+  clean exit with Workbench, stock 2 MiB/default stack.
+- Host list dialog and renderer suites pass (172,032 key/state cases and
+  88 complete restored rendering cycles, plus initialization/drawing/pulse).
+
+Earlier PLAYERSP runs paired the wrong input script with the PLAYERSK fixture;
+they are not regression passes. The fixture now prints its failed values.
+The maximal catalogue with Workbench fails startup menu reservation (the user
+screenshot); an allocation audit (`...-728xeuoj`) instead fails the 65,528-byte
+retained catalogue allocation and continues to a warning. That waiting audit
+was closed, not counted as a cleanup pass. Both outcomes remain evidence for
+B12's missing combined startup reservation, not permission to ignore it.
+
 ## 2026-09-30 — shared startup modal storage
 
 Help, Controllers, name entry and colour picking now share an owner-tagged

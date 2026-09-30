@@ -60,7 +60,7 @@ static struct SlicksAmigaPlayerMenu *acquire_menu(void)
 }
 static struct SlicksAmigaHelpWorkspace *help_workspace;
 static unsigned char help_workspace_busy;
-enum ModalOwner { MODAL_HELP=1,MODAL_CONTROLLERS,MODAL_NAME,MODAL_COLOUR };
+enum ModalOwner { MODAL_HELP=1,MODAL_CONTROLLERS,MODAL_NAME,MODAL_COLOUR,MODAL_PICKER };
 static void (*help_workspace_restore)(void *);
 static void *help_workspace_context;
 int slicks_amiga_help_workspace_bind(void *bytes,unsigned long capacity,
@@ -114,9 +114,17 @@ extern void slicks_draw_chunky_icon(unsigned char *,const unsigned char *,unsign
 
 static void free_picker(struct SlicksAmigaProfilePicker *p)
 {
-    if(!p) return;
-    if(p->owned_names) FreeMem(p->owned_names,p->owned_names_size);
-    FreeMem(p,sizeof *p);
+    release_modal(p,MODAL_PICKER);
+}
+static unsigned char *picker_names(unsigned long size)
+{
+    if(!help_workspace || help_workspace_busy!=MODAL_PICKER ||
+       size>sizeof help_workspace->picker_names) {
+        ++g_slicks_menu_workspace_conflicts; return 0;
+    }
+    unsigned char *bytes=(unsigned char *)help_workspace->picker_names;
+    for(unsigned long i=0;i<size;++i) bytes[i]=0;
+    return bytes;
 }
 unsigned char g_slicks_diag_list_alloc_fault;
 static int list_alloc_fault(unsigned char stage)
@@ -990,7 +998,7 @@ int slicks_amiga_profile_picker_open(struct SlicksAmigaPlayerMenu *m,unsigned ro
     slicks_amiga_platform_clear_latch(0);
     if(!m || m->picker || !profiles || (row>=4 && row!=5 && row!=6) ||
        (row<4 && (selected<0 || selected>=SLICKS_PROFILE_MAX))) return -1;
-    struct SlicksAmigaProfilePicker *p=AllocMem(sizeof *p,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaProfilePicker *p=acquire_modal(sizeof *p,MODAL_PICKER);
     if(!p) return -1;
     struct SlicksListRenderer *r=&p->renderer;
     r->ui=m->renderer.ui; r->font=m->fonts[0]; r->names=&profiles->names[0][0]; r->stride=21;
@@ -1003,7 +1011,7 @@ int slicks_amiga_profile_picker_open(struct SlicksAmigaPlayerMenu *m,unsigned ro
     m->error=0;
     if(slicks_list_renderer_open(r,selected,profiles->count,caption,percent,row<4?1:0,
         p->original,sizeof p->original,p->tinted,sizeof p->tinted,p->caption,sizeof p->caption) || m->error) {
-        FreeMem(p,sizeof *p); return -1;
+        free_picker(p); return -1;
     }
     m->picker=p; return 0;
 }
@@ -1027,10 +1035,10 @@ int slicks_amiga_saved_files_picker(struct SlicksAmigaPlayerMenu *m,const unsign
         unsigned length=0; while(length<9 && names[i][length]) ++length;
         if(length==9) return -1;
     }
-    struct SlicksAmigaProfilePicker *p=AllocMem(sizeof *p,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaProfilePicker *p=acquire_modal(sizeof *p,MODAL_PICKER);
     if(!p) return -1;
     p->owned_names_size=9UL*(count?count:1);
-    p->owned_names=AllocMem(p->owned_names_size,MEMF_ANY|MEMF_CLEAR);
+    p->owned_names=picker_names(p->owned_names_size);
     if(!p->owned_names) { free_picker(p); return -1; }
     for(unsigned i=0;i<count;++i) for(unsigned j=0;j<9;++j) p->owned_names[9*i+j]=names[i][j];
     struct SlicksListRenderer *r=&p->renderer;
@@ -1055,12 +1063,12 @@ int slicks_amiga_track_lists_picker(struct SlicksAmigaPlayerMenu *m,
     if(!m || !m->track_lists || m->picker || !captions ||
        m->track_lists->catalogue.count>(SLICKS_AMIGA_TRACK_LIST_BYTES-8)/23) return -1;
     struct SlicksAmigaTrackLists *lists=m->track_lists;
-    struct SlicksAmigaProfilePicker *p=list_alloc_fault(1)?0:AllocMem(sizeof *p,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaProfilePicker *p=list_alloc_fault(1)?0:acquire_modal(sizeof *p,MODAL_PICKER);
     if(!p) return -2;
     /* The catalogue stays resident and immutable throughout this modal.
      * Index its validated titles instead of duplicating up to 59,829 bytes. */
     p->owned_names_size=2UL*(lists->catalogue.count?lists->catalogue.count:1);
-    p->owned_names=list_alloc_fault(2)?0:AllocMem(p->owned_names_size,MEMF_ANY|MEMF_CLEAR);
+    p->owned_names=list_alloc_fault(2)?0:picker_names(p->owned_names_size);
     if(!p->owned_names) { free_picker(p); return -2; }
     /* The loader validated every record. Walk once rather than repeatedly
      * searching from the start for each title in a large catalogue. */

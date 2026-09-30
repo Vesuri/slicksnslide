@@ -46,7 +46,7 @@ commands
   set $menus = $menus + 1
   if $menus == 8
     if $pickers != 4 || g_slicks_player_menu->picker || g_slicks_player_menu->error || g_slicks_setup_session.players.selected[0] != $accepted
-      printf "PROFILE_PICKER_COMMIT_CANCEL_FAILED\n"
+      printf "PROFILE_PICKER_COMMIT_CANCEL_FAILED visits=%d live=%p error=%d selected=%d expected=%d\n",$pickers,g_slicks_player_menu->picker,g_slicks_player_menu->error,g_slicks_setup_session.players.selected[0],$accepted
       quit 1
     end
     set $menu = g_slicks_player_menu
