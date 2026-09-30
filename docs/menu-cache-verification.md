@@ -448,6 +448,39 @@ the intermission owner gone with hardware active at return. The runner closed
 both emulators. This checks the injected constructor-failure retry/end branches,
 not arbitrary low-memory timing or the remaining results owners.
 
+### Intermission warning and return pixels (2026-09-30)
+
+The existing intermission recovery fixtures now capture the actual warning's
+chunky pixels and view-0 bitplanes, plus the retained race bitplanes at warning
+entry. At intermission return they capture the restored source and view-1
+bitplanes, require the emergency renderer inactive and preserve the existing
+ownership/lifecycle checks. The host independently decodes every pixel and
+compares the entry/return race bitplane bytes. Retry additionally compares the
+complete before/after setup-session snapshots.
+
+Fresh native tests on 2f89c1b pass:
+
+| Failure / choice | Argument | Run under `tmp/standalone-release-` |
+| --- | --- | --- |
+| Constructor rollback / Retry | OPTIONSTJ | `qs3els8v` |
+| Constructor rollback / End Match | OPTIONSTK | `oydbeu32` |
+| Preview Close / Retry | OPTIONSTL | `8b8jfv35` |
+| Preview Close / End Match | OPTIONSTM | `skjg8vx0` |
+
+All four warning images and four returned race views match all 64,000 chunky
+pixels. Every race bitmap remains byte-identical across the recovery owner.
+Both Retry session snapshots match exactly; those paths start the second race
+and award each race once. End Match performs no second race load and awards
+only the completed race. All paths reach restoration 31 using stock PAL
+68020, 2 MiB Chip/no Fast, default 4 KiB stack and muted audio. The harness
+closes each emulator. No production change was needed.
+
+Captures are `.run/intermission-warnings` and `.run/intermission-return`;
+use `check_menu_publications.py` on both, compare `0.entry` with `0.planar`
+in the latter, and compare the Retry snapshots in `.run/pause-transitions-v1`.
+This closes the pixel-publication gap for these constructor/Close recovery
+paths, not the remaining allocation sites or other intermission child owners.
+
 ## Post-race record-panel residency
 
 The record-panel constructor now uses the startup archive provider for fonts

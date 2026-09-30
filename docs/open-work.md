@@ -62,6 +62,9 @@ Implementation and completed verification evidence are separate in
   report, disk-preservation and publication coverage too. Remaining allocation
   work concerns other saved-game/setup/intermission/results owners, not
   record read/view preparation or its writer buffer;
+  intermission constructor-rollback and preview-Close Retry/End Match now
+  have full warning/return pixel checks, unchanged race bitplanes and
+  unchanged Retry session snapshots;
   keep other layouts and allocation-failure paths separate.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify

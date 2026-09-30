@@ -6,6 +6,7 @@ commands
   silent
   set $retries = $retries+1
   set $warning_owned = 1
+  capture_intermission_warning
   if !$_isvoid($expect_plain_close) && (g_slicks_diag_plain_close_fault || g_slicks_diag_plain_close_reached!=1)
     printf "INTERMISSION_CLOSE_FAULT_NOT_REACHED\n"
     quit 1
