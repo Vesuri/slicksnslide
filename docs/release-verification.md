@@ -1,5 +1,32 @@
 # Development release audit
 
+## 2026-09-30 — track records use startup-owned scratch
+
+Post-race record input and transactional record writes now borrow 8,192 bytes
+from the modal storage reservation. Parsing copies the table before releasing
+input storage. Read warnings, record surfaces and save-retry notices therefore
+never overlap the lease. Clear Records closes its confirmation dialog, borrows
+one span for the entire catalogue, then releases it before opening a notice.
+No extra startup memory is required; neither record path has a heap fallback.
+
+- Host adapter: 1,176 single/double-fault publication cases and 1,176 clear
+  cases pass. Missing/short scratch is rejected before I/O. A cumulative
+  allocator-call assertion proves these paths make zero allocations, not
+  merely zero outstanding allocations. Shared capture regression: 984 cases.
+- `tmp/standalone-release-j86s98os`: stock Workbench/68020/2 MiB/no Fast/4 KiB
+  stack OPTIONSBW read/view failure matrix passes across two races; one read
+  rejection and four table-construction failures recover without duplicate
+  insertion, workspace conflicts or leaked storage. Restoration mask is 31.
+- `...-uh0ss4en`: OPTIONSBX rejected save scratch, Retry, retained table commit,
+  second race/results and normal shutdown pass, with zero workspace conflicts.
+- `...-623ji566`: OPTIONSBY takes Skip after rejected save scratch; the next
+  race, result table, standings and shutdown pass, with zero workspace conflicts.
+- `...-xlkvd21w`: OPTIONSR cancels then confirms clearing all 195 tracks;
+  all 25 menu publications match all 64,000 pixels and system restoration passes.
+
+The native tests use private data copies, not the user's installation. All
+four emulator instances have exited.
+
 ## 2026-09-30 — recoverable race failures retain the display (B10 closed)
 
 Race preparation and shop failures no longer restore Workbench. Preparation

@@ -7,7 +7,7 @@
 #include "../../game/saved_game.h"
 /* Explicit TRACKSQ/TRACKSC diagnostics only; zero during normal launches. */
 extern unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
-/* OPTIONSBX/Y: one failed record-save buffer allocation, never normal input. */
+/* OPTIONSBX/Y: one rejected record-save scratch span, never normal input. */
 extern unsigned char g_slicks_diag_record_write_alloc_fault,g_slicks_diag_record_write_alloc_reached;
 
 struct SlicksSetupStorageReport {
@@ -30,13 +30,15 @@ struct SlicksSetupStorageReport slicks_amiga_store_capture(
 struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *,const struct SlicksSavedGame *);
 /* Confirmed Clear Top 10s only. Same 8192-byte track limit as the native
  * loader. Does not alter old-format tracks. Report path borrows caller's path;
- * changed is true only after publication, including cleanup-pending status. */
-struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *,unsigned char *);
+ * changed is true only after publication, including cleanup-pending status.
+ * Caller provides an exclusive 8192-byte scratch span for the transaction. */
+struct SlicksSetupStorageReport slicks_amiga_clear_track_records(
+    const char *,unsigned char *,unsigned char *,unsigned long);
 struct SlicksTrackRecords;
 /* Post-race records use the same transactional writer; caller retains its
  * in-memory result on failure so Retry never re-inserts records. */
 struct SlicksSetupStorageReport slicks_amiga_store_track_records(
-    const char *,const struct SlicksTrackRecords *,unsigned char *);
+    const char *,const struct SlicksTrackRecords *,unsigned char *,unsigned char *,unsigned long);
 
 /* Stable platform tag, replacing the DOS BIOS-date-derived byte. This is
  * format identification, not authentication. Foreign CFGs require import. */

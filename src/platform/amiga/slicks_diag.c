@@ -3605,7 +3605,7 @@ load_records:
     records=(struct SlicksTrackRecords){0};
     if(g_slicks_diag_record_alloc_stage==1) {
         bytes=0; ++g_slicks_diag_record_alloc_stage;
-    } else bytes=AllocMem(8192,MEMF_ANY);
+    } else bytes=slicks_amiga_storage_workspace_acquire(8192);
     if(g_slicks_diag_record_faults&4) {
         g_slicks_diag_record_faults&=(unsigned char)~4;
         g_slicks_diag_plain_close_fault=1;
@@ -3613,8 +3613,11 @@ load_records:
     long size=bytes?load_plain_file(g_slicks_diag_record_faults&1?"missing-post-race-track":path,bytes,8192):-1;
     g_slicks_diag_record_faults&=(unsigned char)~1;
     if(platform->io_active && slicks_amiga_platform_end_io(platform)) goto done;
-    if(size<0 || size>=8192 || slicks_track_records(bytes,(unsigned long)size,&records)<0) {
-        if(bytes) { FreeMem(bytes,8192); bytes=0; }
+    int read_failed=size<0 || size>=8192 || slicks_track_records(bytes,(unsigned long)size,&records)<0;
+    /* Records owns copied values, not pointers into the input. Release the
+     * modal lease before any warning/table child can use that same storage. */
+    if(bytes) { slicks_amiga_storage_workspace_release(bytes); bytes=0; }
+    if(read_failed) {
         g_slicks_diag_record_results_phase=4;
         int choice=record_retry_notice(platform,race,chunky,palette,
             (const unsigned char *)"RECORD READ FAILED: ENTER RETRY / ESC SKIP",diagnostic);
@@ -3706,7 +3709,9 @@ save_records:
                 if(!lock) goto done;
                 UnLock(lock); own_obstruction=1;
             }
-            g_slicks_diag_record_save=slicks_amiga_store_track_records(path,&records,&changed);
+            bytes=slicks_amiga_storage_workspace_acquire(8192);
+            g_slicks_diag_record_save=slicks_amiga_store_track_records(path,&records,&changed,bytes,8192);
+            if(bytes) { slicks_amiga_storage_workspace_release(bytes); bytes=0; }
             /* Remove only the empty directory this diagnostic just created.
              * Real recovery files are never removed by the UI. */
             if(own_obstruction && !DeleteFile((CONST_STRPTR)obstruction)) goto done;
@@ -3729,7 +3734,7 @@ done:
     if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&archive);
-    if(bytes) FreeMem(bytes,8192);
+    if(bytes) slicks_amiga_storage_workspace_release(bytes);
     if(!result) {
         /* Records and recovery notices only paint view 0. The unchanged
          * race bitmap in view 1 is already current; do not reconvert it. */
@@ -6248,12 +6253,14 @@ int main(void)
                             static char path[SLICKS_TRACK_NAME_SIZE+8];
                             g_slicks_track_clear_report=(struct SlicksSetupStorageReport){SLICKS_SETUP_SAVED,0,0};
                             g_slicks_track_clear_changed=0;
+                            unsigned char *record_scratch=slicks_amiga_storage_workspace_acquire(8192);
                             for(unsigned i=0;i<track_count;++i) {
                                 make_track_path(path,track_names[i]); unsigned char changed=0;
-                                g_slicks_track_clear_report=slicks_amiga_clear_track_records(path,&changed);
+                                g_slicks_track_clear_report=slicks_amiga_clear_track_records(path,&changed,record_scratch,8192);
                                 g_slicks_track_clear_changed+=changed;
                                 if(g_slicks_track_clear_report.result!=SLICKS_SETUP_SAVED) break;
                             }
+                            if(record_scratch) slicks_amiga_storage_workspace_release(record_scratch);
                             if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
                             const unsigned char *message=slicks_original_clear_complete;
                             g_slicks_track_clear_phase=2;

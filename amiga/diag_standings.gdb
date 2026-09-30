@@ -158,7 +158,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $standings != 3 || !$saved || $starts != 2 || $results != 2 || $record_returns != 2 || !$title || g_slicks_diag_restore_status != 0x1f
+  if $standings != 3 || !$saved || $starts != 2 || $results != 2 || $record_returns != 2 || !$title || g_slicks_diag_restore_status != 0x1f || g_slicks_menu_workspace_conflicts
     printf "STANDINGS_FLOW_FAILED phase=%u\n",$standings
     quit 1
   end

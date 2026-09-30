@@ -37,7 +37,7 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
 | prepare_race shadow | 2 | 57,344 + 64,000; diagnostic-only |
 | run_intermission language | 1 | 2,048; construction staging, does not need independent ownership |
 | run_intermission saved_tracks | 1 | 8 × track count; must coexist with save encoding, intermission parent and filename dialog |
-| run_record_results | 1 | 8,192; transactional track-file input, reserve independently of retained display |
+| run_record_results | 1 | Baseline site removed: 8,192-byte modal storage lease; parsed record values are copied, so release precedes warnings/table creation |
 | registration_screen | 1 | Baseline site removed: 70,000-byte modal storage lease, released before registration Help and on failure; no runtime image allocation |
 | run_championship_results | 1 | Baseline site removed: 64,003-byte modal storage lease, released before results surface creation and on failure |
 | main title asset/frame | 2 | 64,003 and TITLE_FRAME_ALLOCATION_BYTES; startup source and persistent title |
@@ -58,7 +58,7 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
 | store_track_lists | 1 | 65,536 output alongside immutable old catalogue and selection |
 | load_saved_game | 1 | 6 + 8 × capacity + 212; inspect production reachability separately from hidden Load UI |
 | store_saved_game | 1 | Encoded game size; input track-name array must remain live throughout encoding/write |
-| store_track_records | 1 | 8,192; preserve read/modify/write and new/backup recovery |
+| store_track_records | 1 | Baseline site removed: explicit 8,192-byte caller scratch, leased from modal storage for post-race saves and confirmed Clear Records; unchanged new/backup transaction |
 | load_setup | 2 | Profile bytes plus candidate SlicksPlayerProfiles; transactional startup load, not live-profile overwrite |
 
 ### Wrappers, framework and OS

@@ -22,7 +22,7 @@ struct File { unsigned char bytes[9000]; unsigned size,offset,present; };
 static struct File files[3];
 static const char *paths[]={"TRACKS/TEST.SS","TRACKS/TEST.SS.new","TRACKS/TEST.SS.bak"};
 #endif
-static unsigned operation,fail_first,fail_second,allocations;
+static unsigned operation,fail_first,fail_second,allocations,allocation_calls;
 static LONG error;
 static int fault(void)
 { ++operation; if(operation==fail_first || operation==fail_second) { error=999; return 1; } return 0; }
@@ -30,7 +30,7 @@ static unsigned index_of(const char *path)
 { for(unsigned i=0;i<sizeof paths/sizeof *paths;++i) if(!strcmp(path,paths[i])) return i; abort(); }
 static LONG IoErr(void) { return error; }
 static void *AllocMem(unsigned long n,int flags)
-{ (void)flags; if(fault()) return 0; ++allocations; return malloc(n); }
+{ (void)flags; ++allocation_calls; if(fault()) return 0; ++allocations; return malloc(n); }
 static void FreeMem(void *p,unsigned long n) { (void)n; assert(allocations); --allocations; free(p); }
 static BPTR Lock(CONST_STRPTR p,int mode)
 { (void)mode; if(fault()) return 0; unsigned i=index_of(p); if(files[i].present) return i+1; error=ERROR_OBJECT_NOT_FOUND; return 0; }
@@ -76,6 +76,7 @@ static void initialize(const unsigned char *bytes,unsigned size)
 }
 int main(void)
 {
+    unsigned char scratch[8192];
     unsigned char before[512],after[512];
     for(unsigned i=0;i<sizeof before;++i) before[i]=(unsigned char)(i*17+11);
     before[2]='S'; before[3]='S'; before[4]=0x7e; before[5]=2;
@@ -91,15 +92,25 @@ int main(void)
     struct SlicksTrackRecords encoded=inserted;
     unsigned char published[512]; memcpy(published,before,sizeof published);
     assert(slicks_write_track_records(published,sizeof published,&encoded)==1);
+    for(unsigned invalid=0;invalid<2;++invalid) {
+        initialize(before,sizeof before); unsigned char changed=9;
+        struct SlicksSetupStorageReport report=slicks_amiga_store_track_records(paths[0],&inserted,&changed,
+            invalid?scratch:0,invalid?sizeof scratch-1:sizeof scratch);
+        assert(report.result==SLICKS_SETUP_SAVE_FAILED && report.io_error==ERROR_NO_FREE_STORE);
+        assert(!changed && !operation && !allocations && equals(0,before,sizeof before));
+        report=slicks_amiga_clear_track_records(paths[0],&changed,
+            invalid?scratch:0,invalid?sizeof scratch-1:sizeof scratch);
+        assert(report.result==SLICKS_SETUP_SAVE_FAILED && !changed && !operation && !allocations);
+    }
     initialize(before,sizeof before); unsigned char inserted_changed=0;
-    struct SlicksSetupStorageReport inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+    struct SlicksSetupStorageReport inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed,scratch,sizeof scratch);
     assert(inserted_report.result==SLICKS_SETUP_SAVED && inserted_changed && equals(0,published,sizeof published));
     unsigned inserted_calls=operation,inserted_cases=0;
     struct SlicksTrackRecords retained=inserted;
     for(unsigned first=0;first<=inserted_calls+10;++first)
     for(unsigned second=first;second<=inserted_calls+10;++second) {
         initialize(before,sizeof before); fail_first=first; fail_second=second;
-        inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+        inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed,scratch,sizeof scratch);
         assert(!allocations && !memcmp(&inserted,&retained,sizeof inserted));
         unsigned committed=inserted_report.result==SLICKS_SETUP_SAVED || inserted_report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING;
         assert(inserted_changed==committed);
@@ -111,23 +122,23 @@ int main(void)
     fail_first=fail_second=0;
     initialize(before,sizeof before);
     g_slicks_diag_record_write_alloc_fault=1; inserted_changed=9;
-    inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+    inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed,scratch,sizeof scratch);
     assert(!g_slicks_diag_record_write_alloc_fault && g_slicks_diag_record_write_alloc_reached);
     assert(inserted_report.result==SLICKS_SETUP_SAVE_FAILED && inserted_report.io_error==ERROR_NO_FREE_STORE);
     assert(!inserted_changed && !allocations && equals(0,before,sizeof before) && !files[1].present && !files[2].present);
     assert(!memcmp(&inserted,&retained,sizeof inserted));
-    inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+    inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed,scratch,sizeof scratch);
     assert(inserted_report.result==SLICKS_SETUP_SAVED && inserted_changed && !allocations && equals(0,published,sizeof published));
     assert(!memcmp(&inserted,&retained,sizeof inserted));
-    puts("Record save allocation failure leaves files/source intact; retry commits the retained table");
+    puts("Record save scratch rejection leaves files/source intact; retry commits the retained table");
     fail_first=fail_second=0;
     initialize(before,sizeof before); unsigned char changed=0;
-    struct SlicksSetupStorageReport report=slicks_amiga_clear_track_records(paths[0],&changed);
+    struct SlicksSetupStorageReport report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
     assert(report.result==SLICKS_SETUP_SAVED && changed && equals(0,after,sizeof after));
     unsigned normal_calls=operation;
     for(unsigned first=0;first<=normal_calls+10;++first) for(unsigned second=first;second<=normal_calls+10;++second) {
         initialize(before,sizeof before); fail_first=first; fail_second=second; changed=9;
-        report=slicks_amiga_clear_track_records(paths[0],&changed);
+        report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
         assert(!allocations && report.path==paths[0]); ++cases; ++results[report.result];
         unsigned committed=report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING;
         assert(changed==committed);
@@ -139,29 +150,30 @@ int main(void)
     }
     fail_first=fail_second=0;
     initialize(before,sizeof before); files[0].present=0;
-    report=slicks_amiga_clear_track_records(paths[0],&changed);
+    report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
     assert(report.result==SLICKS_SETUP_SAVE_FAILED && report.io_error==ERROR_OBJECT_NOT_FOUND && !changed && !files[0].present);
     initialize(before,sizeof before); files[0].bytes[2]='X';
     unsigned char invalid[512]; memcpy(invalid,files[0].bytes,sizeof invalid);
-    report=slicks_amiga_clear_track_records(paths[0],&changed);
+    report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
     assert(report.result==SLICKS_SETUP_SAVE_FAILED && !changed && equals(0,invalid,sizeof invalid));
     for(unsigned artifact=1;artifact<3;++artifact) {
         initialize(before,sizeof before); files[artifact].present=1; files[artifact].size=7; memset(files[artifact].bytes,0x77,7);
         struct File snapshot[sizeof files/sizeof *files]; memcpy(snapshot,files,sizeof files);
-        report=slicks_amiga_clear_track_records(paths[0],&changed);
+        report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
         assert(report.result==SLICKS_SETUP_RECOVERY_REQUIRED && !changed && !memcmp(files,snapshot,sizeof files));
     }
     for(unsigned size=0;size<363;++size) {
-        initialize(before,size); report=slicks_amiga_clear_track_records(paths[0],&changed);
+        initialize(before,size); report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
         assert(report.result==SLICKS_SETUP_SAVE_FAILED && !changed && equals(0,before,size));
     }
     before[5]=1; initialize(before,sizeof before);
-    report=slicks_amiga_clear_track_records(paths[0],&changed);
+    report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
     assert(report.result==SLICKS_SETUP_SAVED && !changed && equals(0,before,sizeof before));
     unsigned char oversized[8193]={0}; oversized[2]='S'; oversized[3]='S'; oversized[4]=0x7e; oversized[5]=2;
-    initialize(oversized,sizeof oversized); report=slicks_amiga_clear_track_records(paths[0],&changed);
+    initialize(oversized,sizeof oversized); report=slicks_amiga_clear_track_records(paths[0],&changed,scratch,sizeof scratch);
     assert(report.result==SLICKS_SETUP_SAVE_FAILED && !changed && equals(0,oversized,sizeof oversized));
     for(unsigned i=0;i<4;++i) assert(results[i]);
+    assert(!allocation_calls);
     printf("Amiga track storage: %u single/double fault cases preserve old or committed tracks; short reads/writes, truncation, oversized and recovery guards pass\n",cases);
     return 0;
 }

@@ -366,11 +366,17 @@ struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *path,c
 }
 
 struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *path,
-    const struct SlicksTrackRecords *source,unsigned char *changed)
+    const struct SlicksTrackRecords *source,unsigned char *changed,
+    unsigned char *buffer,unsigned long capacity)
 {
     struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
     if(changed) *changed=0;
     if(!path || !source || !changed) return report;
+    if(g_slicks_diag_record_write_alloc_fault) {
+        g_slicks_diag_record_write_alloc_fault=0;
+        g_slicks_diag_record_write_alloc_reached=1; buffer=0;
+    }
+    if(!buffer || capacity<8192) { report.io_error=ERROR_NO_FREE_STORE; return report; }
     unsigned length=0; while(length<120 && path[length]) ++length;
     if(!length || length>=120) return report;
     char temporary[124],backup[124];
@@ -383,12 +389,6 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *pat
     if(staged || backed) { report.result=SLICKS_SETUP_RECOVERY_REQUIRED; goto done; }
     int present=exists(&report,path);
     if(present!=1) { if(!present) report.io_error=ERROR_OBJECT_NOT_FOUND; goto done; }
-    unsigned char *buffer;
-    if(g_slicks_diag_record_write_alloc_fault) {
-        g_slicks_diag_record_write_alloc_fault=0;
-        g_slicks_diag_record_write_alloc_reached=1; buffer=0;
-    } else buffer=AllocMem(8192,MEMF_ANY);
-    if(!buffer) { report.io_error=ERROR_NO_FREE_STORE; goto done; }
     struct SlicksSetupLoadReport load={SLICKS_SETUP_LOADED,0,0,0,0};
     long size=read_file(&load,path,buffer,8192);
     if(size<6 || load.result!=SLICKS_SETUP_LOADED || buffer[2]!='S' || buffer[3]!='S' || buffer[4]!=0x7e) {
@@ -405,17 +405,17 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *pat
             *changed=(unsigned char)(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING);
         }
     }
-    FreeMem(buffer,8192);
 done:
     report.path=path; /* Never return pointers into local suffix buffers. */
     return report;
 }
 
-struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *path,unsigned char *changed)
+struct SlicksSetupStorageReport slicks_amiga_clear_track_records(const char *path,unsigned char *changed,
+    unsigned char *buffer,unsigned long capacity)
 {
     struct SlicksTrackRecords records;
     slicks_clear_track_records(&records);
-    return slicks_amiga_store_track_records(path,&records,changed);
+    return slicks_amiga_store_track_records(path,&records,changed,buffer,capacity);
 }
 
 struct SlicksSetupLoadReport slicks_amiga_load_setup(

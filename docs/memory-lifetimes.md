@@ -110,6 +110,14 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    Reserve catalogue/transaction capacity at launch; bound dynamic name tables,
    profile editing, save/load and screenshot encoding without losing atomic
    new/backup file replacement or original data support.
+   Record input and transactional writes now reuse an 8,192-byte modal storage
+   lease. Parsing copies all table values before release; no pointer into the
+   source file survives. Post-race display owns only the primary surface and
+   inline icons/fonts, not a modal child, so saves can borrow the modal slot.
+   Retry/skip notices run after releasing it. Options closes the confirmation
+   message before acquiring one lease for the whole Clear Records loop and
+   releases it before the result/path notices. All error cleanup releases live
+   leases; no track-record adapter allocation or heap fallback remains.
 6. **Registration/ending screens:** Registration's 70,000-byte decode input
    now uses the modal storage lease, released after decode and before Help.
    Chunky/palette output does not alias that lease. Failed loads/decodes also
