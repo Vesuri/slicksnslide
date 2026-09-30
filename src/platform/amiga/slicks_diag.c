@@ -2605,6 +2605,14 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     if(session) session->options=options;
     struct SlicksResourceArchive archive = {0};
     struct SlicksTrackNavigation *navigation = 0;
+    struct RaceLoadWorkspace {
+        unsigned char dat[65536],track[8192];
+        struct SlicksTrackNavigation navigation;
+        unsigned char car[128],font[2048];
+    };
+    _Static_assert(sizeof(struct RaceLoadWorkspace)<=sizeof(struct SlicksAmigaPlayerMenu),
+        "Track staging must fit the startup primary-menu reservation");
+    struct RaceLoadWorkspace *work=0;
     unsigned char *dat = 0;
     unsigned char *track = 0;
     unsigned char *arena = 0;
@@ -2635,19 +2643,19 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         g_slicks_diag_race_memory[0]=AvailMem(MEMF_ANY);
         g_slicks_diag_race_memory[1]=AvailMem(MEMF_ANY|MEMF_LARGEST);
     }
-    dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
-    track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
+    work=slicks_amiga_menu_workspace_acquire(sizeof *work);
+    dat=work?work->dat:0;
+    track=work?work->track:0;
     /* Shop ownership has ended. Until slicks_race_start reconstructs all
      * 64000 pixels from logical, chunky has no live image consumers. Borrow
      * its enlarged backing at the original decoder capacity. Failure callers
      * rebuild the warning/title or exit; neither preserves these bytes. */
     arena = chunky;
-    navigation = (struct SlicksTrackNavigation *)
-        AllocMem(sizeof(*navigation), MEMF_ANY);
-    car_resource = (unsigned char *)AllocMem(128UL, MEMF_ANY);
+    navigation=work?&work->navigation:0;
+    car_resource=work?work->car:0;
     /* Exercise partial-allocation cleanup without exhausting system memory. */
     if(g_slicks_diag_race_load_fault==1) g_slicks_diag_race_load_fault=0;
-    else font_resource = (unsigned char *)AllocMem(2048UL, MEMF_ANY);
+    else font_resource=work?work->font:0;
     if(catalogue_recovery) {
         g_slicks_diag_race_memory[2]=AvailMem(MEMF_ANY);
         g_slicks_diag_race_memory[3]=AvailMem(MEMF_ANY|MEMF_LARGEST);
@@ -2926,17 +2934,8 @@ cleanup:
     slicks_resource_archive_close(&archive);
     if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
     if(result!=0) slicks_amiga_platform_end(platform);
-    if (font_resource)
-        FreeMem(font_resource, 2048UL);
-    if (car_resource)
-        FreeMem(car_resource, 128UL);
-    if (navigation)
-        FreeMem(navigation, sizeof(*navigation));
     /* arena borrows chunky; only main owns/frees that allocation. */
-    if (track)
-        FreeMem(track, 8192UL);
-    if (dat)
-        FreeMem(dat, 65536UL);
+    slicks_amiga_menu_workspace_release(work);
 #ifdef SLICKS_SHADOW_CHECK
     if (!result) {
         /* These buffers compare gameplay updates, not loading. Allocate
@@ -5020,6 +5019,10 @@ int main(void)
     if(championship_scan_test==1) g_slicks_diag_saved_lock_failure=1;
     if(championship_scan_test==2) g_slicks_diag_saved_next_failure=1;
     slicks_amiga_saved_files_refresh(&saved_files_cache);
+    if(slicks_amiga_menu_workspace_create()) {
+        PutStr((CONST_STRPTR)"Slicks: insufficient memory for menu and track workspace.\n");
+        goto cleanup;
+    }
     if (auto_race) {
         struct SlicksConfiguration diagnostic_configuration=configuration;
         if(fuel_race_test && !natural_results_test) {
@@ -7451,6 +7454,7 @@ cleanup:
     g_slicks_track_renderer.surface=0;
     slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
     g_slicks_options_renderer.surface=0;
+    slicks_amiga_menu_workspace_destroy();
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;

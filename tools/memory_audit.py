@@ -93,6 +93,10 @@ def run(elf,port,cwd,log,players=False,expect_failure=False):
                     live[ptr]=size
                 else:failed+=1
         result=g.value('$d0')
+        if re.search(r'g_slicks_menu_workspace_conflicts;',
+                     g.cmd('info variables g_slicks_menu_workspace_conflicts')):
+            assert g.value('g_slicks_menu_workspace_conflicts')==0,'Overlapping menu/track workspace ownership'
+            report('MENU_WORKSPACE_OWNERSHIP_OK')
         if re.search(r'unsigned long g_slicks_stack_unused;',
                      g.cmd('info variables g_slicks_stack_unused')):
             unused=g.value('g_slicks_stack_unused')

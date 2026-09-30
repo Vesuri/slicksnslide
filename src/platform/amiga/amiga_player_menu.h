@@ -133,6 +133,12 @@ struct SlicksAmigaPlayerMenu {
     struct SlicksAmigaIntermission *intermission;
     unsigned char key_characters[8][128],key_modifiers;
 };
+/* One exclusive primary menu or track-loader workspace, reserved at launch.
+ * Nested dialogs belong to their primary menu; they cannot acquire this slot. */
+int slicks_amiga_menu_workspace_create(void);
+void slicks_amiga_menu_workspace_destroy(void);
+void *slicks_amiga_menu_workspace_acquire(unsigned long);
+void slicks_amiga_menu_workspace_release(void *);
 /* Open/close use Exec allocations; a cached archive permits hardware ownership.
  * Disk-backed archives still require an explicit OS boundary.
  * Use a dedicated help-surface object: its saved[] belongs to the race page. */

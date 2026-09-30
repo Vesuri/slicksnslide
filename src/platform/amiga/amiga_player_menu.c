@@ -18,6 +18,47 @@
 #include "../../ui/language_table.h"
 #include "../../game/track_scene.h"
 
+static unsigned char *menu_workspace;
+static unsigned char menu_workspace_busy;
+volatile unsigned long g_slicks_menu_workspace_conflicts;
+int slicks_amiga_menu_workspace_create(void)
+{
+    if(menu_workspace) return -1;
+    menu_workspace=AllocMem(sizeof(struct SlicksAmigaPlayerMenu),MEMF_ANY);
+    menu_workspace_busy=0;
+    return menu_workspace?0:-1;
+}
+void slicks_amiga_menu_workspace_destroy(void)
+{
+    if(menu_workspace_busy) ++g_slicks_menu_workspace_conflicts;
+    if(menu_workspace) FreeMem(menu_workspace,sizeof(struct SlicksAmigaPlayerMenu));
+    menu_workspace=0; menu_workspace_busy=0;
+}
+void *slicks_amiga_menu_workspace_acquire(unsigned long bytes)
+{
+    if(!menu_workspace || menu_workspace_busy || bytes>sizeof(struct SlicksAmigaPlayerMenu)) {
+        ++g_slicks_menu_workspace_conflicts;
+        return 0;
+    }
+    menu_workspace_busy=1;
+    return menu_workspace;
+}
+void slicks_amiga_menu_workspace_release(void *memory)
+{
+    if(!memory) return;
+    if(memory!=menu_workspace || !menu_workspace_busy) {
+        ++g_slicks_menu_workspace_conflicts;
+        return;
+    }
+    menu_workspace_busy=0;
+}
+static struct SlicksAmigaPlayerMenu *acquire_menu(void)
+{
+    unsigned char *bytes=slicks_amiga_menu_workspace_acquire(sizeof(struct SlicksAmigaPlayerMenu));
+    if(bytes) for(unsigned long i=0;i<sizeof(struct SlicksAmigaPlayerMenu);++i) bytes[i]=0;
+    return (struct SlicksAmigaPlayerMenu *)bytes;
+}
+
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 extern void slicks_menu_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short);
 extern void slicks_records_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short,unsigned short);
@@ -531,7 +572,7 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
     if(m->colour_dialog) FreeMem(m->colour_dialog,sizeof *m->colour_dialog);
     if(m->name_dialog) FreeMem(m->name_dialog,sizeof *m->name_dialog);
     free_picker(m->picker);
-    FreeMem(m,sizeof *m);
+    slicks_amiga_menu_workspace_release(m);
 }
 
 unsigned char g_slicks_diag_controllers_fault;
@@ -640,7 +681,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_help_surface_create(
     struct SlicksResourceArchive *archive,unsigned char *chunky,const unsigned char *palette)
 {
     if(!archive || !chunky || !palette) return 0;
-    struct SlicksAmigaPlayerMenu *m=surface_create_fault(1)?0:AllocMem(sizeof *m,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaPlayerMenu *m=surface_create_fault(1)?0:acquire_menu();
     unsigned char *resource=surface_create_fault(2)?0:AllocMem(8192,MEMF_ANY);
     if(!m || !resource) goto failed;
     long size=slicks_resource_archive_load(archive,surface_create_fault(3)?"missing-surface-font":"kirj.@f",resource,8192);
@@ -1128,7 +1169,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
     const unsigned char *footer,unsigned char footer_percent,const struct SlicksPlayerMenuLabels *labels)
 {
     if(!archive || !chunky || !title || !footer || !labels) return 0;
-    struct SlicksAmigaPlayerMenu *m=AllocMem(sizeof *m,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaPlayerMenu *m=acquire_menu();
     unsigned char *resource=AllocMem(32768,MEMF_ANY);
     if(!m || !resource || prepare_keymap(m)) goto failed;
     unsigned width,height; unsigned long consumed;
@@ -1171,7 +1212,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_options_menu_create(
     const unsigned char *title,struct SlicksOptionsRenderer *renderer)
 {
     if(!archive || !chunky || !palette || !title || !renderer) return 0;
-    struct SlicksAmigaPlayerMenu *m=AllocMem(sizeof *m,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaPlayerMenu *m=acquire_menu();
     unsigned char *resource=AllocMem(8192,MEMF_ANY);
     if(!m || !resource) goto failed;
     for(unsigned i=0;i<768;++i) m->palette[i]=palette[i];
@@ -1203,7 +1244,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_track_menu_create(
     if(!renderer) return 0;
     renderer->surface=0;
     if(!archive || !chunky || !title || !footer || total<0 || !name) return 0;
-    struct SlicksAmigaPlayerMenu *m=AllocMem(sizeof *m,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaPlayerMenu *m=acquire_menu();
     unsigned char *resource=AllocMem(64003,MEMF_ANY);
     if(!m || !resource) goto failed;
     long size=slicks_resource_archive_load(archive,"trckmenu.@p",m->palette,sizeof m->palette);

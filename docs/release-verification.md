@@ -1,5 +1,23 @@
 # Development release audit
 
+## 2026-09-30 — reserve primary menu/track workspace at startup
+
+The common 86,422-byte menu owner is now allocated once before entering the
+title/game loop. Track preparation borrows that exclusive slot after shop
+destruction for DAT, track, navigation, car and font staging. It fits by static
+assertion. Acquisition cannot allocate a fallback block; menu initialization
+clears the reused bytes, and shutdown releases the reservation once.
+
+`tmp/standalone-release-i_kmktd6` passes the Workbench-loaded stock-2-MiB
+intermission/repeated-edit/second-race fixture and all 55 whole-screen
+chunky/planar publication comparisons. The first audited DEMOPLR execution in
+`tmp/standalone-release-bwsjvboo` returns zero after both demos and Players,
+with 150 allocations, zero outstanding allocations and zero workspace ownership
+conflicts. One recoverable 65,536-byte allocation still failed inside
+`slicks_amiga_load_track_lists`: the redundant second refresh buffer. This is
+not evidence that all runtime allocations have been removed. The same-session
+relaunch portion is being checked separately.
+
 ## 2026-09-30 — startup-owned intermission preview workspace
 
 Intermission now borrows the dead VGA race image for its 64 KiB preview decode
