@@ -2607,6 +2607,31 @@ policy remain open. Existing demo diagnostics compare only the first 256
 selection words; they must be expanded before claiming large-playlist demo
 restoration coverage.
 
+### F18 follow-up: original saved-game writer beyond 256 tracks
+
+`verify-saved-game` now executes the actual DOS writer at `1d587` with 257
+and 300 selected tracks, in addition to its existing 0/1/2/64/256 matrix.
+All 168 larger streams pass: signature, big-endian count, every selected
+eight-byte name, next-track/player tail, catalogue-call count, file closure
+and successful return. Each case also verifies the original open-failure
+path. The tail is compared with the already-oracle-verified zero-track
+encoding; the larger track-name region is checked independently. Guest name
+and selection storage do not overlap at the tested 300-track bound.
+
+The previous 420 native/original stream comparisons, complete truncated-prefix
+rejection tests and 2,266 unchanged-destination encoding guards still pass.
+Command: `make verify-saved-game` (2026-09-30). The larger cases explicitly
+assert the current native rejection: this is evidence for removing a port
+limit, not a claim that native larger saves already work, nor an original
+reader/resume or 10,000-track boundary test.
+
+The production resume resolver and championship staging each currently place
+a fixed-size resolved-track structure on the stack. Their ownership must be
+changed before increasing the shared limit; mechanically enlarging it would
+violate the default-stack requirement. Native intermission/title staging and
+the platform loader also need corresponding capacity handling. These remain
+open implementation work.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
