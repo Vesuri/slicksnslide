@@ -1,5 +1,25 @@
 # Development release audit
 
+## 2026-10-01 — clean release-check after startup-memory migrations
+
+`make release-check` passes at 4aa7262. This includes the timing/physics,
+collision, Help, keyboard, loading/font and partial-menu rendering oracles;
+378 complete Tracks preparation and 168 sequential redraw comparisons; and
+installer extraction of all 197 original files with key/settings preservation
+and corrupt/truncated/wrong-ZIP rejection.
+
+Two clean builds produce identical stripped executables. The subsequent
+package rebuild matches them, and the scratch LHA passes the independent
+11-member allowlist/decompression/CRC/executable/script/icon audit.
+
+- `build/release/Slicks` SHA-256:
+  `cd579a700f6490e32e61c9832f2bb79aca0649469e26fb696943a3278fe15282`
+- `build/release-check/Slicks-0.1.lha` SHA-256:
+  `842372b4e148e228660813d210a6bcb0941516ada8a60a9a5952d66c2aba41ff`
+
+This remains a local validation candidate, not the final 0.90 release. Native
+workflow validation is separate, and the manual release gate remains open.
+
 ## 2026-10-01 — final storage and PCM regression sweep
 
 At 19f7c23, the host suites for setup storage/load, saved-game storage,
