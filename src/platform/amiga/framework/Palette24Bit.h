@@ -6,6 +6,8 @@
 class Palette24Bit {
 public:
     Palette24Bit(const uint32_t* colors, uint16_t colorCount, uint16_t fade = 255, uint32_t fadeBaseColor = 0x000000);
+    /* Allocation-free view. Both caller-owned arrays must outlive this object. */
+    Palette24Bit(uint32_t* colors, uint32_t* current, uint16_t colorCount, uint16_t fade = 255, uint32_t fadeBaseColor = 0x000000);
     ~Palette24Bit();
 
     void setColors(const uint32_t* colors, uint16_t colorCount);
@@ -25,6 +27,7 @@ private:
     uint16_t fade_;
     uint32_t fadeBaseColor;
     bool isDirty;
+    bool ownsColors;
 };
 
 #endif

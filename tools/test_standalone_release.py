@@ -39,6 +39,8 @@ def main():
     parser.add_argument('--read-only',action='store_true',
                         help='Mount the isolated game-data volume read-only for real DOS failure tests')
     parser.add_argument('--allocation-audit',action='store_true')
+    parser.add_argument('--startup-only',action='store_true',
+                        help='Fail the allocation audit on any game-owned allocation after startup')
     parser.add_argument('--audit-players',action='store_true')
     parser.add_argument('--expect-failure',action='store_true')
     parser.add_argument('--repeat',type=int,default=1,
@@ -55,8 +57,8 @@ def main():
         parser.error('--repeat must be positive and requires --allocation-audit')
     if args.expect_failure and args.repeat>1:
         parser.error('Expected failures are audited one launch at a time')
-    if (args.audit_players or args.expect_failure) and not args.allocation_audit:
-        parser.error('--audit-players and --expect-failure require --allocation-audit')
+    if (args.audit_players or args.expect_failure or args.startup_only) and not args.allocation_audit:
+        parser.error('--audit-players, --expect-failure and --startup-only require --allocation-audit')
     if args.allocation_audit and args.checks:
         parser.error('--checks and --allocation-audit are separate debugger modes')
     if (args.args or args.checks) and not args.default_stack:
@@ -132,7 +134,7 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
                 if args.allocation_audit:
                     from memory_audit import run
                     run(ROOT/'amiga/out/SlicksDiag.elf',port,base,debug,
-                        players=args.audit_players,expect_failure=args.expect_failure)
+                        players=args.audit_players,expect_failure=args.expect_failure,startup_only=args.startup_only)
                     # FS-UAE's load trigger is one-shot after detach. Audit
                     # the first complete execution, then let DOS verify each
                     # subsequent exit status in this same OS session.

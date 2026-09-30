@@ -42,9 +42,10 @@ class Debugger:
         try:self.proc.wait(timeout=5)
         except subprocess.TimeoutExpired:self.proc.kill();self.proc.wait()
 
-def run(elf,port,cwd,log,players=False,expect_failure=False):
+def run(elf,port,cwd,log,players=False,expect_failure=False,startup_only=False):
     g=Debugger(elf,cwd,log)
     live={};allocations=0;failed=0;reached_players=False
+    runtime=False
     def report(text):log.write(text+'\n');log.flush()
     try:
         g.cmd('set pagination off');g.cmd('set confirm off')
@@ -64,12 +65,18 @@ def run(elf,port,cwd,log,players=False,expect_failure=False):
         free=g.breakpoint('*%d'%(sysbase-210)+condition)
         done=g.breakpoint('*%d'%ret)
         menu=g.breakpoint('slicks_diag_player_menu_ready') if players else None
+        ready=g.breakpoint('slicks_diag_startup_complete') if startup_only else None
         while True:
             output=g.cmd('continue')
             match=re.search(r'Breakpoint (\d+),',output)
             assert match,('Unexpected debugger stop',output)
             hit=int(match[1])
             if hit==done:break
+            if hit==ready:
+                assert not runtime,'Repeated startup boundary'
+                runtime=True
+                report('STARTUP_RESERVATIONS_READY blocks=%d bytes=%d'%(len(live),sum(live.values())))
+                continue
             if hit==menu:
                 reached_players=True
                 continue
@@ -81,6 +88,9 @@ def run(elf,port,cwd,log,players=False,expect_failure=False):
                 report('MEM_FREE ptr=%x size=%d'%(ptr,size))
             else:
                 assert hit==alloc
+                if startup_only and runtime:
+                    g.cmd('bt')
+                    raise AssertionError('Game-owned allocation after startup: %d bytes'%size)
                 allocations+=1
                 caller=g.value('*(unsigned long *)$sp')
                 g.breakpoint('*%d'%caller,temporary=True)
@@ -107,6 +117,9 @@ def run(elf,port,cwd,log,players=False,expect_failure=False):
         assert not live,('Leaked allocations',live)
         assert result==(20 if expect_failure else 0),('Unexpected exit code',result)
         assert not players or reached_players,'Players was not reached'
+        if startup_only:
+            assert runtime or expect_failure,'Startup-complete checkpoint was not reached'
+            report('STARTUP_ONLY_ALLOCATION_OK reached=%d'%runtime)
         if players:
             assert g.value('demo_players_test')==4,'Native Players open/close did not complete'
             assert g.value('g_slicks_demo_natural_returns')==2,'Both demos must finish naturally'

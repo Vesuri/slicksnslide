@@ -1,4 +1,6 @@
 PYTHON ?= python3
+CXX ?= c++
+
 SOURCE ?= ref/SLICKS.EXE
 REFERENCE_ROOT ?= tmp/pc-root
 REFERENCE_CAPTURE ?= $(REFERENCE_ROOT)/slicks-handoff
@@ -1975,6 +1977,13 @@ build/verify_status_cache: tools/verify_status_cache.c src/game/race_runtime.c s
 .PHONY: verify-status-cache
 verify-status-cache: build/verify_status_cache
 	build/verify_status_cache
+
+.PHONY: verify-framework-palette
+verify-framework-palette: build/verify_framework_palette
+	build/verify_framework_palette
+
+build/verify_framework_palette: tools/verify_framework_palette.cpp src/platform/amiga/framework/Palette24Bit.cpp src/platform/amiga/framework/Palette24Bit.h | build
+	$(CXX) -std=c++11 -O2 -Wall -Wextra -Werror -Wno-ignored-qualifiers $< -o $@
 
 clean:
 	rm -rf build

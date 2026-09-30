@@ -74,6 +74,8 @@ static struct SlicksRegistration registration;
 static struct SlicksResourceCache *menu_cache;
 static struct SlicksAmigaTrackListCache track_list_cache;
 static struct SlicksArchiveDirectory archive_directory;
+/* Audit boundary: every production game-owned allocation precedes this call. */
+void __attribute__((noinline)) slicks_diag_startup_complete(void) { __asm__ volatile("" ::: "memory"); }
 static struct SlicksAmigaSavedFilesCache saved_files_cache;
 volatile unsigned long g_slicks_menu_cache_bytes;
 volatile short g_slicks_registration_status;
@@ -5138,6 +5140,7 @@ int main(void)
     if(championship_scan_test==1) g_slicks_diag_saved_lock_failure=1;
     if(championship_scan_test==2) g_slicks_diag_saved_next_failure=1;
     slicks_amiga_saved_files_refresh(&saved_files_cache);
+    slicks_diag_startup_complete();
     if (auto_race) {
         struct SlicksConfiguration diagnostic_configuration=configuration;
         if(fuel_race_test && !natural_results_test) {

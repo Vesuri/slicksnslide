@@ -6,6 +6,14 @@ validate the inventory; they must not be the mechanism for discovering it.
 
 ## Census
 
+The subsequent copper-palette migration removes the linked owning palette
+constructor from the native path: `build_copper` borrows two 1,024-byte BSS
+arrays. The framework's allocating `setColors` API remains available but is
+unused and link-discarded in this build. The startup-only runtime audit caught
+the former two allocations per view rebuild; save and edit now pass that
+guard. This paragraph updates the framework classification, not the historical
+source-expression totals below.
+
 Search all `src/`, including framework code and headers, for `Alloc*`, C heap
 calls, `new`, and allocation callbacks. Follow wrappers and compare the Amiga
 Makefile/link map so unused framework helpers are not charged to the game.

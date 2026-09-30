@@ -66,7 +66,10 @@ static unsigned char expand_vga_component(unsigned char value)
 static unsigned long build_copper(unsigned short view_index,
                                   const unsigned char *palette)
 {
-    unsigned long colours[256];
+    /* Copper construction is synchronous, never called by an interrupt.
+     * BSS reserves both arrays before entry; do not allocate on view changes
+     * or spend another 2 KiB of the caller's default 4 KiB stack. */
+    static unsigned long colours[256],current_colours[256];
     unsigned short colour;
     unsigned long at;
     CopperList *list = framework_copper[view_index];
@@ -81,7 +84,7 @@ static unsigned long build_copper(unsigned short view_index,
         unsigned long b = expand_vga_component(palette[colour * 3 + 2]);
         colours[colour] = (r << 16) | (g << 8) | b;
     }
-    Palette24Bit aga_palette(colours, 256);
+    Palette24Bit aga_palette(colours, current_colours, 256);
     /* DIWHIGH carries the ninth vertical stop bit. Centre the 200-line
      * playfield at $9c so the window is exactly $38..$ff (VSTOP=$100),
      * matching the framework's extended-window setup. */

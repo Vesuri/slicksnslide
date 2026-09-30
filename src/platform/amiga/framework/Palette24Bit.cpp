@@ -5,22 +5,34 @@ Palette24Bit::Palette24Bit(const uint32_t* colors, uint16_t colorCount, uint16_t
     currentColors(0),
     fade_(fade),
     fadeBaseColor(fadeBaseColor),
-    isDirty(false)
+    isDirty(false),
+    ownsColors(true)
 {
     setColors(colors, colorCount);
 }
 
+Palette24Bit::Palette24Bit(uint32_t* colors, uint32_t* current, uint16_t colorCount, uint16_t fade, uint32_t fadeBaseColor) :
+    sourceColors(colors), currentColors(current), colorCount_(colorCount),
+    fade_(fade), fadeBaseColor(fadeBaseColor), isDirty(true), ownsColors(false)
+{
+}
+
 Palette24Bit::~Palette24Bit()
 {
-    delete[] sourceColors;
-    delete[] currentColors;
+    if (ownsColors) {
+        delete[] sourceColors;
+        delete[] currentColors;
+    }
 }
 
 void Palette24Bit::setColors(const uint32_t* colors, uint16_t colorCount)
 {
-    delete[] sourceColors;
-    delete[] currentColors;
+    if (ownsColors) {
+        delete[] sourceColors;
+        delete[] currentColors;
+    }
 
+    ownsColors = true;
     sourceColors = new uint32_t[colorCount];
     currentColors = new uint32_t[colorCount];
     colorCount_ = colorCount;

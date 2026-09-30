@@ -176,6 +176,13 @@ intermission construction diagnostic, not by normal game intermission.
 
 ### Validation requirements
 
+Copper palette construction uses two 1,024-byte BSS arrays, reserved by the
+loader. Its borrowed `Palette24Bit` object never owns/frees those arrays.
+Construction is synchronous and not interrupt-driven; each call rewrites the
+source and computes the current colours before publishing the copper list.
+The arrays therefore have no overlapping borrowers. This also removes the old
+1 KiB automatic colour table from the default 4 KiB stack.
+
 Reserve the 96,546-byte menu/parent block after startup title/sample staging
 is freed and before allocating the many small menu-cache resources. Reserving
 it last reproduced the reported startup error with a maximal catalogue;

@@ -1,5 +1,34 @@
 # Development release audit
 
+## 2026-10-01 — allocation-free copper palette construction
+
+The new `--allocation-audit --startup-only` mode stops on any directly
+game-owned Exec allocation after `slicks_diag_startup_complete`, before race
+preparation or interactive menus. It still tracks all startup blocks through
+shutdown. OS-internal allocations are excluded by caller address.
+
+This caught a real late allocation in `Palette24Bit::setColors`, reached from
+`build_copper` during view changes (`tmp/standalone-release-mggqhuvv`). Copper
+construction now borrows two 256-colour BSS arrays rather than allocating two
+arrays and using a 1 KiB stack table. The synchronous construction has no
+overlapping callers; both arrays are reserved by the executable loader.
+
+- `make verify-framework-palette verify-copper-palette` passes: all 256 fades
+  at three base colours match the owning implementation, borrowed destruction
+  does not free caller storage, and all copper encoding checks pass.
+- `tmp/standalone-release-p82od2x4` (CHAMPSAVE) and
+  `tmp/standalone-release-jk2szde3` (CHAMPEDIT): Workbench-loaded stock PAL
+  A1200, 2 MiB Chip/no Fast/default 4 KiB stack. Both reach the startup boundary
+  with 125 live blocks / 1,383,692 tracked heap bytes, then complete with no
+  later allocations. Each returns 0 after 130 total allocation calls, no
+  failures, no outstanding blocks and no workspace conflicts. These heap
+  counts exclude executable/BSS and OS-owned storage.
+- `tmp/standalone-release-9vyv_bec` (OPTIONSBC): two-race results/trophy flow
+  passes; all 19 full 64,000-pixel chunky/planar publications match.
+
+These tests are complete and their emulators have exited. The broader B12
+source/lifetime audit and B11 final release workflow remain open.
+
 ## 2026-10-01 — archive directory retained from startup
 
 The first SLICKS.000 index allocation is adopted by a reservation and retained
