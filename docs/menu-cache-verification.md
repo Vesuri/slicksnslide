@@ -2617,6 +2617,33 @@ normal restoration 31. Build log: `tmp/shop-transition-resident-build.log`.
 Both muted test emulators are closed. Other saved-game and intermission error
 routes retain their own outstanding coverage; this is not a whole-port pass.
 
+## Shop Help parser-error recovery (2026-09-30)
+
+Shop Help used to send a navigation/parse error directly to `run_shop` cleanup,
+aborting preparation. Other Help owners already close the failed viewer and
+offer the allocation-independent Help warning. The shop now follows that same
+recovery contract: close/restore the Help surface, open/publish the warning,
+retain takeover and allow dismissal followed by another F1 attempt. This is
+defensive handling of malformed data, not a claim that DOS safely handles it
+or that this native warning reproduces a DOS error screen.
+
+Explicit fixture `NATURALWJ` changes only the already-open diagnostic viewer's
+chapter to an invalid NUL-prefixed value and requests a redraw. The next normal
+Down key reaches the real parser rejection; no debugger return-value patch is
+used. The keys then dismiss the warning, reopen Help, close it and leave the
+shop for the race. `diag_shop_help_recovery.gdb` requires exactly one warning,
+one dismissal, two Help opens, retained display ownership at recovery
+checkpoints, unchanged cash and successful race entry with no loader error.
+
+Stock PAL 68020/2 MiB Chip/no Fast and confirmed default 4 KiB stack pass:
+`tmp/standalone-release-ceaskrmn`. All 64,000 shop pixels before the failed
+Help visit equal those after warning dismissal; all six publications match
+their chunky surfaces. The normal `NATURALWH` link/history regression also
+passes (`tmp/standalone-release-g0dgm_fi`), with eight exact publications.
+Build log: `tmp/shop-help-recovery-build.log`. Both muted runners closed their
+emulators. These stop at race entry rather than asserting normal program exit.
+Other shop allocation/page/language failure routes remain separate coverage.
+
 ## Remaining platform teardown call-site inventory (2026-09-30)
 
 After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in
