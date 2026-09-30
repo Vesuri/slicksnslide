@@ -2277,6 +2277,60 @@ without TITLEPROFILE; the stripped HUNK is byte-identical to the preceding
 uninstrumented `title-cadence-matrix-aXSxct/data/Slicks` baseline. A subsequent
 dry run schedules no target compilation, confirming the normal mode stamp.
 
+## Title glyph column-address reuse (2026-09-30)
+
+The additional normal-title subphase probe in the opt-in TITLEPROFILE build
+separates the two original colour/state calls from actual font drawing.
+Registered Finnish run `tmp/standalone-release-21bkuqat` passes 65 samples,
+counter progression and restoration 31. Colour/state work averages 62.32
+lines, maximum 65; glyph calls average 59.08, maximum 303. These are
+instrumented spans, not release cadence. The probes compile out normally.
+
+`sui_font_glyph_planar` previously reconstructed the full VGA address for
+every glyph pixel: multiply Y by 100, add X/4, page, bank and surface base.
+The accepted candidate calculates the destination once per column and adds
+100 per row. X clipping moves to the column boundary; signed Y clipping,
+source transparency, palette lookup, write order and register preservation
+remain intact. It does not change font geometry, add a substitute font or
+skip colour/state advancement. This renderer is the title's VGA-backed font
+path, not the race renderer or general gameplay optimization.
+
+Early uninstrumented performance screen, same stock/default-stack registered
+Finnish fixtures as the parent measurements:
+
+| Mode | Parent refreshes / 64 intervals | Candidate | Candidate run |
+| --- | --- | --- | --- |
+| Normal | 84 | 72 (56 x 1, 8 x 2) | `standalone-release-z49q5ce5` |
+| Arcade | 97 | 96 (40 x 1, 23 x 2, entry x 10) | `standalone-release-tpe4umm7` |
+
+Normal mean cadence improves from 26.25 to 22.5 ms (14.3% less elapsed
+emulated time). Arcade's improvement is confined to its initial redraw;
+its remaining 63 intervals still take 86 refreshes. Neither result establishes
+one-refresh title animation in every case, nor any gameplay improvement.
+
+Quick and expanded glyph verification: all three title fonts pass 7,584
+full-frame original-x86 comparisons and 13,272 independent native surface
+contract cases covering signed clipping, all four banks, pages 0/20000/40000,
+transparent pixels and preserved registers. The latter compares every byte
+in the four-bank allocation, not just visible pixels; it explicitly tests
+native clipping, not the original DOS routine's invisible-margin writes.
+`verify-font-planar` now runs all three fonts. Logs:
+`tmp/title-glyph-quick.log`, `tmp/title-glyph-clipping.log`.
+
+The full title oracles then pass 63 ordinary-menu full-screen/font cases
+across eight languages plus fallback, 54 native-store bounds cases, and
+3,888 Arcade full-screen/font cases (`tmp/title-glyph-oracles.log`). Native
+registered Finnish complete-cycle captures pass normal title
+`tmp/standalone-release-17ifwy5x` and Arcade
+`tmp/standalone-release-3i9uwdal`: each of the 65 captured states matches
+all 64,000 pixels of the original title wrapper using
+`build/verify_title_return_pixels RUN 65`. Both native gates also pass
+publication checks with zero pixel errors and normal restoration 31.
+All test emulators are closed after their runs.
+Post-validation uninterrupted timing repeat
+`tmp/standalone-release-mr50blo4` again takes 72 refreshes for 64 normal
+intervals, with the same 56 single-/8 double-refresh histogram.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

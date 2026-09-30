@@ -855,7 +855,7 @@ volatile unsigned char g_slicks_title_timing_counters[65];
  * Marks: pulse start, publication entry, unpack end, wait end, C2P end,
  * pulse end. Normal binaries contain none of this instrumentation. */
 struct SlicksTitleProfile {
-    unsigned long marks[6],pixels;
+    unsigned long marks[6],pixels,normal_colours,normal_glyphs;
     unsigned short publications;
 };
 volatile struct SlicksTitleProfile g_slicks_title_profile[65];
@@ -1074,6 +1074,10 @@ static void pulse_normal_title(struct SlicksAmigaPlatform *platform,
     unsigned char owner=slicks_title_render_state[6];
     slicks_tick_title_colours(logical,palette);
     slicks_advance_title_registration(palette);
+#ifdef SLICKS_TITLE_PROFILE
+    if(title_profile_active) title_profile_active->normal_colours=
+        slicks_diag_profile_raster_time()-title_profile_active->marks[0];
+#endif
     if(previous!=slicks_title_selected_color && selection<7 && selection!=4) {
         const unsigned char *label=slicks_title_labels[selection];
         short y=(short)(85+13*(selection>4?selection-1:selection));
@@ -1087,13 +1091,25 @@ static void pulse_normal_title(struct SlicksAmigaPlatform *platform,
         }
         unsigned char saved=slicks_title_font[6];
         slicks_title_font[6]=(unsigned char)slicks_title_selected_color;
+#ifdef SLICKS_TITLE_PROFILE
+        unsigned long glyph_start=title_profile_active?slicks_diag_profile_raster_time():0;
+#endif
         slicks_title_font_text(logical,slicks_title_font,label,160,y,5,slicks_title_third_color);
+#ifdef SLICKS_TITLE_PROFILE
+        if(title_profile_active) title_profile_active->normal_glyphs+=slicks_diag_profile_raster_time()-glyph_start;
+#endif
         /* Original full drawing ends with QUIT, selected only at row six. */
         if(selection!=6) slicks_title_font[6]=saved;
         slicks_title_dirty_add(&title_dirty,bounds.left,bounds.top,bounds.right,bounds.bottom);
     }
     if(registration.name[0] && owner!=slicks_title_render_state[6]) {
+#ifdef SLICKS_TITLE_PROFILE
+        unsigned long glyph_start=title_profile_active?slicks_diag_profile_raster_time():0;
+#endif
         slicks_draw_title_registration(logical,registration.name);
+#ifdef SLICKS_TITLE_PROFILE
+        if(title_profile_active) title_profile_active->normal_glyphs+=slicks_diag_profile_raster_time()-glyph_start;
+#endif
         struct SlicksChunkyUi ui={0,palette,arcade_dirty,0};
         slicks_font_text_dirty(&ui,slicks_title_small_font,registration.name,
             310,190,1,2,slicks_menu_measure(slicks_title_small_font,registration.name),0);

@@ -137,7 +137,63 @@ int main(int argc,char **argv)
         ++cases;
     }
     printf("Original glyph rasterizer vs 68020: %u full-frame pixel comparisons; transparency, palette changes, edges and register preservation passed\n",cases);
-    if(planar) { check(uc_close(x86)); check(uc_close(m68k)); return 0; }
+    if(planar) {
+        /* Independent clipped geometry oracle for negative coordinates and
+         * nonzero VGA pages. DOS deliberately permits invisible margin writes;
+         * these cases verify the native surface contract, not DOS clipping.
+         * font_planar_test.s places its page word at the end of the binary. */
+        static const short positions[][2]={{-4,-4},{-1,-1},{0,0},{1,1},
+            {2,10},{3,10},{318,198},{319,199},{320,200},
+            {-32768,0},{32767,0},{0,-32768},{0,32767},{100,-1}};
+        static const unsigned pages[]={0,20000,40000};
+        static unsigned char expected[0x40000],actual[0x40000];
+        unsigned clipped_cases=0;
+        if(codesize<2 || code[codesize-2] || code[codesize-1]) return 1;
+        for(unsigned glyph=0;glyph<count;++glyph)
+        for(unsigned position=0;position<sizeof positions/sizeof positions[0];++position)
+        for(unsigned page=0;page<sizeof pages/sizeof pages[0];++page) {
+            unsigned width_at=6+font[5]+count;
+            unsigned offset=width_at+count;
+            for(unsigned g=0;g<glyph;++g) offset+=((font[width_at+g]+3)&~3U)*height;
+            unsigned width=font[width_at+glyph],stride=(width+3)&~3U;
+            short x=positions[position][0],y=positions[position][1];
+            for(unsigned i=0;i<sizeof expected;++i) expected[i]=(unsigned char)(i*17+i/320+clipped_cases);
+            check(uc_mem_write(m68k,0x100000,expected,sizeof expected));
+            for(unsigned column=0;column<width;++column)
+            for(unsigned row=0;row<height;++row) {
+                short px=(short)(x+column),py=(short)(y+row);
+                unsigned ink=font[offset+row*stride+column];
+                if(px>=0 && px<320 && py>=0 && py<200 && ink)
+                    expected[(px&3)*65536U+pages[page]+py*100+(px>>2)]=font[5+ink];
+            }
+            unsigned char page_word[2]={pages[page]>>8,pages[page]};
+            check(uc_mem_write(m68k,codesize-2,page_word,2));
+            uint32_t values[]={0xabcd0000|(uint16_t)x,0xbcde0000|(uint16_t)y,0xcdef0000|glyph,
+                0x33334444,0x44445555,0x55556666,0x66667777,0x77778888,
+                0x100000,0x50000,0x22223333,0x33334444,0x44445555,0x55556666,0x66667777};
+            uint32_t stack=0x300000,sr=0,pc;
+            unsigned char return_address[]={0,0x38,0,0};
+            check(uc_reg_write(m68k,UC_M68K_REG_SR,&sr));
+            check(uc_reg_write(m68k,UC_M68K_REG_A7,&stack));
+            check(uc_mem_write(m68k,stack,return_address,4));
+            for(unsigned r=0;r<15;++r) check(uc_reg_write(m68k,registers[r],&values[r]));
+            check(uc_emu_start(m68k,0,0x380000,0,100000));
+            check(uc_reg_read(m68k,UC_M68K_REG_PC,&pc));
+            check(uc_reg_read(m68k,UC_M68K_REG_A7,&stack));
+            check(uc_mem_read(m68k,0x100000,actual,sizeof actual));
+            if(pc!=0x380000 || stack!=0x300004 || memcmp(expected,actual,sizeof actual)) {
+                fprintf(stderr,"Planar clipping/page mismatch glyph=%u xy=%d,%d page=%u\n",glyph,x,y,pages[page]);
+                return 1;
+            }
+            for(unsigned r=0;r<15;++r) {
+                uint32_t value;check(uc_reg_read(m68k,registers[r],&value));
+                if(value!=values[r]) return 1;
+            }
+            ++clipped_cases;
+        }
+        printf("Planar surface contract: %u complete four-bank comparisons; signed clipping, page offsets and registers passed\n",clipped_cases);
+        check(uc_close(x86)); check(uc_close(m68k)); return 0;
+    }
     f=fopen(argv[2],"rb"); if(!f) return 2;
     codesize=fread(code,1,sizeof code,f); if(ferror(f) || !feof(f)) return 2; fclose(f);
     check(uc_mem_write(m68k,0x2000,code,codesize));

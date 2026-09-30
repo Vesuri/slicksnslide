@@ -40,19 +40,15 @@ sui_font_glyph_planar:
 .column:
 	cmp.w d3,d6
 	bge.s .done
-	movea.l a3,a4
-	moveq #0,d7
-.row:
-	move.w d1,d2
-	add.w d7,d2
-	bmi.s .skip
-	cmpi.w #200,d2
-	bge.s .skip
+	; X and VGA bank stay fixed down a glyph column. Build its destination
+	; once, then advance by the original 100-byte VGA row stride. Signed Y
+	; permits top clipping without forming an address from a wrapped word.
 	tst.w d0
-	bmi.s .skip
+	bmi.s .next_column
 	cmpi.w #320,d0
-	bge.s .skip
-	mulu.w #100,d2
+	bge.s .next_column
+	move.w d1,d2
+	muls.w #100,d2
 	movea.l d2,a5
 	moveq #0,d2
 	move.w d0,d2
@@ -67,15 +63,25 @@ sui_font_glyph_planar:
 	swap d2
 	adda.l d2,a5
 	adda.l a0,a5
+	movea.l a3,a4
+	moveq #0,d7
+.row:
+	move.w d1,d2
+	add.w d7,d2
+	bmi.s .skip
+	cmpi.w #200,d2
+	bge.s .skip
 	moveq #0,d2
 	move.b (a4),d2
 	beq.s .skip
 	move.b 5(a1,d2.w),(a5)
 .skip:
+	adda.w #100,a5
 	adda.w d5,a4
 	addq.w #1,d7
 	cmp.w d4,d7
 	blt.s .row
+.next_column:
 	addq.l #1,a3
 	addq.w #1,d0
 	addq.w #1,d6
