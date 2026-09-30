@@ -1057,10 +1057,14 @@ static void clear_title_rectangle(unsigned char *logical,
                     (unsigned long)(x & 3) * 65536UL] = 0;
 }
 
+static int show_menu(struct SlicksAmigaPlatform *platform);
+static int hold_title_menu_display(struct SlicksAmigaPlatform *platform);
+
 static int show_race_load_error(struct SlicksAmigaPlatform *platform,
     unsigned char *logical,unsigned char *chunky,unsigned short *mode_state,
     const unsigned char *palette,unsigned char retry)
 {
+    if(hold_title_menu_display(platform)) return -1;
     if(slicks_setup_basic_mode(logical,mode_state)) return -1;
     clear_title_rectangle(logical,0,0,320,200);
     slicks_draw_title_text(logical,"RACE SETUP FAILED",160,70,15);
@@ -1070,7 +1074,7 @@ static int show_race_load_error(struct SlicksAmigaPlatform *platform,
         "ENTER OR ESC RETURNS TO MENU",160,110,15);
     slicks_convert_to_amiga(logical,chunky,platform->views[0].bitmap);
     if(slicks_amiga_platform_set_view(platform,0,palette) ||
-       slicks_amiga_platform_begin(platform,0)) return -1;
+       show_menu(platform)) return -1;
     g_slicks_diag_ingame=0; g_slicks_diag_ready=1;
     slicks_diag_race_load_failed(); return 0;
 }
@@ -1654,8 +1658,8 @@ done:
     return result;
 }
 
-/* RAM-only menu transitions retain takeover. Real disk boundaries still call
- * platform_end explicitly and arrive here inactive. Publish at display blank. */
+/* RAM-only transitions retain takeover; disk boundaries use the I/O window.
+ * Publish a prepared view at display blank. */
 /* B6: the 36ce0 argument of the main-loop owner receiving the next key;
  * -2 where the owner chains to BIOS INT 9 (Help, name entry: typematic);
  * -1 where the original uses a non-repeating reader (36d8b) or none. */
@@ -2526,9 +2530,8 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     }
     shop_end_game=state.end_game; result=0;
 done:
-    /* Success keeps the shop screen shown: race preparation paints the
-     * loading panel over it (1b488). Failures release the display. */
-    if(result) slicks_amiga_platform_end(platform);
+    /* Keep the shop image on both success and recoverable failure. The
+     * caller publishes a loading panel or a complete warning next. */
     g_slicks_shop_menu=0;
     slicks_amiga_player_menu_destroy(m); slicks_resource_archive_close(&archive);
     return result;
@@ -2640,7 +2643,6 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     g_slicks_diag_race_allocation_failures=0;
     if(configuration->options[0]<0 || configuration->options[0]>=6) {
         g_slicks_diag_race_error=7;
-        slicks_amiga_platform_end(platform);
         return -1;
     }
     if(session) {
@@ -2685,12 +2687,14 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
 
     /* GO may arrive with the resident title display still owned. Keep it
      * for the disk loader (1b488: loading panel over the shown screen),
-     * servicing AmigaOS only through the I/O window. A failed preparation
-     * still ends in the released state its callers expect. */
+     * servicing AmigaOS only through the I/O window. Failed preparation
+     * retains the image until the caller publishes its warning. */
     if(platform->active) {
         show_loading_panel(platform,chunky,track_path,
             (signed char)(title_demo.active || demo_render_only?-1:0));
-        if(slicks_amiga_platform_begin_io(platform)) slicks_amiga_platform_end(platform);
+        if(slicks_amiga_platform_begin_io(platform)) {
+            g_slicks_diag_race_error=8; goto cleanup;
+        }
     }
 
     if(catalogue_recovery) {
@@ -2987,7 +2991,6 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
 cleanup:
     slicks_resource_archive_close(&archive);
     if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
-    if(result!=0) slicks_amiga_platform_end(platform);
     /* arena borrows chunky; only main owns/frees that allocation. */
     slicks_amiga_menu_workspace_release(work);
 #ifdef SLICKS_SHADOW_CHECK
@@ -4636,11 +4639,11 @@ int main(void)
         configuration.selected_profile[0]=2;
         argc=6;argv="SETUPF";
     }
-    unsigned char setup_session_test=(unsigned char)((argc==5 || (argc==6 && (argv[5]=='I' || argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G'))) && argv[0]=='S' &&
+    unsigned char setup_session_test=(unsigned char)((argc==5 || (argc==6 && (argv[5]=='I' || argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G' || argv[5]=='H'))) && argv[0]=='S' &&
         argv[1]=='E' && argv[2]=='T' && argv[3]=='U' && argv[4]=='P');
     unsigned char setup_input_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='I');
-    unsigned char setup_reload_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G'));
-    unsigned char setup_failure_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='F' || argv[5]=='G'));
+    unsigned char setup_reload_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='R' || argv[5]=='A' || argv[5]=='F' || argv[5]=='G' || argv[5]=='H'));
+    unsigned char setup_failure_test=(unsigned char)(setup_session_test && argc==6 && (argv[5]=='F' || argv[5]=='G' || argv[5]=='H'));
     if(setup_failure_test && !shop_live_failure_test) g_slicks_diag_race_load_fault=argv[5]=='F'?2:6;
     unsigned char setup_abort_test=(unsigned char)(setup_session_test && argc==6 && argv[5]=='A'),setup_abort_sent=0;
     unsigned char pause_live_test=(unsigned char)((argc==8 || (argc==9 && (argv[8]=='F' || argv[8]=='N' || argv[8]=='H' || argv[8]=='M'))) && argv[0]=='L' && argv[1]=='I' &&
@@ -5869,9 +5872,15 @@ int main(void)
                 }
                 if(code==0x44 || code==0x45) {
                     race_load_prompt=race_load_retry=0;
+                    if(hold_title_menu_display(&platform)) goto cleanup;
                     make_title_surface(logical,title_frame,source_palette);
                     redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
                         selected_vehicle,track_names[selected_track],selected_laps);
+                    if(show_menu(&platform)) goto cleanup;
+                    if(setup_failure_test && argv[5]=='H') {
+                        /* Dismiss-to-title then ordinary Escape exit. */
+                        platform.key_tail=0;platform.keys[0]=0x45;platform.key_head=1;
+                    }
                     slicks_diag_race_load_dismissed();
                 }
                 continue;

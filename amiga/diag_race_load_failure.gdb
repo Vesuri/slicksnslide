@@ -2,6 +2,15 @@ set $loads = 0
 set $failed = 0
 set $dismissed = 0
 set $menus = 0
+break slicks_amiga_platform_end
+commands
+  silent
+  if !$_isvoid($race_failure_quit) && $dismissed == 1
+    continue
+  end
+  printf "RECOVERABLE_RACE_FAILURE_RELEASED_DISPLAY\n"
+  quit 1
+end
 break prepare_race
 commands
   silent
@@ -32,10 +41,13 @@ commands
     if $_isvoid($shop_failure_expected) || !shop_live_failure_test || g_slicks_diag_shop_create_fault
       quit 1
     end
-    set $pixels=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
-    dump binary memory .run/menu-rectangles/1000.planar $pixels $pixels+64000
-    dump binary memory .run/menu-rectangles/1000.chunky $chunky $chunky+64000
   end
+  if shown_view != 0 || g_slicks_diag_profile_platform->io_active
+    quit 1
+  end
+  set $pixels=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
+  dump binary memory .run/menu-rectangles/1000.planar $pixels $pixels+64000
+  dump binary memory .run/menu-rectangles/1000.chunky $chunky $chunky+64000
   dump binary memory .run/race-load-failure-v1/session-after.bin &g_slicks_setup_session &g_slicks_setup_session+1
   dump binary memory .run/race-load-failure-v1/config-after.bin $configuration $configuration+1
   set $failed = 1
@@ -46,11 +58,12 @@ break slicks_diag_race_load_dismissed
 commands
   silent
   set $dismissed = $dismissed+1
-  if !$_isvoid($shop_failure_expected)
-    set $pixels=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
-    dump binary memory .run/menu-rectangles/1001.planar $pixels $pixels+64000
-    dump binary memory .run/menu-rectangles/1001.chunky $chunky $chunky+64000
+  if shown_view != 0 || !g_slicks_diag_profile_platform->active || g_slicks_diag_profile_platform->io_active
+    quit 1
   end
+  set $pixels=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
+  dump binary memory .run/menu-rectangles/1001.planar $pixels $pixels+64000
+  dump binary memory .run/menu-rectangles/1001.chunky $chunky $chunky+64000
   continue
 end
 break slicks_diag_player_menu_ready

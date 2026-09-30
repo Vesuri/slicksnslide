@@ -1,5 +1,37 @@
 # Development release audit
 
+## 2026-09-30 — recoverable race failures retain the display (B10 closed)
+
+Race preparation and shop failures no longer restore Workbench. Preparation
+closes its I/O window on failure; failure to enter that window is an error,
+not permission to tear down and continue. The warning and its dismissal to
+the title hold the outgoing bitmap/palette while building the replacement,
+then publish together in blanking. Session/configuration rollback is unchanged.
+
+Stock Workbench/68020/2 MiB/no Fast/default 4 KiB-stack checks:
+
+- `tmp/standalone-release-6_ac47xd` (SETUPF): early load failure, warning,
+  dismissal, Players and successful retry; session/configuration rollback is
+  byte-identical and both warning/title publications match all 64,000 pixels.
+- `...-ul63d_r1` (SETUPG): later asset failure, same recovery sequence and
+  exact rollback/publications. Failed and successful load windows both retain
+  identical bitmap/palette bytes and active ownership with no OS view.
+  Final candidate rerun `...-dgcb5h_u` passes the same checks after adding
+  SETUPH's diagnostic exit sequence.
+- `...-vi_sjyll` (SETUPSC): late shop-constructor failure and the same retry
+  workflow; all four captured publications and rollback bytes match.
+- `...-fs7qc7ba` (SETUPH): failure, dismissal and ordinary Escape exit;
+  restoration mask 31 and both captured publications pass. SETUPH queues
+  the final Escape in the diagnostic code. Two earlier debugger-injection
+  attempts instead followed the existing retry sequence; those are not exit
+  passes and did not motivate a production change.
+
+The source teardown census leaves only `test_pause_children`,
+`test_pause_surface`, `test_intermission_surface`, final main cleanup and
+the platform destructor's defensive cleanup. The only saved-OS `LoadView`
+publication is in platform teardown, not the retained I/O service windows.
+All test instances are closed; original data and user installations are untouched.
+
 ## 2026-09-30 — reserved setup encoding and retained save recovery
 
 Setup saving borrows 5,771 bytes of modal storage for the maximum CFG/PLR

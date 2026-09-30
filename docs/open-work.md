@@ -28,16 +28,9 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-B1–B9 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
+B1–B10 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and
 [release-verification.md](release-verification.md).
-
-- [ ] **B10. Preserve the game display during disk access:** The manual race
-  completion briefly exposed Workbench before displaying the results screen.
-  Keep the current game image visible while loading/saving, while allowing the
-  OS services required for disk I/O. Remaining boundaries:
-  nonfatal race-preparation failures.
-  Audit remaining teardown calls and verify safe ownership/restoration on exit.
 
 - [ ] **B11. Intermission fails in stock-A1200 manual session:** After the
   completed race, `ENTER: RETRY / ESC: END MATCH` appeared instead of the
