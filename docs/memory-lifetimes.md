@@ -84,7 +84,7 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    Tracks' information preview now uses disjoint spans of idle VGA storage
    (65,536-byte decode arena, 65,536-byte DAT staging, 8,192-byte track staging).
    Its chunky parent and save-under remain untouched; leaving Tracks rebuilds
-   the title VGA image. The small information dialog still allocates separately.
+   the title VGA image. Its information dialog uses the shared modal overlay.
 4. **Nested dialogs:** Help now borrows 110,096 bytes from the startup-owned
    117,760-byte particle visibility cache. The viewer and 64,000-byte parent
    snapshot have exclusive modal ownership. Racing is stopped during Help;
@@ -114,6 +114,24 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    fonts and main images can retain their existing startup allocation/exit-free
    pattern. Audit framework and OS calls separately, rather than routing Chip
    DMA data into a generic workspace.
+
+### Intermission staging layout
+
+The completed race's VGA allocation now hosts a 141,312-byte union. During
+construction its spans are decode output [0,65536), DAT input [65536,131072),
+track input [131072,139264), and decoded language [139264,141312).
+The bounded file loader rejects empty/oversized inputs, short reads and failed
+Close operations before preview construction. Failure retries reuse the spans.
+The renderer copies all labels/names into the retained parent before returning.
+After that return the same union holds up to 10,000 exported eight-byte track
+names (80,000 bytes) throughout the nested save workflow. Transaction encoding
+is still separate; it must not overwrite those input names.
+
+Neither chunky, either displayed bitmap, the primary saved parent, nor the
+particle-cache child slot aliases this union. Next race/title preparation
+rebuilds VGA; the completed race cannot resume. No startup allocation grows.
+The old allocating plain-file helper is now used only by the explicit
+intermission construction diagnostic, not by normal game intermission.
 
 ### Validation requirements
 

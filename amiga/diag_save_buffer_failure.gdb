@@ -1,4 +1,5 @@
-# CHAMPSAVM: fail only the first playlist-name allocation, then real retry.
+# CHAMPSAVM: reject the first reserved playlist-name workspace, then real retry.
+# Start with a fresh Classic-mode CFG and no saved championships.
 set $warnings = 0
 set $saved = 0
 set $pickers = 0

@@ -3331,14 +3331,28 @@ static void intermission_test_key(struct SlicksAmigaPlatform *platform,unsigned 
     }
 }
 __attribute__((noinline)) void slicks_diag_intermission_closed(void) { __asm__ volatile("" ::: "memory"); }
+/* A completed race never resumes its VGA image. Its displayed bitmap and
+ * chunky save-under stay separate. Preview input/output must coexist; once
+ * open copies its labels into the retained parent, all preview bytes may be
+ * reused for exported save names, including while the filename child is live.
+ * The next race/title always reconstructs the original VGA allocation. */
+union IntermissionWorkspace {
+    struct {
+        unsigned char arena[65536],dat[65536],track[8192],language[2048];
+    } preview;
+    unsigned char saved_tracks[SLICKS_SAVED_GAME_TRACK_MAX][8];
+};
+_Static_assert(sizeof(union IntermissionWorkspace)<=0x40000UL,
+    "intermission workspace fits startup VGA storage");
 static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
     unsigned char *chunky,unsigned char *scratch,const unsigned char *palette,const char *next_path,
     const unsigned char *next_name,short position,short total,unsigned char diagnostic,
     void *track_names,unsigned track_count)
 {
     struct SlicksResourceArchive archive={0}; struct SlicksAmigaPlayerMenu *m=0;
-    unsigned char *dat=0,*track=0,*language=0;
-    unsigned long ds=0,ts=0;
+    union IntermissionWorkspace *work=(union IntermissionWorkspace *)scratch;
+    unsigned char *dat=work->preview.dat,*track=work->preview.track,*language=work->preview.language;
+    long ds=0,ts=0;
     int result=-1; unsigned used=0,test_step=0;
     struct SlicksIntermissionContent content={.track_index=position,.track_total=total,
         .track_name=next_name,.slash=(const unsigned char *)"/"};
@@ -3348,8 +3362,7 @@ retry:
     slicks_amiga_platform_end(platform);
     /* Synchronous menu owner; keep decode staging off the default 4K stack. */
     static unsigned char language_resource[512];
-    language=AllocMem(2048,MEMF_ANY);
-    if(!language || slicks_resource_archive_cached(&archive,menu_cache)) goto unavailable;
+    if(slicks_resource_archive_cached(&archive,menu_cache)) goto unavailable;
     long size=slicks_resource_archive_load(&archive,menu_language_name,language_resource,sizeof language_resource);
     if(size<0 || slicks_language_table_load(language_resource,(unsigned)size,language,2048,&used)) goto unavailable;
     for(unsigned i=0;i<4;++i) {
@@ -3365,16 +3378,15 @@ retry:
     short fastest=29999;
     for(unsigned i=0;i<4;++i) if((signed int)fastest>content.laps[i]) fastest=(short)(unsigned short)content.laps[i];
     content.fastest=fastest;
-    dat=load_plain_allocated("SLICKS.DAT",65536,&ds);
-    track=load_plain_allocated(next_path,8192,&ts);
-    if(!dat || !track) goto unavailable;
+    ds=load_plain_reserved("SLICKS.DAT",dat,sizeof work->preview.dat);
+    ts=ds>0?load_plain_reserved(next_path,track,sizeof work->preview.track):-1;
+    if(ds<=0 || ts<=0) goto unavailable;
     m=slicks_amiga_intermission_surface_create(&archive,chunky,palette);
     /* The finished race will not resume. Its VGA image is dead: visible output
      * and retry/restore use chunky, while the next race/title rebuilds logical.
      * Borrow its startup allocation for preview decode, including retries. */
-    if(!m || slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts,scratch,65536)) goto unavailable;
-    /* Release preview-only data before taking over hardware. */
-    FreeMem(dat,ds); dat=0; FreeMem(track,ts); track=0; FreeMem(language,2048); language=0;
+    if(!m || slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts,
+        work->preview.arena,sizeof work->preview.arena)) goto unavailable;
     if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
     slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
     slicks_amiga_player_menu_clear_dirty(m);
@@ -3421,7 +3433,7 @@ retry:
                 } else if(action==SLICKS_INTERMISSION_SAVE_GAME) {
                     unsigned count=g_slicks_track_playlist.count;
                     unsigned char (*saved_tracks)[8]=g_slicks_diag_save_buffer_fault!=1 && count && count<=SLICKS_SAVED_GAME_TRACK_MAX?
-                        AllocMem(count*8UL,MEMF_ANY):0;
+                        work->saved_tracks:0;
                     if(g_slicks_diag_save_buffer_fault==1)g_slicks_diag_save_buffer_fault=2;
                     struct SlicksSavedGame game; unsigned char scales[4];
                     for(unsigned i=0;i<4;++i) {
@@ -3430,11 +3442,9 @@ retry:
                     }
                     if(slicks_championship_export(&game,saved_tracks,count,track_selection,count,
                         position+1,track_count,native_track_name,track_names,&g_slicks_setup_session,&g_slicks_profiles,scales)) {
-                        if(saved_tracks) FreeMem(saved_tracks,count*8UL);
                         if(championship_notice(platform,m,(const unsigned char *)"CHAMPIONSHIP CANNOT BE SAVED")<0) goto done;
                     } else {
                         int saved=run_saved_game_dialog(platform,m,&game,saved_tracks,1);
-                        FreeMem(saved_tracks,count*8UL);
                         if(saved<0) goto done;
                     }
                 }
@@ -3456,17 +3466,11 @@ unavailable:
      * Retry never returns through rewards, profile refresh or playlist advance. */
     slicks_amiga_player_menu_destroy(m); m=0;
     slicks_resource_archive_close(&archive);
-    if(dat) { FreeMem(dat,ds); dat=0; }
-    if(track) { FreeMem(track,ts); track=0; }
-    if(language) { FreeMem(language,2048); language=0; }
     result=intermission_retry_notice(platform,race,chunky,palette,diagnostic);
     if(result==1) { result=-1; goto retry; }
 done:
     slicks_amiga_player_menu_destroy(m); g_slicks_diag_intermission_menu=0;
     slicks_resource_archive_close(&archive);
-    if(dat) FreeMem(dat,ds);
-    if(track) FreeMem(track,ts);
-    if(language) FreeMem(language,2048);
     if(result>=0) {
         if(platform->active) {
             slicks_amiga_platform_wait_display_blank(platform);

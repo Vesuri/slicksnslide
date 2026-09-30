@@ -189,6 +189,14 @@ recoverable warning. This is not the final B12 all-or-nothing contract. Reserve
 the combined required budget before publishing any live menu; distinguish
 memory reservation failure from recoverable filesystem errors.
 
+Normal intermission no longer allocates DAT, track, language or exported
+playlist names. The phase-exclusive union in idle VGA is 141,312 bytes, with
+disjoint input/output/label spans during preview and an 80,000-byte name span
+after the renderer copies its labels. See memory-lifetimes.md for offsets and
+proof. The allocating plain-file helper remains only in the explicit
+intermission construction diagnostic. Persistence encoding stays separate
+and remains open work; it must coexist with those exported names.
+
 This matrix separates child payloads from longer-lived parent, catalogue and
 transaction data. The remaining work is placing those parents/payloads and
 transactions into bounded spans and proving the combined peak, not treating

@@ -1,5 +1,37 @@
 # Development release audit
 
+## 2026-09-30 — startup-backed intermission staging and save names
+
+Normal intermission borrows the completed race's idle VGA allocation for DAT,
+track and language staging, then reuses the same union for exported save names.
+The preview's decoded output and compressed inputs are disjoint. The retained
+parent copies labels before the save-name phase; nested dialogs use their
+separate particle-cache slot. No startup reservation grows. The only remaining
+allocating plain-file-loader callers are explicit construction diagnostics.
+
+Workbench-loaded stock 2 MiB/no-Fast A1200, default 4 KiB stack:
+
+- OPTIONSTI (`tmp/standalone-release-lk376rjj`): repeated intermission edits,
+  second race and all 25 complete pixel publications pass.
+- CHAMPSAVM (`...-ww9ew0wf`): reserved save-name rejection, warning, retry,
+  picker/name acceptance and real save/exit pass; all 25 publications match.
+- CHAMPEDIT (`...-95dip7ws`): resave, overwrite/delete acceptance and
+  cancellation, catalogue refresh and clean exit pass.
+- OPTIONSTL (`...-4o6mspsq`): actual preview-file Close failure, warning,
+  retry and next race pass; rewards occur only once. Retry session snapshots
+  and retained race bitmap match byte-for-byte. Warning and returned race
+  independently decode to all 64,000 expected chunky pixels.
+- CHAMPEDIT allocation audit (`...-ck9luqsn`): 166 allocations across startup
+  and the whole workflow, zero failures and zero outstanding blocks on exit.
+  Persistence allocations remain; this is not a startup-only audit pass.
+
+The initial retry run `...-do_65r2p` failed its pre-intermission playlist
+assertion; save runs `...-9cbfrwxj` and `...-hmugipb7` were stopped. Their shared
+input CFG had retained Arcade mode from a prior test, whereas these ordinary
+key scripts assume Classic's title rows. Fresh Classic fixtures created with
+title_return_test_config resolve this; do not count the stopped runs as passes.
+All owned debug emulators are closed. B9–B12 remain open as scoped in open-work.
+
 ## 2026-09-30 — retain the displayed image during record I/O
 
 Post-race record reads, retries and writes now use the platform's disk-service
