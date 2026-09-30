@@ -2783,6 +2783,50 @@ the existing single completion breakpoint. Runs are muted, stock
 completed test. Build log: `tmp/large-demo-build.log`. The independent Load
 draft remains in the tested tree and is not exercised by these routes.
 
+### F18 follow-up: original startup directory fallback
+
+The startup oracle now executes `25db6..25e4a`, including the actual path
+helper at `25a60` and runtime string routines. It substitutes only discovery
+results, reporting and process exit. All four initial/fallback nonempty/empty
+combinations pass. The first pattern is `TRACKS\\*.SS`; only an empty result
+causes the second search, `.\\*.SS`. If both are empty, the original reports
+failure and exits. A successful first search never merges or queries the
+fallback. This resolves the formerly unknown path helper: it copies the
+current-directory string and appends a backslash, not a BASIC-track fallback.
+
+Native discovery now retries the current AmigaDOS directory after a missing
+or empty TRACKS result, retains the chosen directory for `make_track_path`,
+and returns zero when both are empty. The fabricated `BASIC.SS` entry is
+removed. Allocation failures remain failures rather than partial catalogues.
+The early error prints a native console explanation and follows cleanup;
+that message is not a byte-for-byte DOS error-screen claim or an implementation
+of DOS command-line path options.
+
+Native stock 68020/2 MiB/no Fast/default 4 KiB checks pass:
+
+- Missing TRACKS, one valid root `ROOT.SS`: race entry in
+  `tmp/standalone-release-oedow7ry`.
+- Empty TRACKS, one valid root `ROOT.SS`: race entry in
+  `tmp/standalone-release-c4cf0fv_`.
+- One valid TRACKS entry and a different root entry: only the TRACKS catalogue
+  is selected; race entry in `tmp/standalone-release-5tdrhcog`.
+- Empty TRACKS and no root entries: actual discovery return is zero, no title,
+  race preparation or native display takeover is reached; inactive cleanup
+  checkpoint in `tmp/standalone-release-29y1e1d2`.
+
+Two diagnostic assumptions were corrected before acceptance. The first
+root-file check assumed stack argument locations for an optimized private
+preparation function (`q5ehf0d5`); the final gate uses stable global directory/
+count state plus actual race entry with only the root file available. Early
+empty checks (`ocsne2b7`, `24z2do54`) incorrectly required a post-takeover
+snapshot or a fixed OS View pointer while the OS/console remained live. The
+final gate observes the zero C return and rejects any native takeover instead.
+None of those rejected test attempts is counted as a pass or as proof of
+full cleanup allocation lifetimes. Build log:
+`tmp/track-directory-fallback-build.log`; owned emulators close and audio is
+muted. The independent Load draft remains in the tested tree but is not
+exercised. `make verify-track-discovery` retains all prior size/order checks.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

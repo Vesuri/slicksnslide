@@ -763,16 +763,21 @@ extern void slicks_chunky_pixels_to_amiga(
 #define SLICKS_TRACK_FILE_MAX 10000
 #define SLICKS_TRACK_NAME_SIZE 12
 
+static unsigned char track_files_in_current_directory;
 static unsigned short discover_tracks(
     char (**storage)[SLICKS_TRACK_NAME_SIZE],unsigned *capacity,unsigned char legacy_basic_first)
 {
     char (*names)[SLICKS_TRACK_NAME_SIZE]=*storage;
-    struct FileInfoBlock *info =
-        (struct FileInfoBlock *)AllocDosObject(DOS_FIB, 0);
-    BPTR lock = Lock((CONST_STRPTR)"TRACKS", ACCESS_READ);
+    struct FileInfoBlock *info;
+    BPTR lock;
     unsigned short count = 0;
     unsigned short at;
-    if (!info || !lock)
+    track_files_in_current_directory=0;
+retry_directory:
+    info=(struct FileInfoBlock *)AllocDosObject(DOS_FIB,0);
+    if(!info)return 0;
+    lock=Lock((CONST_STRPTR)(track_files_in_current_directory?"":"TRACKS"),ACCESS_READ);
+    if (!lock)
         goto cleanup;
     if (!Examine(lock, info))
         goto cleanup;
@@ -811,15 +816,13 @@ cleanup:
     if (info)
         FreeDosObject(DOS_FIB, info);
     if (!count) {
-        if(!names) {
-            names=AllocMem(SLICKS_TRACK_NAME_SIZE,MEMF_ANY|MEMF_CLEAR);
-            if(!names)return 0;
-            *storage=names;*capacity=1;
+        /* Original startup 25deb..25e45 retries .\\*.SS, then reports
+         * failure. Never manufacture a catalogue entry for a missing file. */
+        if(!track_files_in_current_directory) {
+            track_files_in_current_directory=1;
+            goto retry_directory;
         }
-        static const char fallback[] = "BASIC.SS";
-        for (at = 0; at < sizeof(fallback); ++at)
-            names[0][at] = fallback[at];
-        count = 1;
+        return 0;
     }
     /* AmigaDOS directory order is filesystem-dependent. Native setup uses
      * alphabetical names; only legacy race diagnostics promote BASIC. */
@@ -865,7 +868,7 @@ static void make_track_path(char *path, const char *name)
 {
     static const char prefix[] = "TRACKS/";
     unsigned short at;
-    for (at = 0; at < sizeof(prefix) - 1; ++at)
+    for (at = 0; !track_files_in_current_directory && at < sizeof(prefix) - 1; ++at)
         path[at] = prefix[at];
     while (*name)
         path[at++] = *name++;
@@ -4474,7 +4477,10 @@ int main(void)
     if (slicks_setup_basic_mode(logical, mode_state) != 0)
         goto cleanup;
     track_count = discover_tracks(&track_names,&track_name_capacity,(unsigned char)!original_setup);
-    if(!track_count)goto cleanup;
+    if(!track_count) {
+        PutStr((CONST_STRPTR)"Slicks: no tracks found or insufficient memory for the track catalogue.\n");
+        goto cleanup;
+    }
     if(track_count>g_slicks_track_playlist.capacity) {
         unsigned capacity=(unsigned)track_count+2;
         short *selection=AllocMem(capacity*sizeof *selection,MEMF_ANY|MEMF_CLEAR);

@@ -4,12 +4,33 @@
 #include "../src/game/track_catalogue.h"
 
 struct Discovery { unsigned count,next,allocations; const char *const *names; };
+struct StartupDiscovery { unsigned counts[2],calls,reports,exits; char patterns[2][64]; };
 static unsigned farptr(uc_engine *u,unsigned p)
 { return readword(u,p)+16*readword(u,p+2); }
 static void endpoint(uc_engine *u,unsigned expected)
 {
     uint16_t cs,ip;check(uc_reg_read(u,UC_X86_REG_CS,&cs));
     check(uc_reg_read(u,UC_X86_REG_IP,&ip));if(16U*cs+ip!=expected)abort();
+}
+/* Execute the original startup caller and its path/string helpers. Only
+ * discovery's result, diagnostic output and process exit are boundaries. */
+static void startup_boundary(uc_engine *u,uint64_t address,uint32_t size,void *context)
+{
+    (void)size;struct StartupDiscovery *s=context;
+    if(address==0x10d3f) { ++s->exits;check(uc_emu_stop(u));return; }
+    uint16_t ss,sp,ax=0;
+    check(uc_reg_read(u,UC_X86_REG_SS,&ss));check(uc_reg_read(u,UC_X86_REG_SP,&sp));
+    unsigned stack=16U*ss+sp;
+    if(address==0x2bfc8) {
+        if(s->calls>=2)abort();
+        check(uc_mem_read(u,farptr(u,stack+4),s->patterns[s->calls],64));
+        if(!memchr(s->patterns[s->calls],0,64))abort();
+        ax=(uint16_t)s->counts[s->calls++];
+    } else if(address==0x36243)++s->reports;
+    else abort();
+    uint16_t ip=readword(u,stack),cs=readword(u,stack+2);sp+=4;
+    check(uc_reg_write(u,UC_X86_REG_AX,&ax));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+    check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_IP,&ip));
 }
 /* Substitute only DOS directory enumeration and allocation. The original
  * filename normalization, append loop, count limit and output order execute. */
@@ -101,6 +122,24 @@ int main(void)
             }
             puts("Native stem comparator matches original: prefixes, punctuation, case, duplicate stems and eight-byte names");
         }
+    }
+    struct StartupDiscovery startup={0};
+    const unsigned startup_hooks[]={0x2bfc8,0x36243,0x10d3f};
+    for(unsigned i=0;i<3;++i) {
+        uc_hook h;check(uc_hook_add(u,&h,UC_HOOK_CODE,startup_boundary,&startup,startup_hooks[i],startup_hooks[i]));
+    }
+    for(unsigned first=0;first<2;++first)for(unsigned fallback=0;fallback<2;++fallback) {
+        startup=(struct StartupDiscovery){.counts={first,fallback}};
+        regs(u,0);uint16_t cs=0x1987;check(uc_reg_write(u,UC_X86_REG_CS,&cs));
+        check(uc_mem_write(u,0x3cbf0+0x5e6,"TRACKS\\",8));
+        check(uc_emu_start(u,0x25db6,0x25e4a,0,100000));
+        if(startup.calls!=(first?1U:2U) || strcmp(startup.patterns[0],"TRACKS\\*.SS"))abort();
+        if(!first && strcmp(startup.patterns[1],".\\*.SS"))abort();
+        if(startup.reports!=(!first&&!fallback) || startup.exits!=(!first&&!fallback))abort();
+        endpoint(u,!first&&!fallback?0x10d3f:0x25e4a);
+        if(readword(u,0x3cbf0+0x4da8)!=(first?first:fallback))abort();
+        printf("Original startup first=%u fallback=%u: searches=%u reports=%u exits=%u\n",
+            first,fallback,startup.calls,startup.reports,startup.exits);
     }
     check(uc_close(u));return 0;
 }

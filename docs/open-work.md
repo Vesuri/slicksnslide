@@ -185,8 +185,10 @@ native caller/input/error checks.
   Host codec/resolution/storage regressions pass; native Load-entry and
   allocation/preparation-failure validation remain unproven pending D1.
   Do not treat the draft or its successful build as completion of this gate.
-  Resolve missing/empty directory fallback against the original startup path
-  before changing the fabricated BASIC.SS entry. The stem-versus-extension
+  Missing/empty TRACKS now falls back to the current directory like DOS;
+  if both contain no tracks, startup rejects without fabricating BASIC.SS or
+  taking over the display. Native fallback/precedence/empty cases pass.
+  The stem-versus-extension
   sorting defect is fixed: original comparisons cover case, punctuation,
   prefixes, duplicates and eight-byte stems; native startup covers eight
   distinct boundary filenames.
