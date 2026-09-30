@@ -112,6 +112,8 @@ elif [ "${SLICKS_TRACK_ACTOR_TEST:-0}" = 1 ]; then
     actor_stats_suffix=QD
   fi
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALO%s%s\n' "$actor_case" "$actor_stats_suffix" > "$DH0/s/startup-sequence"
+elif [ "${SLICKS_HOLD_TEST:-0}" = 1 ]; then
+  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HOLDT\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUDIO_PCM_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALQB\n' > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_TRAJECTORY:-}" ]; then

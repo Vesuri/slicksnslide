@@ -57,71 +57,22 @@ Run one native fixture with only driver 3 human: buy one item, sell one item,
 press one ignored key. Accept when there is no crash, the transactions land on
 driver 3, and the ignored key triggers no redraw.
 
-### B6. Held-key auto-repeat in menus, Help and name entry
+### B6. Typematic repeat in Help and name entry
 
-**The original reader.** The latched-scan reader `36ce0` works like this:
-- DS:1714 is the latch. The keyboard interrupt `36e29` stores every raw
-  byte there, make and break alike.
-- While the latch is 0x80 or above, the last-event time follows the BIOS
-  tick count.
-- On a fresh hold it returns the scan once.
-- After that it returns the scan whenever `ticks > last + arg`, then sets
-  `last = now`. So a held key repeats every `arg+1` BIOS ticks (18.2065 Hz).
-- The state is global: a key held while one dialog opens another stays
-  armed.
-- Any other make or break, including Shift, replaces the latch.
-- `36ca5` (at 1e18e, 1e53f, 1e72f, 247c9, 2497a, 24b50, 2da5e, 2df59, 2f37e,
-  2f6aa, 31157 and 3175d) clears it to 0x80.
+Menu repeat through the original `36ce0` reader is done
+([fidelity-audit.md](fidelity-audit.md), "Held-key repeat").
 
-The Amiga keyboard interrupt only queues make and break events. No owner
-repeats a held key.
+Help (3295d) and name entry (2f7a9) instead chain to BIOS INT 9 and repeat
+through the PC keyboard's typematic.
 
-| Call | Arg | Original owner | Amiga owner (`slicks_diag.c` unless noted) |
-| --- | --- | --- | --- |
-| 1e11e | 2 | Race Speed dialog | `slicks_amiga_race_speed_key` (`amiga_player_menu.c`) |
-| 1e65e | 3 | Pause menu | `slicks_race_menu_key` in `run_race_pause` |
-| 24704 | 3 | Intermission menu | `run_intermission` |
-| 24a5f | 2 | Change Cars | `slicks_amiga_change_cars_key` |
-| 26b6d | 7 | Track info preview (closes on any key) | Tracks preview |
-| 274db | column+1 | Tracks selector | `slicks_track_menu_key` |
-| 27f55 | 3 | Profile editor | `slicks_profile_editor_key` |
-| 28993 | 2 | Players menu | `slicks_player_menu_key` |
-| 293f1 | 2 | Options | `slicks_options_menu_key` |
-| 2a378 | 2 | Title | `slicks_dispatch_title_key` |
-| 2cfce | 2 | Shop | `run_shop` |
-| 2dd8b | 2 | Controllers (menu and pause) | controllers key handlers |
-| 2f5ba | 3 | Colour picker RGB edit | `slicks_colour_picker_key` |
-| 315b2 | focus_actions*4+2 | Shared list dialog (player picker, saves, track lists) | list dialog handlers |
+Steps:
+1. Measure the delay and rate in the DOSBox reference by holding a key in
+   Help and counting the characters produced.
+2. Generate matching repeat makes in the platform queue, only while those two
+   owners are active.
 
-**Help and name entry** repeat through the PC keyboard's own typematic
-instead:
-- Help sets DS:1713=0xff at 3295d. It then chains to BIOS INT 9 and reads
-  keys with `getch`.
-- Name entry sets DS:1713=1 at 2f7a9.
-- The race, the `36d8b` users (key capture and message waits) and `36d65`
-  do not repeat.
-
-**Implementation:**
-1. `src/ui/key_repeat.h`, an exact port of `36ce0`: latch, last, armed.
-2. Platform additions:
-   - a raw latch written by `keyboard_handler` and initialised to 0x80;
-   - a BIOS tick clock advanced per vblank (1193182 per 50 Hz frame against
-     65536);
-   - `slicks_amiga_platform_repeat_key(platform, arg, &raw)`;
-   - `slicks_amiga_platform_clear_latch()` at the `36ca5` sites.
-3. Each of the 14 owners calls `repeat_key` with the argument above once its
-   queue is empty.
-4. Help and name entry get a typematic model: first measure the delay and
-   rate in the DOSBox reference, expected to be about 500 ms then 10.9/s.
-
-**Accept when all of these hold:**
-- a Unicorn test runs the original `36ce0` over scripted latch and tick
-  sequences (arguments 0..7, hold, release, second key, Shift, word carry) and
-  matches `key_repeat.h` on every return and every state;
-- each owner's argument is confirmed by its existing dispatch oracle, where
-  one exists;
-- one native fixture holds Down on the title, in Tracks column 0 and in a list
-  dialog's actions, and matches the host model's step counts.
+Accept when a native fixture that holds a key in Help, and one that holds a
+key in name entry, match the measured counts.
 
 ## C. Packaging
 

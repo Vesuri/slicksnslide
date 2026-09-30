@@ -13,6 +13,7 @@
 #include "amiga_platform.h"
 #include "amiga_key_scan.h"
 #include "amiga_joystick.h"
+#include "../../ui/key_repeat.h"
 #include "amiga_audio.h"
 #include "copper_palette.h"
 #include "framework/AmigaHardware.h"
@@ -45,6 +46,8 @@ static unsigned char palette_valid[SLICKS_AMIGA_VIEW_COUNT];
  * currently displayed view (the original reads its live DAC copy). */
 static unsigned char view_palettes[SLICKS_AMIGA_VIEW_COUNT][768];
 static unsigned short shown_view;
+/* Original DS:174a/174e: shared by every repeating owner. */
+static struct SlicksKeyRepeat key_repeat;
 extern "C" unsigned char g_slicks_diag_race_load_fault;
 static unsigned char create_fault, create_allocation, create_fault_consumed;
 static bool fail_create_allocation()
@@ -137,8 +140,16 @@ static void install_raw_copper(unsigned long *data, int immediate)
 static unsigned long vertical_blank_handler(void)
 {
     CUSTOM_WORD(REG_INTREQ) = INTF_VERTB;
-    if (active_platform)
-        ++active_platform->vblank_count;
+    if (active_platform) {
+        struct SlicksAmigaPlatform *p = active_platform;
+        ++p->vblank_count;
+        /* BIOS tick: PIT input / 65536 (18.2065 Hz), 1/50 s per vblank. */
+        p->bios_remainder += 1193182UL;
+        if (p->bios_remainder >= 65536UL * 50UL) {
+            p->bios_remainder -= 65536UL * 50UL;
+            ++p->bios_ticks;
+        }
+    }
     slicks_amiga_audio_vblank();
     return 0;
 }
@@ -161,6 +172,7 @@ static unsigned long keyboard_handler(void)
     if (!platform)
         return 0;
     unsigned short event=slicks_amiga_key_event(code,&platform->keyboard_shifts);
+    platform->key_latch = code; /* 36e29: every make and break. */
     next = (unsigned char)((platform->key_head + 1) & 15);
     if (next != platform->key_tail) {
         platform->keys[platform->key_head] = event;
@@ -173,6 +185,7 @@ static int keyboard_begin(struct SlicksAmigaPlatform *platform)
 {
     /* Releases while AmigaOS owns the keyboard are not delivered to us. */
     platform->keyboard_shifts=0;
+    platform->key_latch=0x80;
     platform->ciaa_base = OpenResource((CONST_STRPTR)CIAANAME);
     if (!platform->ciaa_base)
         return -1;
@@ -491,6 +504,24 @@ void slicks_amiga_platform_wait_display_end(
     slicks_amiga_platform_wait_display_blank(platform);
 }
 
+int slicks_amiga_platform_repeat_key(struct SlicksAmigaPlatform *platform,
+    unsigned char arg,unsigned short *raw)
+{
+    if (!platform || !raw || !platform->active || platform->io_active)
+        return 0;
+    unsigned char latch = platform->key_latch;
+    if (!slicks_key_repeat_poll(&key_repeat, latch, platform->bios_ticks, arg))
+        return 0;
+    *raw = latch;
+    return 1;
+}
+
+void slicks_amiga_platform_clear_latch(struct SlicksAmigaPlatform *platform)
+{
+    if (!platform) platform = active_platform;
+    if (platform) platform->key_latch = 0x80;
+}
+
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
                                   unsigned short *raw)
 {
@@ -500,6 +531,8 @@ int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
     tail = platform->key_tail;
     unsigned short event=platform->keys[tail];
     *raw = event&255;
+    /* A dequeued make is 36ce0's immediate return for a fresh hold. */
+    if (!(event & 128)) key_repeat.armed = 1;
     platform->key_shifts=(unsigned char)(event>>8);
     platform->key_tail = (unsigned char)((tail + 1) & 15);
     return 1;

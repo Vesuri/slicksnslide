@@ -3151,3 +3151,49 @@ unverified dynamic Load draft is not part of this change.
   `3000:408d` and `3000:4190`.
 - No menu or game path reads mouse position or buttons, so the Amiga port
   needs no mouse input. This is consistent with F11 and F16.
+
+## Held-key repeat (B6 menus, 2026-09-30)
+
+**What the original does.** It repeats held keys in menus through `36ce0`:
+- the latch at DS:1714 holds every raw keyboard byte;
+- a fresh hold returns the scan at once;
+- after that, the scan repeats whenever `BIOS ticks > last + arg`, compared
+  with a signed high word.
+
+**The port.** `src/ui/key_repeat.h` is an exact port of `36ce0`. On the platform
+side:
+- `keyboard_handler` stores every raw event in `key_latch`;
+- the VBI advances a BIOS tick count at 1193182/(65536*50) per vblank;
+- `slicks_amiga_platform_repeat_key` applies the reader once an owner's queue
+  is empty, and a dequeued make counts as the reader's immediate return.
+
+**Arguments per owner**, from the disassembled callers:
+
+| Argument | Owners |
+| --- | --- |
+| 2 | Title, Players, Options, shop, Change Cars, race Speed, Controllers |
+| 3 | Pause menu, intermission, profile editor, colour picker |
+| 7 | Track info preview |
+| column+1 | Tracks |
+| focus_actions*4+2 | List dialogs |
+
+**Owners that do not repeat.** Help, messages, name entry, key capture and
+the race use no repeating reader.
+
+**Latch clears.** The owners whose originals call `36ca5` on entry or exit
+(pause menu, intermission, Change Cars, Controllers, colour picker, list
+dialogs) clear the latch in their open and close functions. On the Amiga
+nothing re-sends the held key afterwards, so it must be pressed again. On a
+PC, typematic would re-send it after about 500 ms.
+
+**Checks:**
+- `make verify-key-repeat` runs the original `36ce0` under Unicorn for 4000
+  scripted sequences. All 800,000 calls match native return, last and armed,
+  including arguments 0..7, releases, new keys, Shift, and low- and high-word
+  tick boundaries.
+- The native `HOLDT` fixture (`SLICKS_HOLD_TEST=1`, `diag_key_repeat.gdb`,
+  `tools/check_key_repeat_steps.py`, `tmp/b6-hold.log`) holds Down on the title
+  for 150 vblanks. It sees 19 dispatches from tick 0 to 54, exactly 3 ticks
+  apart, and none at or after the release at tick 57.
+- Demo lifecycle, SETUPF retry, and championship save and edit fixtures pass
+  (`tmp/b6-*.log`).

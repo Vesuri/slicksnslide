@@ -3,6 +3,10 @@
 #include <devices/inputevent.h>
 #include <proto/keymap.h>
 #include "amiga_player_menu.h"
+#include "amiga_platform.h"
+/* Owners that call original 36ca5 on entry/exit (pause menu, intermission,
+ * Change Cars, Controllers, colour picker, list dialogs) forget a held key,
+ * so it does not repeat into the next owner. */
 #include "../../ui/font_resource.h"
 #include "../../ui/help_text_dirty.h"
 #include "../../ui/menu_bitmap.h"
@@ -104,6 +108,7 @@ static int pause_fault(unsigned char stage)
 }
 int slicks_amiga_race_menu_close(struct SlicksAmigaPlayerMenu *m)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !m->race_menu || m->help || m->help_warning || m->controllers_dialog ||
        m->race_menu->speed_active) return -1;
     struct SlicksAmigaRaceMenu *d=m->race_menu;
@@ -154,6 +159,7 @@ int slicks_amiga_race_menu_open(struct SlicksAmigaPlayerMenu *m,
     struct SlicksResourceArchive *archive,const char *language,
     const unsigned char keys[6][64],unsigned char row,unsigned char percent)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !archive || !language || !keys || row>=6 || m->race_menu ||
        m->help || m->controllers_dialog || !m->renderer.ui.pixels || !m->renderer.fonts[0]) return -1;
     struct SlicksAmigaRaceMenu *d=pause_fault(1)?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
@@ -377,6 +383,7 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     const unsigned char *source_palette,const unsigned char *dat,unsigned long dat_size,
     const unsigned char *track,unsigned long track_size)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !content || !source_palette || !dat || !track || !m->renderer.ui.pixels ||
        !m->renderer.fonts[0] || m->renderer.icon_count!=11 || m->intermission || m->change_cars ||
        m->race_menu || m->help || m->help_warning || m->controllers_dialog || m->picker || m->editor_active ||
@@ -433,6 +440,7 @@ int slicks_amiga_intermission_refresh_cars(struct SlicksAmigaPlayerMenu *m,const
 }
 int slicks_amiga_change_cars_close(struct SlicksAmigaPlayerMenu *m)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !m->change_cars) return -1;
     struct SlicksAmigaChangeCars *d=m->change_cars;
     int result=d->renderer.active?slicks_change_cars_renderer_close(&d->renderer):0;
@@ -456,6 +464,7 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *m,struct SlicksR
     struct SlicksProfileSelection *players,const struct SlicksSetupProfile *profiles,short vehicle_count,
     const unsigned char *weights,unsigned long *random_state,signed char show,const unsigned char *title)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !archive || !players || !profiles || !weights || !random_state || !title ||
        vehicle_count<1 || vehicle_count>10 || !m->renderer.ui.pixels || !m->renderer.ui.palette ||
        !m->renderer.fonts[0] || m->change_cars || m->race_menu || m->help || m->help_warning ||
@@ -524,6 +533,7 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
 unsigned char g_slicks_diag_controllers_fault;
 int slicks_amiga_controllers_open_at(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,short x,short y)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !archive || m->controllers_dialog || m->picker || m->name_dialog || m->colour_dialog) return -1;
     unsigned char fault=g_slicks_diag_controllers_fault; g_slicks_diag_controllers_fault=0;
     struct SlicksAmigaControllersDialog *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
@@ -569,6 +579,7 @@ int slicks_amiga_controllers_capture_prompt(struct SlicksAmigaPlayerMenu *m,cons
 }
 int slicks_amiga_controllers_close(struct SlicksAmigaPlayerMenu *m)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !m->controllers_dialog) return -1;
     struct SlicksAmigaControllersDialog *d=m->controllers_dialog;
     int result=slicks_controllers_renderer_close(&d->renderer);
@@ -857,6 +868,7 @@ int slicks_amiga_name_dialog_tick(struct SlicksAmigaPlayerMenu *m,unsigned long 
 int slicks_amiga_colour_dialog_open(struct SlicksAmigaPlayerMenu *m,struct SlicksPlayerProfiles *profiles,
     const unsigned char *caption)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !profiles || !m->editor_active || m->colour_dialog || m->name_dialog ||
        m->editor.row<3 || m->editor.row>4 || m->editor_index<0 || m->editor_index>=SLICKS_PROFILE_MAX) return -1;
     unsigned char fault=g_slicks_diag_profile_dialog_fault;
@@ -883,6 +895,7 @@ int slicks_amiga_colour_dialog_draw(struct SlicksAmigaPlayerMenu *m,unsigned lon
 }
 int slicks_amiga_colour_dialog_close(struct SlicksAmigaPlayerMenu *m)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !m->colour_dialog) return -1;
     int result=slicks_colour_dialog_close(&m->colour_dialog->renderer);
     FreeMem(m->colour_dialog,sizeof *m->colour_dialog); m->colour_dialog=0;
@@ -892,6 +905,7 @@ int slicks_amiga_colour_dialog_close(struct SlicksAmigaPlayerMenu *m)
 int slicks_amiga_profile_picker_open(struct SlicksAmigaPlayerMenu *m,unsigned row,short selected,
     const struct SlicksPlayerProfiles *profiles,const unsigned char *caption,unsigned char percent)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || m->picker || !profiles || (row>=4 && row!=5 && row!=6) ||
        (row<4 && (selected<0 || selected>=SLICKS_PROFILE_MAX))) return -1;
     struct SlicksAmigaProfilePicker *p=AllocMem(sizeof *p,MEMF_ANY|MEMF_CLEAR);
@@ -913,6 +927,7 @@ int slicks_amiga_profile_picker_open(struct SlicksAmigaPlayerMenu *m,unsigned ro
 }
 short slicks_amiga_profile_picker_close(struct SlicksAmigaPlayerMenu *m)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !m->picker) return -1;
     short result=slicks_list_renderer_close(&m->picker->renderer);
     if(m->picker->scrollbar_saved.pixels)
@@ -923,6 +938,7 @@ short slicks_amiga_profile_picker_close(struct SlicksAmigaPlayerMenu *m)
 int slicks_amiga_saved_files_picker(struct SlicksAmigaPlayerMenu *m,const unsigned char names[][9],
     unsigned count,unsigned char saving,const unsigned char *captions,unsigned char percent)
 {
+    slicks_amiga_platform_clear_latch(0);
     /* Original file enumeration caps at 40, with nine-byte name records. */
     if(!m || m->picker || m->name_dialog || count>40 || (count && !names) || !captions || prepare_keymap(m)) return -1;
     for(unsigned i=0;i<count;++i) {
@@ -953,6 +969,7 @@ int slicks_amiga_saved_files_picker(struct SlicksAmigaPlayerMenu *m,const unsign
 int slicks_amiga_track_lists_picker(struct SlicksAmigaPlayerMenu *m,
     const unsigned char *captions,unsigned char percent)
 {
+    slicks_amiga_platform_clear_latch(0);
     if(!m || !m->track_lists || m->picker || !captions ||
        m->track_lists->catalogue.count>(SLICKS_AMIGA_TRACK_LIST_BYTES-8)/23) return -1;
     struct SlicksAmigaTrackLists *lists=m->track_lists;

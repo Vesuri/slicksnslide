@@ -37,6 +37,11 @@ struct SlicksAmigaPlatform {
     unsigned char io_active;
     unsigned char publish_valid; /* Cleared by begin: no deadline yet. */
     unsigned long publish_deadline; /* Next display-end edge, raster time. */
+    /* Original DS:1714 latch (last raw event; bit 7 = release/none) and
+     * the BIOS 0040:006c tick count, advanced per vblank. */
+    volatile unsigned char key_latch;
+    volatile unsigned long bios_ticks;
+    unsigned long bios_remainder;
 };
 
 #ifdef __cplusplus
@@ -72,6 +77,13 @@ void slicks_amiga_platform_wait_display_blank(
     struct SlicksAmigaPlatform *platform);
 void slicks_amiga_platform_wait_display_end(
     struct SlicksAmigaPlatform *platform);
+/* Original 36ce0 repeat reader for a held key (arg as passed by the owner).
+ * Call only when poll_key has nothing queued; returns 1 with the held raw
+ * code. Queued makes count as the reader's immediate first return. */
+int slicks_amiga_platform_repeat_key(struct SlicksAmigaPlatform *platform,
+    unsigned char arg,unsigned short *raw);
+/* Original 36ca5: forget the held key (latch = none). Null: the active platform. */
+void slicks_amiga_platform_clear_latch(struct SlicksAmigaPlatform *platform);
 int slicks_amiga_platform_poll_key(struct SlicksAmigaPlatform *platform,
                                   unsigned short *raw);
 int slicks_amiga_platform_left_mouse(void);

@@ -593,6 +593,11 @@ build/verify_track_record_write: tools/verify_track_record_write.c tools/verify_
 verify-track-record-write: build/verify_track_record_write
 	build/verify_track_record_write
 .PHONY: verify-title-help
+.PHONY: verify-key-repeat
+build/verify_key_repeat: tools/verify_key_repeat.c src/ui/key_repeat.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-key-repeat: build/verify_key_repeat
+	build/verify_key_repeat
 .PHONY: verify-track-discovery
 .PHONY: verify-track-catalogue
 build/verify_track_catalogue: tools/verify_track_catalogue.c src/game/track_catalogue.h | build
@@ -1639,7 +1644,7 @@ amiga-debug: amiga
 
 RELEASE_DIR ?= dist
 RELEASE_HOST_CHECKS = verify-race-timing verify-drive-physics verify-race-lap-limit \
-	verify-car-collision verify-title-help verify-loading-pixels
+	verify-car-collision verify-title-help verify-key-repeat verify-loading-pixels
 .PHONY: release release-package dist release-check install-data-helper install-data-test
 install-data-helper:
 	$(MAKE) -C tools/install-data

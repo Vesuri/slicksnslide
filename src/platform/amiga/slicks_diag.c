@@ -421,6 +421,12 @@ volatile unsigned char g_slicks_diag_scanout_only;
 volatile unsigned char g_slicks_diag_audio_in_blank = 1;
 volatile unsigned long g_slicks_diag_audio_blank_spills;
 volatile unsigned long g_slicks_diag_late_publications;
+/* HOLDT: Down held on the title for 150 vblanks, then released. Each
+ * dispatched Down records the BIOS tick (selection clamps at the last row). */
+static unsigned char hold_title_test;
+static unsigned long hold_title_started;
+volatile unsigned long g_slicks_diag_hold_steps,g_slicks_diag_hold_release_tick,
+    g_slicks_diag_hold_start_tick,g_slicks_diag_hold_ticks[64];
 static unsigned char late_publication;
 volatile unsigned short g_slicks_diag_audio_hold_frames;
 volatile unsigned long g_slicks_diag_audio_blank_max_lines;
@@ -1603,6 +1609,25 @@ done:
 
 /* RAM-only menu transitions retain takeover. Real disk boundaries still call
  * platform_end explicitly and arrive here inactive. Publish at display blank. */
+/* B6: the 36ce0 argument of the main-loop owner receiving the next key, or
+ * -1 where the original uses a non-repeating reader (36d8b, getch) or none. */
+static int menu_repeat_arg(void)
+{
+    struct SlicksAmigaPlayerMenu *m=g_slicks_title_help?g_slicks_title_help:
+        (g_slicks_player_menu?g_slicks_player_menu:
+        (g_slicks_track_menu?g_slicks_track_menu:g_slicks_options_menu));
+    if(g_slicks_diag_ingame || g_slicks_title_help_warning) return -1;
+    if(!m) return 2;                                          /* title 2a378 */
+    if(m==g_slicks_title_help || m->help || m->help_warning || m->message ||
+       m->name_dialog || m->delete_pending) return -1;
+    if(m->picker) return m->picker->renderer.state.focus_actions*4+2; /* 315b2 */
+    if(m==g_slicks_track_menu)                                /* 26b6d / 274db */
+        return m->track_info?7:g_slicks_track_state.column+1;
+    if(m->controllers_dialog)                                 /* 2dd8b; 2df12 capture */
+        return m->controllers_dialog->state.capturing?-1:2;
+    if(m->colour_dialog || m->editor_active) return 3;        /* 2f5ba / 27f55 */
+    return 2;                                                 /* players 28993, options 293f1 */
+}
 static int show_view(struct SlicksAmigaPlatform *platform,unsigned short view)
 {
     if(!platform->active) return slicks_amiga_platform_begin(platform,view);
@@ -2277,7 +2302,10 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
         unsigned short raw;
         slicks_amiga_platform_wait_vblank(platform);
         if(g_slicks_diag_force_exit) goto done;
-        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+        /* 2cfce: the shop repeats held keys every three BIOS ticks. */
+        while(slicks_amiga_platform_poll_key(platform,&raw) ||
+              (!m->help && !m->help_warning &&
+               slicks_amiga_platform_repeat_key(platform,2,&raw))) {
             unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
             if(raw&128) continue;
             /* Classic keyboards have no Scroll Lock. Help is the shop-only
@@ -3272,7 +3300,10 @@ retry:
         unsigned short raw;
         slicks_amiga_platform_wait_vblank(platform);
         if(g_slicks_diag_force_exit) goto done;
-        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+        /* 24704 repeats every four BIOS ticks, Change Cars 24a5f every three. */
+        while(slicks_amiga_platform_poll_key(platform,&raw) ||
+              (!m->help_warning && !m->help && !m->message &&
+               slicks_amiga_platform_repeat_key(platform,m->change_cars?2:3,&raw))) {
             if(raw&128) continue;
             unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
             if(!scan) continue;
@@ -3996,7 +4027,14 @@ static int run_race_pause(struct SlicksAmigaPlatform *platform,struct SlicksAmig
         unsigned short raw;
         slicks_amiga_platform_wait_vblank(platform);
         if(g_slicks_diag_force_exit) goto done;
-        while(slicks_amiga_platform_poll_key(platform,&raw)) {
+        /* 1e65e pause menu every four BIOS ticks; Speed 1e11e and
+         * Controllers 2dd8b every three. Help, messages and key capture
+         * use non-repeating readers. */
+        while(slicks_amiga_platform_poll_key(platform,&raw) ||
+              (!m->help_warning && !m->message && !m->help &&
+               !(m->controllers_dialog && m->controllers_dialog->state.capturing) &&
+               slicks_amiga_platform_repeat_key(platform,
+                   (m->race_menu->speed_active || m->controllers_dialog)?2:3,&raw))) {
             unsigned char character=slicks_amiga_menu_character(m,(unsigned char)raw);
             if(raw&128) continue;
             unsigned char scan=(unsigned char)amiga_raw_to_dos_scan(raw);
@@ -4536,6 +4574,9 @@ int main(void)
        argv[4]=='L' && argv[5]>='0' && argv[5]<='9') {
         title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]=='9'?0:argv[5]-'0');
         language_choice_test=(unsigned char)(argv[5]=='9'?2:argv[5]=='0');
+    }
+    if(argc==5 && argv[0]=='H' && argv[1]=='O' && argv[2]=='L' && argv[3]=='D' && argv[4]=='T') {
+        hold_title_test=1; argc=0; argv="";
     }
     /* Explicit F9 row fixture, using real Down events and skipping hidden Load. */
     if(argc==8 && argv[0]=='S' && argv[1]=='T' && argv[2]=='A' && argv[3]=='R' &&
@@ -5530,6 +5571,16 @@ int main(void)
             platform.key_tail=0; platform.keys[0]=0x44; platform.key_head=1;
             ++sequence_returns;
         }
+        if(hold_title_test==1) {
+            /* Keyboard-interrupt equivalent of a press that stays down. */
+            platform.key_latch=0x4d; platform.key_tail=0; platform.keys[0]=0x4d; platform.key_head=1;
+            hold_title_started=platform.vblank_count; g_slicks_diag_hold_start_tick=platform.bios_ticks;
+            hold_title_test=2;
+        } else if(hold_title_test==2 && platform.vblank_count-hold_title_started>=150) {
+            platform.key_latch=0xcd; g_slicks_diag_hold_release_tick=platform.bios_ticks; hold_title_test=3;
+        } else if(hold_title_test==3 && platform.vblank_count-hold_title_started>=250) {
+            slicks_diag_frame_ready(); g_slicks_diag_force_exit=1;
+        }
         for (;;) {
             unsigned char title_owner=(unsigned char)(original_setup &&
                 !g_slicks_diag_ingame && !save_prompt && !race_load_prompt &&
@@ -5546,6 +5597,13 @@ int main(void)
             }
             title_idle_reset=0;
             unsigned char have_key=(unsigned char)slicks_amiga_platform_poll_key(&platform,&code);
+            if(!have_key) {
+                int repeat=menu_repeat_arg();
+                have_key=(unsigned char)(repeat>=0 &&
+                    slicks_amiga_platform_repeat_key(&platform,(unsigned char)repeat,&code));
+            }
+            if(hold_title_test && have_key && code==0x4d && g_slicks_diag_hold_steps<64)
+                g_slicks_diag_hold_ticks[g_slicks_diag_hold_steps++]=platform.bios_ticks;
             unsigned short title_scan=have_key?amiga_raw_to_demo_scan(code,platform.key_shifts):0;
             /* REGCHECKA's exhaustive display checks can exceed the idle
              * deadline before one colour cycle. Keep this diagnostic on the
