@@ -75,6 +75,10 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    workspace. Preparation now shares the inactive primary menu slot only after
    shop destruction, with explicit acquire/release ownership and a compile-time
    capacity check. No five staging allocations remain in `prepare_race`.
+   Tracks' information preview now uses disjoint spans of idle VGA storage
+   (65,536-byte decode arena, 65,536-byte DAT staging, 8,192-byte track staging).
+   Its chunky parent and save-under remain untouched; leaving Tracks rebuilds
+   the title VGA image. The small information dialog still allocates separately.
 4. **Nested dialogs:** Help now borrows 110,096 bytes from the startup-owned
    117,760-byte particle visibility cache. The viewer and 64,000-byte parent
    snapshot have exclusive modal ownership. Racing is stopped during Help;

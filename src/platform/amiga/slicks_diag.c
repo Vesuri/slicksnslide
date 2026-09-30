@@ -2155,27 +2155,37 @@ static void restore_help_particle_cache(void *context)
     struct SlicksRaceRuntime *race=context;
     if(race->started) slicks_race_rebuild_particle_visibility(race);
 }
+/* Match the allocating loader's length/read/close checks, without owning bytes. */
+static long load_plain_reserved(const char *path,unsigned char *bytes,unsigned long limit)
+{
+    BPTR file=Open((CONST_STRPTR)path,MODE_OLDFILE);
+    if(!file) return -1;
+    LONG length=-1;
+    if(Seek(file,0,OFFSET_END)>=0) length=Seek(file,0,OFFSET_CURRENT);
+    int valid=length>0 && (unsigned long)length<limit &&
+        Seek(file,0,OFFSET_BEGINNING)>=0 && Read(file,bytes,length)==length;
+    return close_plain_file(file,valid) && valid?length:-1;
+}
 static int open_track_info(struct SlicksAmigaPlayerMenu *menu,
-    const char *path,const unsigned char *name)
+    const char *path,const unsigned char *name,unsigned char *logical)
 {
     struct SlicksResourceArchive archive={0};
-    unsigned long ds=0,ts=0;
-    unsigned char *arena=AllocMem(65536,MEMF_ANY);
-    unsigned char *dat=arena?load_plain_allocated("SLICKS.DAT",65536,&ds):0;
-    unsigned char *track=dat?load_plain_allocated(path,8192,&ts):0;
-    /* Synchronous menu boundary: keep descriptor staging off the 4K stack.
-     * Decode first, then release compressed input before the large save-under. */
+    /* Tracks owns chunky + its saved parent. The VGA image is idle until
+     * make_title_surface/prepare_race reconstructs it on leaving Tracks.
+     * Disjoint compressed input, decode output and track spans fit 256 KiB. */
+    if(!logical) return -1;
+    _Static_assert(65536UL*2+8192<=0x40000UL,"track preview fits idle VGA storage");
+    unsigned char *arena=logical,*dat=logical+65536,*track=logical+131072;
+    long ds=load_plain_reserved("SLICKS.DAT",dat,65536);
+    long ts=ds>0?load_plain_reserved(path,track,8192):-1;
+    /* Synchronous descriptor staging stays off the default 4K stack. */
     static struct TrackSprite sprites[SLICKS_TRACK_PREVIEW_SPRITES];
     int result=-1;
-    if(dat && track && !slicks_prepare_track_preview(dat,ds,arena,65536,sprites)) {
-        FreeMem(dat,ds);dat=0;
+    if(ds>0 && ts>0 && !slicks_prepare_track_preview(dat,ds,arena,65536,sprites)) {
         if(!slicks_resource_archive_cached(&archive,menu_cache))
             result=slicks_amiga_track_info_open_prepared(menu,&archive,track,ts,
                 name,slicks_original_players_footer_percent,slicks_original_date_separator,slicks_original_date_order,sprites);
     }
-    if(dat) FreeMem(dat,ds);
-    if(track) FreeMem(track,ts);
-    if(arena) FreeMem(arena,65536);
     slicks_resource_archive_close(&archive);
     return result;
 }
@@ -6117,7 +6127,7 @@ int main(void)
                         char path[SLICKS_TRACK_NAME_SIZE+8];
                         if(state->cursor<0 || state->cursor>=track_count) goto cleanup;
                         make_track_path(path,track_names[state->cursor]);
-                        if(open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor))) {
+                        if(open_track_info(g_slicks_track_menu,path,native_track_name(track_names,(unsigned)state->cursor),logical)) {
                             /* A failed open may already have painted and restored the background. */
                             g_slicks_track_state.previous=-1;
                             if(draw_track_menu(&platform,(short)track_count,0) ||

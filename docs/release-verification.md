@@ -1,5 +1,24 @@
 # Development release audit
 
+## 2026-09-30 — track-information preparation uses startup VGA storage
+
+Removed the preview arena and compressed DAT/track allocations from
+`open_track_info`. Its synchronous preparation uses disjoint ranges of the
+idle VGA image, not the current chunky screen or saved parent. The bounded
+loader preserves the previous strict file-length, exact-read and Close checks.
+Tracks exit rebuilds the title image before using VGA again.
+
+Stock Workbench-loaded 2 MiB/default-4-KiB-stack checks:
+
+- `tmp/standalone-release-0b0h8onh`: all five injected failures, dismissal,
+  successful reopen/animation and race entry pass; 30 full-screen publications
+  match chunky pixel-for-pixel. This same test previously failed before the
+  first injected dialog boundary (`...-08gqyfjb`).
+- `tmp/standalone-release-mlnjfd84`: failed disk Close, warning dismissal,
+  retry/reopen and race entry pass; 12 full-screen publications match.
+
+This removes preparation allocations only, not the remaining dialog allocation.
+
 ## 2026-09-30 — startup-owned nested Help overlay
 
 Help's viewer and parent snapshot now use an exclusive 110,096-byte overlay
