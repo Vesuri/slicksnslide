@@ -2386,6 +2386,34 @@ single/double-fault transactions also pass. Logs:
 This closes the record writer's buffer-allocation path, not every error in
 other saved-game/setup/intermission storage owners.
 
+### Nested Help background-allocation failure (2026-09-30)
+
+The Options/Players/Tracks failure sequences previously tested missing cached
+Help data and viewer allocation failure, but not failure of the separate
+64,000-byte nested-Help save-under allocation after creating the viewer.
+`g_slicks_diag_help_fail_backing` now supplies that explicit, one-shot fault;
+the existing failure branch frees the viewer and reports the warning. Normal
+launches leave the hook zero, and title Help's borrowed backing is unaffected.
+
+`OPTIONSL`, `OPTIONSM` and `OPTIONSN` now dismiss all three failures before
+successfully opening and closing Help. The read-only gate requires consumption
+of the new fault exactly once, unchanged profile count/player selections,
+active display at warnings and their dismissal, distinct nested backing on
+successful retry, and normal system restoration 31. Each of the three restored
+parent images equals its pre-failure image across all 64,000 bytes.
+
+Fresh standalone runs with saved Finnish configuration, a stripped executable,
+confirmed 4 KiB stack and stock PAL 68020/2 MiB Chip/no Fast all pass:
+
+- Options: `tmp/standalone-release-5roprq9f`.
+- Players: `tmp/standalone-release-anuj27n5`.
+- Tracks: `tmp/standalone-release-8f4uca1a`.
+
+Each has nine shared menu publications, all with exact planar/chunky pixel
+agreement. Build evidence: `tmp/help-backing-build.log`. Debug runs were muted
+and their emulators closed. These are controlled allocation-fault checks, not
+an exhaustive heap-leak measurement or proof of every other Help owner.
+
 ### Text adapters and remaining VGA full converters (2026-09-30)
 
 Inspection at cc5dd31 traced the C font-bridge callers across

@@ -71,6 +71,9 @@ native caller/input/error checks.
   navigation outside the documented matrices. Check remaining callers of the
   shared glyph-bound text adapters and all six lifetime-tracked restore callers;
   the source inventories themselves are complete.
+  Options/Players/Tracks now cover separate nested-Help background-allocation
+  failure as well as missing data and viewer allocation, including exact parent
+  restoration and successful retry; other owners remain separate coverage.
 - Complete unverified allocation lifetimes and warning layouts in saved-game,
   setup, intermission and other results owners. Records read/view preparation,
   repeated view retries and its writer-buffer allocation already have separate

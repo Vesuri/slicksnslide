@@ -48,15 +48,22 @@ commands
   set $closed = $closed+1
   if $closed == 1
     dump binary memory .run/help-failure-v1/after-missing.chunky $m->renderer.ui.pixels $m->renderer.ui.pixels+64000
-  else
+  end
+  if $closed == 2
     dump binary memory .run/help-failure-v1/after-allocation.chunky $m->renderer.ui.pixels $m->renderer.ui.pixels+64000
+  end
+  if $closed == 3
+    if g_slicks_diag_help_fail_backing || g_slicks_diag_help_backing_fault_reached != 1
+      quit 1
+    end
+    dump binary memory .run/help-failure-v1/after-backing.chunky $m->renderer.ui.pixels $m->renderer.ui.pixels+64000
   end
   continue
 end
 break slicks_diag_help_ready
 commands
   silent
-  if $closed != 2 || !$m->help || !$m->help->renderer.active || $m->help_warning
+  if $closed != 3 || !$m->help || !$m->help->renderer.active || $m->help_warning
     quit 1
   end
   if $m->help->renderer.saved.pixels == &$m->saved[0]
@@ -78,7 +85,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $warnings != 2 || $closed != 2 || $opened != 1 || $helpclosed != 1 || g_slicks_diag_restore_status != 0x1f
+  if $warnings != 3 || $closed != 3 || $opened != 1 || $helpclosed != 1 || g_slicks_diag_restore_status != 0x1f
     printf "HELP_FAILURE_GATE_FAILED warnings=%d closed=%d opened=%d helpclosed=%d\n", $warnings,$closed,$opened,$helpclosed
     quit 1
   end

@@ -6305,11 +6305,15 @@ int main(void)
         }
         struct SlicksAmigaPlayerMenu *help_failure_menu=g_slicks_options_menu?g_slicks_options_menu:
             g_slicks_player_menu?g_slicks_player_menu:g_slicks_track_menu;
-        if(help_failure_test && help_failure_stage<5 && help_failure_menu && platform.key_head==platform.key_tail) {
+        if(help_failure_test && help_failure_stage<7 && help_failure_menu && platform.key_head==platform.key_tail) {
             platform.key_tail=0; platform.key_head=1;
             if(help_failure_stage==0) { slicks_diag_help_test_ready(); help_fail_archive=1; platform.keys[0]=0x50; }
             else if(help_failure_stage==2) { g_slicks_diag_help_fail_allocation=1; platform.keys[0]=0x50; }
             else if(help_failure_stage==4) {
+                extern unsigned char g_slicks_diag_help_fail_backing;
+                g_slicks_diag_help_fail_backing=1; platform.keys[0]=0x50;
+            }
+            else if(help_failure_stage==6) {
                 platform.keys[0]=0x50; platform.keys[1]=0x45;
                 platform.keys[2]=0x45; platform.keys[3]=0x45; platform.key_head=4;
             } else {

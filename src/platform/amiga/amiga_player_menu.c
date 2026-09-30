@@ -642,6 +642,8 @@ failed:
     return 0;
 }
 unsigned char g_slicks_diag_help_fail_allocation;
+/* Explicit nested-Help fixture: fail after the viewer allocation succeeds. */
+unsigned char g_slicks_diag_help_fail_backing,g_slicks_diag_help_backing_fault_reached;
 struct SlicksAmigaPlayerMenu *slicks_amiga_race_surface_create(
     struct SlicksResourceArchive *archive,unsigned char *chunky,const unsigned char *palette)
 {
@@ -675,7 +677,12 @@ static int help_open_backing(struct SlicksAmigaPlayerMenu *m,struct SlicksResour
     struct SlicksHelpViewer *v=g_slicks_diag_help_fail_allocation?0:AllocMem(sizeof *v,MEMF_ANY|MEMF_CLEAR);
     g_slicks_diag_help_fail_allocation=0;
     if(!v) return -1;
-    unsigned char *saved=borrow?m->saved:AllocMem(64000,MEMF_ANY);
+    unsigned char *saved;
+    if(!borrow && g_slicks_diag_help_fail_backing) {
+        g_slicks_diag_help_fail_backing=0;
+        ++g_slicks_diag_help_backing_fault_reached;
+        saved=0;
+    } else saved=borrow?m->saved:AllocMem(64000,MEMF_ANY);
     if(!saved) { FreeMem(v,sizeof *v); return -1; }
     long size=slicks_resource_archive_load(archive,"HELP.TXT",v->source,sizeof v->source);
     if(size<0 || slicks_amiga_help_renderer_init(m,&v->renderer)) goto failed;
