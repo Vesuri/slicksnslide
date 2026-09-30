@@ -1,5 +1,27 @@
-# Shared by saved-game lifecycle fixtures. Closures must retain the display;
-# filesystem functions must run after the owner's explicit release.
+# Shared by saved-game lifecycle fixtures. Widgets retain takeover; filesystem
+# calls inside the dialog require an OS-service window with the display held.
+define check_saved_io
+  if g_slicks_diag_saved_menu
+    if !g_slicks_diag_profile_platform->active || !g_slicks_diag_profile_platform->io_active || g_slicks_diag_profile_platform->gfx_base->ActiView
+      printf "SAVED_IO_WITHOUT_RETAINED_DISPLAY\n"
+      quit 1
+    end
+  else
+    if g_slicks_diag_profile_platform->active
+      printf "STARTUP_SAVED_IO_WITH_HARDWARE_OWNED\n"
+      quit 1
+    end
+  end
+end
+break *slicks_amiga_platform_end
+commands
+  silent
+  if g_slicks_diag_saved_menu
+    printf "SAVED_DIALOG_DISPLAY_TEARDOWN\n"
+    quit 1
+  end
+  continue
+end
 set $saved_enumerations = 0
 set $saved_deletes = 0
 break slicks_amiga_profile_picker_close
@@ -42,29 +64,20 @@ break slicks_amiga_saved_files
 commands
   silent
   set $saved_enumerations = $saved_enumerations+1
-  if g_slicks_diag_profile_platform->active
-    printf "SAVED_ENUMERATION_WITH_HARDWARE_OWNED\n"
-    quit 1
-  end
+  check_saved_io
   continue
 end
 break slicks_amiga_saved_file_exists
 commands
   silent
-  if g_slicks_diag_profile_platform->active
-    printf "SAVED_EXISTS_WITH_HARDWARE_OWNED\n"
-    quit 1
-  end
+  check_saved_io
   continue
 end
 break slicks_amiga_saved_file_delete
 commands
   silent
   set $saved_deletes = $saved_deletes+1
-  if g_slicks_diag_profile_platform->active
-    printf "SAVED_DELETE_WITH_HARDWARE_OWNED\n"
-    quit 1
-  end
+  check_saved_io
   continue
 end
 break slicks_amiga_store_saved_game
@@ -72,18 +85,12 @@ commands
   silent
   set $saved_process = (struct Process *)SysBase->ThisTask
   set $saved_window = $saved_process->pr_WindowPtr
-  if g_slicks_diag_profile_platform->active
-    printf "SAVED_STORE_WITH_HARDWARE_OWNED\n"
-    quit 1
-  end
+  check_saved_io
   continue
 end
 break slicks_amiga_load_saved_game
 commands
   silent
-  if g_slicks_diag_profile_platform->active
-    printf "SAVED_FILE_IO_WITH_HARDWARE_OWNED\n"
-    quit 1
-  end
+  check_saved_io
   continue
 end

@@ -1,5 +1,32 @@
 # Development release audit
 
+## 2026-09-30 — retained display through championship save-file operations
+
+The saved-game dialog uses OS-service windows for existence checks, save/load,
+delete and catalogue refresh. Each window closes before confirmation, warning,
+picker rendering or input resumes. Error cleanup also closes a pending window.
+The saved-dialog guard now requires display-owned I/O rather than full teardown;
+startup catalogue enumeration remains an inactive-platform operation.
+
+Workbench-loaded stock 2 MiB/no-Fast/default-4-KiB-stack evidence:
+
+- CHAMPEDIT (`tmp/standalone-release-dtsol4tr`): creation, overwrite/delete
+  acceptance and cancellation, catalogue refresh counts and clean exit pass.
+  No full teardown is allowed while the saved-dialog owner exists.
+- CHAMPEDIT capture gate (`...-oefrwh1p`): six I/O windows, three dialog returns.
+  All displayed bitmap/palette snapshots compare byte-for-byte unchanged;
+  OS ActiView stays null and display ownership remains active during I/O.
+- CHAMPSAVF (`...-1d_kmx28`): a directory deliberately obstructs E2E.SSS.new in
+  a fresh private fixture. Real save failure, warning, picker reopening,
+  cancellation, requester-pointer restoration and normal exit pass. This is
+  a transaction-path obstruction test, not a read-only-volume test.
+
+All debug emulators were muted and closed. Hidden Load remains unreachable in
+the normal menu; its shared I/O branch was converted but has no renewed native
+Load coverage. Remaining B10 boundaries include track-list transactions,
+track-info/record-clear operations, screenshot writes, ending/registration
+images, setup-save failure recovery and nonfatal race-preparation failures.
+
 ## 2026-09-30 — retained display during intermission preview reads
 
 Intermission no longer ends display ownership to load DAT/next-track preview

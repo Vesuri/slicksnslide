@@ -1384,9 +1384,9 @@ static int championship_notice(struct SlicksAmigaPlatform *p,struct SlicksAmigaP
 }
 
 /* The original .SSS list/name widgets, with native transactional disk I/O.
- * RAM-only widget transitions retain takeover. Filesystem calls explicitly
- * release it. Closing RAM-only widgets preserves the current ownership;
- * callers reacquire only if a preceding file operation released it.
+ * Widgets retain takeover. Filesystem operations temporarily restore OS
+ * services but keep the displayed bitmap/copper; input/rendering resumes
+ * only after closing the I/O window. The race caller has already stopped Paula.
  * Returns 1 accepted, 0 cancelled, -1 unrecoverable display/allocation error. */
 static int run_saved_game_dialog(struct SlicksAmigaPlatform *p,struct SlicksAmigaPlayerMenu *m,
     struct SlicksSavedGame *game,unsigned char tracks[][8],unsigned char saving)
@@ -1462,9 +1462,10 @@ again:
         int key=championship_notice(p,m,slicks_original_saved_delete);
         if(key<0) goto done;
         if(slicks_saved_file_delete_accepted((unsigned char)key)) {
-            slicks_amiga_platform_end(p);
+            if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
             int failed=slicks_amiga_saved_file_delete(path);
             slicks_amiga_saved_files_refresh(&saved_files_cache);
+            if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
             if(failed &&
                championship_notice(p,m,(const unsigned char *)"DELETE FAILED - CHECK NEW/BAK FILES")<0) goto done;
         }
@@ -1472,8 +1473,9 @@ again:
     }
     const char *error=0;
     if(saving) {
-        slicks_amiga_platform_end(p);
+        if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
         int exists=slicks_amiga_saved_file_exists(path);
+        if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
         if(exists<0) error="CANNOT ACCESS SAVE FILE";
         else if(exists) {
             int key=championship_notice(p,m,(const unsigned char *)"OVERWRITE THIS SAVED GAME? Y/N");
@@ -1481,9 +1483,10 @@ again:
             if(key!=0x15) goto again;
         }
         if(!error) {
-            slicks_amiga_platform_end(p);
+            if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
             struct SlicksSetupStorageReport report=slicks_amiga_store_saved_game(path,game);
             slicks_amiga_saved_files_refresh(&saved_files_cache);
+            if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
             if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
                 if(championship_notice(p,m,(const unsigned char *)(report.result==SLICKS_SETUP_SAVED?
                     "GAME SAVED":"GAME SAVED - BACKUP REMAINS"))<0) goto done;
@@ -1493,9 +1496,10 @@ again:
                 "SAVE RECOVERY REQUIRED - KEEP NEW/BAK":"SAVE FAILED - RETRY OR ESC";
         }
     } else {
-        slicks_amiga_platform_end(p);
+        if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
         struct SlicksSetupLoadReport report=slicks_amiga_load_saved_game(path,game,tracks,256);
         slicks_amiga_saved_files_refresh(&saved_files_cache);
+        if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
         if(report.result==SLICKS_SETUP_LOADED) { result=1; goto done; }
         error=report.result==SLICKS_SETUP_LOAD_RECOVERY?"KEEP SAVE NEW/BAK FILES - RECOVERY REQUIRED":
             report.result==SLICKS_SETUP_LOAD_INVALID?"INVALID SAVED GAME":"LOAD FAILED - RETRY OR ESC";
@@ -1503,6 +1507,7 @@ again:
     if(championship_notice(p,m,(const unsigned char *)error)<0) goto done;
     goto again;
 done:
+    if(p->io_active && slicks_amiga_platform_end_io(p)) result=-1;
     if(m->picker) (void)slicks_amiga_profile_picker_close(m);
     if(m->name_dialog) (void)slicks_amiga_name_dialog_close(m);
     if(m->message) (void)slicks_amiga_message_close(m);
