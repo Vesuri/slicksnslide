@@ -33,6 +33,52 @@ Other Help routes and languages remain separate gates.
 
 ## Ownership and storage
 
+### Race decode arena / chunky lifetime reuse (2026-09-30)
+
+Allocate chunky as 65,536+32 bytes instead of
+64,000+32 and borrow its first 65,536 bytes during `prepare_race`. This keeps
+the original decoder capacity and C2P lookahead while removing the separate
+65,536-byte arena allocation/free: 64,000 bytes less peak demand overall.
+DAT/masks/HUD/font scratch retains its original capacity.
+
+The borrow starts only after `run_shop` returns and the display is released.
+Scenery and masks write logical/material/surface storage; actor assets copy
+decoded pixels into owned race storage before the arena is reused. The race
+initializer clears the runtime's previous chunky pointer. Before any actor
+drawing, `slicks_race_start` reconstructs all 64,000 chunky pixels from logical
+(track actors are marked ready by successful preparation). The five preparation
+call sites either exit on error or build the warning and then reconstruct the
+title; none promises to preserve the former chunky contents. Main remains the
+only owner that frees this allocation. Future retained-loading presentation
+must not publish the borrowed chunky bytes during decoding.
+
+Native `tmp/standalone-release-9jtliy95` now passes the upper-bound STARTGO
+gate: 10,000 unique sorted filenames, selection containing every index exactly
+once, preparation result/error/allocation-mask zero, stage 9, actual race entry.
+It uses PAL 68020, 2 MiB/no Fast and the default 4 KiB stack. The former
+`diag_catalogue_recovery.gdb` is historical evidence for real OOM before this
+candidate, not a gate expected to pass once this memory shortage is removed.
+
+Late HUD failure after decoding, warning dismissal, Players visit and retry
+passes in `tmp/standalone-release-x2lziz4n` (`SETUPG`), with byte-identical
+session/configuration restoration. Host checks pass 2,560 whole-plane track
+visual comparisons, 14 original decoded actor frames plus truncation rejection,
+and 780 track/service/bridge mask comparisons. Logs:
+`tmp/race-arena-reuse-{build,host}.log`. The required full-frame display audits
+also pass 600 updates each: F1 (32 actors, 2,068 marks), CITY (18 actors,
+1,480 marks), WHACKO (5 actors, 1,854 marks). Logs are
+`tmp/race-arena-display-{1,2,3}.log`. These are correctness runs with live
+statistics disabled and warp enabled, not new performance measurements.
+All owned validation emulators exit. This closes upper-bound catalogue race
+entry, not the separate large saved-game Load integration or release gates.
+
+The new `diag_catalogue_memory.gdb` uses CATRECOV's opt-in probes but requires
+successful upper-bound race entry instead of the obsolete expected OOM.
+`tmp/standalone-release-z33cy814` passes: 95,648 bytes free (largest 66,512)
+before scratch, 16,720 (largest 14,680) after scratch, preparation error and
+allocation-failure mask both zero. This is the post-allocation boundary, not
+a claim about the minimum free memory at every subsequent loader operation.
+
 ### Upper-bound catalogue scratch-memory attribution (2026-09-30)
 
 An opt-in CATRECOV probe reads Exec's free-total and largest-block counts

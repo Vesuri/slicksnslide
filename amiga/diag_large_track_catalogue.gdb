@@ -28,6 +28,12 @@ commands
   commands
     silent
     printf "LARGE_CATALOGUE_PREPARE_RETURN result=%d error=%u allocation_failures=%u stage=%u\n",$d0,g_slicks_diag_race_error,g_slicks_diag_race_allocation_failures,g_slicks_diag_race_stage
+    if !$_isvoid($capture_race_memory)
+      printf "CATALOGUE_SCRATCH_MEMORY before_total=%lu before_largest=%lu after_total=%lu after_largest=%lu\n",g_slicks_diag_race_memory[0],g_slicks_diag_race_memory[1],g_slicks_diag_race_memory[2],g_slicks_diag_race_memory[3]
+      if !g_slicks_diag_race_memory[0] || !g_slicks_diag_race_memory[2]
+        quit 1
+      end
+    end
     if $d0 || g_slicks_diag_race_error || g_slicks_diag_race_allocation_failures
       quit 1
     end

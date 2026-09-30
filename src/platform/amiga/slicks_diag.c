@@ -300,7 +300,8 @@ static void request_setup_vehicle(void *context,unsigned driver,signed char vehi
 /* Kalms' modulo path reads one final 32-pixel block ahead.  Its output is
  * discarded, but the read must still stay within an allocated buffer. */
 #define C2P_LOOKAHEAD_BYTES 32UL
-#define CHUNKY_ALLOCATION_BYTES (320UL * 200UL + C2P_LOOKAHEAD_BYTES)
+#define RACE_DECODE_ARENA_BYTES 65536UL
+#define CHUNKY_ALLOCATION_BYTES (RACE_DECODE_ARENA_BYTES + C2P_LOOKAHEAD_BYTES)
 #define TITLE_FRAME_ALLOCATION_BYTES (64002UL + C2P_LOOKAHEAD_BYTES)
 
 volatile unsigned short g_slicks_diag_ready;
@@ -2467,7 +2468,11 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     dat = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
     track = (unsigned char *)AllocMem(8192UL, MEMF_ANY);
-    arena = (unsigned char *)AllocMem(65536UL, MEMF_ANY);
+    /* Shop ownership has ended. Until slicks_race_start reconstructs all
+     * 64000 pixels from logical, chunky has no live image consumers. Borrow
+     * its enlarged backing at the original decoder capacity. Failure callers
+     * rebuild the warning/title or exit; neither preserves these bytes. */
+    arena = chunky;
     navigation = (struct SlicksTrackNavigation *)
         AllocMem(sizeof(*navigation), MEMF_ANY);
     car_resource = (unsigned char *)AllocMem(128UL, MEMF_ANY);
@@ -2752,8 +2757,7 @@ cleanup:
         FreeMem(car_resource, 128UL);
     if (navigation)
         FreeMem(navigation, sizeof(*navigation));
-    if (arena)
-        FreeMem(arena, 65536UL);
+    /* arena borrows chunky; only main owns/frees that allocation. */
     if (track)
         FreeMem(track, 8192UL);
     if (dat)

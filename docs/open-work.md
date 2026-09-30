@@ -192,28 +192,11 @@ native caller/input/error checks.
   race entry and Help restoration. Initial/growing name-buffer and selection
   allocation failures pass native no-partial-startup/owned-buffer cleanup gates.
   Directory-object allocation failure also passes without fallback or takeover;
-  the upper-bound gate remains: the 10,001-file native fixture timed out after
-  600 seconds without reaching race preparation. The bounded CATPROBE run now
-  identifies sorting as the delay. The replacement index sorter now completes
-  all 10,000 names in about five host seconds, with original stem-order and
-  full-filename equivalence tests and normal 300-track race entry passing.
-  Equal stems and scratch-allocation failure retain the exact former exchange
-  path. The enhanced upper-bound gate captures 10,000 correctly sorted unique
-  filenames/selection indices, but preparation returns error 1 (allocation
-  failure). The failing buffer is the 64 KiB decoding arena. Actual low-memory
-  warning/dismiss/GO retry/dismiss/exit now passes, preserving session and
-  configuration byte-for-byte and restoring system state. Supporting race
-  entry at this extreme size still needs a peak-memory/lifetime solution that
-  retains resident menus; do not count 10,000-track race entry as passed.
-  Opt-in memory measurements now establish an actual capacity shortfall:
-  97,256 bytes free before about 144,464 bytes of scratch demand, with identical
-  counts on retry. Reordering allocations alone cannot fix it. Assess borrowing
-  a surface during decoding only after capacity, consumer and failure-lifetime
-  proofs; the complete chunky reconstruction at race start is not enough alone.
-  Merely shrinking DAT to its file length did not fix the arena failure and
-  is unsafe without auditing its later masks/HUD/font scratch uses; that trial
-  was removed. These are debugger/host timings,
-  not PAL frame measurements.
+  the 10,000-track upper-bound race-entry gate now also passes after sharing
+  decoding scratch with the enlarged chunky allocation. Late preparation
+  failure/retry and F1/CITY/WHACKO full-frame audits pass. Evidence, memory
+  lifetimes and superseded allocation failures are in `menu-cache-verification.md`;
+  catalogue startup memory is no longer an open implementation item.
   The native
   intermission Save path now saves all 300 selected tracks
   with dynamic backing and passes cancel/reopen/save/exit on the default stack;
