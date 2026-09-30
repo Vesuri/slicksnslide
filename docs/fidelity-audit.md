@@ -26,6 +26,7 @@ and a production-screen comparison establish different things.
 | F15 | Saved language ignored by live table consumers | Original startup resolves DS:05e1 and passes it to `2b70a`, which constructs `/langN.txt`. Native title/Arcade, pause and intermission loads were hardwired to lang1. Positive supplied-language selections are now connected; startup default detection/chooser and remaining translated-label caller coverage are still open. |
 | F16 | Added global right-mouse program exit | The main loop read the right-button register and set `exit_requested` independently of the keyboard/menu owner, including during Help. Removed in the keyboard-only exit correction below. This was a native shortcut, not an original title/Help action. |
 | F17 | Shop Help drops printable input | `run_shop` supplied only scans (plus Escape ASCII) to the Help viewer. Original navigation requires ASCII for Enter/Space link activation, Backspace/“b” history and Tab/uppercase K. Corrected to use the shared keymapped Help adapter. |
+| F18 | Track catalogue silently truncates at 256 | Native `discover_tracks` stops at `SLICKS_TRACK_FILE_MAX=256`. Actual original discovery and startup sorting accept 257 and 300 controlled filenames. Not fixed yet; playlist capacity is a separate limit. |
 
 The original language startup/caller audit confirmed the hardwired-language
 candidate as F15. Track catalogue sorting, limits,
@@ -2526,6 +2527,38 @@ the muted runners close their emulators.
 `tmp/shop-help-input-oracle.log`, `tmp/shop-help-key-adapter.log`,
 `tmp/shop-help-input-build.log`. This closes the confirmed lost-character
 caller defect, not every shop Help language/page/error sequence.
+
+## Original track discovery and sorting boundary (2026-09-30)
+
+`verify-track-discovery` executes original `35d28..35e62` with controlled DOS
+find-first/find-next responses and successful allocation callbacks. Only those
+environmental boundaries are substituted: the real filename normalization,
+copy/count loop and return execute. It verifies zero, one, 195, 256, 257 and
+300 filenames, returned in deliberately descending enumeration order. Output
+retains that order as nine-byte, extension-stripped names.
+
+The original startup then calls `2c301` at `2612a`. The same test executes that
+actual sorter through `2c41b`, including its runtime string routines, and
+verifies ascending order for each entire catalogue. Thus enumeration-order
+evidence alone would have led to the wrong conclusion about final ordering.
+All cases pass (`tmp/track-discovery-original.log`). The suite is a DOS-code
+oracle, not an Amiga native discovery test or a full DOS filesystem test.
+
+F18 is confirmed: native startup uses a fixed 256-entry filename array and
+silently stops enumeration at that count. The original startup wrapper `2bfc8`
+passes 10,000 as the discovery limit, but only up to 300 has been executed by
+this test. Do not claim that arbitrary 10,000-entry allocation/segment cases
+are safe based on the argument alone. Do not conflate catalogue length with
+the separately bounded race playlist. Implementation needs dynamic catalogue
+storage and a consumer/low-memory audit rather than enlarging the playlist.
+
+Another candidate remains to resolve: native discovery manufactures BASIC.SS
+after missing/empty/unreadable directories. Original discovery returns zero;
+startup `25deb..25e45` retries after its path helper, then reports failure and
+exits if it remains empty. The exact path-helper behavior and native error
+presentation still need caller-level verification before a replacement.
+Mixed-case, extension and duplicate-name sorting also remain outside this
+numeric-uppercase dataset's scope.
 
 ## Adaptations to preserve or explicitly classify
 

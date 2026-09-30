@@ -166,6 +166,12 @@ native caller/input/error checks.
 
 ### 6. Complete the whole-port fidelity audit
 
+- F18: replace the silent 256-file track catalogue truncation. The original
+  discovery/sort oracle now proves 257 and 300 entries; audit consumers and
+  allocation failure with dynamic storage, keeping playlist limits separate.
+  Resolve missing/empty directory fallback against the original startup path
+  before changing the fabricated BASIC.SS entry. Complete mixed-case/name
+  ordering boundaries; current oracle names are uppercase numeric stems.
 - Review every remaining subsystem in the coverage matrix/discrepancy ledger in
   [fidelity-audit.md](fidelity-audit.md), including production callers, parameters
   and overrides, not only isolated translated helpers.

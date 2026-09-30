@@ -593,6 +593,11 @@ build/verify_track_record_write: tools/verify_track_record_write.c tools/verify_
 verify-track-record-write: build/verify_track_record_write
 	build/verify_track_record_write
 .PHONY: verify-title-help
+.PHONY: verify-track-discovery
+build/verify_track_discovery: tools/verify_track_discovery.c tools/verify_options_menu.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-track-discovery: build/verify_track_discovery
+	build/verify_track_discovery
 .PHONY: verify-title-demo
 build/verify_title_demo: tools/verify_title_demo.c tools/verify_options_menu.c src/ui/title_demo.h src/game/configuration.h src/game/track_playlist.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
