@@ -4,7 +4,20 @@
 #include "../src/ui/registration_ui.h"
 static void registration_text(void *p,const unsigned char *s,short x,short y,unsigned char flags)
 { native_text(p,0,s,x,y,flags); }
-int main(void)
+static void dump_trial(const char *directory,const char *name,
+    const unsigned char *pixels,const unsigned char *palette)
+{
+    char path[1024];
+    if(snprintf(path,sizeof path,"%s/%s.ppm",directory,name)>=(int)sizeof path) abort();
+    FILE *f=fopen(path,"wb");if(!f) abort();
+    fprintf(f,"P6\n320 200\n255\n");
+    for(unsigned i=0;i<64000;++i) for(unsigned c=0;c<3;++c) {
+        unsigned char v=palette[3*pixels[i]+c];
+        if(fputc((v<<2)|(v>>4),f)==EOF) abort();
+    }
+    if(fclose(f)) abort();
+}
+int main(int argc,char **argv)
 {
     static unsigned char runtime[300000],source[70000],base[64000],pixels[64000],palette[768],font[8192];
     FILE *f=fopen("disasm/runtime.bin","rb");if(!f)return 2;
@@ -40,6 +53,12 @@ int main(void)
     check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));check(uc_reg_write(u,UC_X86_REG_BP,&bp));
     check(uc_emu_start(u,0x25fcb,0x260e7,0,30000000));
     if(memcmp(pixels,v.pixels,sizeof pixels)) { fputs("Trial pixels differ\n",stderr);return 1; }
+    /* Optional local-only visual evidence from executing the original code,
+     * before the prompt and before any synthetic owner-label test. */
+    if(argc==2) {
+        dump_trial(argv[1],"trial-original",v.pixels,palette);
+        dump_trial(argv[1],"trial-native",pixels,palette);
+    }
     slicks_registration_trial_text(text,1,registration_text,&n);
     check(uc_emu_start(u,0x260ef,0x26115,0,1000000));
     if(memcmp(pixels,v.pixels,sizeof pixels)) { fputs("Trial prompt pixels differ\n",stderr);return 1; }

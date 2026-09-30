@@ -59,6 +59,16 @@ after several title updates.
 
 ## Verification
 
+The expired-trial heading intentionally retains the original layout quirk:
+its anchor is y=81 while the blue tint rectangle starts at y=83. The heading
+therefore extends above the rectangle, as reported during native testing.
+The original x86 routine and the native 68020 renderer match every pixel here;
+do not move the text or enlarge the rectangle as an assumed port correction.
+`build/verify_registration_pixels EXISTING_LOCAL_DIRECTORY` optionally writes
+local-only PPM evidence from both renderers before the delayed prompt. It does
+not dump a real registration owner or key. Visual check on 2026-09-30:
+`tmp/trial-layout-LginwP/trial-original.png` matches the reported overlap.
+
 - `make verify-registration REGISTRATION_KEY=tmp/slicks.rek`: 531 original
   loader comparisons (valid, absent, truncations, mutations, sentinel, empty
   name and trailing data); 8,192 original trial/exit gate comparisons; all 256
