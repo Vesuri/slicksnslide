@@ -1,5 +1,43 @@
 # Development release audit
 
+## 2026-09-30 — manual release retry, in progress
+
+In the prepared stock PAL A1200 session (68020, 2 MiB Chip, no Fast RAM,
+standalone release executable, default 4 KB stack), the user confirmed that
+Players opens and returning to the main menu succeeds. This clears the
+previously reported exit on that transition in this manual retry.
+
+The user also observed that Escape from Players applies the main-menu palette
+immediately, leaving the outgoing image garbled for over half a second before
+the main-menu image appears. Recorded as B9; fix deferred until after this
+manual session at the user's request. Race/save/exit and WHDLoad checks remain
+pending.
+
+The user subsequently reached the post-race results screen (local screenshot
+`FS-UAE_Full_260930-2039_00.png`). Workbench was briefly visible before the
+results appeared; the exact disk operation has not yet been identified.
+Race completion is observed; championship save, normal exit and WHDLoad
+checks are still pending. The requested preservation of the current game
+display during disk access is tracked as B10.
+
+After dismissing the results, the user reached `ENTER: RETRY / ESC: END MATCH`
+(`FS-UAE_Full_260930-2040_00.png`). Escape then reached the trophy/final
+standings screen (`FS-UAE_Full_260930-2041_00.png`), again exposing Workbench
+briefly first. This is a second observed B10 transition. This match ended
+without reaching a between-races save menu; manual championship saving remains
+untested.
+
+Correction after inspecting the prompt's source: `ENTER: RETRY / ESC: END MATCH`
+is exclusively the intermission failure/retry notice, not a normal match-end
+prompt. The earlier guidance to end the match misidentified it. Subsequent
+screenshots show 195/195 selected tracks and Classic mode with five laps.
+Intermission entry therefore failed; its exact failed operation remains to be
+diagnosed (B11). Race completion passed, but intermission did not.
+
+The user then confirmed a clean normal exit to Workbench. Standalone manual
+exit passes; championship saving remains blocked by B11, and both WHDLoad
+manual passes are still outstanding.
+
 ## 2026-09-30 — allocation ownership and default-stack lifecycle
 
 The framework allocated its 24,577-word blitter queue unconditionally in a

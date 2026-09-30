@@ -31,6 +31,25 @@ Working rules are in [development-verification.md](development-verification.md).
 All closed (B1–B8; evidence in [frame-pacing.md](frame-pacing.md) and
 [fidelity-audit.md](fidelity-audit.md)).
 
+- [ ] **B9. Menu palette transition:** During the manual release retry, pressing
+  Escape in Players immediately applies the main-menu palette while the Players
+  image remains visible for over half a second. Coordinate palette and image
+  transitions so the outgoing screen does not use the incoming palette.
+  User requested fixing this after the current manual test.
+
+- [ ] **B10. Preserve the game display during disk access:** The manual race
+  completion briefly exposed Workbench before displaying the results screen.
+  Keep the current game image visible while loading/saving, while allowing the
+  OS services required for disk I/O. Identify the exact transition and verify
+  safe display ownership and restoration on exit. Follow up after the manual test.
+
+- [ ] **B11. Intermission fails in stock-A1200 manual session:** After the
+  completed race, `ENTER: RETRY / ESC: END MATCH` appeared instead of the
+  intermission menu. This is `run_intermission`'s unavailable/error path, not
+  the ordinary match-end prompt. Track selection is 195/195 and mode is
+  Classic. Determine which resource/allocation/initialization failed, fix it,
+  and repeat the manual championship save check. Cause is not yet established.
+
 ## C. Packaging
 
 Done 2026-09-30 in the Vette layout ([install-original-data.md](install-original-data.md)):
