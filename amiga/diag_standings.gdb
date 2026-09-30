@@ -22,6 +22,10 @@ commands
     set $save_errors = $save_errors+1
   end
   printf "RECORD_RECOVERY phase=%u skip=%u\n",g_slicks_diag_record_results_phase,g_slicks_diag_record_skip
+  set $warning_index=$read_errors+$save_errors
+  set $warning_planes=g_slicks_diag_profile_platform->views[0].bitmap->Planes[0]
+  eval "dump binary memory .run/record-warnings/%u.chunky %p %p",$warning_index,$record_pixels,$record_pixels+64000
+  eval "dump binary memory .run/record-warnings/%u.planar %p %p",$warning_index,$warning_planes,$warning_planes+64000
   continue
 end
 break slicks_diag_record_results_ready
@@ -29,6 +33,25 @@ commands
   silent
   if g_slicks_diag_record_results_phase == 3
     set $record_closing = 1
+  end
+  if g_slicks_diag_record_results_phase == 2
+    set $record_menu=g_slicks_diag_record_menu
+    if !$record_menu || !$record_menu->track_saved_dirty || !$record_menu->saved_dirty_count
+      printf "RECORD_RESTORE_BOUNDS_MISSING\n"
+      quit 1
+    end
+    set $area=0
+    set $rectangle=0
+    while $rectangle<$record_menu->saved_dirty_count
+      set $rect=&$record_menu->saved_dirty[$rectangle]
+      set $area=$area+($rect->right-$rect->left)*($rect->bottom-$rect->top)
+      set $rectangle=$rectangle+1
+    end
+    if $area>=64000
+      printf "RECORD_RESTORE_NOT_BOUNDED\n"
+      quit 1
+    end
+    printf "RECORD_RESTORE_AREA %u rectangles=%u\n",$area,$record_menu->saved_dirty_count
   end
   if g_slicks_diag_record_results_phase == 1
     set $record_inserts = $record_inserts+1

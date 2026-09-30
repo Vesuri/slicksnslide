@@ -52,7 +52,9 @@ Implementation and completed verification evidence are separate in
   remaining saved-game recovery,
   intermission/results error routes outside the documented read/Close
   Retry/Skip checks, including remaining allocation-failure lifetimes and
-  warning-screen publication bounds.
+  other warning-screen publication bounds. Post-race read/save warning pixels
+  and painter-bounded records-table restoration now have native coverage;
+  keep other layouts and allocation-failure paths separate.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify
   native sparse participation after resolving the policy question. Native

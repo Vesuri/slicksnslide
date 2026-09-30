@@ -1383,6 +1383,40 @@ closed its emulator. Other storage/format failures remain separate open work.
 
 ## Records return: retain the untouched race bitmap (2026-09-29)
 
+### Painter-bounded chunky restoration (2026-09-30)
+
+The records owner previously restored all 64,000 chunky pixels from its
+save-under after displaying the table. It now enables the existing lifetime
+rectangle tracker before tinting/drawing and uses the shared bounded restore.
+Pending publication is cleared after screen initialization, but the separate
+lifetime rectangle list remains intact until close. Initial view-0 C2P stays
+full-screen because that bitmap may contain a stale menu. View 1 remains
+untouched; this change neither adds a close-time C2P nor changes gameplay.
+
+The standings diagnostic now requires nonempty lifetime bounds covering less
+than a full screen and captures complete warning chunky/planar surfaces.
+An explicit diagnostic-only menu pointer avoids reading GCC's optimized local
+`m` from an unwound caller. The initial attempt
+`tmp/standalone-release-oq8q8lp5` stopped on that invalid debugger value, before
+restoration verification; it is not a passing rendering test.
+
+Original records gates pass: 12 full-screen/font comparisons using native
+68020 text/icons and 216 ordered drawing traces. The shared rectangle gate
+also passes narrow/disjoint/chained/overflow cases and 40,000 clipped coverage
+steps. Logs: `tmp/record-bounds-host.log`, `tmp/record-bounds-build.log`.
+
+The final OPTIONSBC run, `tmp/standalone-release-9kt31iyi`, passes on stock
+PAL A1200, 2 MiB Chip/no Fast RAM and confirmed 4 KiB stack. Both records
+tables restore one 25,200-pixel rectangle rather than 64,000 pixels. The two
+record-return checks preserve every chunky pixel and all eight race bitplanes;
+independent decoding also verifies both complete read/save-warning surfaces.
+The test reaches two record insertions, two owner returns, championship
+statistics/persistence and final restoration 31. The muted emulator exits.
+This is evidence for these two table/recovery sequences, not every possible
+record layout or results allocation failure.
+
+### Earlier race-bitmap retention change
+
 The direct row-converter audit found `run_record_results` converting all
 64,000 race pixels into view 1 on return, although records and their recovery
 warnings only paint view 0. The return now keeps view 1 untouched, preserving

@@ -3060,6 +3060,7 @@ volatile struct SlicksSetupStorageReport g_slicks_diag_record_save;
 __attribute__((noinline)) void slicks_diag_record_results_ready(void) { __asm__ volatile("" ::: "memory"); }
 static int result_wait(struct SlicksAmigaPlatform *,unsigned,unsigned char);
 unsigned char g_slicks_diag_record_faults,g_slicks_diag_record_skip;
+struct SlicksAmigaPlayerMenu *g_slicks_diag_record_menu;
 __attribute__((noinline)) void slicks_diag_record_recovery_ready(void) { __asm__ volatile("" ::: "memory"); }
 /* Platform recovery, deliberately distinct from original game screens.
  * No allocation or file access while the machine is taken over. */
@@ -3150,6 +3151,7 @@ load_records:
         m=slicks_amiga_race_surface_create(&archive,chunky,palette);
         if(!m || slicks_amiga_records_icons_load(m,&archive)) goto done;
         for(unsigned long i=0;i<64000;++i) m->saved[i]=chunky[i];
+        m->saved_dirty_count=0; m->track_saved_dirty=1;
         unsigned char table[256];
         slicks_ui_tint_table(palette,table,10,10,30,75);
         if(slicks_ui_remap(&m->renderer.ui,35,75,270,180,table) ||
@@ -3162,9 +3164,11 @@ load_records:
         if(slicks_amiga_platform_set_view(platform,0,palette) ||
            slicks_amiga_platform_begin(platform,0)) goto done;
         platform->key_tail=platform->key_head;
+        if(diagnostic) g_slicks_diag_record_menu=m;
         g_slicks_diag_record_results_phase=2; slicks_diag_record_results_ready();
         if(result_wait(platform,300,diagnostic)) goto done;
-        for(unsigned long i=0;i<64000;++i) chunky[i]=m->saved[i];
+        slicks_amiga_player_menu_restore(m);
+        g_slicks_diag_record_menu=0;
     }
     if(outcome.changed) {
         for(;;) {
@@ -3199,6 +3203,7 @@ load_records:
     g_slicks_diag_record_results_phase=3; slicks_diag_record_results_ready();
     result=0;
 done:
+    g_slicks_diag_record_menu=0;
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&archive);
     if(bytes) FreeMem(bytes,8192);
