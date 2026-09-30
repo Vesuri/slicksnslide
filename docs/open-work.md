@@ -30,6 +30,10 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
 ## Registration verification
 
+- Use the checked plain-file reader for the registration image owner's external
+  fallback; it currently ignores `Close` failure. Verify missing/read/close-failed
+  external files in isolation without claiming substitute artwork verifies the
+  original order form.
 - The optional external `webf_ord.bmp` order-form image needs a visual check
   if matching original data becomes available; it is absent from the supplied
   archive. Do not substitute another image and call this check complete.
@@ -79,7 +83,9 @@ native caller/input/error checks.
   selection/transaction semantics; do not reintroduce blanket background restores
   or redraws for ignored keys and rejected transactions.
 - Extend no-I/O/no-display-teardown assertions across every RAM-only owner, and
-  migrate any remaining offending transitions. Use the startup-resident inventory
+  fix any offending routes found. The explicit platform-end call-site inventory
+  is complete after the Clear Records fix; remaining work here is native route
+  coverage, not repeating that source inventory. Use the startup-resident inventory
   in [menu-resident-assets.md](menu-resident-assets.md). Keep actual track/exit
   image loads, cup loads and saves as explicit disk boundaries.
 - Verify cached Load-owner transitions and recovery after D1 is resolved.

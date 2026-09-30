@@ -2522,3 +2522,42 @@ now names `66.SS.new` to exercise partial completion under current ordering.
 Reference/user track files were never cleared; all writes were to isolated
 copies. Build log: `tmp/clear-resident-build.log`. This closes this specific
 RAM-only transition defect, not the remaining owner/failure coverage.
+
+## Remaining platform teardown call-site inventory (2026-09-30)
+
+After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in
+`slicks_diag.c` have been inspected with their callers and adjacent operations:
+
+| Owner / path | Calls | Reason for OS ownership |
+| --- | ---: | --- |
+| Saved-game dialog | 4 | Delete, save-path existence check, write, load; each is an explicit accepted transaction. |
+| Pause component diagnostics | 8 | Test setup, child teardown and cleanup, not interactive pause navigation. |
+| Track-list commit | 1 | Persist the accepted catalogue change and refresh its cached snapshot. |
+| Shop | 2 | Explicit screenshot-file capture; final owner cleanup before `prepare_race` reads DAT/track files (or abort cleanup). |
+| Intermission component diagnostic | 4 | Test setup/cleanup, not the live owner. |
+| Live intermission preparation/retry | 1 | Load DAT and the selected next-track preview. Cached language/menu loads alone are not its disk dependency. |
+| Post-race records | 3 | Acquire date/library services, read the track, commit changed records. The repeated inactive teardown before reading is harmless, not an extra visible handoff. |
+| Registration image owner | 2 | Initial/exit/optional external image load and owner cleanup. |
+| Championship results | 1 | Load the cup image after the race fade. |
+| Main input/cleanup | 8 | Setup save, diagnostic obstruction removal, retry/next-track preparation, explicit track Records, confirmed Clear Records, GO/demo preparation, final exit. |
+
+Thus 13 sites are explicit diagnostics (the twelve component calls and the
+setup-fault obstruction removal); the other 21 are disk/service boundaries
+or owner/final cleanup. No further unconditional RAM-only navigation teardown
+was found in this inventory. This is a source-level conclusion, not proof of
+every runtime route or permission to remove any of these boundaries blindly.
+In particular, retaining the display *during* disk service still depends on
+the separate loading handoff's visible-scanout gate.
+
+Outside that file, the platform destroy path calls end for cleanup. Direct
+`LoadView` calls are confined to platform begin/end. Other `Permit` calls are
+the diagnostic allocation checks and the explicit I/O handoff; no additional
+menu-level restoration path was found by that search. The shop allocation
+check's `Permit` balances its own `Forbid`; it is not a display transition.
+
+One separate failure-handling gap was found while following registration
+image I/O: the optional external fallback in `registration_screen` performs
+raw `Read` followed by unchecked `Close`, unlike `load_plain_file`. A successful
+read followed by failed close can therefore be accepted for rendering. This
+requires a checked-reader change and external fallback failure tests, recorded
+in open work. It does not establish the missing `webf_ord.bmp` visual contents.
