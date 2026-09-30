@@ -3925,7 +3925,7 @@ int main(void)
     unsigned long title_idle_started=0;
     unsigned char title_idle_active=0,title_idle_reset=0;
     struct SlicksConfiguration configuration = slicks_original_configuration;
-    unsigned char setup_dirty=0,exit_requested=0,save_prompt=0,right_was_down=0;
+    unsigned char setup_dirty=0,exit_requested=0,save_prompt=0;
     unsigned char registration_presentation=0;
     unsigned char registration_test=0;
     unsigned short registration_today=0;
@@ -5118,13 +5118,8 @@ int main(void)
         setup_dirty|=player_menu_state.dirty;
         setup_dirty|=race_statistics_dirty;
         setup_dirty|=g_slicks_options_state.dirty;
-        unsigned char right_down=(unsigned char)!!slicks_amiga_platform_right_mouse();
-        if(g_slicks_diag_ingame && race->participation_ready)
-            for(unsigned driver=0;driver<4;++driver)
-                if(race->participation[driver]<0 && configuration.player_input[driver]==2)
-                    right_down=0; /* Port-zero second button belongs to the driver. */
-        if(right_down && !right_was_down && !save_prompt) exit_requested=1;
-        right_was_down=right_down;
+        /* Program exit follows the original keyboard/menu actions. Mouse
+         * buttons are not a global quit shortcut (nor joystick buttons). */
         if(exit_requested) {
             exit_requested=0;
             /* Native program-exit adaptation must never persist temporary

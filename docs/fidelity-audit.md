@@ -24,6 +24,7 @@ and a production-screen comparison establish different things.
 | F13 | Missing computer-car display-direction delay | Original `23d97..23e7a` retains a displayed direction in DS:3068 and a byte timer in DS:3069. Native `draw_car_reference` and `car_render.s` choose directly from the current heading and have no equivalent state. Found while mapping the demo return reset, which initializes these two fields. |
 | F14 | Missing prepared-title background tints | Original `261e8..2623d` shades two rectangles before capturing DS:4c1c. Native startup previously converted the untouched artwork, affecting 10,837 pixels with the supplied artwork/palette. Corrected with one-time preparation; evidence below. |
 | F15 | Saved language ignored by live table consumers | Original startup resolves DS:05e1 and passes it to `2b70a`, which constructs `/langN.txt`. Native title/Arcade, pause and intermission loads were hardwired to lang1. Positive supplied-language selections are now connected; startup default detection/chooser and remaining translated-label caller coverage are still open. |
+| F16 | Added global right-mouse program exit | The main loop read the right-button register and set `exit_requested` independently of the keyboard/menu owner, including during Help. Removed in the keyboard-only exit correction below. This was a native shortcut, not an original title/Help action. |
 
 The original language startup/caller audit confirmed the hardwired-language
 candidate as F15. Track catalogue sorting, limits,
@@ -2454,6 +2455,43 @@ The build log is `tmp/title-help-rows-build.log`. Runs were muted and their
 emulators are closed. This completes this row matrix for the two title shapes,
 not other saved modes, registration/language combinations, Help pagination,
 allocation failures or other owners. No production menu semantics changed.
+
+## F16: remove global right-mouse exit (2026-09-30)
+
+The title's separate left-click activation had already been removed, but the
+main loop still read the right mouse button and requested program exit on an
+edge. This ran above the modal dispatch, so it could also interrupt Help and
+other owners. The supplied original title reader and Help navigation use
+keyboard input; this extra global quit binding had no original counterpart.
+The polling/edge latch and joystick exception have been removed, leaving the
+ordinary menu/keyboard exit and save-confirmation paths intact. This does not
+remove joystick second-button sampling from the driving input adapter.
+
+`verify-title-help` passes original Help-topic calls, all 256 scan values,
+84 F9 cases and 42 ignored-F2 cases. `verify-help-navigation` passes 816
+original key/page/link/history/fallback comparisons. Logs:
+`tmp/keyboard-only-title-help-oracles.log` and
+`tmp/keyboard-only-title-help-build.log`. The linked ELF symbol table retains
+`slicks_amiga_platform_joystick` and discards the now-unreferenced
+`slicks_amiga_platform_right_mouse`; production no longer polls that API.
+
+Stock PAL 68020/2 MiB Chip/no Fast, stripped executable and confirmed default
+4 KiB stack native regressions:
+
+- HELPF, `tmp/standalone-release-vksrsumc`: all archive/surface/viewer/
+  navigation failure recovery stages and keyboard dismissal/exit pass, with
+  restoration 31. All six warning publications match all 64,000 chunky pixels.
+  The three warning rectangles restore exactly; the later two full backgrounds
+  are identical. The first full image differs outside the warning due to the
+  previously recorded title animation, so that full-image comparison is not
+  claimed as a pass.
+- DEMOEXT, `tmp/standalone-release-gbmdba5s`: demo exit restores its saved
+  configuration and completes the existing lifecycle/system-restoration gate.
+
+Runs were muted and emulators closed. No manual joystick testing was resumed.
+Historical player-setup notes describing the right-mouse shortcut record its
+former behavior, not the current interface. Other owner/input coverage remains
+open; removal of this shortcut is not a whole-input-system fidelity claim.
 
 ## Adaptations to preserve or explicitly classify
 

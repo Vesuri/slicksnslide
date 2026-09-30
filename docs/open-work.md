@@ -118,6 +118,8 @@ native caller/input/error checks.
   Finnish modes 0 and 5, with exact parent restoration and resident publication;
   other mode/language/error routes remain separate coverage.
   Do not add an F2 title action or revive removed native-only menu rows.
+  Native-only left-button title activation and global right-button program
+  exit have been removed; do not reintroduce either as original behavior.
 - Finish remaining caller/font-alias lifetime checks for other dialogs,
   transitions, failure and language routes. Ordinary Options/Players/Tracks
   and Arcade Settings nested-Help title returns are covered in the evidence.
