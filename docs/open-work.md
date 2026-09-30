@@ -52,7 +52,7 @@ validation candidate still says 0.1; apply the final version after D-3 passes.
 
 ## D. Release gate (run once, after B and C)
 
-- [ ] **D-1.** Rerun `make release-check` from a clean tree after the shutdown
+- [x] **D-1.** Rerun `make release-check` from a clean tree after the shutdown
   allocation fix and confirm it passes.
 - [x] **D-2.** Run F1, CITY and WHACKO full-frame display audits on the release
   candidate, plus the `make -C amiga RETCHECK=1` retention check, and confirm

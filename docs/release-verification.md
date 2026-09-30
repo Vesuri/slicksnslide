@@ -64,6 +64,22 @@ python3 tools/test_standalone_release.py PRIVATE_INSTALL --workbench --args DEMO
 For the watermark, build `make -C amiga STACKCHECK=1`, run with the matching
 binary, then restore `make -C amiga STACKCHECK=0` before release packaging.
 
+The clean-tree `make release-check` gate passes at `fe94b50`, including all
+host reference comparisons, the 197-file extraction/preservation/rejection
+tests, two identical clean stripped builds and the 11-member LH5 audit.
+Log: `tmp/release-gate-memory-fix.log`. The normal stripped executable is
+455,104 bytes, SHA256
+`be8071c8df2f9449759db8e14b7a7dbf6b2e51c93d780b6e7ae7e6264e7dcec7`.
+`build/release-check/Slicks-0.1.lha` is 281,331 bytes, SHA256
+`8c4b0861ccd678a64e2f6706d7932c68f95b04babe67de03570fdd8b992d3ee8`.
+This is a validation candidate, not the final 0.90 release. The prepared
+manual-retry executable compares byte-for-byte with the packaged executable.
+The exact archive also passes real Intermediate-level Installer tests:
+`tmp/installer-script-i4r6c_5n` (Use existing, stock 2 MiB) and
+`tmp/installer-script-m6rzumtt` (fresh extraction through RAM-backed T:,
+2 MiB Chip plus 4 MiB Fast). Both verify original data, expected binaries,
+absence of Play, preserved user files where applicable, and staging cleanup.
+
 ## 2026-09-30 — direct executable launch and RAM temporary directory
 
 Removed the Play script from the package and installer. Upgrades also remove
