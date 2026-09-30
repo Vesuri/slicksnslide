@@ -140,6 +140,11 @@ intermission construction diagnostic, not by normal game intermission.
 
 ### Validation requirements
 
+Reserve the 96,546-byte menu/parent block after startup title/sample staging
+is freed and before allocating the many small menu-cache resources. Reserving
+it last reproduced the reported startup error with a maximal catalogue;
+reserving it first passes without increasing resident memory.
+
 - Workbench loaded, stock PAL 68020, 2 MiB Chip, no Fast, default 4 KiB stack.
 - Track actual Exec allocation/free calls through menus, demo/races, intermission,
   saving and shutdown; distinguish OS allocations from game-owned ones.

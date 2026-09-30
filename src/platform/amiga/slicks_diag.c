@@ -5065,6 +5065,12 @@ int main(void)
        argv[2]=='M' && argv[3]=='E' && argv[4]=='N' && argv[5]=='U' && argv[6]=='2')) {
         FreeMem(title_asset,64003UL); title_asset=0;
     }
+    /* Reserve the largest remaining contiguous block before the cache's
+     * small resource allocations divide the released startup scratch. */
+    if(slicks_amiga_menu_workspace_create()) {
+        PutStr((CONST_STRPTR)"Slicks: insufficient memory for menu and track workspace.\n");
+        goto cleanup;
+    }
     if(slicks_amiga_menu_keymap_init() ||
        slicks_resource_archive_open(&archive,"SLICKS.000")) goto cleanup;
     menu_cache=slicks_resource_cache_create(&archive,slicks_menu_resources,
@@ -5077,10 +5083,6 @@ int main(void)
     if(championship_scan_test==1) g_slicks_diag_saved_lock_failure=1;
     if(championship_scan_test==2) g_slicks_diag_saved_next_failure=1;
     slicks_amiga_saved_files_refresh(&saved_files_cache);
-    if(slicks_amiga_menu_workspace_create()) {
-        PutStr((CONST_STRPTR)"Slicks: insufficient memory for menu and track workspace.\n");
-        goto cleanup;
-    }
     if (auto_race) {
         struct SlicksConfiguration diagnostic_configuration=configuration;
         if(fuel_race_test && !natural_results_test) {

@@ -1,5 +1,23 @@
 # Development release audit
 
+## 2026-09-30 — reserve the large menu block before cache fragmentation
+
+Move the unchanged 96,546-byte menu reservation to immediately after release
+of startup title/sample staging, before the many small resource-cache blocks
+and retained track-list catalogue. No capacities or total resident bytes change.
+The earlier allocation order failed this block in the maximal-catalogue test
+(`...-5fvknh2m`, above); the new order passes with the same catalogue.
+
+- `tmp/standalone-release-8y5wb38r`: maximal 65,528-byte catalogue, Workbench,
+  stock 68020/2 MiB/no Fast/default 4 KiB stack, REGCHECK full allocation audit:
+  return 0, 200 allocations, zero failures, zero outstanding blocks, no
+  workspace ownership conflicts.
+- `...-uifdycmj`: repeat maximal-catalogue launch, registration Help and system
+  restoration pass (REGCHECKY). Both owned emulator sessions closed normally.
+
+This fixes the reproduced launch reservation failure for these configurations;
+it does not establish arbitrary Workbench free-memory headroom or complete B12.
+
 ## 2026-09-30 — registration decode staging reservation
 
 Registration BMP decoding now leases 70,000 bytes from the startup-reserved
