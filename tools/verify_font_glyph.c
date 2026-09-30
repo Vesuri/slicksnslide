@@ -9,6 +9,7 @@
 #include <unicorn/m68k.h>
 #include "host_archive.h"
 #include "../src/ui/font_resource.h"
+#include "../src/ui/font_offsets.h"
 
 static unsigned char dos[64000];
 static unsigned plane, writes;
@@ -63,6 +64,20 @@ int main(int argc,char **argv)
     check(uc_ctl_set_cpu_model(m68k,UC_CPU_M68K_M68020));
     check(uc_mem_map(m68k,0,0x400000,UC_PROT_ALL));
     check(uc_mem_write(m68k,0,code,codesize));
+    if(planar && getenv("SLICKS_FONT_CACHE")) {
+        unsigned addresses[2];
+        for(unsigned i=0;i<2;++i) {
+            unsigned at=(unsigned)codesize-10+4*i;
+            addresses[i]=((unsigned)code[at]<<24)|((unsigned)code[at+1]<<16)|((unsigned)code[at+2]<<8)|code[at+3];
+        }
+        unsigned short offsets[256]={0};unsigned char encoded[512];
+        slicks_font_offsets(font,offsets);
+        for(unsigned i=0;i<256;++i) { encoded[2*i]=offsets[i]>>8;encoded[2*i+1]=offsets[i]; }
+        unsigned char pointer[]={0,5,0,0};
+        check(uc_mem_write(m68k,addresses[0],pointer,4));
+        check(uc_mem_write(m68k,addresses[1],encoded,sizeof encoded));
+        puts("Immutable-font offset cache enabled");
+    }
     static const int registers[]={UC_M68K_REG_D0,UC_M68K_REG_D1,UC_M68K_REG_D2,
         UC_M68K_REG_D3,UC_M68K_REG_D4,UC_M68K_REG_D5,UC_M68K_REG_D6,UC_M68K_REG_D7,
         UC_M68K_REG_A0,UC_M68K_REG_A1,UC_M68K_REG_A2,UC_M68K_REG_A3,

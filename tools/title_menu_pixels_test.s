@@ -15,3 +15,5 @@ slicks_title_font: dc.l 0
 slicks_title_small_font: dc.l 0
 slicks_title_third_color: dc.w 0
 slicks_title_text_page: dc.w 0
+slicks_title_cached_font: dc.l 0
+slicks_title_cached_offsets: dcb.w 256,0

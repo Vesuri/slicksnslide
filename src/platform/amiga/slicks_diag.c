@@ -98,6 +98,9 @@ unsigned char *slicks_title_small_font;
 static unsigned char *title_arcade_font;
 static unsigned char title_language[2048];
 static unsigned title_language_used;
+#include "../../ui/font_offsets.h"
+unsigned char *slicks_title_cached_font;
+unsigned short slicks_title_cached_offsets[256];
 extern const unsigned char *slicks_title_labels[7];
 static char menu_language_name[10]="lang1.txt";
 static unsigned char language_choice_test;
@@ -4545,6 +4548,9 @@ int main(void)
                 slicks_title_labels[i],slicks_title_labels[i]);
     }
 
+    /* Only this immutable font's geometry is cached; palette bytes may pulse. */
+    slicks_font_offsets(slicks_title_small_font,slicks_title_cached_offsets);
+    slicks_title_cached_font=slicks_title_small_font;
     logical = (unsigned char *)AllocMem(0x40000UL, MEMF_ANY);
     if (!logical)
         goto cleanup;
@@ -7174,6 +7180,7 @@ cleanup:
     if (title_asset)
         FreeMem(title_asset, 64003UL);
     if(slicks_title_font) { FreeMem(slicks_title_font,title_font_sizes[0]); slicks_title_font=0; }
+    slicks_title_cached_font=0;
     if(slicks_title_small_font) { FreeMem(slicks_title_small_font,title_font_sizes[1]); slicks_title_small_font=0; }
     if(title_arcade_font) {FreeMem(title_arcade_font,title_font_sizes[2]);title_arcade_font=0;}
     if (GfxBase)

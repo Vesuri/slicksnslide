@@ -1004,6 +1004,11 @@ verify-font-planar: build/verify_font_glyph build/font_planar_test.bin
 	build/verify_font_glyph build/font_planar_test.bin unused unused iso.@f planar
 	build/verify_font_glyph build/font_planar_test.bin unused unused pieni.@f planar
 	build/verify_font_glyph build/font_planar_test.bin unused unused kirj.@f planar
+.PHONY: verify-font-planar-cache
+verify-font-planar-cache: build/verify_font_glyph build/font_planar_test.bin
+	SLICKS_FONT_CACHE=1 build/verify_font_glyph build/font_planar_test.bin unused unused iso.@f planar
+	SLICKS_FONT_CACHE=1 build/verify_font_glyph build/font_planar_test.bin unused unused pieni.@f planar
+	SLICKS_FONT_CACHE=1 build/verify_font_glyph build/font_planar_test.bin unused unused kirj.@f planar
 build/sui_font_glyph.bin: tools/font_glyph_test.s src/ui/sui_font_glyph.s src/graphics/sgfx_mult320.s
 	@mkdir -p build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
@@ -1013,7 +1018,7 @@ build/sui_font_measure.bin: src/ui/sui_font_measure.s
 build/font_string_test.bin: tools/font_string_test.s src/ui/sui_font_string.s src/ui/sui_font_measure.s src/ui/sui_font_glyph.s src/ui/sui_menu_bridge.s src/graphics/sgfx_mult320.s
 	@mkdir -p build
 	$(VASM) -m68020 -Fbin -quiet -no-opt -o $@ $<
-build/verify_font_glyph: tools/verify_font_glyph.c tools/host_archive.h src/ui/font_resource.h
+build/verify_font_glyph: tools/verify_font_glyph.c tools/host_archive.h src/ui/font_resource.h src/ui/font_offsets.h
 	@mkdir -p build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-font-glyph: build/verify_font_glyph build/sui_font_glyph.bin build/sui_font_measure.bin build/font_string_test.bin

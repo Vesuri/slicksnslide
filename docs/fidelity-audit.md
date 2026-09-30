@@ -3071,6 +3071,45 @@ Build logs: `tmp/title-label-cache-build.log` and
 `tmp/title-label-cache-restored-build.log`. No gameplay optimization resumed;
 the independent unverified Load draft was preserved.
 
+### Immutable title-font glyph offsets
+
+The planar glyph writer now reuses a 512-byte offset table for the single
+startup-loaded small font (`kirj.@f`). The table preserves the original
+16-bit accumulated offsets. Font geometry is immutable; pulsing palette bytes
+remain live. Other font pointers use the original scan, and cleanup clears the
+advertised pointer before freeing the font. No glyph pixels, store order,
+clipping or animation state are cached or skipped.
+
+The registered Finnish Arcade control `tmp/standalone-release-eu2l4zgm`
+takes 81 refreshes per 64 intervals. Candidate runs
+`tmp/standalone-release-au96i19s` and `tmp/standalone-release-uy9bmkxg`
+both take 80, with normal restoration. This is a small repeatable improvement,
+not completion of F08 or a gameplay performance result.
+
+`tmp/title-font-offset-oracles.log` covers all three fonts with the cache both
+enabled and disabled: each variant passes 7,584 original full-frame comparisons
+and 13,272 complete four-bank surface-contract cases. Palette changes,
+transparency, clipping, page offsets and register preservation remain covered.
+The Arcade painter passes 3,888 original full-screen/font comparisons;
+`tmp/title-font-offset-menu-oracles.log` adds 63 original normal-menu comparisons
+and 54 native-store bounds checks. The test build dependency explicitly keeps
+the C source first for its `$<` recipe, including a fresh build.
+
+Native registered Finnish Arcade capture `tmp/standalone-release-om8knjpd`
+and normal capture `tmp/standalone-release-6zrqsekl` each match all 64,000
+original pixels in all 65 captured compositions. Both report zero dirty-check
+errors and restoration 31. The normal launcher was given the wrong expected
+marker (`TITLE_PULSE_OK`); its debugger actually completed with
+`TITLE_ANIMATION_OK`, and the independent captured-pixel comparison passes.
+This launcher mismatch is not recorded as an end-to-end launcher pass.
+Logs are `tmp/title-font-offset-{arcade,normal}-pixels.log`.
+The additional resident table also passes 300-track startup and race entry
+in `tmp/standalone-release-nhwrsdu3`; this does not establish the still-open
+10,000-track memory gate.
+All native runs use a stock PAL 68020, 2 MiB/no Fast, default 4 KiB stack and
+muted audio. Private key and captured data remain ignored. The separate
+unverified dynamic Load draft is not part of this change.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

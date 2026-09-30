@@ -127,7 +127,10 @@ native caller/input/error checks.
   17 state / 18 label-setup lines per pulse. Startup-resolved language-label
   pointers were screened and removed: parent and candidate both took 81
   refreshes with the identical interval histogram. Do not repeat that candidate
-  unchanged. Next assess owner-glyph reuse with exact font-store/lifetime checks. Keep
+  unchanged. Immutable small-font offset reuse now passes cached/uncached glyph
+  oracles and both native title-cycle pixel comparisons; repeated registered
+  Finnish Arcade timing improves only from 81 to 80 refreshes per 64 intervals.
+  Remaining owner drawing and state work still need assessment. Keep
   instrumentation overhead distinct from normal cadence and preserve original
   palette/state semantics; the current result does not close F08.
 - F03–F05/F10/F12: finish remaining native interactive sequences and shortcuts

@@ -30,3 +30,5 @@ slicks_title_third_color:
 slicks_title_ordinary_color:
 slicks_title_selected_color:
 	dc.l 0
+slicks_title_cached_font: dc.l 0
+slicks_title_cached_offsets: dcb.w 256,0

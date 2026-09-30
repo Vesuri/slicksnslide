@@ -1,6 +1,8 @@
 	section code
 	xdef sui_font_glyph_planar
 	xref slicks_title_text_page
+	xref slicks_title_cached_font
+	xref slicks_title_cached_offsets
 ; Original glyph decoding, with VGA four-bank stores for the title surface.
 ; Same register contract as sui_font_glyph; source zero is transparent.
 sui_font_glyph_planar:
@@ -18,6 +20,13 @@ sui_font_glyph_planar:
 	move.b 2(a1),d4
 	moveq #0,d6
 	moveq #0,d7
+	cmpa.l slicks_title_cached_font,a1
+	bne.s .preceding
+	cmpi.w #256,d2
+	bhs.s .preceding
+	lea slicks_title_cached_offsets,a4
+	move.w (a4,d2.w*2),d7
+	bra.s .selected
 .preceding:
 	cmp.w d2,d6
 	bge.s .selected
