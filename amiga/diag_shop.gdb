@@ -37,7 +37,7 @@ commands
     printf "SHOP_CREATE_FAILURE_CLEANUP_OK checks=%u\n",g_slicks_shop_create_checks
   end
   if g_slicks_shop_test_phase != 4 || g_slicks_shop_help_phase != 2 || !$shop_second_driver
-    printf "SHOP_INPUT_FAILED\n"
+    printf "SHOP_INPUT_FAILED phase=%u help=%u second_driver=%u\n",g_slicks_shop_test_phase,g_slicks_shop_help_phase,$shop_second_driver
     quit 1
   end
   if $shop_draws!=9

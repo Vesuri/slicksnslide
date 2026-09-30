@@ -22,7 +22,7 @@ Target sizes from the built 68020 ELF, not host ABI sizes:
 | Prepared title background including lookahead | 64,034 | Startup to exit |
 | Two eight-plane display bitmaps | 128,000 | Startup to exit |
 | Race runtime, including maps/assets/render caches | 369,104 | Startup to exit |
-| Common menu owner / track-load staging | 86,422 | Startup-reserved exclusive workspace |
+| Common menu owner / track-load staging | 87,958 | Startup-reserved exclusive workspace |
 | Help viewer | 46,096 | Nested modal lifetime |
 | List/profile picker | 35,132 | Nested modal lifetime |
 | Intermission dialog | 4,228 | Between races |
@@ -35,7 +35,7 @@ peaks at 1,337,664 bytes of directly tracked game allocations and ends at zero.
 That is one tested path, not the program's worst-case total RAM requirement;
 it excludes the loader's executable segments and OS-owned memory.
 
-The common menu owner includes a 64,000-byte saved page and three 6,000-byte
+The common menu owner includes a 65,536-byte saved-page/decode buffer and three 6,000-byte
 font arrays. These dominate small menus too. Nested Help can add a separate
 64,000-byte save-under. Never sum all dialog sizes as though all were live
 together, but never assume nested dialogs can overwrite their parent.
@@ -65,10 +65,11 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    menu acquisition. Nested children still need their own slots. Busy/oversize
    acquisition fails without an AllocMem fallback and increments an ownership
    diagnostic. The reservation is freed once at shutdown.
-2. **Menu construction resources:** 8/32/64 KiB temporary decode allocations.
-   Reuse the owner's save-under before its parent snapshot becomes live where
-   safe; otherwise use a shared scratch reservation. Track background input is
-   64,003 bytes, so a 64,000-byte save-under is insufficient as-is.
+2. **Menu construction resources (implemented):** Help/race fonts, Players,
+   Options, Tracks and shop construction borrow the owner's save-under before
+   its parent snapshot becomes live. Extending that reservation by 1,536 bytes
+   removes 8/32/64 KiB transient allocations and accommodates indexed image
+   headers. Nested icon loading still has a separate 512-byte temporary.
 3. **Track preparation (implemented):** 65,536-byte DAT, 8,192-byte track, 3,018-byte navigation,
    128-byte car and 2,048-byte font staging. Chunky already supplies decode
    workspace. Preparation now shares the inactive primary menu slot only after

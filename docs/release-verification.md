@@ -1,5 +1,21 @@
 # Development release audit
 
+## 2026-09-30 — reuse primary save-under during construction
+
+The startup menu reservation grows by 1,536 bytes to 87,958 bytes. Before a
+parent snapshot exists, its 65,536-byte save-under stages font/image resources
+for Help/race surfaces, Players, Options, Tracks and shop. No constructor frees
+borrowed bytes. Nested dialogs retain their parent snapshots unchanged.
+
+Workbench-loaded stock/default-stack runs pass Players (`...-dzvokv8z`), Tracks
+(`...-3o7ofzlp`) and Options (`...-fpttbhnn`), including 6/9/10 full-screen
+chunky/planar publication comparisons respectively. Shop's 12 construction
+failure/cleanup cases pass (`...-k1etjlhn`), but its full Help interaction does
+not: allocation-return tracing (`...-t6jv_3a3`) identifies the separate 64,000-byte
+nested Help save-under allocation failing. Do not count that full workflow as
+passed. It remains part of the startup-memory migration; no expectation was
+relaxed. The general shop diagnostic now prints which input checkpoint failed.
+
 ## 2026-09-30 — remove redundant track-list refresh staging
 
 Refresh now decodes into its own unpublished staging instead of invoking a

@@ -105,7 +105,9 @@ struct SlicksAmigaRaceMenu {
 struct SlicksAmigaPlayerMenu {
     struct SlicksPlayerMenuRenderer renderer;
     struct SlicksPlayerMenuLabels labels;
-    unsigned char palette[768],saved[64000],fonts[3][6000],pixels[11][192];
+    /* Before the parent snapshot exists, saved doubles as resource staging.
+     * 64 KiB covers indexed images including their three-byte header. */
+    unsigned char palette[768],saved[65536],fonts[3][6000],pixels[11][192];
     struct SlicksMenuIcon icons[11];
     struct SlicksMenuRect dirty[16];
     unsigned short dirty_count;

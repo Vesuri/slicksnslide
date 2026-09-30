@@ -100,7 +100,8 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
         g_slicks_diag_shop_create_fault=0;
     }
     struct SlicksAmigaPlayerMenu *m=create_fault(2)?0:slicks_amiga_race_surface_create(archive,chunky,palette);
-    unsigned char *resource=create_fault(3)?0:AllocMem(65536,MEMF_ANY);
+    /* The decorated shop's save-under is not captured until decoding ends. */
+    unsigned char *resource=create_fault(3) || !m?0:m->saved;
     if(!m || !resource) goto failed;
     long size=slicks_resource_archive_load(archive,create_fault(4)?"missing-shop-background":"tuning.@I",resource,65536);
     unsigned short width,height;
@@ -116,11 +117,9 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
     /* Original 2cf21 saves the fully decorated screen, not the raw image. */
     for(unsigned i=0;i<64000;++i) m->saved[i]=chunky[i];
     m->saved_dirty_count=0; m->track_saved_dirty=1;
-    FreeMem(resource,65536);resource=0;
     if(slicks_amiga_shop_draw(m,c,state)) goto failed;
     return m;
 failed:
-    if(resource) FreeMem(resource,65536);
     slicks_amiga_player_menu_destroy(m); return 0;
 }
 

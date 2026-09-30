@@ -682,7 +682,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_help_surface_create(
 {
     if(!archive || !chunky || !palette) return 0;
     struct SlicksAmigaPlayerMenu *m=surface_create_fault(1)?0:acquire_menu();
-    unsigned char *resource=surface_create_fault(2)?0:AllocMem(8192,MEMF_ANY);
+    unsigned char *resource=surface_create_fault(2) || !m?0:m->saved;
     if(!m || !resource) goto failed;
     long size=slicks_resource_archive_load(archive,surface_create_fault(3)?"missing-surface-font":"kirj.@f",resource,8192);
     if(surface_create_fault(4)) size=0;
@@ -690,10 +690,8 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_help_surface_create(
     for(unsigned i=0;i<768;++i) m->palette[i]=palette[i];
     m->renderer.fonts[0]=m->fonts[0];
     m->renderer.ui=(struct SlicksChunkyUi){chunky,m->palette,dirty,m};
-    FreeMem(resource,8192);
     return m;
 failed:
-    if(resource) FreeMem(resource,8192);
     slicks_amiga_player_menu_destroy(m);
     return 0;
 }
@@ -705,11 +703,10 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_race_surface_create(
 {
     struct SlicksAmigaPlayerMenu *m=slicks_amiga_help_surface_create(archive,chunky,palette);
     if(!m) return 0;
-    unsigned char *resource=surface_create_fault(5)?0:AllocMem(8192,MEMF_ANY);
+    unsigned char *resource=surface_create_fault(5)?0:m->saved;
     long size=resource?slicks_resource_archive_load(archive,surface_create_fault(6)?"missing-surface-font":"pieni.@f",resource,8192):-1;
     if(surface_create_fault(7)) size=0;
     int failed=size<0 || slicks_decode_font_resource(resource,(unsigned long)size,m->fonts[1],sizeof m->fonts[1])<0;
-    if(resource) FreeMem(resource,8192);
     if(failed) { slicks_amiga_player_menu_destroy(m); return 0; }
     m->renderer.fonts[1]=m->fonts[1]; m->renderer.text=text; m->renderer.icon=icon; m->renderer.context=m;
     return m;
@@ -1170,7 +1167,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
 {
     if(!archive || !chunky || !title || !footer || !labels) return 0;
     struct SlicksAmigaPlayerMenu *m=acquire_menu();
-    unsigned char *resource=AllocMem(32768,MEMF_ANY);
+    unsigned char *resource=m?m->saved:0;
     if(!m || !resource || prepare_keymap(m)) goto failed;
     unsigned width,height; unsigned long consumed;
     long size=slicks_resource_archive_load(archive,"players.bmp",resource,32768);
@@ -1187,7 +1184,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
         if(size<0 || slicks_decode_menu_icon(resource,(unsigned long)size,m->palette,m->pixels[i],sizeof m->pixels[i],&m->icons[i].width,&m->icons[i].height)) goto failed;
         m->icons[i].pixels=m->pixels[i];
     }
-    FreeMem(resource,32768); resource=0;
+    /* Resource staging ends before renderer_prepare saves the parent page. */
     m->labels=*labels;
     m->renderer.ui=(struct SlicksChunkyUi){chunky,m->palette,dirty,m};
     m->renderer.saved=m->saved; m->renderer.icons=m->icons; m->renderer.icon_count=11;
@@ -1197,7 +1194,6 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_player_menu_create(
     m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
-    if(resource) FreeMem(resource,32768);
     slicks_amiga_player_menu_destroy(m);
     return 0;
 }
@@ -1213,7 +1209,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_options_menu_create(
 {
     if(!archive || !chunky || !palette || !title || !renderer) return 0;
     struct SlicksAmigaPlayerMenu *m=acquire_menu();
-    unsigned char *resource=AllocMem(8192,MEMF_ANY);
+    unsigned char *resource=m?m->saved:0;
     if(!m || !resource) goto failed;
     for(unsigned i=0;i<768;++i) m->palette[i]=palette[i];
     const char *names[]={"kirj.@f","pieni.@f"};
@@ -1227,11 +1223,9 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_options_menu_create(
     m->renderer.saved=m->saved; m->renderer.text=text; m->renderer.icon=icon; m->renderer.context=m;
     if(slicks_options_renderer_init(renderer,&m->renderer,options_measure_bridge) ||
        slicks_options_renderer_prepare(renderer,title) || m->error) goto failed;
-    FreeMem(resource,8192);
     m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
-    if(resource) FreeMem(resource,8192);
     slicks_amiga_player_menu_destroy(m);
     renderer->surface=0;
     return 0;
@@ -1245,7 +1239,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_track_menu_create(
     renderer->surface=0;
     if(!archive || !chunky || !title || !footer || total<0 || !name) return 0;
     struct SlicksAmigaPlayerMenu *m=acquire_menu();
-    unsigned char *resource=AllocMem(64003,MEMF_ANY);
+    unsigned char *resource=m?m->saved:0;
     if(!m || !resource) goto failed;
     long size=slicks_resource_archive_load(archive,"trckmenu.@p",m->palette,sizeof m->palette);
     if(size!=768) goto failed;
@@ -1264,11 +1258,9 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_track_menu_create(
     m->renderer.saved=m->saved; m->renderer.text=text; m->renderer.context=m;
     if(slicks_track_renderer_init(renderer,&m->renderer,percent,name,name_context) ||
        slicks_track_renderer_prepare(renderer,title,footer,total,percent) || m->error) goto failed;
-    FreeMem(resource,64003);
     m->dirty_count=1; m->dirty[0]=(struct SlicksMenuRect){0,0,320,200};
     return m;
 failed:
-    if(resource) FreeMem(resource,64003);
     slicks_amiga_player_menu_destroy(m); renderer->surface=0;
     return 0;
 }
