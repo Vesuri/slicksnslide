@@ -2954,6 +2954,41 @@ All runs use 2 MiB/no Fast, 68020 real, default 4 KiB stack and muted audio;
 owned emulators are closed. The independent Load draft remains uncommitted
 and unexercised. The upper-bound race/recovery gate stays open.
 
+### F18 follow-up: actual arena-allocation failure and safe recovery
+
+Preparation now reports failed temporary-buffer bits (DAT, track, decoding
+arena, navigation, car, font), reset at every preparation entry. The unchanged
+10,000-track startup fails only the 64 KiB arena allocation: mask 4, stage 0,
+error 1 (`tmp/standalone-release-zl4lys66`). This identifies the request, not
+whether total free memory or fragmentation is the limiting factor.
+
+A rejected experiment sized the initial DAT allocation to the actual 41,500
+bytes. It still failed the arena allocation (`tmp/standalone-release-5muf8yf9`)
+and was removed in full. Further inspection found that the buffer is reused
+with 64 KiB capacities for masks/HUD/font loading. A future peak-memory design
+must cover those lifetimes rather than treating DAT as a single-use input.
+No normal race was run with or accepted from that experimental build.
+
+`CATRECOV` uses ordinary keyboard events: GO, dismiss the actual memory error,
+GO again, dismiss, then request exit. It does not inject an allocation failure,
+reduce the catalogue, mutate setup through GDB or force application cleanup.
+`diag_catalogue_recovery.gdb` passes on stock 68020/2 MiB/no Fast/default 4 KiB
+in `tmp/standalone-release-5g_l_rbw`: both failures have arena-only mask 4,
+both warning returns have an active custom display, both dismissals complete,
+no race starts, and normal exit reports restoration mask 31. Captured session
+and configuration bytes match before/after each failure exactly. This proves
+recovery/state retention, not pixel-perfect warning layout or heap accounting
+after the system-restored marker.
+
+The first diagnostic key sequence queued an unnecessary Enter after requesting
+exit; the title input loop consumed it as another GO before processing exit.
+Runs `7qrj2msa` and `z_bxpsix` were rejected for that third attempt. The corrected
+sequence ends with the exit key alone. Build: `tmp/catalogue-recovery-build.log`.
+Normal 300-track preparation and race entry pass with zero error/allocation
+mask in `tmp/standalone-release-ctrint75` using the restored loader.
+All owned emulators were closed and audio muted. The independent Load draft
+remains uncommitted. Successful 10,000-track race entry remains open.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

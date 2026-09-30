@@ -27,8 +27,8 @@ commands
   tbreak *$prepare_return
   commands
     silent
-    printf "LARGE_CATALOGUE_PREPARE_RETURN result=%d error=%u\n",$d0,g_slicks_diag_race_error
-    if $d0 || g_slicks_diag_race_error
+    printf "LARGE_CATALOGUE_PREPARE_RETURN result=%d error=%u allocation_failures=%u stage=%u\n",$d0,g_slicks_diag_race_error,g_slicks_diag_race_allocation_failures,g_slicks_diag_race_stage
+    if $d0 || g_slicks_diag_race_error || g_slicks_diag_race_allocation_failures
       quit 1
     end
     continue

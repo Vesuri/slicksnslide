@@ -178,9 +178,14 @@ native caller/input/error checks.
   Equal stems and scratch-allocation failure retain the exact former exchange
   path. The enhanced upper-bound gate captures 10,000 correctly sorted unique
   filenames/selection indices, but preparation returns error 1 (allocation
-  failure). Identify the failing temporary allocation and verify graceful
-  recovery or reduce its peak memory without changing resident-menu behavior;
-  do not count 10,000-track race entry as passed. These are debugger/host timings,
+  failure). The failing buffer is the 64 KiB decoding arena. Actual low-memory
+  warning/dismiss/GO retry/dismiss/exit now passes, preserving session and
+  configuration byte-for-byte and restoring system state. Supporting race
+  entry at this extreme size still needs a peak-memory/lifetime solution that
+  retains resident menus; do not count 10,000-track race entry as passed.
+  Merely shrinking DAT to its file length did not fix the arena failure and
+  is unsafe without auditing its later masks/HUD/font scratch uses; that trial
+  was removed. These are debugger/host timings,
   not PAL frame measurements.
   The native
   intermission Save path now saves all 300 selected tracks

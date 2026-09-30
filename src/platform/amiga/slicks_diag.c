@@ -304,6 +304,8 @@ volatile unsigned short g_slicks_diag_ready;
 volatile unsigned short g_slicks_diag_ingame;
 volatile unsigned short g_slicks_diag_race_error;
 volatile unsigned short g_slicks_diag_race_stage;
+/* Failed preparation buffers: DAT, track, arena, navigation, car, font. */
+volatile unsigned short g_slicks_diag_race_allocation_failures;
 volatile unsigned short g_slicks_diag_shadow_check;
 volatile unsigned long g_slicks_diag_jump_takeoffs;
 volatile unsigned long g_slicks_diag_jump_landings;
@@ -768,6 +770,7 @@ volatile unsigned short g_slicks_diag_track_alloc_fail,g_slicks_diag_track_alloc
 volatile unsigned short g_slicks_diag_track_alloc_live;
 volatile unsigned short g_slicks_diag_track_directory_alloc_failed;
 static unsigned char catalogue_probe;
+static unsigned char catalogue_recovery;
 volatile unsigned short g_slicks_diag_catalogue_phase,g_slicks_diag_catalogue_progress;
 void __attribute__((noinline)) slicks_diag_catalogue_progress(void) { __asm__ volatile("" ::: "memory"); }
 static void *allocate_track_storage(unsigned long bytes)
@@ -2389,6 +2392,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     static struct SlicksConfiguration saved_configuration;
     static unsigned char saved_requests[4];
     g_slicks_diag_race_error=0;
+    g_slicks_diag_race_allocation_failures=0;
     if(configuration->options[0]<0 || configuration->options[0]>=6) {
         g_slicks_diag_race_error=7;
         slicks_amiga_platform_end(platform);
@@ -2441,6 +2445,8 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     else font_resource = (unsigned char *)AllocMem(2048UL, MEMF_ANY);
     if (!dat || !track || !arena || !navigation || !car_resource ||
         !font_resource) {
+        g_slicks_diag_race_allocation_failures=(!dat)|((!track)<<1)|((!arena)<<2)|
+            ((!navigation)<<3)|((!car_resource)<<4)|((!font_resource)<<5);
         g_slicks_diag_race_error = 1;
         goto cleanup;
     }
@@ -4115,6 +4121,10 @@ int main(void)
     if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='P' &&
        argv[4]=='R' && argv[5]=='O' && argv[6]=='B' && argv[7]=='E') {
         catalogue_probe=1;argc=7;argv="STARTGO";
+    }
+    if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='R' &&
+       argv[4]=='E' && argv[5]=='C' && argv[6]=='O' && argv[7]=='V') {
+        catalogue_recovery=1;argc=7;argv="STARTGO";
     }
     if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='F' &&
        argv[4]=='A' && argv[5]=='I' && argv[6]=='L' && argv[7]>='1' && argv[7]<='4') {
@@ -6223,6 +6233,15 @@ int main(void)
                          * be corrected and GO retried from the actual menus. */
                         race_load_prompt=1; race_load_retry=0;
                         if(show_race_load_error(&platform,logical,chunky,mode_state,source_palette,0)) goto cleanup;
+                        if(catalogue_recovery) {
+                            /* Ordinary dismiss/GO retry, then dismiss/quit. */
+                            platform.key_tail=0;platform.keys[0]=0x45;
+                            if(catalogue_recovery++==1) {
+                                platform.keys[1]=0x44;platform.key_head=2;
+                            } else {
+                                platform.keys[1]=0x45;platform.key_head=2;
+                            }
+                        }
                         if(setup_failure_test) {
                             static const unsigned char keys[]={0x45,0x4d,0x44,0x45,0x4c,0x44};
                             platform.key_tail=0;
