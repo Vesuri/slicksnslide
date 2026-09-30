@@ -3120,3 +3120,34 @@ unverified dynamic Load draft is not part of this change.
   semantics must still be compared with DOS.
 - Deferred or unavailable evidence is not a supported-feature claim: manual
   joystick verification and the absent external order-form image remain so.
+
+## First-run language chooser and mouse consumers (2026-09-30)
+
+**First-run chooser (ship item B7): closed, no defect.**
+- The publisher's `Slix151.zip` contains no `SLICKS.CFG` (archive listing of
+  `tmp/Slix151-release.zip`), so a fresh installation starts from the
+  original defaults.
+- Those defaults have `field_05e1 = 255` (`src/gen/setup_defaults.h`, generated
+  from the original image). This is negative, which means English (decision D3).
+- The console chooser runs only for a saved selector of 0
+  (`slicks_diag.c`, `if(!configuration.field_05e1)`). It is therefore never
+  reached on first start, under WHDLoad or through `Play`.
+- The local `ref/SLICKS.CFG` also stores selector 1.
+
+**Mouse (ship item B8): closed, no input consumer.**
+- The unpacked image contains seven `INT 33h` sites.
+- Four are in `live_vga_mode_setup` (`3000:aeb7..afb4`):
+  - reset (AX=0), with the result ANDed with the button count into DS:15fc;
+  - one status read (AX=3), used only to choose a coordinate scale in
+    DS:15fd;
+  - vertical bounds (AX=8);
+  - the graphics cursor (AX=9).
+- The other three are the small wrappers `3000:4034` (reset), `3000:4042`
+  (status) and `3000:407f` (generic). None of them has a direct caller in the
+  live listing.
+- The instrumented BASIC run saw exactly AX=0, 3, 8 and 9
+  ([external-surface.md](external-surface.md)).
+- DS:15fc/15fd are later read only by the cursor bookkeeping inside
+  `3000:408d` and `3000:4190`.
+- No menu or game path reads mouse position or buttons, so the Amiga port
+  needs no mouse input. This is consistent with F11 and F16.

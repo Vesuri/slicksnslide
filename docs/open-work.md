@@ -98,27 +98,6 @@ Accept when all of these hold:
 - one native fixture holds Down on the title and in Help and shows the same
   number of steps as the recovered schedule.
 
-### B7. First-run language chooser under WHDLoad and Play
-
-The startup chooser (saved language 0) is a console text menu. With no
-interactive console, the game refuses to start.
-
-Check the language byte of the `SLICKS.CFG` that the installer produces from
-`Slix151.zip`:
-- if it is not 0, record that and close this item;
-- if it is 0, start once from the WHDLoad icon and once from `Play`. Any start
-  that refuses to run is a defect to fix here.
-
-### B8. Mouse audit
-
-The original calls INT 33h (reset, status, position, bounds, cursor;
-[external-surface.md](external-surface.md)). The title and Help are proven
-keyboard-only, but the other consumers were never audited.
-
-List every INT 33h call site in `disasm/live-listing.txt` and its consumer.
-Close this item if none drives menu or game input; otherwise add one fix item
-per consumer.
-
 ## C. Packaging
 
 Follow Vette's layout (`~/Documents/Vette`: `Makefile` `dist`/`release-check`,
