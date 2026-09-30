@@ -850,6 +850,17 @@ unsigned char g_slicks_diag_title_pulse_row;
 volatile unsigned short g_slicks_title_timing_count;
 volatile unsigned long g_slicks_title_timing_vblanks[65];
 volatile unsigned char g_slicks_title_timing_counters[65];
+#ifdef SLICKS_TITLE_PROFILE
+/* REGCHECKU only. No debugger stops or allocation in the measured loop.
+ * Marks: pulse start, publication entry, unpack end, wait end, C2P end,
+ * pulse end. Normal binaries contain none of this instrumentation. */
+struct SlicksTitleProfile {
+    unsigned long marks[6],pixels;
+    unsigned short publications;
+};
+volatile struct SlicksTitleProfile g_slicks_title_profile[65];
+static volatile struct SlicksTitleProfile *title_profile_active;
+#endif
 volatile unsigned long g_slicks_title_dirty_checks,g_slicks_title_dirty_errors;
 volatile unsigned short g_slicks_title_seen_modes,g_slicks_title_seen_roles,g_slicks_title_seen_counts;
 volatile unsigned short g_slicks_title_arcade_counts,g_slicks_title_arcade_draws;
@@ -857,10 +868,22 @@ static void publish_title_dirty(struct SlicksAmigaPlatform *p,
     const unsigned char *logical,unsigned char *chunky)
 {
     if(!title_dirty.count) return;
+#ifdef SLICKS_TITLE_PROFILE
+    if(title_profile_active) {
+        ++title_profile_active->publications;
+        title_profile_active->marks[1]=slicks_diag_profile_raster_time();
+    }
+#endif
     slicks_title_dirty_unpack(&title_dirty,logical,chunky);
+#ifdef SLICKS_TITLE_PROFILE
+    if(title_profile_active) title_profile_active->marks[2]=slicks_diag_profile_raster_time();
+#endif
     /* Prepare in ordinary memory first; start publication at a fresh display
      * end, not partway through the lower border. All eight planes per block. */
     slicks_amiga_platform_wait_display_end(p);
+#ifdef SLICKS_TITLE_PROFILE
+    if(title_profile_active) title_profile_active->marks[3]=slicks_diag_profile_raster_time();
+#endif
     unsigned long pixels=0;
     for(unsigned i=0;i<title_dirty.count;++i) {
         const struct SlicksTitleRect *r=&title_dirty.rects[i];
@@ -869,6 +892,12 @@ static void publish_title_dirty(struct SlicksAmigaPlatform *p,
         pixels+=(unsigned long)(r->right-r->left)*(r->bottom-r->top);
     }
     g_slicks_title_last_pixels=pixels;
+#ifdef SLICKS_TITLE_PROFILE
+    if(title_profile_active) {
+        title_profile_active->marks[4]=slicks_diag_profile_raster_time();
+        title_profile_active->pixels=pixels;
+    }
+#endif
     if(pixels==64000) ++g_slicks_title_full_publications;
     else ++g_slicks_title_partial_publications;
     title_dirty.count=0;
@@ -6306,6 +6335,10 @@ int main(void)
                 unsigned n=g_slicks_title_timing_count++;
                 g_slicks_title_timing_vblanks[n]=platform.vblank_count;
                 g_slicks_title_timing_counters[n]=slicks_title_counter;
+#ifdef SLICKS_TITLE_PROFILE
+                title_profile_active=&g_slicks_title_profile[n];
+                title_profile_active->marks[0]=slicks_diag_profile_raster_time();
+#endif
             }
             if(configuration.options[0]!=5) {
                 pulse_normal_title(&platform,logical,chunky,source_palette,menu_selection);
@@ -6318,6 +6351,15 @@ int main(void)
                     menu_selection,selected_vehicle,track_path,0);
                 title_arcade_pulse=0;
             }
+#ifdef SLICKS_TITLE_PROFILE
+            if(title_profile_active) {
+                unsigned long end=slicks_diag_profile_raster_time();
+                title_profile_active->marks[5]=end;
+                if(!title_profile_active->publications)
+                    for(unsigned i=1;i<5;++i) title_profile_active->marks[i]=end;
+                title_profile_active=0;
+            }
+#endif
         }
         if(!save_prompt && g_slicks_track_menu && g_slicks_track_menu->track_lists) {
             if(g_slicks_track_menu->name_dialog) {

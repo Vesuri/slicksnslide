@@ -9,6 +9,16 @@ SUPPORT  = $(abspath $(dir $(shell which $(CC)))../../support)
 REPO     = ..
 GAMEPLAY_CFLAGS ?= -O3
 INNER_PROFILE ?= 0
+TITLEPROFILE ?= 0
+ifneq ($(TITLEPROFILE),0)
+ifneq ($(TITLEPROFILE),1)
+$(error TITLEPROFILE must be 0 or 1)
+endif
+endif
+# Opt-in title phase timestamps; absent from the normal binary.
+ifeq ($(TITLEPROFILE),1)
+obj/slicks_diag.o: CCFLAGS += -DSLICKS_TITLE_PROFILE
+endif
 DIV100CHECK ?= 0
 ifneq ($(DIV100CHECK),0)
 ifneq ($(DIV100CHECK),1)
@@ -102,6 +112,12 @@ DIV100_CHECK_FORCE = force-div100-check
 force-div100-check:
 endif
 
+ifeq ($(wildcard obj/title-profile-$(TITLEPROFILE).stamp),)
+TITLE_PROFILE_FORCE = force-title-profile
+.PHONY: force-title-profile
+force-title-profile:
+endif
+
 obj/point_restore.o: $(REPO)/src/game/point_restore.s obj/race_offsets.i | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
@@ -133,8 +149,10 @@ $(REPO)/src/gen/setup_defaults.h: $(REPO)/tools/export_setup_defaults.c \
 $(REPO)/disasm/runtime.bin: $(REPO)/ref/SLICKS.EXE $(REPO)/tools/unpack_compack.c
 	$(MAKE) -C $(REPO) unpack
 
-obj/slicks_diag.o: $(REPO)/src/platform/amiga/slicks_diag.c $(REPO)/src/gen/setup_defaults.h | obj
+obj/slicks_diag.o: $(REPO)/src/platform/amiga/slicks_diag.c $(REPO)/src/gen/setup_defaults.h $(TITLE_PROFILE_FORCE) | obj
 	$(CC) $(CCFLAGS) -c -o $@ $<
+	rm -f obj/title-profile-0.stamp obj/title-profile-1.stamp
+	touch obj/title-profile-$(TITLEPROFILE).stamp
 
 obj/amiga_platform.o: $(REPO)/src/platform/amiga/amiga_platform.cpp \
         $(REPO)/src/platform/amiga/amiga_platform.h \

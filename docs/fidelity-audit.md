@@ -2220,6 +2220,63 @@ the pacing policy. Other saved languages, selections and original DOS Arcade
 cadence still need their own coverage; this does not close F08 or resume paused
 gameplay optimization.
 
+## Uninterrupted title phase attribution (2026-09-30)
+
+`make -C amiga TITLEPROFILE=1` enables phase timestamps only in
+`slicks_diag.o`; `REGCHECKU` activates collection for 65 pulses. The separate
+`diag_title_profile.gdb` reads samples after normal system restoration, checks
+monotonic timestamps, counter progression and at most one publication per
+pulse. It does not stop execution within the loop. Phase timestamps use the
+existing stable VBI/beam sampler, in PAL raster lines (312 per refresh).
+Switching TITLEPROFILE automatically rebuilds the affected object via a mode
+stamp; the normal binary contains neither samples nor sampling calls.
+
+Registered Finnish, mode 0: `tmp/standalone-release-tcswuk4s`.
+Registered Finnish, Arcade: `tmp/standalone-release-yaux2k62`.
+Both use fresh private data, the stripped instrumented executable, stock
+2 MiB/no-Fast A1200 and the confirmed 4 KiB stack. Both pass all 65 samples,
+zero full-pixel diagnostics and restoration mask 31; both emulators are closed.
+
+The following means exclude sample 0 in both modes and include pulses which
+do not publish. Maxima are per phase, not necessarily from the same pulse.
+
+| Phase, raster lines | Normal mean / max | Arcade mean / max |
+| --- | --- | --- |
+| Drawing before publication | 132.56 / 425 | 266.02 / 476 |
+| Dirty VGA-to-chunky unpack | 12.95 / 65 | 8.38 / 49 |
+| Fresh display-end wait | 96.53 / 311 | 74.08 / 278 |
+| C2P rectangle loop | 4.88 / 24 | 3.47 / 19 |
+| Publication/pulse tail | 0.36 / 1 | 0.36 / 1 |
+
+Each run publishes on 23 of the remaining 64 pulses. On those pulses, mean
+normal drawing/unpack/wait/C2P is 257.35/36.04/268.61/13.57 lines; Arcade is
+332.57/23.30/206.13/9.65. Normal maximum dirty area is 1152 pixels; Arcade
+is 864. For no-publication pulses the whole pulse is assigned to drawing,
+with zero unpack/wait/C2P/tail, rather than reporting stale phase timestamps.
+
+Arcade sample 0 publishes 15520 pixels: drawing 1992 lines, unpack 824,
+wait 242, C2P 294, tail 1. This locates its entry spike in actual rendering
+and unpacking, not just the synchronization wait. The steady normal worst
+drawing phase alone is about 27.2 ms, versus 1.54 ms maximum C2P. Changing
+the synchronization alone cannot remove that work.
+
+Instrumentation affects timing: normal samples span 87 refreshes versus
+84 in the uninstrumented baseline; Arcade spans 97 in both. Use these
+phase samples for attribution, not as replacement release cadence numbers.
+The sampler and stores are included in the measured spans. The VBI wait
+at the top of the main loop and other work between pulses are outside the
+listed phases, but inside the consecutive-start span.
+
+Next inspect state/colour calculation versus glyph drawing within the first
+phase. Source inspection finds repeated palette-nearest scans in the original
+normal title colour step/owner step and the Arcade painter; their individual
+share is not yet measured. Preserve all palette results, state advancement
+and full-original pixel checks if introducing reuse. No pacing or production
+rendering semantics were changed. After the runs, ordinary `make` rebuilt
+without TITLEPROFILE; the stripped HUNK is byte-identical to the preceding
+uninstrumented `title-cadence-matrix-aXSxct/data/Slicks` baseline. A subsequent
+dry run schedules no target compilation, confirming the normal mode stamp.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
