@@ -4119,11 +4119,12 @@ int main(void)
     unsigned char mixed_setup_test=(unsigned char)(persistence_test && argv[7]=='W');
     unsigned char combined_test=(unsigned char)(persistence_test && argv[7]=='U'),combined_stage=0;
     unsigned char failure_injected=0;
-    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V' || argv[8]=='T' || argv[8]=='U' || argv[8]=='W'));
+    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V' || argv[8]=='T' || argv[8]=='U' || argv[8]=='W' || argv[8]=='X' || argv[8]=='Y'));
     if(record_recovery_test) {
-        g_slicks_diag_record_faults=argv[8]=='W'?0:(argv[8]=='T' || argv[8]=='U')?16:(argv[8]=='C' || argv[8]=='V')?6:3;
-        g_slicks_diag_record_skip=argv[8]=='U'?3:argv[8]=='S'?1:(argv[8]=='L' || argv[8]=='V')?2:0;
+        g_slicks_diag_record_faults=(argv[8]=='W' || argv[8]=='X' || argv[8]=='Y')?0:(argv[8]=='T' || argv[8]=='U')?16:(argv[8]=='C' || argv[8]=='V')?6:3;
+        g_slicks_diag_record_skip=argv[8]=='U'?3:(argv[8]=='S' || argv[8]=='Y')?1:(argv[8]=='L' || argv[8]=='V')?2:0;
         if(argv[8]=='W') g_slicks_diag_record_alloc_stage=1;
+        if(argv[8]=='X' || argv[8]=='Y') g_slicks_diag_record_write_alloc_fault=1;
     }
     unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'));
     unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='M'?4:argv[8]=='L'?3:argv[8]=='K'?2:1):0);

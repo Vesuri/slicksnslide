@@ -10,6 +10,7 @@
 #include "../../ui/screen_capture.h"
 unsigned char g_slicks_diag_backup_protect;
 unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
+unsigned char g_slicks_diag_record_write_alloc_fault,g_slicks_diag_record_write_alloc_reached;
 
 static void failure(struct SlicksSetupStorageReport *r,const char *path,LONG error)
 {
@@ -363,7 +364,11 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *pat
     if(staged || backed) { report.result=SLICKS_SETUP_RECOVERY_REQUIRED; goto done; }
     int present=exists(&report,path);
     if(present!=1) { if(!present) report.io_error=ERROR_OBJECT_NOT_FOUND; goto done; }
-    unsigned char *buffer=AllocMem(8192,MEMF_ANY);
+    unsigned char *buffer;
+    if(g_slicks_diag_record_write_alloc_fault) {
+        g_slicks_diag_record_write_alloc_fault=0;
+        g_slicks_diag_record_write_alloc_reached=1; buffer=0;
+    } else buffer=AllocMem(8192,MEMF_ANY);
     if(!buffer) { report.io_error=ERROR_NO_FREE_STORE; goto done; }
     struct SlicksSetupLoadReport load={SLICKS_SETUP_LOADED,0,0,0,0};
     long size=read_file(&load,path,buffer,8192);

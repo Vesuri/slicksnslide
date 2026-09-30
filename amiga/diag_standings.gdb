@@ -6,6 +6,7 @@ set $table_errors = 0
 set $table_views = 0
 set $record_inserts = 0
 set $expected_save_errors = 0
+init-if-undefined $expected_record_read_errors = 1
 source diag_records_resident.gdb
 break slicks_diag_record_recovery_ready
 commands
@@ -39,6 +40,12 @@ commands
         quit 1
       end
       set $save_errors = $save_errors+1
+      if !$_isvoid($expect_record_write_alloc)
+        if g_slicks_diag_record_write_alloc_fault || !g_slicks_diag_record_write_alloc_reached || g_slicks_diag_record_save.result != 1 || g_slicks_diag_record_save.io_error != 103
+          printf "RECORD_WRITE_ALLOCATION_NOT_REACHED\n"
+          quit 1
+        end
+      end
     end
   end
   printf "RECORD_RECOVERY phase=%u skip=%u\n",g_slicks_diag_record_results_phase,g_slicks_diag_record_skip
@@ -78,7 +85,7 @@ commands
     set $record_inserts = $record_inserts+1
     # A skipped first-track read leaves the one-shot save fault pending.
     # It may be reached by a qualifying second-track record, not by the skip.
-    if g_slicks_diag_record_outcome.changed && (g_slicks_diag_record_faults & 2)
+    if g_slicks_diag_record_outcome.changed && ((g_slicks_diag_record_faults & 2) || g_slicks_diag_record_write_alloc_fault)
       set $expected_save_errors = $expected_save_errors+1
     end
     if $record_inserts == 1
@@ -155,7 +162,7 @@ commands
     printf "STANDINGS_FLOW_FAILED phase=%u\n",$standings
     quit 1
   end
-  if ($read_errors || $save_errors) && ($read_errors != 1 || $save_errors != $expected_save_errors || $record_inserts != (g_slicks_diag_record_skip == 2 ? 1 : 2))
+  if ($read_errors || $save_errors) && ($read_errors != $expected_record_read_errors || $save_errors != $expected_save_errors || $record_inserts != (g_slicks_diag_record_skip == 2 ? 1 : 2))
     printf "RECORD_RECOVERY_FAILED reads=%u saves=%u inserts=%u\n",$read_errors,$save_errors,$record_inserts
     quit 1
   end
@@ -176,6 +183,13 @@ commands
       quit 1
     end
     printf "RECORD_ALLOCATION_MATRIX_OK reads=%u tables=%u inserts=%u views=%u\n",$read_errors,$table_errors,$record_inserts,$table_views
+  end
+  if !$_isvoid($expect_record_write_alloc)
+    if $read_errors || $table_errors || $save_errors != 1 || $record_inserts != 2 || $table_views != 2 || g_slicks_diag_record_write_alloc_fault || !g_slicks_diag_record_write_alloc_reached
+      printf "RECORD_WRITE_ALLOCATION_RECOVERY_FAILED\n"
+      quit 1
+    end
+    printf "RECORD_WRITE_ALLOCATION_RECOVERY_OK skip=%u inserts=%u views=%u\n",g_slicks_diag_record_skip,$record_inserts,$table_views
   end
   printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK reads=%u saves=%u inserts=%u returns=%u\n",$read_errors,$save_errors,$record_inserts,$record_returns
   quit

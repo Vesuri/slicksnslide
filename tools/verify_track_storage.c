@@ -109,6 +109,18 @@ int main(void)
     }
     printf("Post-race record publication: %u single/double-fault cases preserve source records and complete old/new files\n",inserted_cases);
     fail_first=fail_second=0;
+    initialize(before,sizeof before);
+    g_slicks_diag_record_write_alloc_fault=1; inserted_changed=9;
+    inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+    assert(!g_slicks_diag_record_write_alloc_fault && g_slicks_diag_record_write_alloc_reached);
+    assert(inserted_report.result==SLICKS_SETUP_SAVE_FAILED && inserted_report.io_error==ERROR_NO_FREE_STORE);
+    assert(!inserted_changed && !allocations && equals(0,before,sizeof before) && !files[1].present && !files[2].present);
+    assert(!memcmp(&inserted,&retained,sizeof inserted));
+    inserted_report=slicks_amiga_store_track_records(paths[0],&inserted,&inserted_changed);
+    assert(inserted_report.result==SLICKS_SETUP_SAVED && inserted_changed && !allocations && equals(0,published,sizeof published));
+    assert(!memcmp(&inserted,&retained,sizeof inserted));
+    puts("Record save allocation failure leaves files/source intact; retry commits the retained table");
+    fail_first=fail_second=0;
     initialize(before,sizeof before); unsigned char changed=0;
     struct SlicksSetupStorageReport report=slicks_amiga_clear_track_records(paths[0],&changed);
     assert(report.result==SLICKS_SETUP_SAVED && changed && equals(0,after,sizeof after));

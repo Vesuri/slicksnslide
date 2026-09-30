@@ -58,8 +58,10 @@ Implementation and completed verification evidence are separate in
   and painter-bounded records-table restoration now have native coverage;
   all five records read/view allocation sites and consecutive view retries
   now have native cleanup/persistence coverage; table Skip also preserves
-  earned records. Remaining allocation work is inside storage transactions
-  and other intermission/results owners, not this read/view preparation;
+  earned records. Record-save buffer allocation Retry/Skip now has native
+  report, disk-preservation and publication coverage too. Remaining allocation
+  work concerns other saved-game/setup/intermission/results owners, not
+  record read/view preparation or its writer buffer;
   keep other layouts and allocation-failure paths separate.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify

@@ -2322,6 +2322,37 @@ Build log: `tmp/record-allocations-build.log`. This closes the five read/view
 allocation sites and repeated view-retry sequence, not allocation failures
 inside record storage transactions or other intermission owners.
 
+### Records transaction allocation Retry/Skip (2026-09-30)
+
+The record writer already reports `ERROR_NO_FREE_STORE` before reading or
+changing the track when its 8 KiB buffer cannot be allocated. OPTIONSBX/Y now
+exercise that exact branch with a one-shot diagnostic-only allocation fault;
+the native menu supplies ordinary Retry or Skip input. No production recovery
+policy change was needed. The shared fixture verifies the consumed fault,
+error 103/save-failed report, exactly one save warning, no read/view warnings,
+two insertions, two table views and complete championship statistics/exit.
+
+| Choice | Run under `tmp/standalone-release-` | Disk result |
+| --- | --- | --- |
+| Retry / OPTIONSBX | `9g3rwzle` | All 11 saved records match that run's captured table; checksums and non-record data pass. |
+| Skip / OPTIONSBY | `8wskkwib` | BASIC.SS remains byte-identical to the supplied track, with no `.new` or `.bak` artifacts. |
+
+Both warning publications match every chunky pixel independently, both race
+returns preserve all source and bitplane bytes, and restoration 31 passes.
+Runs use stock PAL 68020, 2 MiB Chip/no Fast, default 4 KiB stack and muted
+audio; the harness closed both emulators. Fixtures are
+`tmp/record-write-allocation-pqc1Lf` and `tmp/record-write-allocation-3RuuEh`.
+Use `diag_record_write_allocation.gdb` to repeat the native gate.
+
+The actual adapter's host suite adds an explicit check of the new fault hook:
+allocation failure creates no transaction files, preserves the caller's
+records, releases all allocations and returns the expected report; a second
+call commits the retained table. Its existing 1,225 post-race and 1,225 clear
+single/double-fault transactions also pass. Logs:
+`tmp/record-write-allocation-host.log`, `tmp/record-write-allocation-build.log`.
+This closes the record writer's buffer-allocation path, not every error in
+other saved-game/setup/intermission storage owners.
+
 ### Text adapters and remaining VGA full converters (2026-09-30)
 
 Inspection at cc5dd31 traced the C font-bridge callers across

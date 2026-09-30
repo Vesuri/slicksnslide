@@ -7,6 +7,8 @@
 #include "../../game/saved_game.h"
 /* Explicit TRACKSQ/TRACKSC diagnostics only; zero during normal launches. */
 extern unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
+/* OPTIONSBX/Y: one failed record-save buffer allocation, never normal input. */
+extern unsigned char g_slicks_diag_record_write_alloc_fault,g_slicks_diag_record_write_alloc_reached;
 
 struct SlicksSetupStorageReport {
     enum SlicksSetupSaveResult result;
