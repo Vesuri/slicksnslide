@@ -761,7 +761,7 @@ extern void slicks_chunky_pixels_to_amiga(
     const struct SlicksDirtyPixel *pixels, unsigned long count);
 
 #define SLICKS_TRACK_FILE_MAX 10000
-#define SLICKS_TRACK_NAME_SIZE 12
+#define SLICKS_TRACK_NAME_SIZE SLICKS_CATALOGUE_NAME_BYTES
 
 static unsigned char track_files_in_current_directory;
 volatile unsigned short g_slicks_diag_track_alloc_fail,g_slicks_diag_track_alloc_attempts;
@@ -856,24 +856,13 @@ cleanup:
     /* AmigaDOS directory order is filesystem-dependent. Native setup uses
      * alphabetical names; only legacy race diagnostics promote BASIC. */
     {
-        unsigned short left;
-        for (left = 0; left + 1 < count; ++left) {
-            if(catalogue_probe && !(left&1023)) {
-                g_slicks_diag_catalogue_phase=3;g_slicks_diag_catalogue_progress=left;
-                slicks_diag_catalogue_progress();
-            }
-            unsigned short right;
-            for (right = left + 1; right < count; ++right) {
-                if (slicks_track_stem_compare(names[right],names[left])<0) {
-                    char temporary[SLICKS_TRACK_NAME_SIZE];
-                    for (at = 0; at < SLICKS_TRACK_NAME_SIZE; ++at) {
-                        temporary[at] = names[left][at];
-                        names[left][at] = names[right][at];
-                        names[right][at] = temporary[at];
-                    }
-                }
-            }
+        if(catalogue_probe) {
+            g_slicks_diag_catalogue_phase=3;g_slicks_diag_catalogue_progress=0;
+            slicks_diag_catalogue_progress();
         }
+        unsigned short *order=count>1?AllocMem(count*sizeof *order,MEMF_ANY):0;
+        slicks_track_catalogue_sort(names,count,order);
+        if(order)FreeMem(order,count*sizeof *order);
     }
     if(catalogue_probe) {
         g_slicks_diag_catalogue_phase=4;g_slicks_diag_catalogue_progress=count;

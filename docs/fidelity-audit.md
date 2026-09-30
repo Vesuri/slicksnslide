@@ -2915,6 +2915,45 @@ oracle also passes (`tmp/catalogue-phase-oracle.log`). Debug audio was muted;
 the runner closed its emulator. The independent Load draft remains uncommitted
 and unexercised by this diagnostic.
 
+### F18 follow-up: scalable catalogue sorting and exposed allocation limit
+
+Production discovery now sorts a temporary 16-bit index array with iterative
+heapsort, then permutes the complete 12-byte filenames in place. Scratch costs
+two bytes per track and is released before title/race preparation; there is no
+recursion. Equal stems are detected before modifying filenames and use the
+former exchange sort, preserving even its unstable full-filename ordering.
+Unavailable scratch also takes that exact fallback instead of truncating or
+rejecting the catalogue. Thus the fast path is not claimed for equal-stem or
+scratch-starved catalogues.
+
+`verify-track-discovery` now invokes the actual production sorter for every
+original-DOS oracle vector. `verify-track-catalogue` checks 2,000 full-record
+equivalence cases (including extension-case ties and null scratch), plus
+10,000 reverse-ordered unique names. Both pass; the latter also passes address
+and undefined-behavior sanitizers. Logs: `tmp/catalogue-sort-oracles.log` and
+`tmp/catalogue-sort-build.log`.
+
+On the same stock A1200/default-stack fixture, CATPROBE completes the entire
+10,000-name sort in five host seconds (1790745556..1790745561), versus the
+previous 329 seconds for only the first 1,024 outer iterations.
+`tmp/standalone-release-z276p4f1` passes `CATALOGUE_SORT_COMPLETED`.
+These debugger/warp/host times establish the startup improvement, not raster
+timing or gameplay performance.
+
+The first full run (`tmp/standalone-release-7f8kyy1z`) reached preparation but
+was interrupted deliberately to fix the gate's missing preparation-return
+check. The enhanced gate in `tmp/standalone-release-53garf5s` captures 10,000
+unique, ascending full filenames within T0000001..T0010001 and all selection
+indices 0..9999 once, then reports preparation result -1/error 1. This is an
+allocation failure, not successful race entry. The exact failed allocation
+and recovery presentation remain to be checked. Normal 300-track startup,
+complete filename/selection capture and race entry pass with the same build
+in `tmp/standalone-release-v388jpad`.
+
+All runs use 2 MiB/no Fast, 68020 real, default 4 KiB stack and muted audio;
+owned emulators are closed. The independent Load draft remains uncommitted
+and unexercised. The upper-bound race/recovery gate stays open.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

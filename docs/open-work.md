@@ -172,11 +172,16 @@ native caller/input/error checks.
   Directory-object allocation failure also passes without fallback or takeover;
   the upper-bound gate remains: the 10,001-file native fixture timed out after
   600 seconds without reaching race preparation. The bounded CATPROBE run now
-  reaches all 10,000 entries quickly, then spends 329 host seconds sorting the
-  first 1,024 positions. Replace the quadratic catalogue sorter while preserving
-  original stem ordering and filename identity, including equal-stem cases;
-  then rerun ordering oracles and the full native upper-bound gate. These are
-  debugger/host timings, not PAL frame measurements or successful race entry.
+  identifies sorting as the delay. The replacement index sorter now completes
+  all 10,000 names in about five host seconds, with original stem-order and
+  full-filename equivalence tests and normal 300-track race entry passing.
+  Equal stems and scratch-allocation failure retain the exact former exchange
+  path. The enhanced upper-bound gate captures 10,000 correctly sorted unique
+  filenames/selection indices, but preparation returns error 1 (allocation
+  failure). Identify the failing temporary allocation and verify graceful
+  recovery or reduce its peak memory without changing resident-menu behavior;
+  do not count 10,000-track race entry as passed. These are debugger/host timings,
+  not PAL frame measurements.
   The native
   intermission Save path now saves all 300 selected tracks
   with dynamic backing and passes cancel/reopen/save/exit on the default stack;

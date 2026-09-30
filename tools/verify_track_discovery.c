@@ -109,19 +109,19 @@ int main(void)
             if(memcmp(actual,expected,9)) { fprintf(stderr,"Sort mismatch at %u: %.9s\n",i,actual);abort(); }
         }
         printf("Original startup sorter: %u stems in ascending order\n",kept);
-        if(d.names) {
-            const char *native[sizeof mixed/sizeof mixed[0]];
-            memcpy(native,mixed,sizeof native);
-            for(unsigned left=0;left+1<d.count;++left)
-                for(unsigned right=left+1;right<d.count;++right)
-                    if(slicks_track_stem_compare(native[right],native[left])<0) {
-                        const char *swap=native[left];native[left]=native[right];native[right]=swap;
-                    }
-            for(unsigned i=0;i<d.count;++i) {
+        {
+            char native[301][SLICKS_CATALOGUE_NAME_BYTES]={{0}};
+            unsigned short order[301];
+            for(unsigned i=0;i<kept;++i) {
+                if(d.names)snprintf(native[i],sizeof native[i],"%s",d.names[i]);
+                else snprintf(native[i],sizeof native[i],"T%07u.SS",d.count-i);
+            }
+            slicks_track_catalogue_sort(native,kept,order);
+            for(unsigned i=0;i<kept;++i) {
                 char actual[9];check(uc_mem_read(u,0x60000+9*i,actual,9));
                 if(slicks_track_stem_compare(native[i],actual))abort();
             }
-            puts("Native stem comparator matches original: prefixes, punctuation, case, duplicate stems and eight-byte names");
+            puts("Production catalogue sorter matches original stem order");
         }
     }
     struct StartupDiscovery startup={0};

@@ -11,11 +11,14 @@ commands
     end
     set $enumerated = 1
   end
-  if g_slicks_diag_catalogue_phase==3 && g_slicks_diag_catalogue_progress>=1024
+  if g_slicks_diag_catalogue_phase==4
     if !$enumerated
       quit 1
     end
-    printf "CATALOGUE_ENUMERATION_AND_SORT_PROGRESS_OBSERVED\n"
+    if g_slicks_diag_catalogue_progress!=10000
+      quit 1
+    end
+    printf "CATALOGUE_SORT_COMPLETED\n"
     quit
   end
   continue
