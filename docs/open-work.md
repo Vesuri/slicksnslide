@@ -173,8 +173,10 @@ native caller/input/error checks.
   codec/export capacity tests also reach 10,000 on the host. Finish the Load
   caller's remaining 256-track backing and capacity, including transactional
   playlist replacement after preparation. Resume indices already use explicit
-  caller-owned storage. Verify new Save/Load allocation failures and larger
-  native bounds. Extend demo diagnostics beyond their current first
+  caller-owned storage. Save-name-buffer allocation failure now passes a native
+  warning/retry/cancel/reopen/save/exit gate and exact publications; remaining
+  Load allocations and larger native bounds still need verification.
+  Extend demo diagnostics beyond their current first
   256 selection words before claiming full large-playlist restoration.
   A working-tree Load-caller draft now uses dynamic names/indices, frees names
   after staging, and adopts indices only after successful race preparation.

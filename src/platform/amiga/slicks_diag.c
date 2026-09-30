@@ -1161,6 +1161,7 @@ static unsigned char championship_dialog_step;
 static unsigned char championship_delete_test;
 static unsigned char championship_scan_test;
 static unsigned char championship_cleanup_test;
+volatile unsigned short g_slicks_diag_save_buffer_fault;
 extern unsigned char g_slicks_diag_backup_protect;
 extern unsigned char g_slicks_diag_saved_lock_failure;
 extern unsigned char g_slicks_diag_saved_next_failure;
@@ -1176,6 +1177,11 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
 {
     slicks_diag_saved_ready();
     if(!championship_test) return;
+    if(g_slicks_diag_save_buffer_fault==2 && g_slicks_diag_saved_phase==3) {
+        static const unsigned char retry[]={0x44,0x44};
+        g_slicks_diag_save_buffer_fault=3;
+        championship_test_keys(p,retry,sizeof retry);return;
+    }
     if(championship_cleanup_test) {
         static const unsigned char phases[]={1,3,3};
         static const unsigned char keys[][3]={{0x42,0x42,0x44},{0x15,0,0},{0x44,0x59,0x45}};
@@ -3132,8 +3138,9 @@ retry:
                     if(opened<0 && slicks_amiga_warning_open(m,(const unsigned char *)"CARS UNAVAILABLE - PRESS A KEY")) goto done;
                 } else if(action==SLICKS_INTERMISSION_SAVE_GAME) {
                     unsigned count=g_slicks_track_playlist.count;
-                    unsigned char (*saved_tracks)[8]=count && count<=SLICKS_SAVED_GAME_TRACK_MAX?
+                    unsigned char (*saved_tracks)[8]=g_slicks_diag_save_buffer_fault!=1 && count && count<=SLICKS_SAVED_GAME_TRACK_MAX?
                         AllocMem(count*8UL,MEMF_ANY):0;
+                    if(g_slicks_diag_save_buffer_fault==1)g_slicks_diag_save_buffer_fault=2;
                     struct SlicksSavedGame game; unsigned char scales[4];
                     for(unsigned i=0;i<4;++i) {
                         scales[i]=race->cars[i].position_scale;
@@ -4358,6 +4365,7 @@ int main(void)
         (argv[8]=='X'?1:argv[8]=='Y'?2:0):0);
     if(championship_scan_test) championship_test=6;
     championship_cleanup_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='B');
+    if(championship_test==1 && argc==9 && argv[8]=='M')g_slicks_diag_save_buffer_fault=1;
     if(championship_cleanup_test) { championship_test=6; g_slicks_diag_backup_protect=1; }
     if(shop_resume_test && championship_test==2) {shop_test=1;g_slicks_diag_weapon_case=1;}
     original_setup=(unsigned char)(!argc || title_start_test || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);

@@ -2726,6 +2726,34 @@ the owned emulator closed. Build log: `tmp/track-stem-sort-build.log`.
 The tested working tree also contains the independent uncommitted Load-caller
 draft; that route is not exercised or validated by this startup gate.
 
+### F18 follow-up: Save-name-buffer allocation recovery
+
+`CHAMPSAVM` suppresses only the first intermission Save-name-buffer allocation,
+then dismisses the real cannot-save warning and retries through normal queued
+keys. The retry exercises the ordinary picker cancellation, reopening, name
+entry, disk save and exit. Production allocation semantics are unchanged when
+the diagnostic flag is zero. This is a controlled allocation-return failure,
+not system-wide heap exhaustion or a proof of every allocation lifetime.
+
+The first lifecycle gate passed in `tmp/standalone-release-5os36xk2`. Combining
+its complete saved-owner breakpoint matrix with pixel and warning-I/O probes
+was rejected by the emulator/debugger before gameplay
+(`tmp/standalone-release-8usy_abi`); that attempt supplies no game evidence.
+The reduced, checked-in `diag_save_buffer_failure.gdb` passes in
+`tmp/standalone-release-je6lmeu2`: one allocation warning before any picker,
+two picker entries, one filename entry, one successful-save notice, two
+resident dialog returns and final restore mask 31 without forced exit.
+During the injected-warning state, platform-end and archive-open probes must
+not fire. All 25 captured menu publications reconstruct to exactly their
+64,000-byte chunky surfaces (`check_menu_publications.py`).
+
+Both successful runs use stock 68020/2 MiB/no Fast and the confirmed default
+4 KiB stack. Audio is muted and the owned emulators close. Build log:
+`tmp/save-buffer-failure-build.log`. The independent uncommitted Load draft
+is present in the tested working tree but is not exercised by this Save test.
+No native Load-allocation recovery or original DOS failure-layout fidelity
+is claimed by this defensive native warning check.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
