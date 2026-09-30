@@ -350,6 +350,7 @@ int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
         return -1;
     if (keyboard_begin(platform) != 0)
         return -1;
+    platform->publish_valid = 0;
 
     platform->saved_view = platform->gfx_base->ActiView;
     platform->saved_copper = (unsigned long *)platform->gfx_base->copinit;
@@ -421,6 +422,25 @@ unsigned long slicks_amiga_platform_raster_time(void *context)
     } while (frame != again ||
              high != (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7));
     return frame * 313UL + line;
+}
+
+int slicks_amiga_platform_wait_publication(struct SlicksAmigaPlatform *platform)
+{
+    unsigned long at;
+    int late = 0;
+    if (!platform || !platform->active)
+        return 0;
+    at = slicks_amiga_platform_raster_time(platform);
+    if (platform->publish_valid && at >= platform->publish_deadline)
+        late = 1;
+    else {
+        slicks_amiga_platform_wait_display_end(platform);
+        at = slicks_amiga_platform_raster_time(platform);
+    }
+    /* First edge (line $100 of a 313-line frame) strictly after now. */
+    platform->publish_deadline = (at + 57UL) / 313UL * 313UL + 256UL;
+    platform->publish_valid = 1;
+    return late;
 }
 
 void slicks_amiga_platform_wait_display_blank(

@@ -28,6 +28,7 @@ commands
     quit 1
   end
   printf "WORK_SUM=%lu frames=%lu\n",g_slicks_diag_bench_work_sum,g_slicks_diag_bench_frames
+  printf "LATE_PUBLICATIONS=%lu\n",g_slicks_diag_late_publications
   if g_slicks_diag_bench_frames>704
     printf "BENCHMARK_INVALID sample capacity exceeded\n"
     quit 1

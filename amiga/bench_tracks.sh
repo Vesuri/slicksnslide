@@ -27,6 +27,7 @@ for t in $tracks; do
   sum=$(grep -o 'WORK_SUM=[0-9]*' "$log" | cut -d= -f2)
   max=$(grep -o 'max_work_lines=[0-9]*' "$log" | cut -d= -f2)
   cad=$(grep -o 'cadence_lines=[0-9]*' "$log" | cut -d= -f2)
+  late=$(grep -o 'LATE_PUBLICATIONS=[0-9]*' "$log" | cut -d= -f2)
   fin=$(grep '^FINAL_STATE' "$log")
-  printf '%s track=%s work=%s max=%s cadence=%s %s\n' "$label" "$t" "$sum" "$max" "$cad" "$fin"
+  printf '%s track=%s work=%s max=%s cadence=%s late=%s %s\n' "$label" "$t" "$sum" "$max" "$cad" "$late" "$fin"
 done

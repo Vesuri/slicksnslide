@@ -35,6 +35,8 @@ struct SlicksAmigaPlatform {
     unsigned char active;
     unsigned char vertb_taken;
     unsigned char io_active;
+    unsigned char publish_valid; /* Cleared by begin: no deadline yet. */
+    unsigned long publish_deadline; /* Next display-end edge, raster time. */
 };
 
 #ifdef __cplusplus
@@ -59,6 +61,10 @@ void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform);
 /* Monotonic 15625 Hz raster time, vblank_count*313+line, while active.
  * A read in the few cycles between line 0 and the VBI can lag one frame. */
 unsigned long slicks_amiga_platform_raster_time(void *platform);
+/* Adaptive race publication: wait for the first display-end edge after the
+ * previous publication, or return 1 at once if preparation overran it.
+ * Single-buffered, so a late publication can tear inside dirty regions. */
+int slicks_amiga_platform_wait_publication(struct SlicksAmigaPlatform *platform);
 void slicks_amiga_platform_wait_display_blank(
     struct SlicksAmigaPlatform *platform);
 void slicks_amiga_platform_wait_display_end(

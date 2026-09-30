@@ -36,32 +36,14 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-### B2. Adaptive publication
+### B2. Adaptive publication: user acceptance
 
-In the race loop (`slicks_diag.c`, around line 6915):
-- if no vblank has passed since the previous publication, wait for the
-  display-end edge exactly as now;
-- otherwise publish immediately.
-
-Record late publications in a counter that `bench_tracks.sh` prints.
-
-Accept when all of these hold:
-- the real-time four-track benchmark (`SLICKS_REALTIME_CLOCK=1
-  amiga/bench_tracks.sh`) shows cadence at or above the
-  `tools/sync_policy_model.py` prediction from `tmp/b1-realtime-*` (46.8 fps
-  on F1, 49.5 on WHACKO, 49.9 on BASIC, 50.0 on CITY);
-- `diag_display_end_limit.gdb` is updated to accept late publications and
-  still forbids more than one publication per update;
-- the late-audio check below passes;
-- the user watches one F1 race and accepts the tearing.
+This is implemented and measured ([frame-pacing.md](frame-pacing.md)). The one
+remaining step is for the user to watch one F1 race on the normal build
+(`amiga/run.sh`) and accept the tearing on late frames.
 
 If they do not accept it, the only follow-up is to convert dirty regions below
 the beam first. Do not add double buffering.
-
-**Late-audio check.** Run an F1 benchmark with audio enabled and the existing
-`diag_audio_restart.gdb` checks. Mid-frame effect starts must play and retire
-through the VBI staging. If they do not, keep effect dispatch at the next VBI
-and publish only the picture late.
 
 ### B3. Original loading screen during track loads
 

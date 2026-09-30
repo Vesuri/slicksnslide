@@ -187,3 +187,34 @@ work per update:
 The adaptive model replays the measured real-time samples. It ignores the
 feedback whereby faster publication runs fewer ticks per update, so its
 estimate is slightly pessimistic.
+
+## Adaptive publication implemented (B2, 2026-09-30)
+
+`slicks_amiga_platform_wait_publication` replaces the race loop's
+unconditional edge wait:
+- if the update finished before the first display-end edge after the previous
+  publication, it waits for that edge as before;
+- otherwise it publishes immediately and returns 1.
+
+The deadline uses the 313-line raster clock and is cleared by
+`platform_begin`. The audio-in-blank diagnostic skips late publications.
+Effect requests are interrupt-locked and staged for the VBI (`play_effect`,
+`slicks_amiga_audio_tick`), so they are safe mid-frame. The benchmark's
+zero-VBI-spill gate held on every run. `LATE_PUBLICATIONS` counts late
+publications in the benchmark window.
+
+Results, real-time clock plus adaptive publication (`tmp/b2-adaptive-rt-{0..3}.log`):
+
+| Track | Updates | Late | fps | Hard-sync fps (B1 runs) | Model prediction |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BASIC | 603 | 43 | 49.8 | 44.5 | 49.9 |
+| F1 | 622 | 308 | 46.1 | 33.1 | 46.8 |
+| CITY | 607 | 34 | 50.0 | 48.4 | 50.0 |
+| WHACKO | 603 | 95 | 49.9 | 41.5 | 49.5 |
+
+Other checks:
+- **Fixed-clock F1** (`tmp/b2-adaptive-fixed-1.log`) keeps `FINAL_STATE`
+  unchanged; publication timing does not affect simulation.
+- **`diag_display_end_limit.gdb`**, updated to count late publications, passes
+  in `NATURALQB` (`tmp/b2-limit.log`): 120 publications over 120 VBlanks,
+  3 late, and every on-time publication at row 257.

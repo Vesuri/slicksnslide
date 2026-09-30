@@ -418,6 +418,8 @@ static void set_weapon_hud_fixture(struct SlicksRaceRuntime *race)
 volatile unsigned char g_slicks_diag_scanout_only;
 volatile unsigned char g_slicks_diag_audio_in_blank = 1;
 volatile unsigned long g_slicks_diag_audio_blank_spills;
+volatile unsigned long g_slicks_diag_late_publications;
+static unsigned char late_publication;
 volatile unsigned short g_slicks_diag_audio_hold_frames;
 volatile unsigned long g_slicks_diag_audio_blank_max_lines;
 volatile unsigned long g_slicks_diag_scanout_frames;
@@ -6893,10 +6895,13 @@ int main(void)
                 profile_line_at = now;
             }
             {
-                /* Prepare first, publish at one fresh display-end edge.
-                 * Do not also pace simulation at VBlank or wait a second
-                 * time between audio and C2P. Missed slots are not queued. */
-                slicks_amiga_platform_wait_display_end(&platform);
+                /* Prepare first, publish at the next display-end edge, or
+                 * at once if preparation overran it (adaptive; the race
+                 * clock is real time). Never wait a second time between
+                 * audio and C2P. Missed slots are not queued. */
+                late_publication=(unsigned char)slicks_amiga_platform_wait_publication(&platform);
+                if (g_slicks_diag_profile_all && race->racing)
+                    g_slicks_diag_late_publications+=late_publication;
                 if (continuous_diagnostics || profile)
                     audio_blank_at = slicks_diag_profile_raster_time();
                 if (profile) {
@@ -6927,7 +6932,7 @@ int main(void)
                 slicks_amiga_audio_stop(&audio);
                 slicks_amiga_audio_start_music(&audio);
             }
-            if (g_slicks_diag_audio_in_blank && (continuous_diagnostics || profile)) {
+            if (g_slicks_diag_audio_in_blank && !late_publication && (continuous_diagnostics || profile)) {
                 unsigned long duration =
                     slicks_diag_profile_raster_time() - audio_blank_at;
                 unsigned long remaining = PAL_RASTER_LINES -
