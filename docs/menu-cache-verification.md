@@ -2561,3 +2561,6 @@ raw `Read` followed by unchecked `Close`, unlike `load_plain_file`. A successful
 read followed by failed close can therefore be accepted for rendering. This
 requires a checked-reader change and external fallback failure tests, recorded
 in open work. It does not establish the missing `webf_ord.bmp` visual contents.
+The subsequent checked-reader fix and three native rejection cases are recorded
+in [registration-support.md](registration-support.md); that specific I/O gap is
+now closed, separately from the missing artwork's visual check.

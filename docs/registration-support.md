@@ -128,3 +128,35 @@ It intentionally expects the original supplied data, without `webf_ord.bmp`.
 The final fixture including these optional-image assertions passed all four
 cases again in `tmp/standalone-release-{lzx01xz8,4mccf3zq,hirhxwgi,4b0rtf3g}`
 (same order as above); all four exit-screen comparisons also pass.
+
+## External-image read and close failure rejection (2026-09-30)
+
+`registration_screen` now uses the shared checked plain-file reader for its
+external BMP fallback. Previously it accepted a successful `Read` regardless
+of `Close`'s result. A failed read or close now returns -1 before decoding;
+the existing optional-image skip policy remains unchanged. The real file handle
+is closed even when the explicit read-error diagnostic is enabled.
+
+Native checks use the ordinary REGCHECK exit sequence and the read-only
+`diag_registration_external_failure.gdb`:
+
+| Case | Argument | Run under `tmp/standalone-release-` |
+| --- | --- | --- |
+| Genuinely absent external file | REGCHECK | `1asexidi` |
+| Injected read failure after positive real read | REGCHECKK | `6hx5vzi5` |
+| Injected close failure after real handle closure | REGCHECKL | `rrlwbm3d` |
+
+Each run observes exactly one external result of -1 while takeover is inactive,
+one ordinary unregistered exit screen, no optional order-image presentation,
+and normal restoration mask 31. Fault cases require the intended fault to be
+consumed. Tests use fresh copied data, no key, a stripped executable, stock
+PAL 68020/2 MiB Chip/no Fast and confirmed 4096-byte stack. All muted emulators
+are closed. Build log: `tmp/registration-external-build.log`.
+
+The two fault fixtures deliberately copy non-image SLICKS.DAT bytes to the
+isolated `webf_ord.bmp` path to supply a positive real read; those bytes are
+rejected before decoding and are not replacement artwork. These are controlled
+API-failure checks, not a reproduced failing AmigaDOS handler and not visual
+verification of the original order form. The genuine external order image is
+still absent and its conditional visual check remains open. No original data,
+test payload or private key is committed.

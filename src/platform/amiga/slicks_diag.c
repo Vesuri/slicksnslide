@@ -1927,6 +1927,10 @@ static unsigned long checksum_surface_map(const unsigned char *surface_map)
 }
 
 unsigned char g_slicks_diag_plain_close_fault,g_slicks_diag_plain_close_reached;
+unsigned char g_slicks_diag_plain_read_fault,g_slicks_diag_plain_read_reached;
+static unsigned char registration_external_test;
+volatile long g_slicks_registration_external_bytes;
+void __attribute__((noinline)) slicks_diag_registration_external_loaded(void) { __asm__ volatile("" ::: "memory"); }
 static LONG close_plain_file(BPTR file,int valid)
 {
     LONG closed=Close(file);
@@ -1945,6 +1949,10 @@ static long load_plain_file(const char *path, void *destination,
     if (!file)
         return -1;
     size = Read(file, destination, (LONG)capacity);
+    if(g_slicks_diag_plain_read_fault && size>0) {
+        g_slicks_diag_plain_read_fault=0;g_slicks_diag_plain_read_reached=1;
+        size=-1;
+    }
     return close_plain_file(file,size>0)?size:-1;
 }
 
@@ -3557,8 +3565,15 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     if(length<0) {
         /* The original '/name' resolver also permits an external BMP. The
          * supplied archive has no webf_ord.bmp; absence is optional in DOS. */
-        BPTR file=Open((CONST_STRPTR)name,MODE_OLDFILE);
-        if(file) { length=Read(file,resource,70000);Close(file); }
+        if(kind==2 && registration_external_test) {
+            if(registration_external_test==1)g_slicks_diag_plain_read_fault=1;
+            else g_slicks_diag_plain_close_fault=1;
+        }
+        length=load_plain_file(name,resource,70000);
+        if(kind==2) {
+            g_slicks_registration_external_bytes=length;
+            slicks_diag_registration_external_loaded();
+        }
     }
     if(length<0) { result=kind==0?-1:0;goto done; }
     if(slicks_decode_menu_bitmap(resource,(unsigned long)length,chunky,palette,&w,&h,0) || w!=320 || h!=200) goto done;
@@ -4042,6 +4057,12 @@ int main(void)
     if(argc==7 && argv[0]=='D' && argv[1]=='I' && argv[2]=='S' && argv[3]=='P' &&
        argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
         display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
+    }
+    if(argc==9 && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
+       argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' &&
+       argv[7]=='K' && (argv[8]=='K' || argv[8]=='L')) {
+        registration_external_test=(unsigned char)(argv[8]=='K'?1:2);
+        argc=8; /* Ordinary REGCHECK exit flow; only external I/O is faulted. */
     }
     if((argc==8 || (argc==9 && (argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {

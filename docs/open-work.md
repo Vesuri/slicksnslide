@@ -30,10 +30,6 @@ maxima, not exhaustive bounds. Do not confuse average work with 50 FPS.
 
 ## Registration verification
 
-- Use the checked plain-file reader for the registration image owner's external
-  fallback; it currently ignores `Close` failure. Verify missing/read/close-failed
-  external files in isolation without claiming substitute artwork verifies the
-  original order form.
 - The optional external `webf_ord.bmp` order-form image needs a visual check
   if matching original data becomes available; it is absent from the supplied
   archive. Do not substitute another image and call this check complete.
