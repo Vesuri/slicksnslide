@@ -11,6 +11,11 @@ their recoverable error handling; startup reservation cannot guarantee disk I/O.
 
 The current implementation does **not** meet that contract yet.
 
+The complete direct-allocation census and finite migration groups are in
+[allocation-inventory.md](allocation-inventory.md). Complete its nesting/phase
+matrix before further one-off conversions; runtime failures are validation
+evidence, not the allocation discovery process.
+
 ### Measured baseline
 
 Target sizes from the built 68020 ELF, not host ABI sizes:
