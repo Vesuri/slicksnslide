@@ -147,10 +147,13 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_race_surface_create(
 struct SlicksAmigaPlayerMenu *slicks_amiga_intermission_surface_create(
     struct SlicksResourceArchive *,unsigned char *,const unsigned char *);
 /* Dedicated intermission surface only. Inputs/strings copied on open; track
- * bytes and decode arena are needed only during open, with OS available.
+ * bytes and caller-owned decode arena (at least 65536 bytes) are needed only
+ * during open, with OS available. Arena must not overlap the live chunky page,
+ * its saved parent, fonts or input resources; it is never freed by the dialog.
  * Labels are already resolved through the original language lookup. */
 int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *,const struct SlicksIntermissionContent *,
-    const unsigned char *,const unsigned char *,unsigned long,const unsigned char *,unsigned long);
+    const unsigned char *,const unsigned char *,unsigned long,const unsigned char *,unsigned long,
+    unsigned char *,unsigned long);
 int slicks_amiga_intermission_key(struct SlicksAmigaPlayerMenu *,unsigned char);
 int slicks_amiga_intermission_refresh_cars(struct SlicksAmigaPlayerMenu *,const signed char [4]);
 int slicks_amiga_intermission_close(struct SlicksAmigaPlayerMenu *);

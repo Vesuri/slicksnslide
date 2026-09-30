@@ -3190,7 +3190,7 @@ done:
 /* Target resource/lifetime gate, separate from the interactive race loop.
  * Real fonts, icons and track data; private driver choices never get saved. */
 static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
-    unsigned char *chunky,const unsigned char *palette,unsigned char *saved)
+    unsigned char *chunky,const unsigned char *palette,unsigned char *saved,unsigned char *scratch)
 {
     struct SlicksResourceArchive archive={0}; struct SlicksAmigaPlayerMenu *m=0;
     unsigned long ds=0,ts=0;
@@ -3217,14 +3217,14 @@ static int test_intermission_surface(struct SlicksAmigaPlatform *platform,
     for(unsigned long i=0;i<64000;++i) saved[i]=chunky[i];
     for(unsigned fault=1;fault<=3;++fault) {
         g_slicks_diag_intermission_fault=(unsigned char)fault;
-        if(!slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts) || m->intermission ||
+        if(!slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts,scratch,65536) || m->intermission ||
            m->fonts[0][6]!=colour || g_slicks_diag_intermission_fault ||
            g_slicks_diag_intermission_fault_reached!=fault) goto done;
         for(unsigned long i=0;i<64000;++i) if(saved[i]!=chunky[i]) goto done;
         ++g_slicks_diag_intermission_phase; slicks_diag_intermission_checkpoint();
     }
     for(unsigned repeat=0;repeat<2;++repeat) {
-        if(slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts)) goto done;
+        if(slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts,scratch,65536)) goto done;
         if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
         /* View zero previously held the title, not this race background. */
         slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
@@ -3318,7 +3318,7 @@ static void intermission_test_key(struct SlicksAmigaPlatform *platform,unsigned 
 }
 __attribute__((noinline)) void slicks_diag_intermission_closed(void) { __asm__ volatile("" ::: "memory"); }
 static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRaceRuntime *race,
-    unsigned char *chunky,const unsigned char *palette,const char *next_path,
+    unsigned char *chunky,unsigned char *scratch,const unsigned char *palette,const char *next_path,
     const unsigned char *next_name,short position,short total,unsigned char diagnostic,
     void *track_names,unsigned track_count)
 {
@@ -3355,7 +3355,10 @@ retry:
     track=load_plain_allocated(next_path,8192,&ts);
     if(!dat || !track) goto unavailable;
     m=slicks_amiga_intermission_surface_create(&archive,chunky,palette);
-    if(!m || slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts)) goto unavailable;
+    /* The finished race will not resume. Its VGA image is dead: visible output
+     * and retry/restore use chunky, while the next race/title rebuilds logical.
+     * Borrow its startup allocation for preview decode, including retries. */
+    if(!m || slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts,scratch,65536)) goto unavailable;
     /* Release preview-only data before taking over hardware. */
     FreeMem(dat,ds); dat=0; FreeMem(track,ts); track=0; FreeMem(language,2048); language=0;
     if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
@@ -5036,7 +5039,7 @@ int main(void)
        argv[3]=='E' && argv[4]=='N' && argv[5]=='U' && argv[6]=='2') {
         /* Reuse the startup staging buffer for the audit's snapshot. The
          * fixture exits afterward; no extra 64 KB modal allocation needed. */
-        if(test_intermission_surface(&platform,chunky,race_palette,title_asset)) goto cleanup;
+        if(test_intermission_surface(&platform,chunky,race_palette,title_asset,logical)) goto cleanup;
         result=0; goto cleanup;
     }
     if(argc==6 && argv[0]=='U' && argv[1]=='I' && argv[2]=='M' &&
@@ -5884,7 +5887,7 @@ int main(void)
                         char next_path[64];
                         const unsigned char *next_name=(const unsigned char *)track_names[track_selection[playlist_position+1]];
                         make_track_path(next_path,(const char *)next_name);
-                        int choice=run_intermission(&platform,race,chunky,race_palette,next_path,next_name,
+                        int choice=run_intermission(&platform,race,chunky,logical,race_palette,next_path,next_name,
                             (short)playlist_position,(short)slicks_arcade_track_count(configuration.options[0],
                                 configuration.options[14],(short)g_slicks_track_playlist.count),shop_transition_test==4?0:shop_transition_test?1:intermission_retry_test?intermission_retry_test+2:intermission_live_test?2:sequence_test,
                             track_names,track_count);

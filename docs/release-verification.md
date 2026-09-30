@@ -1,5 +1,30 @@
 # Development release audit
 
+## 2026-09-30 — startup-owned intermission preview workspace
+
+Intermission now borrows the dead VGA race image for its 64 KiB preview decode
+workspace. No late arena allocation/free remains in this path. The next race
+or title rebuilds the VGA image; the saved parent and visible chunky image are
+not borrowed. API ownership is explicit and injected failure paths remain.
+
+The normal build and focused intermission menu/preparation/renderer host suites
+pass. Workbench-loaded stock PAL A1200/default-4-KiB runs pass:
+
+- `tmp/standalone-release-zw_ncvtf`: nine Change Cars inputs, edited vehicles
+  reaching the second race and normal system restoration.
+- `tmp/standalone-release-tny86vq2`: same sequence plus 55 menu publications;
+  all 64,000 decoded planar pixels match chunky at each publication.
+- `tmp/standalone-release-8nxj41zw`: CHAMPSAVE reaches real intermission,
+  cancels/reopens the picker, names/saves the three-track championship and
+  exits with `NATIVE_CHAMPIONSHIP_MENU_SAVE_EXIT_OK`. The host launcher was
+  accidentally given the shorter, nonexistent success marker and therefore
+  reported an assertion after the GDB fixture passed; the saved diagnostic
+  log contains the actual expected fixture success marker.
+
+These are automated checks, not claims of manual observation or proof that all
+runtime allocations are eliminated. The broader audit and remaining migration
+are in [memory-lifetimes.md](memory-lifetimes.md).
+
 ## 2026-09-30 — manual release retry, in progress
 
 In the prepared stock PAL A1200 session (68020, 2 MiB Chip, no Fast RAM,

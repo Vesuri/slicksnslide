@@ -49,8 +49,18 @@ All closed (B1–B8; evidence in [frame-pacing.md](frame-pacing.md) and
   the ordinary match-end prompt. Track selection is 195/195 and mode is
   Classic. Isolated Workbench-loaded 2 MiB/4 KB-stack reproduction identifies
   the 65,536-byte preview arena allocation in `slicks_amiga_intermission_open`
-  as the failure, after data and menu allocations succeed. Reduce peak scratch
-  memory use and repeat the manual championship save check.
+  as the failure, after data and menu allocations succeed. Preview now borrows
+  the dead VGA race image's startup allocation; stock-2-MiB intermission/edit/
+  next-race and pixel-publication checks pass. Finish championship save and
+  end-to-end release validation with this build.
+
+- [ ] **B12. Startup-owned runtime memory:** User requested reserving all
+  game-owned runtime storage before entering the game, with a clear launch
+  failure when it cannot fit. Replace late allocations with bounded, reusable
+  workspaces whose simultaneous lifetimes are proved. Cover menus and nested
+  dialogs, preparation, persistence, catalogue growth and ending screens;
+  preserve disk-error recovery. Audit remaining OS allocation calls after
+  startup and verify cleanup. Inventory/design: [memory-lifetimes.md](memory-lifetimes.md).
 
 ## C. Packaging
 

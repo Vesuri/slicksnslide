@@ -383,7 +383,7 @@ int slicks_amiga_intermission_close(struct SlicksAmigaPlayerMenu *m)
 }
 int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct SlicksIntermissionContent *content,
     const unsigned char *source_palette,const unsigned char *dat,unsigned long dat_size,
-    const unsigned char *track,unsigned long track_size)
+    const unsigned char *track,unsigned long track_size,unsigned char *arena,unsigned long arena_size)
 {
     slicks_amiga_platform_clear_latch(0);
     if(!m || !content || !source_palette || !dat || !track || !m->renderer.ui.pixels ||
@@ -395,8 +395,11 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     if(fault==1) g_slicks_diag_intermission_fault_reached=1;
     struct SlicksAmigaIntermission *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
     if(fault==2 && d) g_slicks_diag_intermission_fault_reached=2;
-    unsigned char *arena=fault==2?0:AllocMem(65536,MEMF_ANY);
-    if(!d || !arena) { if(d) FreeMem(d,sizeof *d); if(arena) FreeMem(arena,65536); return -1; }
+    /* Borrow caller-owned startup storage: no late 64 KiB heap request. */
+    if(!d || fault==2 || !arena || arena_size<65536) {
+        if(d) FreeMem(d,sizeof *d);
+        return -1;
+    }
     d->content=*content;
     for(unsigned i=0;i<4;++i) {
         if(content->roles[i] && intermission_copy_string(d->names[i],sizeof d->names[i],content->names[i])) goto before_paint;
@@ -416,12 +419,11 @@ int slicks_amiga_intermission_open(struct SlicksAmigaPlayerMenu *m,const struct 
     struct IntermissionPreviewInput input={dat,track,dat_size,track_size,arena};
     int result=slicks_intermission_renderer_open(&d->renderer,&d->state,&d->content,source_palette,
         d->buttons,sizeof d->buttons,d->cars,sizeof d->cars,intermission_preview,&input);
-    FreeMem(arena,65536);
     if(!result && fault==3) g_slicks_diag_intermission_fault_reached=3;
     if(result || fault==3) { (void)slicks_amiga_intermission_close(m); return -1; }
     return 0;
 before_paint:
-    FreeMem(arena,65536); FreeMem(d,sizeof *d); return -1;
+    FreeMem(d,sizeof *d); return -1;
 }
 int slicks_amiga_intermission_key(struct SlicksAmigaPlayerMenu *m,unsigned char key)
 {
