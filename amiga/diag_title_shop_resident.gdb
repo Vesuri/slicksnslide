@@ -22,7 +22,7 @@ commands
   printf "TITLE_SHOP_RESIDENT_READY\n"
   continue
 end
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if $preparing && g_slicks_diag_profile_platform->active

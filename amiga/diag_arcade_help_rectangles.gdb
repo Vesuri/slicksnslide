@@ -20,7 +20,7 @@ commands
   set $arcade_help_guard=1
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if $arcade_help_guard

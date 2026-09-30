@@ -73,8 +73,11 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
   the link map before assigning these to the live budget; source presence alone
   is not evidence of a runtime allocation. Util is not a normal Makefile object.
 - Resource cache creation allocates one owner, entry array and one block per
-  cached resource at startup. `resource_archive_open` allocates a directory;
-  trace every remaining disk-backed caller before calling this startup-only.
+  cached resource at startup. The first disk open allocates its directory,
+  adopted by a startup-owned reservation (192 entries / 3,648 bytes for Slix151).
+  Every later disk open, including race, trophy and registration, rereads into
+  that exclusive span. Close releases its lease; shutdown frees it. An archive
+  with a larger directory is rejected without allocation, requiring restart.
 - PCM resource conversion allocates Chip RAM at startup; effects playback must
   keep borrowing those samples rather than allocate per sound.
 - `AllocDosObject(DOS_FIB)` in discovery is explicit OS-object ownership;

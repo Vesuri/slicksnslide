@@ -15,7 +15,7 @@ commands
   end
   continue
 end
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if g_slicks_diag_save_buffer_fault == 2

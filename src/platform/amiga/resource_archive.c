@@ -38,15 +38,20 @@ static unsigned long read_u24_be(const unsigned char *bytes)
            ((unsigned long)bytes[1] << 8) | bytes[2];
 }
 
-int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
-                                 const char *path)
+/* Shared diagnostic boundary. External linkage retains the normal stack ABI
+ * for entry breakpoints on both startup and reserved-directory opens. */
+__attribute__((noinline)) int slicks_resource_archive_open_impl(struct SlicksResourceArchive *archive,
+    const char *path,struct SlicksArchiveDirectory *reservation)
 {
     unsigned char header[5];
     unsigned long directory_size;
-    archive->file = Open((CONST_STRPTR)path, MODE_OLDFILE);
+    archive->file = 0;
     archive->count = 0;
     archive->directory = 0;
     archive->cache = 0;
+    archive->reservation = 0;
+    if(reservation && (!reservation->bytes || reservation->busy)) return -1;
+    archive->file = Open((CONST_STRPTR)path, MODE_OLDFILE);
     if (!archive->file)
         return -1;
     if (Read(archive->file, header, sizeof(header)) != sizeof(header) ||
@@ -60,7 +65,13 @@ int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
         return -1;
     }
     directory_size = (unsigned long)archive->count * 19UL;
-    archive->directory = (unsigned char *)AllocMem(directory_size, MEMF_ANY);
+    if(reservation) {
+        if(directory_size>reservation->capacity) {
+            slicks_resource_archive_close(archive); return -1;
+        }
+        reservation->busy=1;archive->reservation=reservation;
+        archive->directory=reservation->bytes;
+    } else archive->directory = (unsigned char *)AllocMem(directory_size, MEMF_ANY);
     if (!archive->directory ||
         Read(archive->file, archive->directory, (LONG)directory_size) !=
             (LONG)directory_size) {
@@ -69,10 +80,34 @@ int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
     }
     return 0;
 }
+int slicks_resource_archive_open(struct SlicksResourceArchive *archive,const char *path)
+{ return slicks_resource_archive_open_impl(archive,path,0); }
+int slicks_resource_archive_open_reserved(struct SlicksResourceArchive *archive,const char *path,
+    struct SlicksArchiveDirectory *reservation)
+{
+    if(!reservation) return -1;
+    return slicks_resource_archive_open_impl(archive,path,reservation);
+}
+int slicks_resource_directory_adopt(struct SlicksArchiveDirectory *reservation,struct SlicksResourceArchive *archive)
+{
+    if(!reservation || reservation->bytes || !archive || !archive->directory || archive->reservation) return -1;
+    reservation->bytes=archive->directory;
+    reservation->capacity=(unsigned long)archive->count*19UL;
+    reservation->busy=1;archive->reservation=reservation;
+    return 0;
+}
+int slicks_resource_directory_destroy(struct SlicksArchiveDirectory *reservation)
+{
+    if(!reservation || reservation->busy) return -1;
+    if(reservation->bytes) FreeMem(reservation->bytes,reservation->capacity);
+    reservation->bytes=0;reservation->capacity=0;
+    return 0;
+}
 
 void slicks_resource_archive_close(struct SlicksResourceArchive *archive)
 {
-    if (archive->directory)
+    if(archive->reservation) archive->reservation->busy=0;
+    else if (archive->directory)
         FreeMem(archive->directory, (unsigned long)archive->count * 19UL);
     if (archive->file)
         Close(archive->file);
@@ -80,6 +115,7 @@ void slicks_resource_archive_close(struct SlicksResourceArchive *archive)
     archive->count = 0;
     archive->directory = 0;
     archive->cache = 0;
+    archive->reservation = 0;
 }
 
 static int resource_range(struct SlicksResourceArchive *archive,
@@ -241,7 +277,7 @@ failed:
 int slicks_resource_archive_cached(struct SlicksResourceArchive *archive,
     const struct SlicksResourceCache *cache)
 {
-    archive->file=0; archive->directory=0; archive->count=0; archive->cache=cache;
+    archive->file=0; archive->directory=0; archive->count=0; archive->cache=cache;archive->reservation=0;
     return cache?0:-1;
 }
 

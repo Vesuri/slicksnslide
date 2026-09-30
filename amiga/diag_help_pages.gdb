@@ -10,7 +10,7 @@ commands
   set $help_page_guard = 1
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if $help_page_guard

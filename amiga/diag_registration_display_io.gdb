@@ -50,7 +50,7 @@ commands
   end
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if $registration_owner && g_slicks_diag_profile_platform->active && !g_slicks_diag_profile_platform->io_active

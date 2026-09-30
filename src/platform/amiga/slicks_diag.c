@@ -73,6 +73,7 @@ extern void slicks_records_text(unsigned char *,const unsigned char *,const unsi
 static struct SlicksRegistration registration;
 static struct SlicksResourceCache *menu_cache;
 static struct SlicksAmigaTrackListCache track_list_cache;
+static struct SlicksArchiveDirectory archive_directory;
 static struct SlicksAmigaSavedFilesCache saved_files_cache;
 volatile unsigned long g_slicks_menu_cache_bytes;
 volatile short g_slicks_registration_status;
@@ -1625,7 +1626,7 @@ static int test_pause_surface(struct SlicksAmigaPlatform *platform,
 {
     struct SlicksResourceArchive archive={0}; int result=-1;
     struct SlicksAmigaPlayerMenu *m=0;
-    if(slicks_resource_archive_open(&archive,"SLICKS.000")) return -1;
+    if(slicks_resource_archive_open_reserved(&archive,"SLICKS.000",&archive_directory)) return -1;
     m=slicks_amiga_race_surface_create(&archive,chunky,palette);
     if(!m) goto done;
     g_slicks_diag_pause_menu=m;
@@ -2808,7 +2809,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
         goto cleanup;
     }
     race_checkpoint(2);
-    if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0 ||
+    if (slicks_resource_archive_open_reserved(&archive,"SLICKS.000",&archive_directory) != 0 ||
         slicks_resource_archive_load(&archive, "peli.@p", race_palette,
                                      768UL) != 768L) {
         g_slicks_diag_race_error = 3;
@@ -4010,7 +4011,7 @@ static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chun
     const char *name=kind==0?"loading.bmp":kind==2?"webf_ord.bmp":
         slicks_registration_exit_image(registration.name[0]);
     if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
-    if(slicks_resource_archive_open(&a,"SLICKS.000")) goto done;
+    if(slicks_resource_archive_open_reserved(&a,"SLICKS.000",&archive_directory)) goto done;
     /* Decode-only staging: release before the registration Help dialog,
      * which borrows this same startup-reserved modal workspace. */
     resource=slicks_amiga_storage_workspace_acquire(70000);
@@ -4103,7 +4104,7 @@ static int run_championship_results(struct SlicksAmigaPlatform *platform,unsigne
     if(!nonzero) { result=0; goto done; }
     slicks_diag_standings_io();
     if(slicks_amiga_platform_begin_io(platform)) goto done;
-    if(slicks_resource_archive_open(&archive,"SLICKS.000")) goto done;
+    if(slicks_resource_archive_open_reserved(&archive,"SLICKS.000",&archive_directory)) goto done;
     bitmap=slicks_amiga_storage_workspace_acquire(64003);
     if(!bitmap || slicks_resource_archive_load(&archive,"sskuppi.@I",bitmap,64003)!=64003 ||
        bitmap[0]!=1 || bitmap[1]!=64 || bitmap[2]!=200 ||
@@ -4829,7 +4830,8 @@ int main(void)
     if (slicks_amiga_platform_create(&platform, GfxBase) != 0)
         goto cleanup;
 
-    if (slicks_resource_archive_open(&archive, "SLICKS.000") != 0)
+    if (slicks_resource_archive_open(&archive,"SLICKS.000") != 0 ||
+        slicks_resource_directory_adopt(&archive_directory,&archive))
         goto cleanup;
     if(!configuration.field_05e1) {
         int language=choose_startup_language(&archive);
@@ -5125,7 +5127,7 @@ int main(void)
         goto cleanup;
     }
     if(slicks_amiga_menu_keymap_init() ||
-       slicks_resource_archive_open(&archive,"SLICKS.000")) goto cleanup;
+       slicks_resource_archive_open_reserved(&archive,"SLICKS.000",&archive_directory)) goto cleanup;
     menu_cache=slicks_resource_cache_create(&archive,slicks_menu_resources,
         SLICKS_MENU_RESOURCE_COUNT);
     slicks_resource_archive_close(&archive);
@@ -7596,6 +7598,7 @@ cleanup:
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);
     slicks_resource_cache_destroy(menu_cache); menu_cache=0;
+    if(slicks_resource_directory_destroy(&archive_directory)) result=20;
 #ifdef SLICKS_RETENTION_CHECK
     if(saved_race) {
         for(unsigned i=0;i<SLICKS_RETENTION_BLOCKS;++i)

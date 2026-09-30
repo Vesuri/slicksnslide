@@ -2,7 +2,7 @@
 source diag_menu_rectangles.gdb
 set $opened=0
 set $closed=0
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if g_slicks_diag_ready && !$closed

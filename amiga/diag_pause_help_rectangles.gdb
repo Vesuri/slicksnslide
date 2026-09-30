@@ -3,7 +3,7 @@ source diag_menu_rectangles.gdb
 set $steps=0
 set $closed=0
 set $resumed=0
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if g_slicks_diag_pause_menu

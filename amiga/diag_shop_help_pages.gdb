@@ -14,7 +14,7 @@ commands
   dump binary memory .run/shop-help-pages/before.chunky $owner->renderer.ui.pixels $owner->renderer.ui.pixels+64000
   continue
 end
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if $opened && !$closed

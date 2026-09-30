@@ -10,7 +10,7 @@ commands
   end
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if g_slicks_track_menu && (g_slicks_track_menu->message || g_slicks_track_menu->track_info)

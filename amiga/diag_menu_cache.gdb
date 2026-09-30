@@ -9,7 +9,7 @@ commands
   set $guard = 1
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if $guard

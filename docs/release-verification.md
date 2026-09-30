@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-10-01 — archive directory retained from startup
+
+The first SLICKS.000 index allocation is adopted by a reservation and retained
+until shutdown. All later disk opens reread into that exclusive span, without
+allocation; the supplied archive has 192 entries requiring 3,648 bytes. Failed
+Open/header/index reads release the lease and file handle. Concurrent borrowers
+and directory growth beyond startup capacity fail explicitly. Memory-only
+cached handles remain independent. Archive diagnostic breakpoints now use the
+common open implementation, with its normal stack ABI retained.
+
+- Host adapter: two repeated complete byte-exact archive sweeps using the same
+  pointer, zero post-reservation allocation calls, exclusive-lease/destroy
+  guards and Open/header/index/oversize failure recovery pass. Existing 182
+  resource comparisons, EOF/seek/read checks and 1,193 cache-construction fault
+  points pass.
+- `tmp/standalone-release-16n202v8`: stock Workbench/68020/2 MiB/no Fast/default
+  4 KiB stack, maximal track-list catalogue, REGCHECK allocation audit and two
+  same-OS launches pass. First launch: return 0, 200 allocation calls, no failed
+  or outstanding blocks and no workspace conflicts. SAME_OS_RESTART_OK=2.
+- `...-3m0sgglv`: OPTIONSBC race/results/trophy return flow passes; trophy loads
+  once under retained display ownership, and all 19 captured publications match
+  every chunky pixel. No test emulator remains running.
+
+Final production-path allocation audit and end-to-end release validation remain
+open; these checks establish the directory migration, not completion of B12/B11.
+
 ## 2026-10-01 — track-list cache reserves its capacity at launch
 
 The retained catalogue now allocates 65,536 bytes once, before small menu-cache

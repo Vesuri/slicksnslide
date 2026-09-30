@@ -8,13 +8,20 @@ typedef intptr_t BPTR;
 typedef long LONG;
 typedef const char *CONST_STRPTR;
 enum { MEMF_ANY,MODE_OLDFILE,OFFSET_BEGINNING=-1,OFFSET_CURRENT=0,OFFSET_END=1 };
-static unsigned operations,fail_at,allocations;
+static unsigned operations,fail_at,allocations,allocation_calls,oversize_header;
 static int fault(void) { return ++operations==fail_at; }
 static BPTR Open(CONST_STRPTR p,int mode)
 { (void)mode; return fault()?0:(BPTR)fopen(p,"rb"); }
 static void Close(BPTR p) { fclose((FILE *)p); }
 static LONG Read(BPTR p,void *out,LONG n)
-{ return fault()?-1:(LONG)fread(out,1,(size_t)n,(FILE *)p); }
+{
+    if(fault()) return -1;
+    LONG got=(LONG)fread(out,1,(size_t)n,(FILE *)p);
+    if(oversize_header && n==5 && got==5) {
+        ((unsigned char *)out)[3]=255;((unsigned char *)out)[4]=255;
+    }
+    return got;
+}
 static LONG Seek(BPTR p,LONG offset,int origin)
 {
     if(fault()) return -1;
@@ -23,7 +30,7 @@ static LONG Seek(BPTR p,LONG offset,int origin)
     return old;
 }
 static void *AllocMem(unsigned long n,int flags)
-{ (void)flags; if(fault()) return 0; ++allocations; return malloc(n); }
+{ (void)flags; ++allocation_calls; if(fault()) return 0; ++allocations; return malloc(n); }
 static void FreeMem(void *p,unsigned long n)
 { (void)n; --allocations; free(p); }
 #define SLICKS_ARCHIVE_HOST_TEST
@@ -83,7 +90,42 @@ int main(void)
     const char *missing[]={"HELP.TXT","absent"};
     assert(!slicks_resource_cache_create(&a,missing,2));
     assert(allocations==base_allocations);
-    slicks_resource_archive_close(&a); assert(!allocations);
+    struct SlicksArchiveDirectory directory={0};
+    unsigned char *retained=a.directory;
+    assert(!slicks_resource_directory_adopt(&directory,&a));
+    assert(directory.busy && directory.bytes==retained && allocations==1);
+    assert(slicks_resource_directory_adopt(&directory,&a)<0);
+    assert(slicks_resource_directory_destroy(&directory)<0);
+    struct SlicksResourceArchive second={0};
+    unsigned reserved_calls=allocation_calls;
+    assert(slicks_resource_archive_open_reserved(&second,"ref/SLICKS.000",&directory)<0);
+    assert(directory.busy && !second.file);
+    slicks_resource_archive_close(&a); assert(allocations==1 && !directory.busy);
+    for(unsigned repeat=0;repeat<2;++repeat) {
+        assert(!slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory));
+        assert(a.directory==retained && directory.busy);
+        for(unsigned i=0;i<a.count;++i) {
+            char name[17]={0};memcpy(name,a.directory+19*i,16);
+            long wanted=host_archive_load("ref/SLICKS.000",name,expected,sizeof expected);
+            long got=slicks_resource_archive_load(&a,name,actual,sizeof actual);
+            assert(got==wanted && (got<0 || !memcmp(actual,expected,(size_t)got)));
+        }
+        slicks_resource_archive_close(&a);
+    }
+    for(unsigned fail=1;fail<=3;++fail) {
+        operations=0;fail_at=fail;
+        assert(slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory)<0);
+        assert(!a.file && !a.directory && !directory.busy && allocations==1);
+    }
+    fail_at=0;oversize_header=1;
+    assert(slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory)<0);
+    assert(!a.file && !directory.busy && allocations==1);
+    oversize_header=0;
+    assert(!slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory));
+    slicks_resource_archive_close(&a);
+    assert(allocation_calls==reserved_calls);
+    assert(!slicks_resource_directory_destroy(&directory) && !directory.bytes && !allocations);
+    puts("Reserved directory: repeated byte-exact loads, exclusive ownership, open/read/capacity failure cleanup and zero runtime allocation calls pass");
     printf("Cache: byte-identical resources, zero-I/O reads/misses/close, %u injected construction failures unwind\n",create_operations);
     printf("Archive adapter: %u named-resource comparisons, final HELP.TXT, capacity rejection and all four EOF/seek/read faults pass\n",cases);
     return 0;

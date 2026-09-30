@@ -13,7 +13,7 @@ commands
   printf "SHOP_TRANSITION_PREPARATION %u active=%u\n",$preparations,g_slicks_diag_profile_platform->active
   continue
 end
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if $preparations && g_slicks_diag_profile_platform->active

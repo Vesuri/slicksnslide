@@ -132,7 +132,12 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    Chunky/palette output does not alias that lease. Failed loads/decodes also
    release it. Trophy's 64,003-byte staging uses the same lease, released
    before creating the results surface; its file access retains the faded
-   game display. Archive directories remain to reserve.
+   game display. The first startup archive directory is adopted as a retained
+   reservation (3,648 bytes for the supplied archive). Disk handles borrow it
+   exclusively and reread the index on each open, so partial reads invalidate
+   only that failed handle. Close clears the lease even on error; final cleanup
+   frees the block. A replacement archive exceeding startup capacity is rejected
+   rather than allocating during play. Cached handles do not borrow the index.
 7. **Startup-only ownership:** bitmaps/copper, PCM banks, compressed menu cache,
    fonts and main images can retain their existing startup allocation/exit-free
    pattern. Audit framework and OS calls separately, rather than routing Chip

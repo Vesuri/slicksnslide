@@ -28,7 +28,7 @@ commands
   printf "HELP_OWNER_OPEN language=%s options=%u players=%u tracks=%u\n",menu_language_name, $help_owner==g_slicks_options_menu, $help_owner==g_slicks_player_menu, $help_owner==g_slicks_track_menu
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if $help_owner_guard

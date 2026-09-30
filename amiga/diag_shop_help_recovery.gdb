@@ -2,7 +2,7 @@ source diag_menu_rectangles.gdb
 set $help_opens=0
 set $warnings=0
 set $dismissed=0
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if $help_opens && g_slicks_shop_help_phase!=2

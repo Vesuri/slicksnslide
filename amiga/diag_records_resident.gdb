@@ -50,7 +50,7 @@ commands
   eval "dump binary memory .run/post-race-records-v1/record-%u-entry.planar %p %p", $record_returns, $record_bitmap->Planes[0], $record_bitmap->Planes[0]+64000
   continue
 end
-break slicks_resource_archive_open
+break slicks_resource_archive_open_impl
 commands
   silent
   if $record_owner

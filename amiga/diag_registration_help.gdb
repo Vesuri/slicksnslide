@@ -9,7 +9,7 @@ init-if-undefined $capture_registration_return = 0
 init-if-undefined $registration_help_failure = 0
 init-if-undefined $registration_help_backing_failure = 0
 set $warnings=0
-break *slicks_resource_archive_open
+break *slicks_resource_archive_open_impl
 commands
   silent
   if $registration_help_owned
