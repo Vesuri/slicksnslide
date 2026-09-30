@@ -1,5 +1,29 @@
 # Development release audit
 
+## 2026-09-30 — ship gate D-1 at 73f9c03
+
+Started `make release-check` with an empty `git status --porcelain` at
+`73f9c0367914fb501c4f321f3469466f5234693c`. The command completed with exit 0.
+Log: `tmp/release-gate-73f9c03.log`.
+
+All prerequisites passed, including timing/physics/lap-limit/collision,
+title/Help/key-repeat/loading/font checks, 56,000 Help partial-redraw keys,
+30,000 Tracks partial-redraw keys, 378 original Tracks preparation comparisons
+and 168 sequential original redraw comparisons. The installer helper passed
+197 exact-original outputs, preservation and corrupt/wrong/truncated ZIP tests.
+
+Two clean default Amiga builds produced byte-identical stripped executables.
+The subsequent clean packaging build produced the same stripped game hash:
+`a25d8cc46aa4f64a2fa807ae7a02d2bfb0529731440cd7f44411161aea6888e8`.
+The scratch archive `build/release-check/Slicks-0.1.lha` is 280,990 bytes,
+SHA256 `fb004f4bf78c1d3fff16b8df55a678bc3b7eff68b2e5f7499cad9af6ac1796d1`.
+Its independent audit passes all 12 allowlisted LH5 members, decompression,
+header/payload CRCs and executable/script/icon identity, including version checks.
+
+This closes D-1 only. D-2 rendering/retention checks and D-3 manual installation
+and gameplay remain separate gates. This is a scratch candidate, not publication
+or a version tag; `dist/` was not replaced. Debug validation remains muted.
+
 ## 2026-09-30 — clean-build installer candidate refresh
 
 A clean default-options Amiga rebuild produces the exact same stripped HUNK
