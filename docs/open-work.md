@@ -171,9 +171,12 @@ native caller/input/error checks.
   allocation failures pass native no-partial-startup/owned-buffer cleanup gates.
   Directory-object allocation failure also passes without fallback or takeover;
   the upper-bound gate remains: the 10,001-file native fixture timed out after
-  600 seconds without reaching race preparation. Add phase checkpoints to
-  locate the delay before retrying or changing the implementation; the timeout
-  proves neither successful 10,000-track startup nor a specific bottleneck.
+  600 seconds without reaching race preparation. The bounded CATPROBE run now
+  reaches all 10,000 entries quickly, then spends 329 host seconds sorting the
+  first 1,024 positions. Replace the quadratic catalogue sorter while preserving
+  original stem ordering and filename identity, including equal-stem cases;
+  then rerun ordering oracles and the full native upper-bound gate. These are
+  debugger/host timings, not PAL frame measurements or successful race entry.
   The native
   intermission Save path now saves all 300 selected tracks
   with dynamic backing and passes cancel/reopen/save/exit on the default stack;

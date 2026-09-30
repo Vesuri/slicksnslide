@@ -2890,6 +2890,31 @@ not a pass, an established out-of-memory failure, or proof that sorting alone
 caused the delay. Startup phase checkpoints are the next diagnostic step;
 the same expensive full run should not simply be repeated unchanged.
 
+### F18 follow-up: bounded startup phase diagnosis
+
+`CATPROBE` follows STARTGO with diagnostic-only enumeration/sort checkpoints.
+The stock 68020/2 MiB/no Fast/default 4 KiB run in
+`tmp/standalone-release-bzb09qyp` passes
+`CATALOGUE_ENUMERATION_AND_SORT_PROGRESS_OBSERVED`: enumeration reaches the
+10,000-entry cap, then sorting reaches outer index 1,024. Enumeration from
+1,024 to 10,000 spans six host seconds (timestamps 1790744747..1790744753).
+Sorting from index 0 to 1,024 spans 329 host seconds
+(1790744753..1790745082). These host timestamps include debugger overhead and
+warp execution; they are not precise emulated CPU or display timings.
+
+The exchange sorter performs 49,995,000 comparisons for 10,000 entries;
+the observed first 1,024 outer iterations already perform 9,715,200. This
+establishes a substantial sorting delay, rather than inferring it from the
+earlier timeout. The gate intentionally exits before the complete sort or race
+preparation, so native upper-bound startup remains unproven. Next action is
+an ordering-preserving scalable sorter, with equal-stem/full-filename identity
+covered before acceptance, followed by the full upper-bound gate.
+
+Build: `tmp/catalogue-phase-build.log`. The original discovery/sorting/fallback
+oracle also passes (`tmp/catalogue-phase-oracle.log`). Debug audio was muted;
+the runner closed its emulator. The independent Load draft remains uncommitted
+and unexercised by this diagnostic.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

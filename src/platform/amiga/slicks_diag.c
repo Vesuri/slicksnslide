@@ -767,6 +767,9 @@ static unsigned char track_files_in_current_directory;
 volatile unsigned short g_slicks_diag_track_alloc_fail,g_slicks_diag_track_alloc_attempts;
 volatile unsigned short g_slicks_diag_track_alloc_live;
 volatile unsigned short g_slicks_diag_track_directory_alloc_failed;
+static unsigned char catalogue_probe;
+volatile unsigned short g_slicks_diag_catalogue_phase,g_slicks_diag_catalogue_progress;
+void __attribute__((noinline)) slicks_diag_catalogue_progress(void) { __asm__ volatile("" ::: "memory"); }
 static void *allocate_track_storage(unsigned long bytes)
 {
     if(g_slicks_diag_track_alloc_fail && ++g_slicks_diag_track_alloc_attempts==g_slicks_diag_track_alloc_fail)return 0;
@@ -827,6 +830,10 @@ retry_directory:
         for (at = 0; at <= length; ++at)
             names[count][at] = source[at];
         ++count;
+        if(catalogue_probe && !(count&1023)) {
+            g_slicks_diag_catalogue_phase=1;g_slicks_diag_catalogue_progress=count;
+            slicks_diag_catalogue_progress();
+        }
     }
 cleanup:
     if (lock)
@@ -842,11 +849,19 @@ cleanup:
         }
         return 0;
     }
+    if(catalogue_probe) {
+        g_slicks_diag_catalogue_phase=2;g_slicks_diag_catalogue_progress=count;
+        slicks_diag_catalogue_progress();
+    }
     /* AmigaDOS directory order is filesystem-dependent. Native setup uses
      * alphabetical names; only legacy race diagnostics promote BASIC. */
     {
         unsigned short left;
         for (left = 0; left + 1 < count; ++left) {
+            if(catalogue_probe && !(left&1023)) {
+                g_slicks_diag_catalogue_phase=3;g_slicks_diag_catalogue_progress=left;
+                slicks_diag_catalogue_progress();
+            }
             unsigned short right;
             for (right = left + 1; right < count; ++right) {
                 if (slicks_track_stem_compare(names[right],names[left])<0) {
@@ -859,6 +874,10 @@ cleanup:
                 }
             }
         }
+    }
+    if(catalogue_probe) {
+        g_slicks_diag_catalogue_phase=4;g_slicks_diag_catalogue_progress=count;
+        slicks_diag_catalogue_progress();
     }
     for (at = 0; legacy_basic_first && at < count; ++at) {
         static const char basic[] = "BASIC.SS";
@@ -4104,6 +4123,10 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
+    if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='P' &&
+       argv[4]=='R' && argv[5]=='O' && argv[6]=='B' && argv[7]=='E') {
+        catalogue_probe=1;argc=7;argv="STARTGO";
+    }
     if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='F' &&
        argv[4]=='A' && argv[5]=='I' && argv[6]=='L' && argv[7]>='1' && argv[7]<='4') {
         g_slicks_diag_track_alloc_fail=(unsigned short)(argv[7]-'0');argc=0;argv="";
