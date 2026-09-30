@@ -764,6 +764,21 @@ extern void slicks_chunky_pixels_to_amiga(
 #define SLICKS_TRACK_NAME_SIZE 12
 
 static unsigned char track_files_in_current_directory;
+volatile unsigned short g_slicks_diag_track_alloc_fail,g_slicks_diag_track_alloc_attempts;
+volatile unsigned short g_slicks_diag_track_alloc_live;
+static void *allocate_track_storage(unsigned long bytes)
+{
+    if(g_slicks_diag_track_alloc_fail && ++g_slicks_diag_track_alloc_attempts==g_slicks_diag_track_alloc_fail)return 0;
+    void *memory=AllocMem(bytes,MEMF_ANY|MEMF_CLEAR);
+    if(memory && g_slicks_diag_track_alloc_fail)++g_slicks_diag_track_alloc_live;
+    return memory;
+}
+static void free_track_storage(void *memory,unsigned long bytes)
+{
+    FreeMem(memory,bytes);
+    if(g_slicks_diag_track_alloc_fail)--g_slicks_diag_track_alloc_live;
+}
+void __attribute__((noinline)) slicks_diag_track_storage_released(void) { __asm__ volatile("" ::: "memory"); }
 static unsigned short discover_tracks(
     char (**storage)[SLICKS_TRACK_NAME_SIZE],unsigned *capacity,unsigned char legacy_basic_first)
 {
@@ -796,14 +811,14 @@ retry_directory:
         if(count==*capacity) {
             unsigned next=*capacity?*capacity*2:256;
             if(next>SLICKS_TRACK_FILE_MAX)next=SLICKS_TRACK_FILE_MAX;
-            char (*grown)[SLICKS_TRACK_NAME_SIZE]=AllocMem(next*SLICKS_TRACK_NAME_SIZE,MEMF_ANY|MEMF_CLEAR);
+            char (*grown)[SLICKS_TRACK_NAME_SIZE]=allocate_track_storage(next*SLICKS_TRACK_NAME_SIZE);
             if(!grown) {
                 UnLock(lock);FreeDosObject(DOS_FIB,info);
                 return 0; /* Caller retains/frees the old block; no partial catalogue. */
             }
             for(unsigned i=0;i<count;++i)
                 for(unsigned j=0;j<SLICKS_TRACK_NAME_SIZE;++j)grown[i][j]=names[i][j];
-            if(names)FreeMem(names,*capacity*SLICKS_TRACK_NAME_SIZE);
+            if(names)free_track_storage(names,*capacity*SLICKS_TRACK_NAME_SIZE);
             names=grown;*storage=names;*capacity=next;
         }
         for (at = 0; at <= length; ++at)
@@ -4086,6 +4101,10 @@ int main(void)
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
         --argc;
+    if(argc==8 && argv[0]=='C' && argv[1]=='A' && argv[2]=='T' && argv[3]=='F' &&
+       argv[4]=='A' && argv[5]=='I' && argv[6]=='L' && argv[7]>='1' && argv[7]<='3') {
+        g_slicks_diag_track_alloc_fail=(unsigned short)(argv[7]-'0');argc=0;argv="";
+    }
     if(argc==7 && argv[0]=='D' && argv[1]=='E' && argv[2]=='M' && argv[3]=='O' &&
        argv[4]=='F' && argv[5]=='1' && argv[6]=='2') {
         demo_lifecycle_test=1;argc=0;argv="";
@@ -4483,8 +4502,11 @@ int main(void)
     }
     if(track_count>g_slicks_track_playlist.capacity) {
         unsigned capacity=(unsigned)track_count+2;
-        short *selection=AllocMem(capacity*sizeof *selection,MEMF_ANY|MEMF_CLEAR);
-        if(!selection)goto cleanup;
+        short *selection=allocate_track_storage(capacity*sizeof *selection);
+        if(!selection) {
+            PutStr((CONST_STRPTR)"Slicks: insufficient memory for the track selection.\n");
+            goto cleanup;
+        }
         track_selection=selection;
         g_slicks_track_playlist.tracks=selection;
         g_slicks_track_playlist.capacity=(unsigned short)capacity;
@@ -7053,13 +7075,14 @@ cleanup:
         FreeMem(demo_expected_playlist,demo_expected_playlist_capacity*sizeof(short));
         demo_expected_playlist=0;demo_expected_playlist_capacity=0;
     }
-    if(track_names)FreeMem(track_names,track_name_capacity*SLICKS_TRACK_NAME_SIZE);
+    if(track_names)free_track_storage(track_names,track_name_capacity*SLICKS_TRACK_NAME_SIZE);
     if(track_selection!=initial_track_selection) {
-        FreeMem(track_selection,g_slicks_track_playlist.capacity*sizeof *track_selection);
+        free_track_storage(track_selection,g_slicks_track_playlist.capacity*sizeof *track_selection);
         track_selection=initial_track_selection;
         g_slicks_track_playlist.tracks=initial_track_selection;
         g_slicks_track_playlist.capacity=256;
     }
+    if(g_slicks_diag_track_alloc_fail)slicks_diag_track_storage_released();
     if (sample_resource)
         FreeMem(sample_resource, 131691UL);
     if (chunky)

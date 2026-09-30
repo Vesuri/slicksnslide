@@ -167,8 +167,10 @@ native caller/input/error checks.
 ### 6. Complete the whole-port fidelity audit
 
 - F18: dynamic catalogue/selection storage now passes 300-track startup,
-  race entry and Help restoration. Finish allocation-failure and upper-bound
-  gates. The native intermission Save path now saves all 300 selected tracks
+  race entry and Help restoration. Initial/growing name-buffer and selection
+  allocation failures pass native no-partial-startup/owned-buffer cleanup gates.
+  Directory-object allocation and upper-bound gates remain. The native
+  intermission Save path now saves all 300 selected tracks
   with dynamic backing and passes cancel/reopen/save/exit on the default stack;
   codec/export capacity tests also reach 10,000 on the host. Finish the Load
   caller's remaining 256-track backing and capacity, including transactional

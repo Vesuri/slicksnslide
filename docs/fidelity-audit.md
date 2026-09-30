@@ -2827,6 +2827,35 @@ full cleanup allocation lifetimes. Build log:
 muted. The independent Load draft remains in the tested tree but is not
 exercised. `make verify-track-discovery` retains all prior size/order checks.
 
+### F18 follow-up: catalogue storage allocation failures
+
+`allocate_track_storage`/`free_track_storage` preserve the existing cleared
+allocation policy and centralize name/selection buffer ownership. Explicit
+`CATFAIL1`, `CATFAIL2`, `CATFAIL3` diagnostics fail respectively the initial
+256-name buffer, growth to 512 names, and the selected-index allocation for
+the 300-file catalogue. Counters are active only in these diagnostics; no
+gameplay-loop instrumentation is added. Selection-allocation failure now also
+prints a console explanation instead of silently leaving startup.
+
+`diag_track_allocation_failure.gdb` observes the actual discovery return and
+rejects any current-directory fallback, title, race preparation or display
+takeover. Name-buffer failures return zero rather than the first 256 entries;
+the selection-buffer case first discovers all 300, then rejects publication.
+At the post-buffer-cleanup checkpoint, all tracked allocations have been
+freed, the original static selection owner/capacity remain installed and the
+platform is inactive. The gate is narrower than total process heap accounting
+or directory-object allocation coverage; neither is inferred from the counters.
+
+Stock 68020/2 MiB/no Fast/default 4 KiB runs pass:
+`tmp/standalone-release-x2db1knm` (initial names),
+`tmp/standalone-release-5zcrlvqc` (growing names), and
+`tmp/standalone-release-5ifm36fy` (selection).
+Normal 300-track startup/race entry still passes in
+`tmp/standalone-release-fpkbejpk`; its captured selection contains indices
+0..299 exactly once. Audio was muted and owned emulators closed. Build log:
+`tmp/track-allocation-failure-build.log`. As with the preceding checks, the
+independent Load draft remains uncommitted and unexercised by these routes.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
