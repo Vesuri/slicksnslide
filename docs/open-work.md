@@ -36,12 +36,6 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-### B3. Loading screen: one visual confirmation
-
-This is implemented and verified ([title-and-loading-verification.md](title-and-loading-verification.md)).
-The one remaining step is for the user to look once during a track load and
-confirm the tinted panel and caption on screen, not Workbench.
-
 ### B6. Help key-handling rate
 
 The typematic repeat for Help and name entry is implemented: a 500 ms delay,

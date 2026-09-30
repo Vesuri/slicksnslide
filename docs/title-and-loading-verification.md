@@ -90,3 +90,7 @@ published during I/O, because the decoder borrows it.
 **Not yet established.** This is bitmap content, not visible scanout, so the
 user's one visual check remains. The other disk boundaries (intermission
 preview, records, cup image, setup save) still use the OS hand-off.
+
+**User confirmation (2026-09-30).** On the normal build (`amiga/run.sh`) the
+user saw the tinted loading panel with the track caption during a track load,
+not Workbench. B3 is closed.
