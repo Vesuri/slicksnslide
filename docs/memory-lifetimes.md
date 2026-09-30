@@ -90,8 +90,9 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    release reconstructs the cache from unchanged terrain maps before any race
    update can resume. At initial title startup `race->started` is explicitly
    zero; no uninitialized terrain is read. Binding capacity is checked at
-   compile time and startup, and no heap fallback exists. Picker, controllers,
-   name/colour, messages, Change Cars and intermission storage still allocate
+   compile time and startup, and no heap fallback exists. Controllers and
+   name/colour dialogs now share the same exclusive overlay, without growing
+   it. Picker, messages, Change Cars and intermission storage still allocate
    dynamically. Work out legal nesting before defining
    unions; preserve parent save-under, labels and font state across child exit.
 5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536

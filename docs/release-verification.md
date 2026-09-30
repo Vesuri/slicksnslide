@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-09-30 — shared startup modal storage
+
+Help, Controllers, name entry and colour picking now share an owner-tagged
+union in the existing particle-cache overlay. Target size remains 110,096
+bytes: no extra startup memory. Failure, close and parent-destroy paths release
+the correct owner and rebuild the cache before resuming simulation. Three more
+normal-game allocation sites are removed; the remaining lifetime matrix is in
+allocation-inventory.md.
+
+Workbench-loaded stock A1200, default 4 KiB stack:
+
+- PLAYERSNL (`tmp/standalone-release-7jfywbai`): post-paint name failure,
+  warning/retry, create/edit/reopen/cancel; 30 full-screen publications pass.
+- PLAYERSCL (`...-92w7rh7z`): colour failure/retry and both endpoints,
+  acceptance/cancellation/reopen; 44 publications pass.
+- OPTIONSC (`...-uhf_bxpi`): capture, defaults, reopening/re-edit;
+  38 publications pass.
+- LIVEMENUH (`...-vea_gnvr`): Help contents/history/reopen/resume passes;
+  ten publications pass and particle-cache/car snapshots match byte-for-byte.
+- LIVEMENUH cleanup audit (`...-wn0momk3`) passes with no failed or outstanding
+  allocations and no ownership conflicts.
+
+The separate OPTIONSC allocation audit (`...-8s8yxslf`) was interrupted after
+its scripted input ended without exiting. It is not a cleanup pass; its
+functional/rendering fixture above passed independently. Test emulators closed.
+
 ## 2026-09-30 — track-information preparation uses startup VGA storage
 
 Removed the preview arena and compressed DAT/track allocations from

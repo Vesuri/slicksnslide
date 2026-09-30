@@ -60,6 +60,7 @@ static struct SlicksAmigaPlayerMenu *acquire_menu(void)
 }
 static struct SlicksAmigaHelpWorkspace *help_workspace;
 static unsigned char help_workspace_busy;
+enum ModalOwner { MODAL_HELP=1,MODAL_CONTROLLERS,MODAL_NAME,MODAL_COLOUR };
 static void (*help_workspace_restore)(void *);
 static void *help_workspace_context;
 int slicks_amiga_help_workspace_bind(void *bytes,unsigned long capacity,
@@ -76,21 +77,21 @@ void slicks_amiga_help_workspace_unbind(void)
     help_workspace=0; help_workspace_restore=0; help_workspace_context=0;
     help_workspace_busy=0;
 }
-static struct SlicksHelpViewer *acquire_help(void)
+static void *acquire_modal(unsigned long size,unsigned char owner)
 {
-    if(!help_workspace || help_workspace_busy) {
+    if(!help_workspace || help_workspace_busy || size>sizeof *help_workspace) {
         ++g_slicks_menu_workspace_conflicts;
         return 0;
     }
-    help_workspace_busy=1;
-    unsigned char *bytes=(unsigned char *)&help_workspace->viewer;
-    for(unsigned long i=0;i<sizeof help_workspace->viewer;++i) bytes[i]=0;
-    return &help_workspace->viewer;
+    help_workspace_busy=owner;
+    unsigned char *bytes=(unsigned char *)help_workspace;
+    for(unsigned long i=0;i<size;++i) bytes[i]=0;
+    return bytes;
 }
-static void release_help(struct SlicksHelpViewer *viewer)
+static void release_modal(void *viewer,unsigned char owner)
 {
     if(!viewer) return;
-    if(!help_workspace || viewer!=&help_workspace->viewer || !help_workspace_busy) {
+    if(!help_workspace || viewer!=(void *)help_workspace || help_workspace_busy!=owner) {
         ++g_slicks_menu_workspace_conflicts;
         return;
     }
@@ -98,6 +99,10 @@ static void release_help(struct SlicksHelpViewer *viewer)
     help_workspace_busy=0;
     help_workspace_restore(help_workspace_context);
 }
+static struct SlicksHelpViewer *acquire_help(void)
+{ return acquire_modal(sizeof(struct SlicksHelpViewer),MODAL_HELP); }
+static void release_help(struct SlicksHelpViewer *viewer)
+{ release_modal(viewer,MODAL_HELP); }
 
 extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
 extern void slicks_menu_text(unsigned char *,const unsigned char *,const unsigned char *,short,short,unsigned short);
@@ -605,10 +610,10 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
     if(m->help) {
         release_help(m->help);
     }
-    if(m->controllers_dialog) FreeMem(m->controllers_dialog,sizeof *m->controllers_dialog);
+    if(m->controllers_dialog) release_modal(m->controllers_dialog,MODAL_CONTROLLERS);
     if(m->race_menu) FreeMem(m->race_menu,sizeof *m->race_menu);
-    if(m->colour_dialog) FreeMem(m->colour_dialog,sizeof *m->colour_dialog);
-    if(m->name_dialog) FreeMem(m->name_dialog,sizeof *m->name_dialog);
+    if(m->colour_dialog) release_modal(m->colour_dialog,MODAL_COLOUR);
+    if(m->name_dialog) release_modal(m->name_dialog,MODAL_NAME);
     free_picker(m->picker);
     slicks_amiga_menu_workspace_release(m);
 }
@@ -619,25 +624,25 @@ int slicks_amiga_controllers_open_at(struct SlicksAmigaPlayerMenu *m,struct Slic
     slicks_amiga_platform_clear_latch(0);
     if(!m || !archive || m->controllers_dialog || m->picker || m->name_dialog || m->colour_dialog) return -1;
     unsigned char fault=g_slicks_diag_controllers_fault; g_slicks_diag_controllers_fault=0;
-    struct SlicksAmigaControllersDialog *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaControllersDialog *d=fault==1?0:acquire_modal(sizeof *d,MODAL_CONTROLLERS);
     if(!d) return -1;
     unsigned char resource[512];
     static const char *const names[]={"ohj_key.@I","ohj_joy.@I","ohj_lptc.@I",
         "keys_m1.@16","keys_m2.@16","keys_m3.@16","keys_m4.@16","keys_m5.@16"};
     for(unsigned i=0;i<8;++i) {
         long size=slicks_resource_archive_load(archive,fault==2 && i==7?"missing-controller-icon":names[i],resource,sizeof resource);
-        if(size<0) { FreeMem(d,sizeof *d); return -1; }
+        if(size<0) { release_modal(d,MODAL_CONTROLLERS); return -1; }
         d->icons[i].pixels=d->pixels[i];
         int error=i<3?slicks_decode_indexed_menu_icon(resource,(unsigned long)size,d->pixels[i],sizeof d->pixels[i],&d->icons[i].width,&d->icons[i].height):
             slicks_decode_menu_icon(resource,(unsigned long)size,m->renderer.ui.palette,d->pixels[i],sizeof d->pixels[i],&d->icons[i].width,&d->icons[i].height);
-        if(error) { FreeMem(d,sizeof *d); return -1; }
+        if(error) { release_modal(d,MODAL_CONTROLLERS); return -1; }
     }
     d->renderer.surface=&m->renderer; d->renderer.icons=d->icons; m->error=0;
     int result=slicks_controllers_renderer_open(&d->renderer,&d->state,x,y,
         d->original,sizeof d->original,d->tinted,sizeof d->tinted);
     if(result || m->error) {
         if(d->renderer.active) slicks_controllers_renderer_close(&d->renderer);
-        FreeMem(d,sizeof *d); return -1;
+        release_modal(d,MODAL_CONTROLLERS); return -1;
     }
     m->controllers_dialog=d; return 0;
 }
@@ -666,7 +671,7 @@ int slicks_amiga_controllers_close(struct SlicksAmigaPlayerMenu *m)
     if(!m || !m->controllers_dialog) return -1;
     struct SlicksAmigaControllersDialog *d=m->controllers_dialog;
     int result=slicks_controllers_renderer_close(&d->renderer);
-    FreeMem(d,sizeof *d); m->controllers_dialog=0;
+    release_modal(d,MODAL_CONTROLLERS); m->controllers_dialog=0;
     return result;
 }
 static unsigned char menu_keymap[8][128],menu_keymap_ready;
@@ -898,7 +903,7 @@ static int name_dialog_open_field(struct SlicksAmigaPlayerMenu *m,unsigned char 
     if(!m || !name || m->name_dialog) return -1;
     unsigned char fault=g_slicks_diag_profile_dialog_fault;
     g_slicks_diag_profile_dialog_fault=0;
-    struct SlicksAmigaNameDialog *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaNameDialog *d=fault==1?0:acquire_modal(sizeof *d,MODAL_NAME);
     if(!d) return -1;
     d->renderer.painter.ui=m->renderer.ui; d->renderer.painter.font=m->fonts[0];
     d->renderer.painter.measure=picker_measure; d->renderer.painter.text=text; d->renderer.painter.context=m;
@@ -906,7 +911,7 @@ static int name_dialog_open_field(struct SlicksAmigaPlayerMenu *m,unsigned char 
     if(slicks_name_dialog_open_field(&d->renderer,name,caption,x,y,percent,limit,flags,
         d->original,sizeof d->original,d->field,sizeof d->field,d->cursor,sizeof d->cursor) || m->error || fault==2) {
         if(d->renderer.active) slicks_name_dialog_close(&d->renderer);
-        FreeMem(d,sizeof *d); return -1;
+        release_modal(d,MODAL_NAME); return -1;
     }
     m->name_dialog=d; return 0;
 }
@@ -928,7 +933,7 @@ int slicks_amiga_name_dialog_close(struct SlicksAmigaPlayerMenu *m)
 {
     if(!m || !m->name_dialog) return -1;
     int result=slicks_name_dialog_close(&m->name_dialog->renderer);
-    FreeMem(m->name_dialog,sizeof *m->name_dialog); m->name_dialog=0;
+    release_modal(m->name_dialog,MODAL_NAME); m->name_dialog=0;
     if(m->editor_active) { m->editor_pending=0; m->editor.redraw=255; }
     return result;
 }
@@ -950,7 +955,7 @@ int slicks_amiga_colour_dialog_open(struct SlicksAmigaPlayerMenu *m,struct Slick
        m->editor.row<3 || m->editor.row>4 || m->editor_index<0 || m->editor_index>=SLICKS_PROFILE_MAX) return -1;
     unsigned char fault=g_slicks_diag_profile_dialog_fault;
     g_slicks_diag_profile_dialog_fault=0;
-    struct SlicksAmigaColourDialog *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaColourDialog *d=fault==1?0:acquire_modal(sizeof *d,MODAL_COLOUR);
     if(!d) return -1;
     d->renderer.painter.ui=m->renderer.ui; d->renderer.painter.font=m->fonts[0];
     d->renderer.painter.text=text; d->renderer.painter.context=m;
@@ -961,7 +966,7 @@ int slicks_amiga_colour_dialog_open(struct SlicksAmigaPlayerMenu *m,struct Slick
             d->renderer.state.result=-1;
             (void)slicks_colour_dialog_close(&d->renderer);
         }
-        FreeMem(d,sizeof *d); return -1;
+        release_modal(d,MODAL_COLOUR); return -1;
     }
     m->colour_dialog=d; return 0;
 }
@@ -975,7 +980,7 @@ int slicks_amiga_colour_dialog_close(struct SlicksAmigaPlayerMenu *m)
     slicks_amiga_platform_clear_latch(0);
     if(!m || !m->colour_dialog) return -1;
     int result=slicks_colour_dialog_close(&m->colour_dialog->renderer);
-    FreeMem(m->colour_dialog,sizeof *m->colour_dialog); m->colour_dialog=0;
+    release_modal(m->colour_dialog,MODAL_COLOUR); m->colour_dialog=0;
     m->editor_pending=0; m->editor.redraw=255;
     return result;
 }

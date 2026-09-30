@@ -142,8 +142,15 @@ void slicks_amiga_menu_workspace_destroy(void);
 void *slicks_amiga_menu_workspace_acquire(unsigned long);
 void slicks_amiga_menu_workspace_release(void *);
 struct SlicksAmigaHelpWorkspace {
-    struct SlicksHelpViewer viewer;
-    unsigned char saved[64000];
+    union {
+        struct {
+            struct SlicksHelpViewer viewer;
+            unsigned char saved[64000];
+        };
+        struct SlicksAmigaControllersDialog controllers;
+        struct SlicksAmigaNameDialog name;
+        struct SlicksAmigaColourDialog colour;
+    };
 };
 /* Exclusive modal overlay over a reconstructible, idle game cache. */
 int slicks_amiga_help_workspace_bind(void *,unsigned long,void (*)(void *),void *);

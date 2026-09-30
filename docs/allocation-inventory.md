@@ -127,7 +127,42 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
   chunky-owned and its exits rebuild the title. This does **not** grant the
   same permission to arbitrary pause or screenshot operations during a race.
 
-Remaining design work is the complete nesting/phase matrix and exact peak
-reservation layout, not discovery of new direct allocation sites. Do that
-before further one-off conversions. Validate layout bounds on the target ABI,
-then run failure, publication, repeated-transition and cleanup tests.
+The child matrix below establishes the first shared modal slot. The exact
+combined peak layout for retained parents, catalogues and transactions remains
+design work, not discovery of new direct allocation sites. Validate each layout
+bound on the target ABI, then run failure, publication, repeated-transition and
+cleanup tests.
+
+## Child ownership matrix
+
+The retained primary menu (87,958 bytes) is outside all child storage below.
+Rows describe the actual input dispatch: it services the active child before
+allowing another menu action. Error/exit destruction must release that child.
+
+| Screen / retained parent | Sequential children | Additional simultaneous storage |
+| --- | --- | --- |
+| Players / inline profile editor | Help, profile picker, name, colour | Live profiles; editor state in primary owner |
+| Options | Help, Controllers, confirmation/message | Live configuration |
+| Tracks | Help, track information, track-list workflow | Catalogue stays resident |
+| Track-list workflow (34 bytes) | Picker → name or delete message | Catalogue and playlist; picker closes in track_lists_choice before next child |
+| Pause (8,588 bytes) | Help, Controllers, embedded speed dialog | Race/maps stay live; simulation stopped |
+| Shop | Help | Shop state/inventory stays live |
+| Intermission (4,228 bytes) | Change Cars, saved-game workflow | Race results, playlist and exported track names |
+| Saved-game workflow | Picker → name → confirmation/message | Encoded transaction output must not alias track names |
+
+Confirmed target sizes for child layout: Controllers 34,952, name 16,822,
+colour 2,558, picker 35,132, Change Cars 10,098, message 8,330 bytes.
+Help including its parent snapshot is 110,096 bytes and dominates the union.
+
+Help/Controllers/name/colour now share that 110,096-byte modal overlay, inside
+the existing 117,760-byte particle visibility cache. An owner tag rejects
+cross-type acquisition/release; each acquired object is cleared. All close,
+failed-open and parent-destroy edges restore the particle cache before resume.
+No additional startup bytes are needed. The existing diagnostic allocation
+failure hooks now exercise acquisition failure, without introducing a heap
+fallback. Other children and retained parents are not converted yet.
+
+This matrix separates child payloads from longer-lived parent, catalogue and
+transaction data. The remaining work is placing those parents/payloads and
+transactions into bounded spans and proving the combined peak, not treating
+all modal objects as mutually exclusive.
