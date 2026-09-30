@@ -3019,6 +3019,38 @@ Original Help-navigation and Amiga key-adapter suites pass in
 uncommitted and unexercised. This closes the confirmed release-bit defect, not
 every registration Help input or language route.
 
+## Arcade title subphase refresh after palette-result reuse (2026-09-30)
+
+The opt-in TITLEPROFILE build now separates registration state advancement,
+Arcade painter/label setup, the painter call, and registered-name drawing plus
+its dirty bounds. These fields and timestamp calls compile out normally.
+The registered Finnish Arcade run `tmp/standalone-release-ayy6wocd` passes all
+65 samples, counter progression, monotonic phase timestamps, zero full-pixel
+diagnostic checks and normal restoration 31. It uses stock PAL 68020/2 MiB/no
+Fast, the default 4 KiB stack, muted audio, and closes its emulator. Only timing
+data was captured; the private registration key remains in an ignored fixture.
+
+Excluding initial redraw, mean/max raster lines are: state 17.05/19, painter
+setup 18.22/20, painter call 46.67/83, owner drawing 22.56/185. The owner mean
+includes 56 pulses without an owner redraw; its eight active spans average
+180.5 lines. Those eight pulses have drawing totals of 250..298 lines, followed
+by 28..47 lines of dirty unpack and 12..21 lines of C2P. The initial painter
+call alone takes 1,660 lines. Timings include instrumentation overhead and are
+not substitute release cadence numbers or gameplay measurements.
+
+This identifies registered-name drawing as the main incremental work on slow
+pulses and quantifies the smaller repeated label-setup cost. The three title
+language lookups are repeated in every Arcade painter construction although
+their backing language table is loaded once at startup. Candidate: retain
+those resolved pointers at that load boundary, then screen release cadence
+before expensive pixel/caller checks. Owner-glyph reuse remains a separate
+candidate requiring exact font-store and lifetime proof, not a reason to skip
+name animation or change refresh pacing.
+
+Build logs: `tmp/title-arcade-subphase-build.log` and, after profiling,
+`tmp/title-subphase-normal-build.log`. No production drawing change is accepted
+by this measurement. The independent Load draft remains uncommitted.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

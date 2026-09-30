@@ -26,6 +26,7 @@ commands
     end
     printf "TITLE_PROFILE sample=%u start=%lu draw=%lu unpack=%lu wait=%lu c2p=%lu tail=%lu pixels=%lu publications=%u\n",$i,$p->marks[0],$p->marks[1]-$p->marks[0],$p->marks[2]-$p->marks[1],$p->marks[3]-$p->marks[2],$p->marks[4]-$p->marks[3],$p->marks[5]-$p->marks[4],$p->pixels,$p->publications
     printf "TITLE_PROFILE_NORMAL sample=%u colours=%lu glyphs=%lu\n",$i,$p->normal_colours,$p->normal_glyphs
+    printf "TITLE_PROFILE_ARCADE sample=%u state=%lu setup=%lu painter=%lu owner=%lu\n",$i,$p->arcade_state,$p->arcade_setup,$p->arcade_painter,$p->owner_glyphs
     set $i=$i+1
   end
   printf "TITLE_PROFILE_OK samples=65 restore=31\n"

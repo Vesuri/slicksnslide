@@ -920,6 +920,7 @@ volatile unsigned char g_slicks_title_timing_counters[65];
  * pulse end. Normal binaries contain none of this instrumentation. */
 struct SlicksTitleProfile {
     unsigned long marks[6],pixels,normal_colours,normal_glyphs;
+    unsigned long arcade_state,arcade_setup,arcade_painter,owner_glyphs;
     unsigned short publications;
 };
 volatile struct SlicksTitleProfile g_slicks_title_profile[65];
@@ -1049,6 +1050,9 @@ static void redraw_title_configuration(
             if(setup_resources.override_count>=1 && setup_resources.override_count<=4)
                 g_slicks_title_arcade_counts|=1U<<(setup_resources.override_count-1);
         }
+#ifdef SLICKS_TITLE_PROFILE
+        unsigned long arcade_start=title_profile_active?slicks_diag_profile_raster_time():0;
+#endif
         struct SlicksArcadeTitlePainter painter={.logical=logical,
             .fonts={slicks_title_small_font,title_arcade_font,slicks_title_font,slicks_title_font},
             .background=slicks_title_background,.palette=palette,
@@ -1058,8 +1062,17 @@ static void redraw_title_configuration(
             .seconds=title_configuration->options[13],.tracks=title_configuration->options[14],
             .text=arcade_text,.dirty=arcade_dirty,
             .cache=&title_arcade_cache,.pulse=title_arcade_pulse};
+#ifdef SLICKS_TITLE_PROFILE
+        if(title_profile_active) {
+            unsigned long now=slicks_diag_profile_raster_time();
+            title_profile_active->arcade_setup=now-arcade_start;arcade_start=now;
+        }
+#endif
         if(slicks_arcade_title_paint(&painter,&slicks_title_counter,&title_arcade_refresh,(unsigned char)selection,
             setup_resources.override_count,(const signed char (*)[6])slicks_original_fallback_colours)) g_slicks_diag_force_exit=1;
+#ifdef SLICKS_TITLE_PROFILE
+        if(title_profile_active)title_profile_active->arcade_painter=slicks_diag_profile_raster_time()-arcade_start;
+#endif
         slicks_title_third_color=painter.shadow;
         goto owner;
     }
@@ -1113,10 +1126,16 @@ static void redraw_title_configuration(
     }
 owner:
     if(registration.name[0] && (!title_arcade_pulse || title_arcade_owner_changed)) {
+#ifdef SLICKS_TITLE_PROFILE
+        unsigned long owner_start=title_profile_active?slicks_diag_profile_raster_time():0;
+#endif
         slicks_draw_title_registration(logical,registration.name);
         struct SlicksChunkyUi bounds={0,palette,arcade_dirty,0};
         slicks_font_text_dirty(&bounds,slicks_title_small_font,registration.name,
             310,190,1,2,slicks_menu_measure(slicks_title_small_font,registration.name),0);
+#ifdef SLICKS_TITLE_PROFILE
+        if(title_profile_active)title_profile_active->owner_glyphs=slicks_diag_profile_raster_time()-owner_start;
+#endif
     }
     publish_title_dirty(platform,logical,chunky);
     /* Keep GCC from emitting a cross-section PC32 sibling jump, which the
@@ -6596,6 +6615,10 @@ int main(void)
             } else {
                 unsigned char owner=slicks_title_render_state[6];
                 slicks_advance_title_registration(source_palette);
+#ifdef SLICKS_TITLE_PROFILE
+                if(title_profile_active)title_profile_active->arcade_state=
+                    slicks_diag_profile_raster_time()-title_profile_active->marks[0];
+#endif
                 title_arcade_owner_changed=(unsigned char)(owner!=slicks_title_render_state[6]);
                 title_arcade_pulse=1;
                 redraw_title_configuration(&platform,logical,chunky,source_palette,
