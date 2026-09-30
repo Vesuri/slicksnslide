@@ -104,8 +104,11 @@ Implementation and completed verification evidence are separate in
   Both supplied translated-label/status overlap cases now have complete native
   pulse/original-wrapper comparisons and no full-screen pulse publication.
   Ordinary visible rows now all have complete native pulse-cycle coverage.
-  Remaining registered-owner/language combinations, Arcade animation and
-  title-pulse cost/cadence remain separate checks.
+  Remaining registered-owner/language combinations and title-pulse cost/cadence
+  remain separate checks. Arcade still paints and publishes its static menu
+  crop every pulse. Reduce that to the affected glyph/rectangle areas while
+  preserving original counter, font-alias, refresh and owner-label state;
+  use the new complete-cycle Arcade baseline before accepting this change.
   This is menu fidelity/publication work,
   not a resumption of the paused gameplay optimization backlog. Audit the
   remaining title shortcuts against original callers. Finish the demo lifecycle:

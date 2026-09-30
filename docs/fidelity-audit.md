@@ -805,6 +805,38 @@ native pulse coverage. It does not establish all registered-name/language
 combinations, Arcade animation, nested-owner font lifetime or uninterrupted
 cadence. No production change was needed for these four rows.
 
+### Arcade pulse baseline (2026-09-30)
+
+`diag_arcade_title_pulse_pixels.gdb` reuses the ordinary full-composition
+capture, now separated into a capture-only include. Arcade needs its own
+completion gate because its painter, not `slicks_tick_title_colours`, advances
+the counter. The native gate requires 65 snapshots, active Arcade mode,
+display checks without errors, no additional full-screen publication during
+the cycle and final restoration 31. The original-wrapper verifier retains
+its counter/phase progression checks and full-pixel comparisons.
+
+Saved mode-5/language-1, unregistered row 0 passes in
+`tmp/standalone-release-1zrdvshk`: 74 Arcade draws/display checks, two initial
+full publications and restoration 31. All 65 compositions match every
+original DOS pixel. The failed initial harness attempt `0hmx8b2p` exited
+before capturing a cycle; mode-specific run commands are now sourced
+sequentially, not from inside a GDB conditional.
+
+Row 1 (Settings) passes separately in `tmp/standalone-release-jcqf01np`:
+76 draws/display checks, two initial full publications, restoration 31 and
+all 65 compositions matching every original pixel. Both runs use stock PAL
+68020, 2 MiB Chip/no Fast RAM and confirmed default 4 KiB stack. Both muted
+emulators exit. These stopped captures are not cadence measurements and do
+not cover registered-owner or translated Arcade cycles.
+
+This establishes a baseline for reducing redundant Arcade painting, not a
+claim that its current publication is minimal. Source inspection shows the
+ordinary Arcade pulse still calls the complete painter on every update,
+including the static menu crop and labels. Its cropped conversion is not a
+full-screen conversion, but is broader than an unchanged/pulse-only update
+needs. Any selective replacement must retain font/alias state, refresh-counter
+semantics, player-count colours, translated labels and registered-owner order.
+
 ### Keyboard and F9
 
 Removed the separate left-mouse activation branch and its otherwise-unused
