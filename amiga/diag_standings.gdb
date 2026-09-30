@@ -20,9 +20,19 @@ commands
   else
     if g_slicks_diag_record_results_phase == 6
       set $table_errors = $table_errors+1
-      if g_slicks_diag_record_menu || g_slicks_diag_surface_create_fault || (g_slicks_diag_record_faults & 16) || $record_inserts != 1
+      if g_slicks_diag_record_menu || g_slicks_diag_surface_create_fault || g_slicks_diag_track_info_fault || (g_slicks_diag_record_faults & 16) || $record_inserts != 1
         printf "RECORD_TABLE_PARTIAL_CLEANUP_FAILED\n"
         quit 1
+      end
+      if !$_isvoid($expect_record_allocations)
+        if g_slicks_diag_record_alloc_stage != $table_errors+2
+          quit 1
+        end
+        if g_slicks_diag_record_alloc_owned && g_slicks_diag_record_alloc_before != g_slicks_diag_record_alloc_after
+          printf "RECORD_TABLE_ALLOCATION_LEAK before=%lu after=%lu\n",g_slicks_diag_record_alloc_before,g_slicks_diag_record_alloc_after
+          quit 1
+        end
+        printf "RECORD_ALLOC_STAGE %u owned=%u before=%lu after=%lu\n",g_slicks_diag_record_alloc_stage,g_slicks_diag_record_alloc_owned,g_slicks_diag_record_alloc_before,g_slicks_diag_record_alloc_after
       end
     else
       if g_slicks_diag_record_results_phase != 5
@@ -159,6 +169,13 @@ commands
       quit 1
     end
     printf "RECORD_TABLE_RECOVERY_OK errors=%u inserts=%u views=%u\n",$table_errors,$record_inserts,$table_views
+  end
+  if !$_isvoid($expect_record_allocations)
+    if $read_errors != 1 || $table_errors != 4 || $save_errors || $record_inserts != 2 || $table_views != 2 || g_slicks_diag_record_alloc_stage != 6 || g_slicks_diag_record_faults
+      printf "RECORD_ALLOCATION_MATRIX_FAILED reads=%u tables=%u inserts=%u views=%u\n",$read_errors,$table_errors,$record_inserts,$table_views
+      quit 1
+    end
+    printf "RECORD_ALLOCATION_MATRIX_OK reads=%u tables=%u inserts=%u views=%u\n",$read_errors,$table_errors,$record_inserts,$table_views
   end
   printf "NATIVE_CHAMPIONSHIP_STANDINGS_STATS_RESTORE_OK reads=%u saves=%u inserts=%u returns=%u\n",$read_errors,$save_errors,$record_inserts,$record_returns
   quit

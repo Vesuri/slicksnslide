@@ -56,9 +56,10 @@ Implementation and completed verification evidence are separate in
   Retry/Skip checks, including remaining allocation-failure lifetimes and
   other warning-screen publication bounds. Post-race read/save warning pixels
   and painter-bounded records-table restoration now have native coverage;
-  records-view partial font-allocation Retry/Skip now preserves calculated
-  records, saves them and restores the race on the target. Other allocation
-  sites and repeated failures remain to be checked;
+  all five records read/view allocation sites and consecutive view retries
+  now have native cleanup/persistence coverage; table Skip also preserves
+  earned records. Remaining allocation work is inside storage transactions
+  and other intermission/results owners, not this read/view preparation;
   keep other layouts and allocation-failure paths separate.
   Shop selective painter calls now replace the blanket saved-background
   restore, with row navigation and transaction publication coverage. Verify

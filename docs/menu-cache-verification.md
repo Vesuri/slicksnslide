@@ -2285,6 +2285,43 @@ and two exact race returns. Both warning publications independently match all
 pixels, championship statistics/save/exit and restoration 31 pass. All three
 final candidate emulators were closed by the harness.
 
+### Complete records read/view allocation sequence (2026-09-30)
+
+OPTIONSBW adds an explicit diagnostic-only sequence covering the five
+allocations before record presentation: the 8 KiB track-read buffer, menu
+owner, first-font buffer, second-font buffer and icon buffer. After the read
+retry succeeds, the next four preparation attempts each fail at a different
+site before a final successful table. The normal game never enables this
+sequence. The last three failed attempts run with retained display ownership;
+the diagnostic measures available memory immediately before preparation and
+after partial-owner cleanup, before drawing the allocation-free warning.
+
+`diag_record_allocations.gdb` passes on the current candidate in
+`tmp/standalone-release-_7d136gg`, fixture `tmp/record-allocations-Rq49vq`:
+one read warning, four table warnings, two insertions, two table views and
+two race returns. Free memory before/after every failed view attempt is
+226,712 bytes; equality is asserted for the three attempts under retained
+ownership, where other tasks cannot confound it. All five warnings match
+every chunky pixel after independent bitplane decoding. Both race returns
+preserve every source and bitplane byte. Championship statistics/save/exit
+and restoration 31 pass on stock PAL 68020, 2 MiB Chip/no Fast, default 4 KiB
+stack and muted audio; the owned emulator is closed.
+
+An initial host comparison against the previous executable's BASIC.SS differed
+in a lap-time byte. That cross-build comparison is not an appropriate record
+oracle. New `tools/check_record_save.py` compares this run's captured native
+insertion table with the persisted file, including the original writer's
+overall-record promotion, entry/trailer checksums, length and unchanged bytes
+outside the record block. All eleven records match. It also passes against
+the preceding Retry/Skip captures (`6xj9evdy`, `ea2_mu_9`). One-bit corruption
+at all 1,694 saved-file byte positions, truncation and extension are rejected.
+The original writer algorithm has its separate original-instruction oracle;
+this checker verifies that the native I/O path persisted its actual result.
+
+Build log: `tmp/record-allocations-build.log`. This closes the five read/view
+allocation sites and repeated view-retry sequence, not allocation failures
+inside record storage transactions or other intermission owners.
+
 ### Text adapters and remaining VGA full converters (2026-09-30)
 
 Inspection at cc5dd31 traced the C font-bridge callers across

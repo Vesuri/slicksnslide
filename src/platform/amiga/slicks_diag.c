@@ -3069,6 +3069,10 @@ volatile struct SlicksSetupStorageReport g_slicks_diag_record_save;
 __attribute__((noinline)) void slicks_diag_record_results_ready(void) { __asm__ volatile("" ::: "memory"); }
 static int result_wait(struct SlicksAmigaPlatform *,unsigned,unsigned char);
 unsigned char g_slicks_diag_record_faults,g_slicks_diag_record_skip;
+/* OPTIONSBW: read buffer, owner, first/second font buffer, icon buffer. */
+unsigned char g_slicks_diag_record_alloc_stage;
+unsigned long g_slicks_diag_record_alloc_before,g_slicks_diag_record_alloc_after;
+unsigned char g_slicks_diag_record_alloc_owned;
 struct SlicksAmigaPlayerMenu *g_slicks_diag_record_menu;
 __attribute__((noinline)) void slicks_diag_record_recovery_ready(void) { __asm__ volatile("" ::: "memory"); }
 /* Platform recovery, deliberately distinct from original game screens.
@@ -3127,7 +3131,9 @@ static int run_record_results(struct SlicksAmigaPlatform *platform,
 load_records:
     slicks_amiga_platform_end(platform);
     records=(struct SlicksTrackRecords){0};
-    bytes=AllocMem(8192,MEMF_ANY);
+    if(g_slicks_diag_record_alloc_stage==1) {
+        bytes=0; ++g_slicks_diag_record_alloc_stage;
+    } else bytes=AllocMem(8192,MEMF_ANY);
     if(g_slicks_diag_record_faults&4) {
         g_slicks_diag_record_faults&=(unsigned char)~4;
         g_slicks_diag_plain_close_fault=1;
@@ -3160,6 +3166,14 @@ load_records:
     if(outcome.show) {
 prepare_table:
         if(slicks_resource_archive_cached(&archive,menu_cache)) goto done;
+        if(g_slicks_diag_record_alloc_stage>=2 && g_slicks_diag_record_alloc_stage<=5) {
+            g_slicks_diag_record_alloc_owned=platform->active;
+            g_slicks_diag_record_alloc_before=AvailMem(MEMF_ANY);
+            if(g_slicks_diag_record_alloc_stage==5) g_slicks_diag_track_info_fault=4;
+            else g_slicks_diag_surface_create_fault=g_slicks_diag_record_alloc_stage==2?1:
+                g_slicks_diag_record_alloc_stage==3?2:5;
+            ++g_slicks_diag_record_alloc_stage;
+        }
         if(g_slicks_diag_record_faults&16) {
             /* Fail the second font's temporary allocation after the owner
              * and first font have been allocated, exercising partial cleanup. */
@@ -3173,6 +3187,8 @@ prepare_table:
              * records so Retry cannot insert the same results twice. */
             slicks_amiga_player_menu_destroy(m); m=0;
             slicks_resource_archive_close(&archive);
+            if(g_slicks_diag_record_alloc_stage)
+                g_slicks_diag_record_alloc_after=AvailMem(MEMF_ANY);
             g_slicks_diag_record_results_phase=6;
             int choice=record_retry_notice(platform,race,chunky,palette,
                 (const unsigned char *)"RECORD VIEW FAILED: ENTER RETRY / ESC SKIP",diagnostic);
@@ -4103,10 +4119,11 @@ int main(void)
     unsigned char mixed_setup_test=(unsigned char)(persistence_test && argv[7]=='W');
     unsigned char combined_test=(unsigned char)(persistence_test && argv[7]=='U'),combined_stage=0;
     unsigned char failure_injected=0;
-    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V' || argv[8]=='T' || argv[8]=='U'));
+    unsigned char record_recovery_test=(unsigned char)(argc==9 && argv[7]=='B' && (argv[8]=='R' || argv[8]=='S' || argv[8]=='L' || argv[8]=='C' || argv[8]=='V' || argv[8]=='T' || argv[8]=='U' || argv[8]=='W'));
     if(record_recovery_test) {
-        g_slicks_diag_record_faults=(argv[8]=='T' || argv[8]=='U')?16:(argv[8]=='C' || argv[8]=='V')?6:3;
+        g_slicks_diag_record_faults=argv[8]=='W'?0:(argv[8]=='T' || argv[8]=='U')?16:(argv[8]=='C' || argv[8]=='V')?6:3;
         g_slicks_diag_record_skip=argv[8]=='U'?3:argv[8]=='S'?1:(argv[8]=='L' || argv[8]=='V')?2:0;
+        if(argv[8]=='W') g_slicks_diag_record_alloc_stage=1;
     }
     unsigned char intermission_live_test=(unsigned char)(argc==9 && argv[7]=='T' && (argv[8]=='I' || argv[8]=='J' || argv[8]=='K' || argv[8]=='L' || argv[8]=='M'));
     unsigned char intermission_retry_test=(unsigned char)(intermission_live_test && argv[8]!='I'?(argv[8]=='M'?4:argv[8]=='L'?3:argv[8]=='K'?2:1):0);
