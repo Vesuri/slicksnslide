@@ -69,7 +69,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if !$saved || g_slicks_diag_restore_status != 0x1f || $starts != 1 || $returns != 2
+  if !$saved || g_slicks_diag_restore_status != 0x1f || $starts != 1 || $returns != 2 || g_slicks_menu_workspace_conflicts
     printf "CHAMPIONSHIP_SAVE_FAILED picker=%u restore=%u starts=%u\n",$picker,g_slicks_diag_restore_status,$starts
     quit 1
   end

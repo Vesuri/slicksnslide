@@ -1,5 +1,34 @@
 # Development release audit
 
+## 2026-10-01 — championship persistence uses reserved scratch
+
+Championship save/load adapters now require caller scratch and never allocate.
+The native caller borrows modal storage only after picker/name/confirmation
+children close, and releases it before notices. The completed-race VGA track
+name array and live intermission parent remain separate. A compile-time bound
+proves the full 80,218-byte encoding fits the existing reservation; startup
+memory does not increase. Hidden Load remains hidden.
+
+- Host: 1,431 save transaction fault cases and 2,309 read/truncation cases pass,
+  including missing/short scratch rejection before I/O, preservation of outputs
+  on failure, 300-track capacity guards and a maximum 10,000-track round trip.
+  The cumulative allocator-call assertion is zero. Record-storage regression
+  also passes both 1,176-case fault matrices.
+- Stock Workbench/68020/2 MiB/no Fast/default 4 KiB stack:
+  `tmp/standalone-release-pt2ds9gl` (CHAMPSAVE) reaches native intermission,
+  picker/name/write and normal exit.
+- `...-85f920cv` restarts the same private installation with CHAMPEDIT; resave,
+  overwrite/delete acceptance and cancellation, catalogue refresh and normal
+  shutdown pass with no workspace conflicts.
+- `...-nx9ua32x` (CHAMPSAVF) encounters an intentionally pre-existing private
+  E2E.SSS.new directory; warning, picker reopening, cancellation and restoration
+  pass with no workspace conflicts. The initial capture-composed fixture
+  (`...-i8hg1bcq`) exceeded the debugger breakpoint table before running the
+  game and is not counted as a pass; the behavioral fixture rerun passes.
+
+All emulator instances are closed. No original data, private key or runtime
+capture is committed; tests changed only disposable installation copies.
+
 ## 2026-09-30 — track records use startup-owned scratch
 
 Post-race record input and transactional record writes now borrow 8,192 bytes

@@ -1396,6 +1396,8 @@ static int championship_notice(struct SlicksAmigaPlatform *p,struct SlicksAmigaP
 static int run_saved_game_dialog(struct SlicksAmigaPlatform *p,struct SlicksAmigaPlayerMenu *m,
     struct SlicksSavedGame *game,unsigned char tracks[][8],unsigned char saving)
 {
+    _Static_assert(SLICKS_SAVED_GAME_MAX_BYTES<=sizeof(struct SlicksAmigaHelpWorkspace),
+        "Maximum championship encoding must fit startup modal storage");
     unsigned char (*names)[9]=saved_files_cache.names,name[9]={0}; char path[13];
     int result=-1;
     g_slicks_diag_saved_menu=m;
@@ -1489,7 +1491,13 @@ again:
         }
         if(!error) {
             if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
-            struct SlicksSetupStorageReport report=slicks_amiga_store_saved_game(path,game);
+            /* Filename/confirmation children are closed. Input track names
+             * remain in completed-race VGA storage, separate from this lease. */
+            long save_size=slicks_saved_game_size(game);
+            unsigned char *save_bytes=save_size>=0?slicks_amiga_storage_workspace_acquire((unsigned long)save_size):0;
+            struct SlicksSetupStorageReport report=slicks_amiga_store_saved_game(path,game,save_bytes,
+                save_size>=0?(unsigned long)save_size:0);
+            if(save_bytes) slicks_amiga_storage_workspace_release(save_bytes);
             slicks_amiga_saved_files_refresh(&saved_files_cache);
             if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
             if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
@@ -1502,7 +1510,10 @@ again:
         }
     } else {
         if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
-        struct SlicksSetupLoadReport report=slicks_amiga_load_saved_game(path,game,tracks,256);
+        unsigned long load_size=6UL+8UL*256+4*53;
+        unsigned char *load_bytes=slicks_amiga_storage_workspace_acquire(load_size);
+        struct SlicksSetupLoadReport report=slicks_amiga_load_saved_game(path,game,tracks,256,load_bytes,load_size);
+        if(load_bytes) slicks_amiga_storage_workspace_release(load_bytes);
         slicks_amiga_saved_files_refresh(&saved_files_cache);
         if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
         if(report.result==SLICKS_SETUP_LOADED) { result=1; goto done; }

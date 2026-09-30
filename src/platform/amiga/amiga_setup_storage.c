@@ -295,7 +295,8 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_lists(
 }
 
 struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
-    struct SlicksSavedGame *game,unsigned char (*tracks)[8],unsigned capacity)
+    struct SlicksSavedGame *game,unsigned char (*tracks)[8],unsigned capacity,
+    unsigned char *buffer,unsigned long buffer_capacity)
 {
     struct SlicksSetupLoadReport report={SLICKS_SETUP_LOADED,0,path,0,0};
     struct SlicksSetupStorageReport io={SLICKS_SETUP_SAVE_FAILED,0,0};
@@ -303,6 +304,11 @@ struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
     if(path) while(length<120 && path[length]) ++length;
     if(!game || !tracks || !length || length>=120 || capacity>SLICKS_SAVED_GAME_TRACK_MAX) {
         report.result=SLICKS_SETUP_LOAD_INVALID; return report;
+    }
+    unsigned long buffer_size=6UL+8UL*capacity+4*53;
+    if(!buffer || buffer_capacity<buffer_size) {
+        report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE;
+        return report;
     }
     char leftover[124];
     for(unsigned i=0;i<length;++i) leftover[i]=path[i];
@@ -320,18 +326,11 @@ struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
             report.io_error=io.io_error; goto done;
         }
     }
-    unsigned long buffer_size=6UL+8UL*capacity+4*53;
-    unsigned char *buffer=AllocMem(buffer_size,MEMF_ANY);
-    if(!buffer) {
-        report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE;
-        goto done;
-    }
     long size=read_file(&report,path,buffer,buffer_size);
     if(size==-1) {
         report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_OBJECT_NOT_FOUND;
     } else if(size>=0 && slicks_load_game_bytes(game,tracks,capacity,buffer,(unsigned long)size))
         report.result=SLICKS_SETUP_LOAD_INVALID;
-    FreeMem(buffer,buffer_size);
 done:
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     process->pr_WindowPtr=window;
@@ -340,26 +339,25 @@ done:
     return report;
 }
 
-struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *path,const struct SlicksSavedGame *game)
+struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *path,const struct SlicksSavedGame *game,
+    unsigned char *bytes,unsigned long capacity)
 {
     struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
     long size=slicks_saved_game_size(game);
     if(!path || size<0) { report.io_error=ERROR_OBJECT_WRONG_TYPE; return report; }
+    if(!bytes || capacity<(unsigned long)size) { report.io_error=ERROR_NO_FREE_STORE; return report; }
     unsigned length=0; while(length<120 && path[length]) ++length;
     if(!length || length>=120) { report.io_error=ERROR_OBJECT_WRONG_TYPE; return report; }
     char temporary[124],backup[124];
     for(unsigned i=0;i<length;++i) temporary[i]=backup[i]=path[i];
     const char *suffixes[]={".new",".bak"};
     for(unsigned i=0;i<5;++i) { temporary[length+i]=suffixes[0][i]; backup[length+i]=suffixes[1][i]; }
-    unsigned char *bytes=AllocMem((unsigned long)size,MEMF_ANY);
-    if(!bytes) { report.io_error=ERROR_NO_FREE_STORE; return report; }
     if(slicks_save_game_bytes(game,bytes,(unsigned long)size)!=size) report.io_error=ERROR_OBJECT_WRONG_TYPE;
     else {
         const struct SlicksSetupFile file={path,temporary,backup,bytes,(unsigned long)size};
         const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
         report.result=store_files(&file,1,&ops);
     }
-    FreeMem(bytes,(unsigned long)size);
     /* The filesystem callbacks may have recorded a stack-local suffix path. */
     report.path=path;
     return report;

@@ -56,8 +56,8 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
 | load_track_lists | 1 | Up to 65,536; preserve caller output on failure |
 | track_list_cache_refresh | 2 | 65,536 staging plus retained next.size; old cache must remain valid until successful validation/publication |
 | store_track_lists | 1 | 65,536 output alongside immutable old catalogue and selection |
-| load_saved_game | 1 | 6 + 8 × capacity + 212; inspect production reachability separately from hidden Load UI |
-| store_saved_game | 1 | Encoded game size; input track-name array must remain live throughout encoding/write |
+| load_saved_game | 1 | Baseline site removed: explicit caller scratch, 6 + 8 × track capacity + 212; hidden Load branch borrows modal storage and keeps outputs separate |
+| store_saved_game | 1 | Baseline site removed: exact encoded size (at most 80,218) leased from modal storage; input track names remain live in separate completed-race VGA storage |
 | store_track_records | 1 | Baseline site removed: explicit 8,192-byte caller scratch, leased from modal storage for post-race saves and confirmed Clear Records; unchanged new/backup transaction |
 | load_setup | 2 | Profile bytes plus candidate SlicksPlayerProfiles; transactional startup load, not live-profile overwrite |
 

@@ -118,6 +118,13 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    message before acquiring one lease for the whole Clear Records loop and
    releases it before the result/path notices. All error cleanup releases live
    leases; no track-record adapter allocation or heap fallback remains.
+   Championship save/load also use explicit modal scratch after filename,
+   picker and confirmation children close. Saving requests the exact encoded
+   length (up to 80,218 bytes, compile-time checked against the reservation).
+   Input names remain in the separate completed-race VGA workspace, with the
+   intermission parent still live. Scratch is released before success/failure
+   notices. Hidden Load's bounded outputs are separate from its scratch and
+   are published only after a complete validated read; it remains hidden.
 6. **Registration/ending screens:** Registration's 70,000-byte decode input
    now uses the modal storage lease, released after decode and before Help.
    Chunky/palette output does not alias that lease. Failed loads/decodes also

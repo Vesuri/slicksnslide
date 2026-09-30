@@ -26,8 +26,10 @@ struct SlicksSetupStorageReport slicks_amiga_store_setup(
 struct SlicksSetupStorageReport slicks_amiga_store_capture(
     const unsigned char *,const unsigned char *,unsigned char *,unsigned long);
 /* Caller owns/validates the chosen .SSS path and keeps it alive for report.path.
- * Uses original bytes with the existing new/backup transaction. OS required. */
-struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *,const struct SlicksSavedGame *);
+ * Uses original bytes with the existing new/backup transaction. OS required.
+ * Scratch is separate from game/track names and at least saved_game_size(). */
+struct SlicksSetupStorageReport slicks_amiga_store_saved_game(
+    const char *,const struct SlicksSavedGame *,unsigned char *,unsigned long);
 /* Confirmed Clear Top 10s only. Same 8192-byte track limit as the native
  * loader. Does not alter old-format tracks. Report path borrows caller's path;
  * changed is true only after publication, including cleanup-pending status.
@@ -57,9 +59,10 @@ struct SlicksSetupLoadReport {
     unsigned char configuration_present,profiles_present;
 };
 /* Selected championship file must exist. Never publishes partial state or
- * silently loads across transaction leftovers. OS must be available. */
+ * silently loads across transaction leftovers. OS must be available. Caller
+ * scratch is separate from outputs and at least 6+8*track_capacity+4*53 bytes. */
 struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *,
-    struct SlicksSavedGame *,unsigned char (*)[8],unsigned);
+    struct SlicksSavedGame *,unsigned char (*)[8],unsigned,unsigned char *,unsigned long);
 /* Starts from caller-provided defaults. Publishes neither object on failure.
  * Missing files use the original default-reader paths; malformed/foreign
  * files and transaction leftovers must not be silently overwritten. */

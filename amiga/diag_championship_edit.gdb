@@ -57,7 +57,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $loads != 1 || !$intermission || $steps != 16 || g_slicks_diag_force_exit || g_slicks_diag_restore_status != 0x1f
+  if $loads != 1 || !$intermission || $steps != 16 || g_slicks_diag_force_exit || g_slicks_diag_restore_status != 0x1f || g_slicks_menu_workspace_conflicts
     printf "CHAMPIONSHIP_EDIT_FAILED steps=%u\n",$steps
     quit 1
   end

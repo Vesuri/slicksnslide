@@ -58,7 +58,7 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if $pickers != 3 || $names != 1 || $warnings != 1 || $returns != 2 || $starts != 1 || g_slicks_diag_force_exit || g_slicks_diag_restore_status != 31
+  if $pickers != 3 || $names != 1 || $warnings != 1 || $returns != 2 || $starts != 1 || g_slicks_diag_force_exit || g_slicks_diag_restore_status != 31 || g_slicks_menu_workspace_conflicts
     printf "CHAMPIONSHIP_SAVE_FAILURE_GATE_FAILED pickers=%u names=%u warnings=%u returns=%u starts=%u\n",$pickers,$names,$warnings,$returns,$starts
     quit 1
   end

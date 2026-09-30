@@ -17,6 +17,10 @@ struct File { unsigned char bytes[65536]; unsigned size,offset,present; };
 static struct File files[6];
 static const char *paths[]={"TUNING00.BMP","TUNING00.BMP.new","TUNING00.BMP.bak",
     "TUNING01.BMP","TUNING01.BMP.new","TUNING01.BMP.bak"};
+#elif defined(SLICKS_SAVED_STORAGE_TEST)
+struct File { unsigned char bytes[80219]; unsigned size,offset,present; };
+static struct File files[3];
+static const char *paths[]={"RACE.SSS","RACE.SSS.new","RACE.SSS.bak"};
 #else
 struct File { unsigned char bytes[9000]; unsigned size,offset,present; };
 static struct File files[3];
