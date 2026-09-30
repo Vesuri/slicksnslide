@@ -2591,6 +2591,32 @@ Build log: `tmp/title-shop-resident-build.log`. All runs were muted and their
 emulators closed. This removes the title-to-shop OS handoff, not the actual
 disk-loading handoff; visible loading-time scanout remains an integration gate.
 
+### Resident intermission/retry-to-shop transitions
+
+The next-track and loader-retry branches had the same premature platform-end
+call before `prepare_race`. Both now retain takeover until that function's
+disk boundary after the cached shop. This also covers the retry notice's
+transition into another shop attempt; it does not change whether the original
+preparation workflow revisits the shop, rewards, inventory or selection order.
+
+`diag_shop_transition_resident.gdb` requires active ownership at preparation
+entries after the first, and rejects archive file opens while active. It wraps
+the existing native weapon-transition gate and shared publication captures.
+Fresh stripped-executable, saved-Finnish stock PAL A1200/default-4-KiB-stack
+runs pass:
+
+- `NATURALP`, `tmp/standalone-release-ucw1qckl`: two race starts, three
+  pause opens/closes, one intermission, no loading failure, eight publications.
+- `NATURALR`, `tmp/standalone-release-z02kxca1`: same successful race/pause/
+  intermission counts, plus one rejected load and retry, nine publications.
+
+Every publication matches all 64,000 chunky pixels. Each captured pause's
+before/after inventory, car state and background are byte-identical. The gate
+also checks frozen clocks/RNG, expected weapon quantities, no HUD errors and
+normal restoration 31. Build log: `tmp/shop-transition-resident-build.log`.
+Both muted test emulators are closed. Other saved-game and intermission error
+routes retain their own outstanding coverage; this is not a whole-port pass.
+
 ## Remaining platform teardown call-site inventory (2026-09-30)
 
 After `4d7da59`, all 34 explicit `slicks_amiga_platform_end` calls in

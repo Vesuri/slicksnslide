@@ -5281,7 +5281,6 @@ int main(void)
                     /* Retry only preparation: rewards, selection refresh and
                      * playlist advancement already happened exactly once. */
                     g_slicks_diag_ready=0;
-                    slicks_amiga_platform_end(&platform);
                     if(prepare_race(&platform,logical,chunky,mode_state,race,
                         selected_track_path,race_palette,selected_vehicle,
                         &configuration,&g_slicks_setup_session,0)) {
@@ -5440,7 +5439,8 @@ int main(void)
                         selected_track=(unsigned short)track_selection[playlist_position];
                         make_track_path(selected_track_path,track_names[selected_track]);
                         g_slicks_diag_ready=0; g_slicks_diag_ingame=0;
-                        slicks_amiga_platform_end(&platform);
+                        /* The next shop is resident; prepare_race owns the
+                         * later handoff for actual track-file loading. */
                         if((sequence_failure_test || shop_transition_test==2) && playlist_position==1)
                             g_slicks_diag_race_load_fault=6;
                         if(prepare_race(&platform,logical,chunky,mode_state,race,
