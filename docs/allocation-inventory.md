@@ -6,6 +6,40 @@ validate the inventory; they must not be the mechanism for discovering it.
 
 ## Census
 
+### Current source census (a09987d)
+
+There are now 34 direct `AllocMem` expressions, not 34 live blocks. No other
+production C heap calls or Exec allocation families were found outside the
+Amiga platform directory. `AllocDosObject(DOS_FIB)` in startup track discovery
+is separate from this count and has a matching `FreeDosObject`.
+
+| File | Current sites | Classification |
+| --- | ---: | --- |
+| amiga_player_menu.c | 1 | Startup workspace reservation |
+| amiga_platform.cpp | 3 | Startup display data, bitmap metadata and copper storage |
+| resource_archive.c | 4 | First directory plus startup resource-cache construction |
+| framework_runtime.cpp | 1 | Shared C++ allocator; callers classified below |
+| amiga_audio.c | 4 | Startup sample/silence construction |
+| amiga_setup_storage.c | 3 | Startup catalogue reservation and setup-load staging |
+| slicks_diag.c | 18 | Nine startup expressions and nine diagnostic-only expressions |
+
+The nine diagnostic expressions are PC sampling (1), pause comparison (1),
+isolated intermission file loading (1), shadow comparison (2), demo playlist
+snapshot (1), and retention comparison (3). They are not used by ordinary
+interactive play. The startup expressions are track discovery/playlist storage
+(1), discovery sorting (1), title input/background (2), fonts (1), logical/
+chunky/race storage (3), and sample decode input (1). Track discovery and setup
+loading have no later production callers.
+
+Linked C++ allocating callers are startup Bitmap/CopperList wrappers and the
+framework's static blitter queue. The current ELF has no `Bitmap::allocate`,
+`CopperList::allocate`, `Sprite::allocate`, `Util::allocateMemoryPool`, or
+owning Palette24Bit constructor/setColors symbols. Their imported source is
+not a runtime allocation path in this executable. The allocator stores the
+exact Exec allocation size in a prefix and delete returns that same size.
+
+### Historical baseline and migration record
+
 The subsequent copper-palette migration removes the linked owning palette
 constructor from the native path: `build_copper` borrows two 1,024-byte BSS
 arrays. The framework's allocating `setColors` API remains available but is

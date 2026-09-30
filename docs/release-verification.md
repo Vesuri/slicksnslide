@@ -1,5 +1,21 @@
 # Development release audit
 
+## 2026-10-01 — strict menu recovery and insufficient-memory checks
+
+- `tmp/standalone-release-8_glb40e`: PLAYERSV on Workbench-loaded stock PAL
+  A1200, 2 MiB Chip/no Fast/default 4 KiB stack. The save-failure/cancel/reopen/
+  save path passes `--allocation-audit --startup-only`: boundary 125 blocks /
+  1,383,692 bytes, 130 startup allocation calls, return 0, no failed or leaked
+  blocks, no workspace conflicts and no post-startup allocation calls.
+- `tmp/standalone-release-7urdpck5`: the same launcher restricted to 1 MiB for
+  a deliberate low-memory failure. Return 20, 19 allocation attempts including
+  one failure, zero outstanding blocks. The game never reaches its startup-
+  complete checkpoint, as required for a failed reservation. This proves this
+  failure path, not every possible OS memory-pressure pattern.
+- Both muted test emulators exited. The updated static census classifies all
+  34 remaining direct AllocMem expressions, including nine diagnostic-only
+  expressions, and distinguishes unlinked imported framework helpers.
+
 ## 2026-10-01 — allocation-free copper palette construction
 
 The new `--allocation-audit --startup-only` mode stops on any directly
