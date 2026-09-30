@@ -175,6 +175,10 @@ Implementation and completed verification evidence are separate in
   restoration and cached, retained-display visits. Extend remaining caller
   coverage without adding an F2 title action.
   Finish F10's caller/transition font-alias lifetime and input-route audit.
+  Native title fonts now remain byte-exact across nested Help and parent
+  returns through ordinary Options/Players/Tracks and Arcade Settings in
+  registered Finnish, with complete original-wrapper return pixels; focus
+  remaining work on other dialogs/failure/input routes, not those paths.
   The registered English Arcade Options-return title now matches every pixel
   of the original complete wrapper, with native display and race-handoff
   checks. Font-loader encoded references are limited to the three startup

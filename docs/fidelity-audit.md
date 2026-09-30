@@ -2106,6 +2106,45 @@ font-state byte; complete-font isolated painter checks remain separate from
 this live full-pixel check. The expected startup alias used by the wrapper
 oracle now has the additional caller-reference evidence above.
 
+### Nested Help and parent-return title fonts (2026-09-30)
+
+The native title's three pointers are assigned by the startup decode/allocation
+loop (`iso.@f`, `kirj.@f`, `pieni.@f`) and cleared during final cleanup. The
+ordinary menu owners hold separate three-by-6,000-byte font banks. The assembly
+title bridges read the title pointers; registration temporarily changes and
+restores the small font's colour. This source ownership distinction does not
+alone prove native return composition, so it now has a live gate.
+
+`diag_nested_help_title_return.gdb` captures the complete decoded title fonts
+before the first nested Help visit and again at the parent-to-title redraw
+entry, before painting can overwrite a colour byte. It computes exact lengths
+from each runtime header and padded glyph widths: 4,244, 5,726 and 2,454 bytes.
+It asserts all three pointers remain unchanged. The host compares every byte
+and runs the original complete-wrapper pixel oracle on the actual subsequent
+title publication. Existing Help link/history/reopen, native menu publication,
+ownership and final restoration gates run in the same session.
+
+Registered Finnish fixtures on 644e935 pass:
+
+| Title / child owner | Argument | Run under `tmp/standalone-release-` | Return row |
+| --- | --- | --- | --- |
+| Ordinary / Options | OPTIONSH | `e_lyw4ry` | 3 |
+| Ordinary / Players | OPTIONSJ | `ss7gbqu3` | 1 |
+| Ordinary / Tracks | OPTIONSO | `req47kq6` | 2 |
+| Arcade / Settings (Options) | OPTIONSH, saved mode 5 | `_lxol42d` | 1 |
+
+All 12,424 title-font bytes match before/after for every route. Each returned
+title matches all 64,000 original pixels (`registered=1`); all 32 child-menu
+publications independently match the chunky surface. The ordinary captures
+use mode 0, counter 8; Arcade retains mode 5, counter 20. All reach restoration
+31 on stock PAL 68020, 2 MiB Chip/no Fast, default 4 KiB stack with muted audio.
+The runner closes every emulator. Private registration captures remain ignored.
+
+This closes the title-font preservation and complete-return composition checks
+for these nested Help/parent paths. It is not a timing/cadence measurement or
+an assertion about all other dialogs, original computed pointers, or failure
+routes. No production change was needed.
+
 ## Native GO/F9 across all saved modes (2026-09-30)
 
 Fresh isolated native configurations for modes 0..5 now pass both STARTGO
