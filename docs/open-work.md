@@ -124,9 +124,10 @@ native caller/input/error checks.
   initial redraw is measured separately. Remaining colour/state and owner
   drawing work need reuse assessment. The refreshed Arcade subphase profile
   attributes about 180 lines to each changed owner-name draw, plus roughly
-  17 state / 18 label-setup lines per pulse. Next screen resolving the three
-  immutable language-label pointers once at startup instead of per pulse;
-  then assess owner-glyph reuse with exact font-store/lifetime checks. Keep
+  17 state / 18 label-setup lines per pulse. Startup-resolved language-label
+  pointers were screened and removed: parent and candidate both took 81
+  refreshes with the identical interval histogram. Do not repeat that candidate
+  unchanged. Next assess owner-glyph reuse with exact font-store/lifetime checks. Keep
   instrumentation overhead distinct from normal cadence and preserve original
   palette/state semantics; the current result does not close F08.
 - F03–F05/F10/F12: finish remaining native interactive sequences and shortcuts

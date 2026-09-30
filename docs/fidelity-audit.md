@@ -3051,6 +3051,26 @@ Build logs: `tmp/title-arcade-subphase-build.log` and, after profiling,
 `tmp/title-subphase-normal-build.log`. No production drawing change is accepted
 by this measurement. The independent Load draft remains uncommitted.
 
+### Rejected startup-resolved Arcade label pointers
+
+A candidate retained the three existing language-lookup results immediately
+after the single startup language-table load, with unchanged literal fallbacks.
+Its purpose was to reduce the measured per-pulse setup component without
+altering glyphs or palette state. The current uninstrumented registered Finnish
+Arcade control (`tmp/standalone-release-eu2l4zgm`) and candidate
+(`tmp/standalone-release-fumb_z5q`) both pass counter/restore checks and both
+take exactly 81 refreshes for 64 intervals: 55 single-refresh intervals, eight
+double-refresh intervals and one ten-refresh entry interval. There is no
+observed visible cadence improvement. These are stock PAL 68020/2 MiB/no Fast,
+default 4 KiB stack runs with muted audio; owned emulators are closed.
+
+The candidate was removed before running the expensive full-pixel suites,
+following the fail-fast rule. It is not an accepted optimization or a pixel
+fidelity pass. Registered-name drawing remains the measured next candidate.
+Build logs: `tmp/title-label-cache-build.log` and
+`tmp/title-label-cache-restored-build.log`. No gameplay optimization resumed;
+the independent unverified Load draft was preserved.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,
