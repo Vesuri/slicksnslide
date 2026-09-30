@@ -60,7 +60,8 @@ static struct SlicksAmigaPlayerMenu *acquire_menu(void)
 }
 static struct SlicksAmigaHelpWorkspace *help_workspace;
 static unsigned char help_workspace_busy;
-enum ModalOwner { MODAL_HELP=1,MODAL_CONTROLLERS,MODAL_NAME,MODAL_COLOUR,MODAL_PICKER };
+enum ModalOwner { MODAL_HELP=1,MODAL_CONTROLLERS,MODAL_NAME,MODAL_COLOUR,
+    MODAL_PICKER,MODAL_TRACK_INFO,MODAL_CHANGE_CARS,MODAL_MESSAGE };
 static void (*help_workspace_restore)(void *);
 static void *help_workspace_context;
 int slicks_amiga_help_workspace_bind(void *bytes,unsigned long capacity,
@@ -294,7 +295,10 @@ static int load_car_menu_icons(struct SlicksAmigaPlayerMenu *m,struct SlicksReso
     /* These eleven encoded resources are at most 338 bytes in Slix 1.51;
      * the decoded icons have their own checked destination capacity. */
     const unsigned long capacity=512;
-    unsigned char *resource=records_faults && track_info_fault(4)?0:AllocMem(capacity,MEMF_ANY);
+    /* Parent snapshots occupy only 64,000 bytes. The reserved tail is free
+     * during icon loading, including nested records and intermission entry. */
+    _Static_assert(sizeof m->saved>=64000+512,"icon staging fits reserved tail");
+    unsigned char *resource=records_faults && track_info_fault(4)?0:m->saved+64000;
     if(!resource) return -1;
     int result=-1;
     for(unsigned i=0;i<11;++i) {
@@ -308,7 +312,7 @@ static int load_car_menu_icons(struct SlicksAmigaPlayerMenu *m,struct SlicksReso
     }
     m->renderer.icons=m->icons; m->renderer.icon_count=11; result=0;
 done:
-    FreeMem(resource,capacity); return result;
+    return result;
 }
 int slicks_amiga_records_icons_load(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive)
 { return load_car_menu_icons(m,archive,"top10cc.@16",1); }
@@ -338,7 +342,7 @@ void slicks_amiga_track_info_close(struct SlicksAmigaPlayerMenu *m)
         dirty(m,r->left,r->top,r->right,r->bottom);
     }
     for(unsigned i=0;i<2;++i) m->fonts[i][6]=d->font_colours[i];
-    FreeMem(d,sizeof *d);
+    release_modal(d,MODAL_TRACK_INFO);
 }
 int slicks_amiga_track_info_open(struct SlicksAmigaPlayerMenu *m,struct SlicksResourceArchive *archive,
     const unsigned char *dat,unsigned long dat_size,const unsigned char *track,unsigned long track_size,
@@ -364,7 +368,7 @@ int slicks_amiga_track_info_open_prepared(struct SlicksAmigaPlayerMenu *m,struct
         g_slicks_diag_track_info_free=AvailMem(MEMF_ANY);
         g_slicks_diag_track_info_largest=AvailMem(MEMF_ANY|MEMF_LARGEST);
     }
-    struct SlicksAmigaTrackInfo *d=track_info_fault(1)?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaTrackInfo *d=track_info_fault(1)?0:acquire_modal(sizeof *d,MODAL_TRACK_INFO);
     if(!d) return -1;
     g_slicks_diag_track_info_stage=1;
     for(unsigned i=0;i<2;++i) d->font_colours[i]=m->fonts[i][6];
@@ -542,7 +546,7 @@ int slicks_amiga_change_cars_close(struct SlicksAmigaPlayerMenu *m)
     if(!m || !m->change_cars) return -1;
     struct SlicksAmigaChangeCars *d=m->change_cars;
     int result=d->renderer.active?slicks_change_cars_renderer_close(&d->renderer):0;
-    FreeMem(d,sizeof *d); m->change_cars=0;
+    release_modal(d,MODAL_CHANGE_CARS); m->change_cars=0;
     return result;
 }
 int slicks_amiga_change_cars_key(struct SlicksAmigaPlayerMenu *m,unsigned char key)
@@ -575,7 +579,7 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *m,struct SlicksR
     unsigned char fault=g_slicks_diag_change_cars_fault; g_slicks_diag_change_cars_fault=0;
     g_slicks_diag_change_cars_fault_reached=0;
     if(fault==1) g_slicks_diag_change_cars_fault_reached=1;
-    struct SlicksAmigaChangeCars *d=fault==1?0:AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaChangeCars *d=fault==1?0:acquire_modal(sizeof *d,MODAL_CHANGE_CARS);
     if(!d) return -1;
     /* Small bounded resource scratch: the ten menu car icons fit 192 pixels. */
     unsigned char resource[1024];
@@ -602,7 +606,7 @@ int slicks_amiga_change_cars_open(struct SlicksAmigaPlayerMenu *m,struct SlicksR
     m->change_cars=d; return 1;
 failed:
     if(d->renderer.active) (void)slicks_change_cars_renderer_close(&d->renderer);
-    FreeMem(d,sizeof *d); return -1;
+    release_modal(d,MODAL_CHANGE_CARS); return -1;
 }
 void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
 {
@@ -610,11 +614,11 @@ void slicks_amiga_player_menu_destroy(struct SlicksAmigaPlayerMenu *m)
     if(m->change_cars) (void)slicks_amiga_change_cars_close(m);
     if(m->intermission) (void)slicks_amiga_intermission_close(m);
     if(m->help_warning) (void)slicks_amiga_help_warning_close(m);
-    if(m->track_info) FreeMem(m->track_info,sizeof *m->track_info);
+    if(m->track_info) release_modal(m->track_info,MODAL_TRACK_INFO);
     if(m->track_lists) {
         FreeMem(m->track_lists,sizeof *m->track_lists);
     }
-    if(m->message) FreeMem(m->message,sizeof *m->message);
+    if(m->message) release_modal(m->message,MODAL_MESSAGE);
     if(m->help) {
         release_help(m->help);
     }
@@ -884,14 +888,14 @@ int slicks_amiga_message_open_font(struct SlicksAmigaPlayerMenu *m,const unsigne
     unsigned char percent,unsigned font)
 {
     if(!m || m->message || !message || font>=3) return -1;
-    struct SlicksAmigaMessageDialog *d=AllocMem(sizeof *d,MEMF_ANY|MEMF_CLEAR);
+    struct SlicksAmigaMessageDialog *d=acquire_modal(sizeof *d,MODAL_MESSAGE);
     if(!d) return -1;
     d->renderer.painter.ui=m->renderer.ui; d->renderer.painter.font=m->fonts[font];
     d->renderer.painter.measure=picker_measure; d->renderer.painter.text=text; d->renderer.painter.context=m;
     m->error=0;
     if(slicks_message_dialog_open(&d->renderer,message,160,100,percent,d->saved,sizeof d->saved) || m->error) {
         if(d->renderer.active) slicks_message_dialog_close(&d->renderer);
-        FreeMem(d,sizeof *d); return -1;
+        release_modal(d,MODAL_MESSAGE); return -1;
     }
     m->message=d; return 0;
 }
@@ -901,7 +905,7 @@ int slicks_amiga_message_close(struct SlicksAmigaPlayerMenu *m)
 {
     if(!m || !m->message) return -1;
     int result=slicks_message_dialog_close(&m->message->renderer);
-    FreeMem(m->message,sizeof *m->message); m->message=0; return result;
+    release_modal(m->message,MODAL_MESSAGE); m->message=0; return result;
 }
 /* Diagnostic: 1 fails allocation, 2 fails after the dialog has painted. */
 unsigned char g_slicks_diag_profile_dialog_fault;

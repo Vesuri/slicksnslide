@@ -150,6 +150,9 @@ struct SlicksAmigaHelpWorkspace {
         struct SlicksAmigaControllersDialog controllers;
         struct SlicksAmigaNameDialog name;
         struct SlicksAmigaColourDialog colour;
+        struct SlicksAmigaTrackInfo track_info;
+        struct SlicksAmigaChangeCars change_cars;
+        struct SlicksAmigaMessageDialog message;
         struct {
             struct SlicksAmigaProfilePicker picker;
             /* Maximum validated catalogue title offsets; also covers 40x9

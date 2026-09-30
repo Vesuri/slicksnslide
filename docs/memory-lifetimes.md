@@ -74,7 +74,8 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    Options, Tracks and shop construction borrow the owner's save-under before
    its parent snapshot becomes live. Extending that reservation by 1,536 bytes
    removes 8/32/64 KiB transient allocations and accommodates indexed image
-   headers. Nested icon loading still has a separate 512-byte temporary.
+   headers. Nested icon loading uses 512 bytes of the reserved tail beyond the
+   64,000-byte live parent snapshot.
 3. **Track preparation (implemented):** 65,536-byte DAT, 8,192-byte track, 3,018-byte navigation,
    128-byte car and 2,048-byte font staging. Chunky already supplies decode
    workspace. Preparation now shares the inactive primary menu slot only after
@@ -93,7 +94,8 @@ are used as preview output. The arena API explicitly borrows rather than owns.
    compile time and startup, and no heap fallback exists. Controllers and
    name/colour dialogs now share the same exclusive overlay, without growing
    it. Pickers and their bounded 5,698-byte name/index payload also share it.
-   Messages, Change Cars and intermission storage still allocate
+   Track Information, messages and Change Cars also share that child slot.
+   Pause, intermission and track-list parent storage still allocate
    dynamically. Work out legal nesting before defining
    unions; preserve parent save-under, labels and font state across child exit.
 5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536

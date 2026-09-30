@@ -1,5 +1,22 @@
 # Development release audit
 
+## 2026-09-30 — remaining leaf dialogs and icon staging
+
+Track Information, Change Cars and messages use the existing owner-tagged modal
+union. Icon decode input uses the spare primary saved-page tail, not its live
+64,000-byte parent image. Neither startup reservation grows. Close/failure
+restores pixels and font state before releasing the overlaid cache.
+
+Stock 2 MiB A1200 with Workbench/default 4 KiB stack:
+
+- `tmp/standalone-release-fz2lljq6`: TRACKSK passes all five faults,
+  dismissal/retry, reopen and race entry; all 30 publications match chunky.
+- `tmp/standalone-release-90o35qu6`: OPTIONSTI passes repeated intermission
+  car edits and second-race entry; all 55 publications match chunky.
+
+The three retained parent objects and persistence/ending staging remain B12
+work. These tests do not claim the combined startup budget is finished.
+
 ## 2026-09-30 — reserved picker and name/index payloads
 
 The three picker constructors borrow the existing modal slot, with a separate

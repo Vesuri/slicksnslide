@@ -169,6 +169,16 @@ bytes. Picker release does not free the borrowed payload. Track-list state and
 the retained catalogue remain separate; choice closes the picker before name
 entry or confirmation. Five further allocation expressions are removed.
 
+Track Information, Change Cars and generic messages also use this slot.
+Their normal call paths close a failed/finished child before opening a message;
+the owner tag rejects accidental nesting instead of overwriting it. Track
+information restores painted bounds and font colours before releasing storage.
+Change Cars retains its separate intermission parent. Icon staging uses bytes
+64,000–64,511 of the primary saved-page reservation, beyond the live snapshot.
+These remove four further allocation expressions without enlarging either slot.
+Only the pause, intermission and track-list parent objects still allocate in
+amiga_player_menu.c, in addition to the startup primary reservation.
+
 Maximum-catalogue + Workbench tests exposed two startup outcomes: menu-owner
 reservation can fail, or catalogue retention can fail first and leave a later
 recoverable warning. This is not the final B12 all-or-nothing contract. Reserve
