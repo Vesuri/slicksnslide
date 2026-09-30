@@ -174,11 +174,12 @@ Actor/particle slot allocation is fixed-pool indexing, not heap allocation.
   chunky-owned and its exits rebuild the title. This does **not** grant the
   same permission to arbitrary pause or screenshot operations during a race.
 
-The child matrix below establishes the first shared modal slot. The exact
-combined peak layout for retained parents, catalogues and transactions remains
-design work, not discovery of new direct allocation sites. Validate each layout
-bound on the target ABI, then run failure, publication, repeated-transition and
-cleanup tests.
+The child matrix below describes the shared modal slot. The combined layout
+is now implemented: 96,546-byte primary/parent reservation, 110,096-byte modal
+overlay in the race's 117,760-byte particle cache, 65,536-byte catalogue, and
+141,312-byte phase-exclusive intermission span in VGA storage. Transaction
+output uses the modal slot, not the intermission input-name span. Compile-time
+target-size assertions and runtime ownership guards enforce those bounds.
 
 ## Child ownership matrix
 
@@ -230,11 +231,11 @@ with the child union. Their acquisition, failure, release and shutdown edges
 are owner-tagged; releasing a primary owner with a live parent is rejected.
 amiga_player_menu.c now contains only the startup allocation and shutdown free.
 
-Maximum-catalogue + Workbench tests exposed two startup outcomes: menu-owner
-reservation can fail, or catalogue retention can fail first and leave a later
-recoverable warning. This is not the final B12 all-or-nothing contract. Reserve
-the combined required budget before publishing any live menu; distinguish
-memory reservation failure from recoverable filesystem errors.
+Earlier maximum-catalogue + Workbench tests exposed two startup outcomes:
+menu-owner reservation failure, or catalogue retention failure followed by a
+later warning. Both required reservations now precede menu-cache construction
+and the startup-complete checkpoint. Failure exits through cleanup before any
+interactive menu; filesystem refresh errors remain independently recoverable.
 
 Normal intermission no longer allocates DAT, track, language or exported
 playlist names. The phase-exclusive union in idle VGA is 141,312 bytes, with
@@ -256,6 +257,6 @@ only eight more for the maximal 65,528-byte test catalogue. Failed refreshes
 retain the old bytes, while their error report prevents stale browsing.
 
 This matrix separates child payloads from longer-lived parent, catalogue and
-transaction data. The remaining work is placing those parents/payloads and
-transactions into bounded spans and proving the combined peak, not treating
-all modal objects as mutually exclusive.
+transaction data. Those spans are now reserved; final validation must preserve
+these simultaneous-lifetime distinctions rather than treating all menu objects
+as mutually exclusive.

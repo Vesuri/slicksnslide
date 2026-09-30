@@ -9,7 +9,10 @@ out. Reserve by simultaneous lifetime and reject unsupported catalogue sizes
 before gameplay. Disk/OS operations can still fail independently and must retain
 their recoverable error handling; startup reservation cannot guarantee disk I/O.
 
-The current implementation does **not** meet that contract yet.
+The allocation migrations are implemented. Final validation is still in
+progress: B12 remains open until the source/lifetime audit and native release
+workflow have been reconciled against this layout. Completed evidence is in
+[release-verification.md](release-verification.md).
 
 The complete direct-allocation census and finite migration groups are in
 [allocation-inventory.md](allocation-inventory.md). Complete its nesting/phase
@@ -62,7 +65,7 @@ resume, the parent/retry display is retained in chunky, and next-race or title
 preparation reconstructs VGA contents. No displayed pixels or live race state
 are used as preview output. The arena API explicitly borrows rather than owns.
 
-### Remaining allocation families and reservation design
+### Implemented reservation families
 
 1. **Primary menu owner (implemented):** Players, Tracks, Options, Help, pause, shop, records,
    intermission and endings use the same large owner type. Prove exclusive
