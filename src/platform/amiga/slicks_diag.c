@@ -3301,9 +3301,10 @@ static int intermission_retry_notice(struct SlicksAmigaPlatform *platform,struct
     if(!race->font.ready || slicks_amiga_emergency_warning_open(chunky,palette,race->font.runtime,
         (const unsigned char *)"ENTER: RETRY / ESC: END MATCH")) return -1;
     int result=-1;
+    if(platform->active && show_view(platform,1)) goto done;
     if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
     slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
-    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    if(show_menu(platform)) goto done;
     platform->key_tail=platform->key_head;
     slicks_diag_intermission_retry();
     if(diagnostic) { platform->key_tail=0; platform->keys[0]=(diagnostic==4 || diagnostic==6)?0x45:0x44; platform->key_head=1; }
@@ -3359,7 +3360,6 @@ static int run_intermission(struct SlicksAmigaPlatform *platform,struct SlicksRa
     if(diagnostic==3 || diagnostic==4) g_slicks_diag_intermission_fault=3;
     if(diagnostic==5 || diagnostic==6) g_slicks_diag_plain_close_fault=1;
 retry:
-    slicks_amiga_platform_end(platform);
     /* Synchronous menu owner; keep decode staging off the default 4K stack. */
     static unsigned char language_resource[512];
     if(slicks_resource_archive_cached(&archive,menu_cache)) goto unavailable;
@@ -3378,8 +3378,12 @@ retry:
     short fastest=29999;
     for(unsigned i=0;i<4;++i) if((signed int)fastest>content.laps[i]) fastest=(short)(unsigned short)content.laps[i];
     content.fastest=fastest;
+    /* The caller stopped Paula before records/intermission. Retain the
+     * displayed race (or retry notice) while DOS services the two reads. */
+    if(platform->active && slicks_amiga_platform_begin_io(platform)) goto done;
     ds=load_plain_reserved("SLICKS.DAT",dat,sizeof work->preview.dat);
     ts=ds>0?load_plain_reserved(next_path,track,sizeof work->preview.track):-1;
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) goto done;
     if(ds<=0 || ts<=0) goto unavailable;
     m=slicks_amiga_intermission_surface_create(&archive,chunky,palette);
     /* The finished race will not resume. Its VGA image is dead: visible output
@@ -3387,11 +3391,14 @@ retry:
      * Borrow its startup allocation for preview decode, including retries. */
     if(!m || slicks_amiga_intermission_open(m,&content,palette,dat,ds,track,ts,
         work->preview.arena,sizeof work->preview.arena)) goto unavailable;
+    /* Retry may still show the warning in view 0. Keep the unchanged race
+     * in view 1 visible until the entire intermission image is ready. */
+    if(platform->active && show_view(platform,1)) goto done;
     if(slicks_amiga_platform_set_view(platform,0,palette)) goto done;
     slicks_chunky_rows_to_amiga(chunky,platform->views[0].bitmap,0,200);
     slicks_amiga_player_menu_clear_dirty(m);
     platform->key_tail=platform->key_head;
-    if(slicks_amiga_platform_begin(platform,0)) goto done;
+    if(show_menu(platform)) goto done;
     g_slicks_diag_intermission_menu=m;
     slicks_diag_intermission_checkpoint();
     if(championship_test==1 || championship_test==3 || championship_test==6) {
@@ -3469,6 +3476,7 @@ unavailable:
     result=intermission_retry_notice(platform,race,chunky,palette,diagnostic);
     if(result==1) { result=-1; goto retry; }
 done:
+    if(platform->io_active && slicks_amiga_platform_end_io(platform)) result=-1;
     slicks_amiga_player_menu_destroy(m); g_slicks_diag_intermission_menu=0;
     slicks_resource_archive_close(&archive);
     if(result>=0) {

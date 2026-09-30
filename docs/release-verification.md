@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-09-30 — retained display during intermission preview reads
+
+Intermission no longer ends display ownership to load DAT/next-track preview
+data. Paula is stopped by the caller; only the two reads run inside an OS
+I/O window. Cached resources and all rendering run outside that window.
+Retry notices and the completed intermission are built in view 0 while the
+unchanged race in view 1 remains visible, then shown at display blanking.
+Failure cleanup closes any outstanding I/O window.
+
+Workbench-loaded stock 2 MiB/no-Fast/default-4-KiB-stack evidence:
+
+- OPTIONSTL display guard (`tmp/standalone-release-i59frtuk`): no full teardown
+  across intermission; failed Close and retry produce two I/O windows. Both
+  retain active ownership/null OS ActiView; each displayed 64,000-byte bitmap
+  and 768-byte palette compares identical before/after.
+- OPTIONSTI (`...-0xpu4_id`): repeated edits, proper vehicle handoff to the
+  next race and restoration pass. All 55 menu publications match every pixel.
+- OPTIONSTL behavioural gate (`...-i11e8gql`): failure/retry, rewards-once and
+  second race pass. Warning and race return match all pixels; race bitmap
+  and retry session snapshots are unchanged.
+- `...-201m97d1` exited before debugger connection and is not a test pass.
+
+Each test began with a fresh Classic CFG. All debug emulators were muted and
+closed. This does not yet cover intermission save-file I/O or ending images;
+those other disk boundaries remain B10 work.
+
 ## 2026-09-30 — startup-backed intermission staging and save names
 
 Normal intermission borrows the completed race's idle VGA allocation for DAT,
