@@ -22,31 +22,19 @@ Working rules are in [development-verification.md](development-verification.md).
   see B5).
 - **D3:** A negative saved language selector means English. Done: recorded in
   `slicks_diag.c`.
+- [ ] **D4 — Speed change during a race.**
+  - The original's pause-menu Speed child reprograms the PIT through `7bc2`,
+    which zeroes the tick counter at `74bc`. The race loop's saved counter
+    (BP-58) is not reset.
+  - As a result, the next update's batch is negative (`fe73..fe8b` compares
+    signed values, and the cap only limits the positive side). It runs no
+    physics substeps, but it subtracts time from the game clock and adds it
+    back to the countdown.
+  - The port restarts the phase and carries on with a positive batch.
+  - Choose one: reproduce the glitch, or keep the clock monotonic as an
+    explicit adaptation.
 
 ## B. Fixes
-
-### B1. Real-time race clock
-
-In `slicks_physics_clock_advance` (`src/game/race_timing.h`) and
-`next_physics_ticks` (`race_runtime.c`):
-- add 1193182/50 PIT input cycles per vblank elapsed since the previous update,
-  instead of a fixed 1193182/50 per update;
-- keep the carried phase;
-- cap each update at 45 ticks (original `fe6d..fea3`);
-- reset the reference vblank wherever the original resets its clock (`fe3c`,
-  before the lights) and after every non-race interruption (pause/Help, results).
-
-The fixed per-update clock stays behind the existing benchmark and verification
-switches, so `FINAL_STATE` fixtures remain deterministic.
-
-Accept when all of these hold:
-- host timing tests pass for 1, 2, 3 and 50 elapsed vblanks, including the cap;
-- on F1, a lap timed by the vblank counter and by the HUD lap clock agree
-  within 1%;
-- deterministic benchmarks reproduce their current `FINAL_STATE` values.
-
-See [frame-pacing.md](frame-pacing.md). Today F1 cars and lap clocks run at 74%
-of real time.
 
 ### B2. Adaptive publication
 
@@ -58,9 +46,10 @@ In the race loop (`slicks_diag.c`, around line 6915):
 Record late publications in a counter that `bench_tracks.sh` prints.
 
 Accept when all of these hold:
-- the four-track benchmark shows cadence within 1 fps of the
-  `tools/sync_policy_model.py` prediction (≥ 48.9 / 49.8 fps on F1 / WHACKO;
-  50.0 on BASIC and CITY);
+- the real-time four-track benchmark (`SLICKS_REALTIME_CLOCK=1
+  amiga/bench_tracks.sh`) shows cadence at or above the
+  `tools/sync_policy_model.py` prediction from `tmp/b1-realtime-*` (46.8 fps
+  on F1, 49.5 on WHACKO, 49.9 on BASIC, 50.0 on CITY);
 - `diag_display_end_limit.gdb` is updated to accept late publications and
   still forbids more than one publication per update;
 - the late-audio check below passes;
@@ -103,6 +92,50 @@ image, setup save). They keep today's OS hand-off.
 Run one native fixture with only driver 3 human: buy one item, sell one item,
 press one ignored key. Accept when there is no crash, the transactions land on
 driver 3, and the ignored key triggers no redraw.
+
+### B6. Held-key auto-repeat in menus and Help
+
+The original repeats held keys:
+- the title/menu reader through its repeat timer (DS:1714 plus BIOS ticks,
+  argument 2);
+- Help through `getch` with BIOS typematic repeat.
+
+The Amiga keyboard interrupt queues raw make/break events and has no repeat
+([fidelity-audit.md](fidelity-audit.md) around line 939, "keyboard repeat
+cadence not established"; `amiga_platform.cpp` `keyboard_handler`).
+
+Steps:
+1. Recover the exact delay and rate from the original title reader and its
+   callers.
+2. Use the BIOS default typematic for Help (500 ms delay, 10.9 repeats/s).
+3. Generate the repeats in the platform key queue only for the owners that
+   repeat in the original. The race does not, because it polls key state.
+
+Accept when all of these hold:
+- a host test of the repeat schedule passes;
+- one native fixture holds Down on the title and in Help and shows the same
+  number of steps as the recovered schedule.
+
+### B7. First-run language chooser under WHDLoad and Play
+
+The startup chooser (saved language 0) is a console text menu. With no
+interactive console, the game refuses to start.
+
+Check the language byte of the `SLICKS.CFG` that the installer produces from
+`Slix151.zip`:
+- if it is not 0, record that and close this item;
+- if it is 0, start once from the WHDLoad icon and once from `Play`. Any start
+  that refuses to run is a defect to fix here.
+
+### B8. Mouse audit
+
+The original calls INT 33h (reset, status, position, bounds, cursor;
+[external-surface.md](external-surface.md)). The title and Help are proven
+keyboard-only, but the other consumers were never audited.
+
+List every INT 33h call site in `disasm/live-listing.txt` and its consumer.
+Close this item if none drives menu or game input; otherwise add one fix item
+per consumer.
 
 ## C. Packaging
 
@@ -171,6 +204,12 @@ standalone `Play` IconX launcher next to the WHDLoad icon, `CREDITS.txt`,
 - Worst-case 20 ms updates. With B1 and B2, game speed is correct at any frame
   rate. See [frame-pacing.md](frame-pacing.md) for the profile and why further
   micro-optimization was stopped.
+- The rate of work done once per drawn update: particle ageing, actor
+  animation and the homing turn step. On DOS this rate is CPU-dependent: the
+  title runs at 18–55 ms per update between 100k and 12k DOSBox cycles, and a
+  fast reference PC averaged about 70 updates/s. The Amiga's up to 50 updates/s
+  falls inside that range, so it matches a slower PC rather than being a
+  defect. B1 makes the physics and clocks independent of it.
 - The registration order-form image. The original `webf_ord.bmp` is absent.
 - The manual joystick test. It is deferred by the user.
 - General translator expansion. See [phases.md](phases.md).

@@ -127,3 +127,63 @@ change cannot tear.
 - **Further micro-optimization towards a worst case of 20 ms:** not planned.
   With the two changes above, game speed is correct at any frame rate, and
   the modelled cadence is 49–50 fps on all four benchmark tracks.
+
+## Real-time race clock implemented (B1, 2026-09-30)
+
+`next_physics_ticks` now follows `1000:fe5e..fe98` whenever a race has a
+raster clock. The clock is installed on every plain launch; benchmark
+fixtures opt in with `NATURAL{B,S}<track>RT` (`SLICKS_REALTIME_CLOCK=1`).
+
+**Clock source.** `slicks_amiga_platform_raster_time` returns 15625 Hz PAL
+raster lines (`vblank_count*313+line`). Each line adds 1193182 phase units,
+and a tick consumes `divisor*15625`. So the rate is exact for the actual
+PAL line rate, not the nominal 50 Hz.
+
+**Update rules** (as in the original):
+- The first update waits for one tick and integrates a batch of one.
+- Later updates take every tick elapsed since the previous read, waiting
+  while none has elapsed, capped at 45.
+- The counter keeps running while paused, so the first update after a pause
+  is capped at 45.
+- A read that lags the VBI by one frame adds no time.
+
+**Deterministic fixtures** keep the nominal one-update clock unchanged.
+
+### Checks
+
+- `verify-race-timing` passes: the line clock is exact against 64-bit
+  arithmetic at all 151 UI speeds, including 40000-line reads.
+- `verify-drive-physics` passes: first batch of one, waiting on zero ticks, the
+  rational total over 20000 reads, the 45 cap, a lagging read, and the
+  disabled timer.
+- Fixed-clock benchmarks (`tmp/b1-fixed-{0..3}.log`) reproduce every
+  `FINAL_STATE` from `tmp/ship-audit-20260930-*`.
+- The real-time benchmarks (`tmp/b1-realtime-{0..3}.log`) print
+  `REALTIME_CLOCK`. Game ticks match the raster time to within one tick:
+
+| Track | Ticks | Raster lines | Expected ticks |
+| --- | ---: | ---: | ---: |
+| BASIC | 1415 | 242912 | 1416.3 |
+| F1 | 1956 | 335876 | 1957.9 |
+| CITY | 1393 | 239152 | 1394.4 |
+| WHACKO | 1504 | 258256 | 1505.6 |
+
+Expected ticks include the first batch of one. Lap clocks advance two units
+per tick (`advance_car_clock`), so they are real time too.
+
+### Cost
+
+Real-time physics runs more ticks on slow updates. Previously the game ran
+slower than real time, which is why it did less work per second. Real-time
+work per update:
+
+| Track | Mean | p95 | Max | fps now (hard sync) | Model, adaptive | Late |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| BASIC | 15.5 | 21.0 | 24.9 | 44.5 | 49.9 | 15% |
+| F1 | 19.7 | 25.6 | 30.7 | 33.1 | 46.8 | 53% |
+| CITY | 14.2 | 17.2 | 22.5 | 48.4 | 50.0 | 3% |
+| WHACKO | 16.6 | 21.9 | 26.1 | 41.5 | 49.5 | 21% |
+
+The adaptive model replays the measured real-time samples. It ignores the
+feedback whereby faster publication runs fewer ticks per update, so its
+estimate is slightly pessimistic.

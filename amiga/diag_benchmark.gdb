@@ -50,6 +50,9 @@ commands
   printf "CAR_SUM cars=%lu points_priority3=%lu\n",g_slicks_diag_bench_car_sum[0],g_slicks_diag_bench_car_sum[1]
   printf "MOTION_SUM track=%lu points=%lu sprites=%lu\n",g_slicks_diag_bench_motion_sum[0],g_slicks_diag_bench_motion_sum[1],g_slicks_diag_bench_motion_sum[2]
   printf "FINAL_STATE marks=%lu x=%ld,%ld,%ld,%ld y=%ld,%ld,%ld,%ld\n",g_slicks_diag_skidmarks,g_slicks_diag_car_x[0],g_slicks_diag_car_x[1],g_slicks_diag_car_x[2],g_slicks_diag_car_x[3],g_slicks_diag_car_y[0],g_slicks_diag_car_y[1],g_slicks_diag_car_y[2],g_slicks_diag_car_y[3]
+  if $race && $race->raster_clock
+    printf "REALTIME_CLOCK ticks=%lu lines=%lu frames=%lu\n",$race->game_clock_ticks,$race->physics_clock_at-$race->physics_clock_origin,$race->frame_count
+  end
   if $race
     set $masked=0
     set $unmasked=0

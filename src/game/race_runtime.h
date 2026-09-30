@@ -430,6 +430,14 @@ struct SlicksRaceRuntime {
     const unsigned char *demo_palette;
     struct SlicksCarDisplay car_display[4];
     unsigned char car_display_ready;
+    /* Real-time physics clock (original 1000:fe5e..fe98). Null: advance one
+     * nominal 50 Hz update per step (deterministic fixtures). The clock
+     * returns monotonic 15625 Hz raster lines (frame*313+line). */
+    unsigned long (*raster_clock)(void *context);
+    void *raster_clock_context;
+    unsigned long physics_clock_at;
+    unsigned long physics_clock_origin; /* First read: diagnostics only. */
+    unsigned char physics_clock_started;
 };
 
 /* Original DS:0459 / DS:0bff. The palette supplied to set_status_palette

@@ -65,9 +65,24 @@ int main(void)
         unsigned long before=phase;
         REQUIRE(!slicks_physics_clock_advance(&phase,period,1) && phase==before);
     }
+    /* Real-time line clock: 15625 Hz raster lines, exact against 64-bit
+     * arithmetic at every UI speed, including multi-chunk (paused) reads. */
+    for(unsigned speed=50;speed<=200;++speed) {
+        unsigned argument=slicks_speed_timer_argument((short)speed);
+        unsigned long divisor=slicks_timer_divisor((unsigned short)argument);
+        unsigned long phase=0; uint64_t lines=0,total=0;
+        for(unsigned read=1;read<=3000;++read) {
+            unsigned long step=read%500==0?40000UL:1UL+(read*7919UL)%900UL;
+            total+=slicks_physics_clock_lines(&phase,divisor*50UL,0,step); lines+=step;
+            uint64_t cycles=lines*1193182ULL,tick=(uint64_t)divisor*15625ULL;
+            REQUIRE(total==cycles/tick && phase==cycles%tick);
+        }
+        unsigned long before=phase;
+        REQUIRE(!slicks_physics_clock_lines(&phase,divisor*50UL,1,1000) && phase==before);
+    }
     unsigned long legacy=0,current=0;
     for(unsigned i=0;i<3000;++i) REQUIRE(slicks_physics_clock_advance(&legacy,0,0)==
         slicks_physics_clock_advance(&current,655350,0) && legacy==current);
-    check(uc_close(u)); puts("Original PIT setup: all 65536 arguments match divisor/ports/clock reset; 151 speeds pass 453000 exact-rational updates and unchanged 100% timing");
+    check(uc_close(u)); puts("Original PIT setup: all 65536 arguments match divisor/ports/clock reset; 151 speeds pass 453000 exact-rational updates and unchanged 100% timing; real-time line clock exact at 151 speeds");
     return 0;
 }

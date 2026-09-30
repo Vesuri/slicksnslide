@@ -88,6 +88,11 @@ elif [ -n "${SLICKS_GAMEPLAY_BENCHMARK:-}" ]; then
     [ "$BENCHMARK_MODE" = B ] || { echo 'HUD phase sweep requires outer-only timing.' >&2; exit 2; }
     case "$SLICKS_HUD_PHASE" in 0|1|2|3) HUD_PHASE_SUFFIX="P$SLICKS_HUD_PHASE";; *) exit 2;; esac
   fi
+  if [ "${SLICKS_REALTIME_CLOCK:-0}" = 1 ]; then
+    [ -z "$HUD_PHASE_SUFFIX" ] && { [ "$BENCHMARK_MODE" = B ] || [ "$BENCHMARK_MODE" = S ]; } ||
+      { echo 'Real-time clock benchmarks require outer timing or sampling without a HUD phase.' >&2; exit 2; }
+    HUD_PHASE_SUFFIX=RT
+  fi
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s%s%s\n' "$BENCHMARK_MODE" "$SLICKS_GAMEPLAY_BENCHMARK" "$HUD_PHASE_SUFFIX" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_MODE_TRANSITION:-}" ]; then
   case "$SLICKS_MODE_TRANSITION" in 0|1|2|3|4|5) ;; *) exit 2;; esac

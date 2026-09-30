@@ -181,6 +181,9 @@ volatile signed char g_slicks_shop_rejection_item;
 static unsigned char mode_transition_test;
 volatile unsigned short g_slicks_diag_mode_case;
 static unsigned char shop_transition_test,shop_transition_phase;
+/* Real-time physics clock: every plain launch; deterministic fixtures keep
+ * one nominal PAL update per step unless they request it (NATURAL..RT). */
+static unsigned char realtime_race_clock;
 /* NATURALW-only parameter: 1..8 exercise each weapon; 9 buys two and cycles.
  * Cases 7/8 test the registered branch, never normal setup. */
 volatile unsigned short g_slicks_diag_weapon_case;
@@ -2490,6 +2493,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     }
     slicks_race_initialize(race, navigation);
     slicks_race_set_timer(race,slicks_speed_timer_argument(configuration->field_05de));
+    if(realtime_race_clock) {
+        race->raster_clock=slicks_amiga_platform_raster_time;
+        race->raster_clock_context=platform;
+    }
     if(session) {
         race->finish_reward=award_race_finish;
         race->track_reward=title_demo.active?0:award_race_track;
@@ -4270,6 +4277,12 @@ int main(void)
         status_clock.remainder=819200UL*(unsigned)(argv[10]-'0');
         argc=9;
     }
+    /* NATURAL{B,S}<track>RT: benchmark with the real-time race clock. */
+    if(argc==11 && argv[0]=='N' && argv[1]=='A' && argv[2]=='T' && argv[3]=='U' &&
+       argv[4]=='R' && argv[5]=='A' && argv[6]=='L' && (argv[7]=='B' || argv[7]=='S') &&
+       argv[8]>='0' && argv[8]<='3' && argv[9]=='R' && argv[10]=='T') {
+        realtime_race_clock=1; argc=9;
+    }
     /* NATIVE is the normal interactive route with explicit debug snapshots.
      * Plain launches should not pay for per-update inspection/checksums. */
     unsigned char native_debug=(unsigned char)(argc==6 && argv[0]=='N' &&
@@ -4828,6 +4841,7 @@ int main(void)
     g_slicks_diag_checksum = title_checksum;
     g_slicks_diag_display_checksum = title_display_checksum;
     registration_presentation=(unsigned char)(argc==0);
+    if(!argc) realtime_race_clock=1;
     if(registration_presentation && slicks_registration_trial_expired(registration_today,
         configuration.date_code,registration.name[0])) {
         if(registration_screen(&platform,chunky,0,slicks_speed_timer_argument(configuration.field_05de))) goto cleanup;

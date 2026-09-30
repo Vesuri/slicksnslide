@@ -407,6 +407,22 @@ void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform)
         ;
 }
 
+unsigned long slicks_amiga_platform_raster_time(void *context)
+{
+    const struct SlicksAmigaPlatform *platform =
+        (const struct SlicksAmigaPlatform *)context;
+    unsigned long frame, again;
+    unsigned short high, line;
+    do {
+        frame = platform->vblank_count;
+        high = (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7);
+        line = (unsigned short)((high << 8) | (CUSTOM_WORD(REG_VHPOSR) >> 8));
+        again = platform->vblank_count;
+    } while (frame != again ||
+             high != (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7));
+    return frame * 313UL + line;
+}
+
 void slicks_amiga_platform_wait_display_blank(
     struct SlicksAmigaPlatform *platform)
 {

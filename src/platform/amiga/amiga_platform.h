@@ -56,6 +56,9 @@ int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
 void slicks_amiga_platform_show(struct SlicksAmigaPlatform *platform,
                                unsigned short view);
 void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform);
+/* Monotonic 15625 Hz raster time, vblank_count*313+line, while active.
+ * A read in the few cycles between line 0 and the VBI can lag one frame. */
+unsigned long slicks_amiga_platform_raster_time(void *platform);
 void slicks_amiga_platform_wait_display_blank(
     struct SlicksAmigaPlatform *platform);
 void slicks_amiga_platform_wait_display_end(

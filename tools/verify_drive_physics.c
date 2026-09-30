@@ -35,6 +35,12 @@ static void update_car(struct SlicksRaceRuntime *race, unsigned short index,
     finish_car_update(race,index,ticks,controls);
 }
 
+static unsigned long clock_now, clock_step;
+static unsigned long fake_raster_clock(void *context)
+{
+    (void)context;
+    return clock_now += clock_step;
+}
 static void expect(long actual, long expected, const char *message)
 {
     if (actual == expected)
@@ -211,6 +217,43 @@ int main(void)
             expect(race.physics_tick_phase,
                    (long)(1193182ULL * frame % 655350ULL), "PIT phase remainder");
         }
+    }
+    {
+        /* Real-time clock (1000:fe5e..fe98): fake raster time, advanced by
+         * each read, checks the first batch of one, waiting on an unchanged
+         * counter, the exact rational total, the 45-tick cap and a lagging
+         * read just after line 0. */
+        static struct SlicksRaceRuntime race;
+        slicks_race_set_timer(&race, 500);
+        race.raster_clock = fake_raster_clock;
+        clock_now = 1000; clock_step = 3;
+        expect(next_physics_ticks(&race), 1, "first real-time batch is one");
+        expect(race.physics_clock_started, 1, "real-time clock started");
+        /* 13107*15625/1193182 = 171.6 lines per tick at speed 100. */
+        unsigned long long lines = 0, total = 0;
+        unsigned long start = race.physics_clock_at;
+        unsigned long long phase0 = race.physics_tick_phase;
+        for (unsigned i = 0; i < 20000; ++i) {
+            clock_step = 1 + (i * 7919u) % 700u;      /* 1..700 lines per read */
+            unsigned short ticks = next_physics_ticks(&race);
+            if (ticks < 1 || ticks > 5) expect(ticks, 1, "real-time batch range");
+            total += ticks;
+        }
+        lines = race.physics_clock_at - start;
+        expect((long)total, (long)((phase0 + lines * 1193182ULL) / (13107ULL * 15625ULL)),
+               "real-time rational tick total");
+        clock_step = 1000000;                          /* pause: capped batch */
+        expect(next_physics_ticks(&race), 45, "45-tick cap after pause");
+        clock_step = (unsigned long)-312;              /* read lags one frame */
+        unsigned long at = race.physics_clock_at;
+        expect(physics_clock_lines(&race), 0, "lagging read adds no time");
+        expect((long)race.physics_clock_at, (long)at, "lagging read keeps reference");
+        clock_step = 1;                                /* waits for a tick */
+        unsigned long reads_before = clock_now;
+        expect(next_physics_ticks(&race) >= 1, 1, "unchanged counter waits");
+        expect(clock_now - reads_before >= 1, 1, "wait re-reads the clock");
+        slicks_race_set_timer(&race, 0);
+        expect(next_physics_ticks(&race), 0, "disabled timer");
     }
     /* Factor seven is 7ffch at zero bias. */
     expect(multiply_q15_unsigned(-860, 0x7ffc), -860,

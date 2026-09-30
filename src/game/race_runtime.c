@@ -2784,10 +2784,41 @@ void slicks_race_set_timer(struct SlicksRaceRuntime *race,unsigned short argumen
     race->physics_tick_period=slicks_timer_divisor(argument)*50UL;
     race->physics_timer_disabled=(unsigned char)((short)argument<100);
 }
+static unsigned long physics_clock_lines(struct SlicksRaceRuntime *race)
+{
+    unsigned long now=race->raster_clock(race->raster_clock_context);
+    long lines=(long)(now-race->physics_clock_at);
+    /* A read just after line 0, before the VBI has counted the new frame,
+     * appears to run backwards; keep the reference until time catches up. */
+    if(lines<=0) return 0;
+    race->physics_clock_at=now;
+    /* More than 45 ticks at the slowest enabled divisor (858 lines/tick). */
+    return lines>40000L?40000UL:(unsigned long)lines;
+}
 static unsigned short next_physics_ticks(struct SlicksRaceRuntime *race)
 {
-    return slicks_physics_clock_advance(&race->physics_tick_phase,
-        race->physics_tick_period,race->physics_timer_disabled);
+    if(!race->raster_clock)
+        return slicks_physics_clock_advance(&race->physics_tick_phase,
+            race->physics_tick_period,race->physics_timer_disabled);
+    if(race->physics_timer_disabled) return 0;
+    unsigned short ticks;
+    if(!race->physics_clock_started) {
+        /* fe3c..fe80: the counter restarts, the loop waits for its first
+         * change and integrates a batch of one. */
+        race->physics_clock_at=race->raster_clock(race->raster_clock_context);
+        race->physics_clock_origin=race->physics_clock_at;
+        race->physics_tick_phase=0;
+        while(!slicks_physics_clock_lines(&race->physics_tick_phase,
+            race->physics_tick_period,0,physics_clock_lines(race))) ;
+        race->physics_clock_started=1;
+        return 1;
+    }
+    /* fe5e..fe6b waits while the counter is unchanged; fe73..fe8b takes the
+     * elapsed count, capped at 45. The counter keeps running while paused. */
+    do ticks=slicks_physics_clock_lines(&race->physics_tick_phase,
+        race->physics_tick_period,0,physics_clock_lines(race));
+    while(!ticks);
+    return ticks>SLICKS_PHYSICS_BATCH_MAX?SLICKS_PHYSICS_BATCH_MAX:ticks;
 }
 
 static short profile_steering_input(unsigned char scale,signed char participation)
