@@ -2418,6 +2418,35 @@ refreshes: the ten-refresh entry followed by 63 single-refresh intervals.
 Thus that sampled unregistered steady cycle reaches one update per refresh;
 registered owner rendering and other rows/languages retain their open scope.
 
+## Native title Help row coverage (2026-09-30)
+
+The explicit `HELPQ[ROW]` fixture uses the saved configuration and ordinary
+queued Down, F2, F1 and Escape keys. It visits rows 0, 1, 2, 3, 5 and 6 in
+normal mode 0, and rows 0 and 1 in Arcade mode 5. Hidden row 4 is skipped.
+The read-only `diag_title_help_row.gdb` gate requires exactly one Help open
+at the requested row, the original empty-topic chapter 9589/page 0, one
+close and final system restoration 31. It rejects archive reopen or platform
+teardown between title readiness and Help closure. Original F2 dispatch and
+Help-topic expectations are independently covered by `verify-title-help`
+as described above; this sequence is not an independent held-key timing test.
+
+All eight fresh unregistered, saved-Finnish fixtures pass on the stripped
+executable, stock PAL 68020, 2 MiB Chip/no Fast and confirmed 4 KiB stack.
+Each saved parent background equals the returned 64,000-byte chunky image.
+Each run has two audited publications; all 64,000 reconstructed planar pixels
+match the corresponding chunky surface at both checkpoints.
+
+Evidence under `tmp/standalone-release-`, in row order:
+
+- Mode 0: `f7iccfb7`, `8y1z1n6w`, `5gxo5dux`, `l_e3bk3o`,
+  `kgso8rli`, `pjcgnt4u`.
+- Mode 5: `e51emp_h`, `z6du8lkz`.
+
+The build log is `tmp/title-help-rows-build.log`. Runs were muted and their
+emulators are closed. This completes this row matrix for the two title shapes,
+not other saved modes, registration/language combinations, Help pagination,
+allocation failures or other owners. No production menu semantics changed.
+
 ## Adaptations to preserve or explicitly classify
 
 - User-requested: Paula four-channel priorities without software mixing,

@@ -169,6 +169,7 @@ static unsigned char shop_live_failure_test;
 static unsigned char title_start_test;
 static unsigned char title_start_downs=2;
 unsigned short g_slicks_diag_title_start_row=0xffff,g_slicks_diag_title_start_seen=0xffff;
+unsigned short g_slicks_diag_title_help_row=0xffff,g_slicks_diag_title_help_seen=0xffff;
 /* Explicit NATURALWX/Y/Z boundary fixtures; never enabled by normal launches. */
 static unsigned char shop_rejection_test;
 volatile signed char g_slicks_shop_rejection_item;
@@ -4255,6 +4256,10 @@ int main(void)
     unsigned char title_help_failure_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='F'),title_help_failure_stage=0;
     unsigned char title_help_arcade_test=(unsigned char)(title_help_test && argc==5 && argv[4]=='A');
     if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
+       argv[4]=='Q' && argv[5]>='0' && argv[5]<='6' && argv[5]!='4') {
+        title_help_test=1;g_slicks_diag_title_help_row=(unsigned short)(argv[5]-'0');
+    }
+    if(argc==6 && argv[0]=='H' && argv[1]=='E' && argv[2]=='L' && argv[3]=='P' &&
        argv[4]=='L' && argv[5]>='0' && argv[5]<='9') {
         title_help_test=1; configuration.field_05e1=(unsigned char)(argv[5]=='9'?0:argv[5]-'0');
         language_choice_test=(unsigned char)(argv[5]=='9'?2:argv[5]=='0');
@@ -4692,6 +4697,14 @@ int main(void)
             static const unsigned char arcade_keys[]={0x51,0x50,0x45,0x4d,0x51,0x50,0x45,0x45};
             for(unsigned i=0;i<sizeof arcade_keys;++i) platform.keys[i]=arcade_keys[i];
             platform.key_head=sizeof arcade_keys;
+        }
+        if(g_slicks_diag_title_help_row!=0xffff) {
+            unsigned steps=g_slicks_diag_title_help_row-(g_slicks_diag_title_help_row>4);
+            for(unsigned i=0;i<steps;++i)platform.keys[i]=0x4d;
+            platform.keys[steps++]=0x51; /* F2 remains ignored at this row. */
+            platform.keys[steps++]=0x50; /* F1, close Help, then exit title. */
+            platform.keys[steps++]=0x45;platform.keys[steps++]=0x45;
+            platform.key_head=steps;
         }
     }
     if(help_test) {
@@ -5938,6 +5951,7 @@ int main(void)
                 unsigned short action_selection=(unsigned short)slicks_title_action_selection(configuration.options[0],(short)menu_selection);
                 const unsigned char *help_topic=slicks_title_help_topic(action,action_selection);
                 if(help_topic) {
+                    if(title_help_test)g_slicks_diag_title_help_seen=menu_selection;
                     if(open_title_help(&platform,logical,chunky,source_palette,help_topic)) goto cleanup;
                     continue;
                 }

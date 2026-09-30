@@ -109,6 +109,9 @@ native caller/input/error checks.
   applicable mouse behavior. GO across all saved modes and F9 from every
   visible row in all six modes have completed native matrices; do not repeat
   those as remaining row coverage.
+  The F2/F1 Help sequence also passes every visible row in unregistered
+  Finnish modes 0 and 5, with exact parent restoration and resident publication;
+  other mode/language/error routes remain separate coverage.
   Do not add an F2 title action or revive removed native-only menu rows.
 - Finish remaining caller/font-alias lifetime checks for other dialogs,
   transitions, failure and language routes. Ordinary Options/Players/Tracks
