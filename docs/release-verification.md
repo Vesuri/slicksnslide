@@ -1,5 +1,29 @@
 # Development release audit
 
+## 2026-09-30 — remove redundant track-list refresh staging
+
+Refresh now decodes into its own unpublished staging instead of invoking a
+loader that allocates another 65,536-byte buffer. The public load API still
+preserves caller output on failure; cache replacement remains publish-on-success.
+The host suite passes all 361 single/double save faults, malformed/truncated
+loads, recovery guards, cache refresh failures and preservation/cleanup checks.
+
+`tmp/standalone-release-ukicjoe_` passes the full CHAMPSAVE picker/name/write/
+exit fixture on a Workbench-loaded 2 MiB A1200/default 4 KiB stack, with the
+startup menu/track reservation. The earlier `...-7yx9tztp` used an existing
+E2E.SSS from a prior fixture, took overwrite behavior, and failed the fixture's
+expected new-file catalogue-refresh count; the successful rerun used a fresh
+private copy of the manual installation, not altered test expectations.
+
+The preceding same-session DEMOPLR audit (`...-bwsjvboo`) also completed its
+second launch: both exits leave 1,891,712 free Chip bytes and a 1,890,752-byte
+largest block. Neither original manual data nor unrelated emulators were changed.
+
+After removing redundant staging, `tmp/standalone-release-ij4hjc32` passes
+the full DEMOPLR allocation/cleanup audit with no failed allocations, no
+outstanding allocations and no workspace ownership conflicts. Directly tracked
+allocation high-water is 1,337,672 bytes; executable/OS memory is not included.
+
 ## 2026-09-30 — reserve primary menu/track workspace at startup
 
 The common 86,422-byte menu owner is now allocated once before entering the

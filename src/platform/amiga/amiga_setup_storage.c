@@ -195,12 +195,14 @@ static long read_file(struct SlicksSetupLoadReport *r,const char *path,
     return (long)at;
 }
 
-struct SlicksSetupLoadReport slicks_amiga_load_track_lists(
-    unsigned char *out,unsigned long capacity,struct SlicksTrackLists *view)
+/* Decode into unpublished caller-owned staging. The caller decides whether
+ * and when to publish it; failure may change staging, never the live cache. */
+static struct SlicksSetupLoadReport load_track_lists_work(
+    unsigned char *buffer,unsigned long capacity,struct SlicksTrackLists *view)
 {
     struct SlicksSetupLoadReport report={SLICKS_SETUP_LOADED,0,0,0,0};
     struct SlicksSetupStorageReport io={SLICKS_SETUP_SAVE_FAILED,0,0};
-    if(!out || !view || capacity<8) { report.result=SLICKS_SETUP_LOAD_INVALID; return report; }
+    if(!buffer || !view || capacity<8) { report.result=SLICKS_SETUP_LOAD_INVALID; return report; }
     if(capacity>SLICKS_AMIGA_TRACK_LIST_BYTES) capacity=SLICKS_AMIGA_TRACK_LIST_BYTES;
     const char *leftovers[]={"SLICKS.TRK.new","SLICKS.TRK.bak"};
     for(unsigned i=0;i<2;++i) {
@@ -209,11 +211,6 @@ struct SlicksSetupLoadReport slicks_amiga_load_track_lists(
             report.result=present>0?SLICKS_SETUP_LOAD_RECOVERY:SLICKS_SETUP_LOAD_IO_ERROR;
             report.io_error=io.io_error; report.path=leftovers[i]; return report;
         }
-    }
-    unsigned char *buffer=AllocMem(capacity,MEMF_ANY);
-    if(!buffer) {
-        report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE;
-        report.path="SLICKS.TRK"; return report;
     }
     long size=read_file(&report,"SLICKS.TRK",buffer,capacity);
     if(size==-1) {
@@ -226,10 +223,29 @@ struct SlicksSetupLoadReport slicks_amiga_load_track_lists(
         report.result=SLICKS_SETUP_LOAD_INVALID; report.path="SLICKS.TRK";
     }
     if(size>=0 && report.result==SLICKS_SETUP_LOADED) {
-        for(unsigned long i=0;i<(unsigned long)size;++i) out[i]=buffer[i];
+        *view=next;
+    }
+    return report;
+}
+struct SlicksSetupLoadReport slicks_amiga_load_track_lists(
+    unsigned char *out,unsigned long capacity,struct SlicksTrackLists *view)
+{
+    struct SlicksSetupLoadReport report={SLICKS_SETUP_LOAD_INVALID,0,0,0,0};
+    if(!out || !view || capacity<8) return report;
+    if(capacity>SLICKS_AMIGA_TRACK_LIST_BYTES) capacity=SLICKS_AMIGA_TRACK_LIST_BYTES;
+    unsigned char *buffer=AllocMem(capacity,MEMF_ANY);
+    if(!buffer) {
+        report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE;
+        report.path="SLICKS.TRK"; return report;
+    }
+    struct SlicksTrackLists next;
+    report=load_track_lists_work(buffer,capacity,&next);
+    if(report.result==SLICKS_SETUP_LOADED) {
+        for(unsigned long i=0;i<next.size;++i) out[i]=buffer[i];
         next.bytes=out; *view=next;
     }
-    FreeMem(buffer,capacity); return report;
+    FreeMem(buffer,capacity);
+    return report;
 }
 void slicks_amiga_track_list_cache_free(struct SlicksAmigaTrackListCache *cache)
 {
@@ -243,7 +259,7 @@ void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *cac
     struct SlicksTrackLists next;
     cache->report=(struct SlicksSetupLoadReport){SLICKS_SETUP_LOAD_IO_ERROR,ERROR_NO_FREE_STORE,"SLICKS.TRK",0,0};
     if(!work) return;
-    cache->report=slicks_amiga_load_track_lists(work,SLICKS_AMIGA_TRACK_LIST_BYTES,&next);
+    cache->report=load_track_lists_work(work,SLICKS_AMIGA_TRACK_LIST_BYTES,&next);
     if(cache->report.result==SLICKS_SETUP_LOADED) {
         unsigned char *bytes=AllocMem(next.size,MEMF_ANY);
         if(!bytes) {

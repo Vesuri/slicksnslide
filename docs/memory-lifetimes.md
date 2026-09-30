@@ -77,9 +77,10 @@ are used as preview output. The arena API explicitly borrows rather than owns.
 4. **Nested dialogs:** fixed Help, picker, controllers, name/colour, messages,
    Change Cars and intermission storage. Work out legal nesting before defining
    unions; preserve parent save-under, labels and font state across child exit.
-5. **Persistence/catalogues:** track-list refresh allocates 65,536 bytes, then
-   its loader allocates another 65,536, then it allocates an exact-size retained
-   copy before releasing the previous copy. Eliminate redundant staging first.
+5. **Persistence/catalogues:** track-list refresh formerly allocated 65,536
+   bytes and its loader another 65,536. The redundant loader buffer is now
+   eliminated: refresh reads/validates its unpublished staging directly, then
+   allocates an exact-size retained copy before releasing the previous copy.
    Reserve catalogue/transaction capacity at launch; bound dynamic name tables,
    profile editing, save/load and screenshot encoding without losing atomic
    new/backup file replacement or original data support.
