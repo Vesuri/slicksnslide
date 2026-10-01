@@ -14,18 +14,16 @@ enum { MEMF_ANY,ACCESS_READ,MODE_NEWFILE,MODE_OLDFILE,
     ERROR_OBJECT_EXISTS=203,ERROR_DISK_FULL=221,ERROR_NO_FREE_STORE=103 };
 static unsigned char cfg[143],plr[6000];
 static long sizes[2],offsets[2],io_error;
-static unsigned operation,fail_at,artifact,allocations;
+static unsigned operation,fail_at,allocations;
 static int fault(void) { if(++operation==fail_at) { io_error=999; return 1; } return 0; }
 static LONG IoErr(void) { return io_error; }
 static void *AllocMem(unsigned long n,int flags)
 { (void)flags; if(fault()) return 0; ++allocations; return malloc(n); }
 static void FreeMem(void *p,unsigned long n) { (void)n; --allocations; free(p); }
-static BPTR Lock(CONST_STRPTR p,int mode)
-{ (void)p;(void)mode; if(fault()) return 0; if(artifact) return 3;
-  io_error=ERROR_OBJECT_NOT_FOUND; return 0; }
-static LONG Examine(BPTR lock,struct FileInfoBlock *info)
-{ (void)lock; if(fault()) return 0; info->fib_DirEntryType=-1; return 1; }
-static void UnLock(BPTR lock) { (void)lock; }
+/* Loading needs no existence checks: Lock/Examine must never be called. */
+static BPTR Lock(CONST_STRPTR p,int mode) { (void)p;(void)mode; abort(); }
+static LONG Examine(BPTR lock,struct FileInfoBlock *info) { (void)lock;(void)info; abort(); }
+static void UnLock(BPTR lock) { (void)lock; abort(); }
 static BPTR Open(CONST_STRPTR p,int mode)
 { assert(mode==MODE_OLDFILE); if(fault()) return 0;
   unsigned i=!strcmp(p,"SLICKS.PLR"); offsets[i]=0;
@@ -37,9 +35,8 @@ static LONG Read(BPTR file,APTR out,LONG n)
   memcpy(out,(i?plr:cfg)+offsets[i],(size_t)n); offsets[i]+=n; return n; }
 static LONG Close(BPTR file) { (void)file; return !fault(); }
 static LONG Write(BPTR f,APTR b,LONG n) { (void)f;(void)b;(void)n; abort(); }
-static LONG Flush(BPTR f) { (void)f; abort(); }
-static LONG Rename(CONST_STRPTR a,CONST_STRPTR b) { (void)a;(void)b; abort(); }
-static LONG DeleteFile(CONST_STRPTR a) { (void)a; abort(); }
+static LONG whole_file_write(const char *p,const unsigned char *b,unsigned long n,LONG *e)
+{ (void)p;(void)b;(void)n;(void)e; abort(); }
 #define SLICKS_SETUP_STORAGE_HOST_TEST
 #include "../src/platform/amiga/amiga_setup_storage.c"
 
@@ -81,12 +78,11 @@ int main(void)
     for(long n=0;n<valid_plr;++n) { sizes[1]=n; assert(run(0).result==SLICKS_SETUP_LOAD_INVALID); }
     sizes[1]=valid_plr+1; assert(run(0).result==SLICKS_SETUP_LOAD_INVALID);
     sizes[1]=valid_plr;
-    artifact=1; assert(run(0).result==SLICKS_SETUP_LOAD_RECOVERY); artifact=0;
     for(unsigned mask=0;mask<4;++mask) {
         sizes[0]=mask&1?142:-1; sizes[1]=mask&2?valid_plr:-1;
         struct SlicksSetupLoadReport r=run(0);
         assert(r.result==SLICKS_SETUP_LOADED);
         assert(r.configuration_present==!!(mask&1)); assert(r.profiles_present==!!(mask&2));
     }
-    printf("Setup load: %u adapter checks pass (short reads, faults, truncation, foreign tag, leftovers, missing files)\n",checks);
+    printf("Setup load: %u adapter checks pass (short reads, faults, truncation, foreign tag, missing files)\n",checks);
 }

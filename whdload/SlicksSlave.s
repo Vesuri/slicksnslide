@@ -6,7 +6,7 @@
 
 CHIPMEMSIZE = $200000
         IFND FASTMEMSIZE
-FASTMEMSIZE = $100000
+FASTMEMSIZE = 0                 ; game targets 2 MiB Chip only, as standalone
         ENDC
 NUMDRIVES = 0
 WPDRIVES = 0

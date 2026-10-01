@@ -1,5 +1,5 @@
-# Isolated fixture: TRACKS/66.SS.new must exist before this run.
-# Current sorted catalogue: 1WAY.SS commits first, then 66.SS fails recovery.
+# Isolated fixture: make TRACKS/66.SS read-only on the host before this run.
+# Current sorted catalogue: 1WAY.SS commits first, then the 66.SS write fails.
 set $ready = 0
 set $cancelled = 0
 set $writes = 0
@@ -37,7 +37,7 @@ commands
       quit 1
     end
   else
-    if g_slicks_track_clear_phase != $ready || g_slicks_track_clear_report.result != 2 || $writes != 2 || g_slicks_track_clear_changed != 1
+    if g_slicks_track_clear_phase != $ready || g_slicks_track_clear_report.result != 1 || $writes != 2 || g_slicks_track_clear_changed != 1
       printf "CLEAR_FAILURE_WRONG_RESULT phase=%u status=%u writes=%u changed=%u\n", g_slicks_track_clear_phase, g_slicks_track_clear_report.result, $writes, g_slicks_track_clear_changed
       quit 1
     end

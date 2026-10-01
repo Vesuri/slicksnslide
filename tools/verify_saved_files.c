@@ -9,13 +9,12 @@ struct Process { APTR pr_WindowPtr; };
 struct FileInfoBlock { int fib_DirEntryType; char fib_FileName[108]; };
 static struct Process process;
 static char entries[43][108];
-static int count,cursor,error,fault,leftover,deleted;
+static int count,cursor,error,fault,deleted;
 static void *FindTask(void *p) { (void)p; return &process; }
 static BPTR Lock(const char *p,int mode)
 {
     (void)mode; assert(process.pr_WindowPtr==(APTR)-1);
     if(!*p) return fault==1?0:1;
-    if(strstr(p,".new") || strstr(p,".bak")) { error=205; return leftover?2:0; }
     if(!strcmp(p,"E2E.SSS")) return 2;
     error=205; return 0;
 }
@@ -78,9 +77,8 @@ int main(void)
     for(unsigned i=0;i<40;++i) for(unsigned j=0;j<9;++j) assert(!cache.names[i][j]);
     assert(slicks_amiga_saved_file_exists("E2E.SSS")==1);
     assert(slicks_amiga_saved_file_exists("NONE.SSS")==0);
-    leftover=1; assert(slicks_amiga_saved_file_delete("E2E.SSS")<0 && !deleted);
-    leftover=0; assert(!slicks_amiga_saved_file_delete("E2E.SSS") && deleted==1);
+    assert(!slicks_amiga_saved_file_delete("E2E.SSS") && deleted==1);
     fault=4; assert(slicks_amiga_saved_file_delete("E2E.SSS")<0);
     assert(!process.pr_WindowPtr);
-    puts("Native saved-file catalogue/path/delete: bounds, filtering, faults, recovery retention and requester restoration PASS");
+    puts("Native saved-file catalogue/path/delete: bounds, filtering, faults and requester restoration PASS");
 }

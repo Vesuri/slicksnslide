@@ -8,19 +8,16 @@ typedef intptr_t BPTR;
 typedef long LONG;
 typedef const char *CONST_STRPTR;
 enum { MEMF_ANY,MODE_OLDFILE,OFFSET_BEGINNING=-1,OFFSET_CURRENT=0,OFFSET_END=1 };
-static unsigned operations,fail_at,allocations,allocation_calls,oversize_header;
+static unsigned operations,fail_at,allocations,allocation_calls,reads;
 static int fault(void) { return ++operations==fail_at; }
 static BPTR Open(CONST_STRPTR p,int mode)
 { (void)mode; return fault()?0:(BPTR)fopen(p,"rb"); }
 static void Close(BPTR p) { fclose((FILE *)p); }
 static LONG Read(BPTR p,void *out,LONG n)
 {
+    ++reads;
     if(fault()) return -1;
-    LONG got=(LONG)fread(out,1,(size_t)n,(FILE *)p);
-    if(oversize_header && n==5 && got==5) {
-        ((unsigned char *)out)[3]=255;((unsigned char *)out)[4]=255;
-    }
-    return got;
+    return (LONG)fread(out,1,(size_t)n,(FILE *)p);
 }
 static LONG Seek(BPTR p,LONG offset,int origin)
 {
@@ -59,11 +56,14 @@ int main(void)
     fail_at=0;
     assert(slicks_resource_archive_load(&a,"HELP.TXT",actual,sizeof actual)==13104);
     unsigned base_allocations=allocations;
-    operations=0;
+    operations=0; reads=0;
+    static unsigned char staging[65536];
     struct SlicksResourceCache *cache=slicks_resource_cache_create(&a,
-        slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT);
+        slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT,staging,sizeof staging);
     assert(cache);
     unsigned create_operations=operations;
+    /* One read per resource: no streamed partial reads. */
+    assert(reads==SLICKS_MENU_RESOURCE_COUNT);
     printf("Resident menu cache: %u resources, %lu bytes including host metadata\n",
         (unsigned)SLICKS_MENU_RESOURCE_COUNT,slicks_resource_cache_bytes(cache));
     struct SlicksResourceArchive memory={0};
@@ -83,12 +83,13 @@ int main(void)
     slicks_resource_cache_destroy(cache); assert(allocations==base_allocations);
     for(unsigned fail=1;fail<=create_operations;++fail) {
         operations=0; fail_at=fail;
-        cache=slicks_resource_cache_create(&a,slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT);
+        cache=slicks_resource_cache_create(&a,slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT,staging,sizeof staging);
         assert(!cache && allocations==base_allocations);
     }
     operations=0; fail_at=0;
     const char *missing[]={"HELP.TXT","absent"};
-    assert(!slicks_resource_cache_create(&a,missing,2));
+    assert(!slicks_resource_cache_create(&a,missing,2,staging,sizeof staging));
+    assert(!slicks_resource_cache_create(&a,slicks_menu_resources,SLICKS_MENU_RESOURCE_COUNT,staging,64002));
     assert(allocations==base_allocations);
     struct SlicksArchiveDirectory directory={0};
     unsigned char *retained=a.directory;
@@ -112,20 +113,17 @@ int main(void)
         }
         slicks_resource_archive_close(&a);
     }
-    for(unsigned fail=1;fail<=3;++fail) {
-        operations=0;fail_at=fail;
-        assert(slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory)<0);
-        assert(!a.file && !a.directory && !directory.busy && allocations==1);
-    }
-    fail_at=0;oversize_header=1;
+    operations=0;fail_at=1;
     assert(slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory)<0);
-    assert(!a.file && !directory.busy && allocations==1);
-    oversize_header=0;
+    assert(!a.file && !a.directory && !directory.busy && allocations==1);
+    /* Reserved opens reuse the startup directory: only the Open itself. */
+    operations=0;fail_at=0;reads=0;
     assert(!slicks_resource_archive_open_reserved(&a,"ref/SLICKS.000",&directory));
+    assert(operations==1 && !reads);
     slicks_resource_archive_close(&a);
     assert(allocation_calls==reserved_calls);
     assert(!slicks_resource_directory_destroy(&directory) && !directory.bytes && !allocations);
-    puts("Reserved directory: repeated byte-exact loads, exclusive ownership, open/read/capacity failure cleanup and zero runtime allocation calls pass");
+    puts("Reserved directory: repeated byte-exact loads without rereads, exclusive ownership, open failure cleanup and zero runtime allocation calls pass");
     printf("Cache: byte-identical resources, zero-I/O reads/misses/close, %u injected construction failures unwind\n",create_operations);
     printf("Archive adapter: %u named-resource comparisons, final HELP.TXT, capacity rejection and all four EOF/seek/read faults pass\n",cases);
     return 0;

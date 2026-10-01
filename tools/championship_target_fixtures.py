@@ -15,7 +15,7 @@ DEST = ROOT / 'amiga/.run/championship-failure-v1/dh1'
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('kind', choices=['truncated', 'track', 'profile', 'index', 'recovery', 'check', 'check-resume'])
+    parser.add_argument('kind', choices=['truncated', 'track', 'profile', 'index', 'check', 'check-resume'])
     args = parser.parse_args()
     if args.kind == 'check':
         root = DEST.parent
@@ -63,11 +63,6 @@ def main():
         struct.pack_into('>H', data, 4 + 8 * count, count)
     DEST.mkdir(parents=True, exist_ok=True)
     (DEST / 'FAIL.SSS').write_bytes(data)
-    recovery = DEST / 'FAIL.SSS.new'
-    if args.kind == 'recovery':
-        recovery.write_bytes(b'preserve this recovery fixture')
-    elif recovery.exists():
-        recovery.unlink()  # Only this tool's named, ignored fixture.
     print(f'Prepared {args.kind} fixture: {DEST / "FAIL.SSS"}')
 
 

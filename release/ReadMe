@@ -22,18 +22,14 @@
  destination space. RAM: or RAM-backed T: may be used for temporary files
  when enough additional memory is available. Use disk on a 2 MB machine.
 
- The WHDLoad icon requires WHDLoad version 17.0 or better and extra
- Fast RAM. The slave reserves 2 MiB ChipMem plus 1 MiB expansion memory and
- 512 KiB Kickstart space; the host system, WHDLoad and PRELOAD need additional
- memory. Use 4 MiB Fast without PRELOAD, or 8 MiB Fast with PRELOAD.
-
- The installed icon enables WriteCache and leaves PRELOAD off, preserving
- memory for cached saves and avoiding repeated disk-access pauses. For a
- Shell launch on a 4 MiB Fast machine use:
-   WHDLoad Slicks.slave WRITECACHE
- PRELOAD may be added with 8 MiB Fast. Do not enable it at 4 MiB: creating
- cached saves can hang when too little memory remains. NOWRITECACHE avoids
- that hang but causes long, repeated disk-access pauses and is not recommended.
+ The WHDLoad icon requires WHDLoad version 17.0 or better and 2 MiB Fast RAM.
+ The game runs in the 2 MiB ChipMem the slave reserves, exactly as standalone;
+ the slave adds no expansion memory, only 512 KiB Kickstart space. No special
+ WHDLoad options are needed: the installed icon uses only the standard
+ PRELOAD, and a Shell launch is simply:
+   WHDLoad Slicks.slave
+ The game reads each file in one operation and writes each saved file in one
+ operation, so saving causes at most one short disk access per file.
 
  WHDLoad also requires a legally obtained Kickstart 3.1 image and matching
  relocation file in "Devs:Kickstarts" or "WHDCOMMON:". Supported pairs are:

@@ -8,8 +8,10 @@
 #include "amiga_setup_storage.h"
 #include "../../game/track_records.h"
 #include "../../ui/screen_capture.h"
-unsigned char g_slicks_diag_backup_protect;
 unsigned char g_slicks_whdload;
+/* Explicit native fixtures only: the next whole-file write targets a path
+ * through a regular file, so AmigaDOS itself rejects it. Zero normally. */
+unsigned char g_slicks_diag_write_fault;
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
 struct WhdStorage {
     unsigned char magic[8]; unsigned short version,size;
@@ -19,18 +21,9 @@ struct WhdStorage {
 };
 _Static_assert(sizeof(struct WhdStorage)==40,"WHDLoad storage descriptor ABI");
 extern struct WhdStorage slicks_whd_storage;
-static unsigned char *copy_buffer;
 int slicks_amiga_storage_create(void)
 {
-    if(!g_slicks_whdload) return 0;
-    if(!slicks_whd_storage.save) return -1;
-    copy_buffer=AllocMem(SLICKS_SAVED_GAME_MAX_BYTES,MEMF_ANY);
-    return copy_buffer?0:-1;
-}
-void slicks_amiga_storage_destroy(void)
-{
-    if(copy_buffer) FreeMem(copy_buffer,SLICKS_SAVED_GAME_MAX_BYTES);
-    copy_buffer=0;
+    return g_slicks_whdload && !slicks_whd_storage.save?-1:0;
 }
 static LONG whole_file_write(const char *path,const unsigned char *bytes,unsigned long size,LONG *error)
 {
@@ -38,8 +31,6 @@ static LONG whole_file_write(const char *path,const unsigned char *bytes,unsigne
     if(size>slicks_whd_storage.max_write) slicks_whd_storage.max_write=size;
     return slicks_whd_storage.save(path,bytes,size,error);
 }
-#else
-static unsigned char copy_buffer[SLICKS_SAVED_GAME_MAX_BYTES];
 #endif
 unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
 unsigned char g_slicks_diag_record_write_alloc_fault,g_slicks_diag_record_write_alloc_reached;
@@ -65,96 +56,44 @@ static int exists(void *context,const char *path)
     }
     return 1;
 }
-static int write_new(void *context,const char *path,const unsigned char *bytes,unsigned long size)
+/* Create or replace the file with one complete write. Under WHDLoad this is
+ * a single resload_SaveFile: no KickFS packets, existence checks or renames. */
+static int write_whole(void *context,const char *path,const unsigned char *bytes,unsigned long size)
 {
     struct SlicksSetupStorageReport *r=context;
-    int present=exists(context,path);
-    if(present) { if(present>0) failure(r,path,ERROR_OBJECT_EXISTS); return -2; }
+    const char *target=path;
+    if(g_slicks_diag_write_fault) { g_slicks_diag_write_fault=0; target="SLICKS.000/write-fault"; }
     if(g_slicks_whdload) {
         LONG error=0;
-        if(whole_file_write(path,bytes,size,&error)) return 0;
+        if(whole_file_write(target,bytes,size,&error)) return 0;
         failure(r,path,error); return -1;
     }
-    BPTR file=Open((CONST_STRPTR)path,MODE_NEWFILE);
-    if(!file) { failure(r,path,IoErr()); return -2; }
+    BPTR file=Open((CONST_STRPTR)target,MODE_NEWFILE);
+    if(!file) { failure(r,path,IoErr()); return -1; }
     unsigned long at=0; int failed=0;
     while(at<size) {
         LONG written=Write(file,(APTR)(bytes+at),(LONG)(size-at));
         if(written<=0) { failure(r,path,written<0?IoErr():ERROR_DISK_FULL); failed=1; break; }
         at+=(unsigned long)written;
     }
-    if(!failed && !Flush(file)) { failure(r,path,IoErr()); failed=1; }
-    if(!Close(file)) { failure(r,path,IoErr()); failed=1; }
+    if(!Close(file) && !failed) { failure(r,path,IoErr()); failed=1; }
     return failed?-1:0;
-}
-static int rename_file(void *context,const char *from,const char *to)
-{
-    struct SlicksSetupStorageReport *r=context;
-    int present=exists(context,to);
-    if(present) { if(present>0) failure(r,to,ERROR_OBJECT_EXISTS); return -1; }
-    if(g_slicks_whdload) {
-        /* KickFS has no ACTION_RENAME_OBJECT. Copy to an absent destination,
-         * close both handles successfully, then remove the source. Never
-         * discard the only complete image after a partial copy. */
-        BPTR input=Open((CONST_STRPTR)from,MODE_OLDFILE);
-        if(!input) { failure(r,from,IoErr()); return -1; }
-        int failed=0;
-        unsigned long size=0;
-        while(size<SLICKS_SAVED_GAME_MAX_BYTES) {
-            LONG got=Read(input,copy_buffer+size,SLICKS_SAVED_GAME_MAX_BYTES-size);
-            if(got<0) { failure(r,from,IoErr()); failed=1; break; }
-            if(!got) break;
-            size+=(unsigned long)got;
-        }
-        if(!failed && size==SLICKS_SAVED_GAME_MAX_BYTES) {
-            unsigned char extra;
-            LONG got=Read(input,&extra,1);
-            if(got) { failure(r,from,got<0?IoErr():ERROR_OBJECT_WRONG_TYPE); failed=1; }
-        }
-        if(!Close(input)) { failure(r,from,IoErr()); failed=1; }
-        if(failed) return -1; /* Destination has not been created. */
-        LONG error=0;
-        if(whole_file_write(to,copy_buffer,size,&error)) {
-            if(DeleteFile((CONST_STRPTR)from)) return 0;
-            failure(r,from,IoErr());
-        } else failure(r,to,error);
-        /* -2 forbids transaction rollback from deleting staged recovery data. */
-        if(!DeleteFile((CONST_STRPTR)to)) { failure(r,to,IoErr()); return -2; }
-        return -1;
-    }
-    if(!Rename((CONST_STRPTR)from,(CONST_STRPTR)to)) { failure(r,from,IoErr()); return -1; }
-    return 0;
-}
-static int remove_file(void *context,const char *path)
-{
-#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
-    /* CHAMPSAVB only, in its private fixture directory: make AmigaDOS reject
-     * cleanup after the real overwrite transaction has installed the save. */
-    if(g_slicks_diag_backup_protect) {
-        const char *target="E2E.SSS.bak";
-        unsigned i=0; while(path[i] && path[i]==target[i]) ++i;
-        if(!path[i] && !target[i] && SetProtection((CONST_STRPTR)path,FIBF_DELETE))
-            g_slicks_diag_backup_protect=0;
-    }
-#endif
-    if(DeleteFile((CONST_STRPTR)path)) return 0;
-    LONG error=IoErr(); if(error==ERROR_OBJECT_NOT_FOUND) return 0;
-    failure(context,path,error); return -1;
 }
 /* The game owns the failure/retry UI. A DOS write-protection requester can
  * otherwise block Open indefinitely behind the restored system display.
- * Suppress requesters only for the transaction and restore the caller's
- * process setting on every result, including rollback/recovery failures. */
+ * Suppress requesters only for the writes and restore the caller's
+ * process setting on every result. */
 static enum SlicksSetupSaveResult store_files(const struct SlicksSetupFile *files,
-    unsigned count,const struct SlicksSetupFileOps *ops)
+    unsigned count,struct SlicksSetupStorageReport *report)
 {
+    const struct SlicksSetupFileOps ops={write_whole,report};
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr;
     process->pr_WindowPtr=(APTR)-1;
     unsigned long before=g_slicks_whdload?*slicks_whd_storage.switches:0;
 #endif
-    enum SlicksSetupSaveResult result=slicks_store_files(files,count,ops);
+    enum SlicksSetupSaveResult result=slicks_store_files(files,count,&ops);
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     if(g_slicks_whdload) {
         unsigned long switches=*slicks_whd_storage.switches-before;
@@ -171,8 +110,7 @@ struct SlicksSetupStorageReport slicks_amiga_store_capture(
     unsigned char *buffer,unsigned long capacity)
 {
     static char path[]="TUNING00.BMP";
-    char temporary[]="TUNING00.BMP.new",backup[]="TUNING00.BMP.bak";
-    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
+    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path,0};
     if(!buffer || capacity<SLICKS_CAPTURE_SIZE) {
         report.io_error=ERROR_NO_FREE_STORE; return report;
     }
@@ -180,16 +118,16 @@ struct SlicksSetupStorageReport slicks_amiga_store_capture(
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr; process->pr_WindowPtr=(APTR)-1;
 #endif
+    report.path=0;
     if(slicks_encode_capture(buffer,SLICKS_CAPTURE_SIZE,pixels,palette)) goto done;
     for(unsigned n=0;n<99;++n) {
-        path[6]=temporary[6]=backup[6]=(char)('0'+n/10);
-        path[7]=temporary[7]=backup[7]=(char)('0'+n%10);
+        path[6]=(char)('0'+n/10);
+        path[7]=(char)('0'+n%10);
         int present=exists(&report,path);
         if(present<0) goto done;
         if(present) continue;
-        const struct SlicksSetupFile file={path,temporary,backup,buffer,SLICKS_CAPTURE_SIZE};
-        const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
-        report.result=store_files(&file,1,&ops);
+        const struct SlicksSetupFile file={path,buffer,SLICKS_CAPTURE_SIZE};
+        report.result=store_files(&file,1,&report);
         goto done;
     }
     report.io_error=ERROR_OBJECT_EXISTS;
@@ -201,11 +139,26 @@ done:
     return report;
 }
 
+/* Last CFG/PLR bytes known to be on disk, from load or a successful save.
+ * Quit and standings saves rewrite only a file whose bytes changed: under
+ * WHDLoad every physical write costs an OS switch and its write delay. */
+static struct { unsigned long size,crc; } setup_known[2];
+static unsigned long setup_crc(const unsigned char *bytes,unsigned long size)
+{
+    unsigned long crc=0xffffffffUL;
+    for(unsigned long i=0;i<size;++i) {
+        crc^=bytes[i];
+        for(unsigned bit=0;bit<8;++bit) crc=(crc>>1)^(0xedb88320UL&-(crc&1));
+    }
+    return ~crc&0xffffffffUL;
+}
+static void setup_remember(unsigned i,const unsigned char *bytes,unsigned long size)
+{ setup_known[i].size=size; setup_known[i].crc=setup_crc(bytes,size); }
 struct SlicksSetupStorageReport slicks_amiga_store_setup(
     const struct SlicksConfiguration *configuration,const struct SlicksPlayerProfiles *profiles,unsigned char signature,
     unsigned char *buffer,unsigned long buffer_size)
 {
-    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,0};
+    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,0,0};
     const unsigned long capacity=3UL+58UL*(SLICKS_PROFILE_MAX-3);
     if(!buffer || buffer_size<SLICKS_AMIGA_SETUP_BYTES) {
         report.io_error=ERROR_NO_FREE_STORE; return report;
@@ -213,11 +166,18 @@ struct SlicksSetupStorageReport slicks_amiga_store_setup(
     int cfg=slicks_save_configuration(configuration,buffer,142,signature);
     int plr=slicks_save_player_profiles(profiles,buffer+142,capacity);
     if(cfg>0 && plr>0) {
-        const struct SlicksSetupFile files[2]={
-            {"SLICKS.CFG","SLICKS.CFG.new","SLICKS.CFG.bak",buffer,(unsigned long)cfg},
-            {"SLICKS.PLR","SLICKS.PLR.new","SLICKS.PLR.bak",buffer+142,(unsigned long)plr}};
-        const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
-        report.result=store_files(files,2,&ops);
+        const struct SlicksSetupFile both[2]={
+            {"SLICKS.CFG",buffer,(unsigned long)cfg},
+            {"SLICKS.PLR",buffer+142,(unsigned long)plr}};
+        struct SlicksSetupFile files[2]; unsigned char index[2]; unsigned count=0;
+        for(unsigned i=0;i<2;++i)
+            if(setup_known[i].size!=both[i].size || setup_known[i].crc!=setup_crc(both[i].bytes,both[i].size)) {
+                index[count]=(unsigned char)i; files[count++]=both[i];
+            }
+        report.result=count?store_files(files,count,&report):SLICKS_SETUP_SAVED;
+        /* A failed pair may be half written: forget both so Retry rewrites. */
+        if(report.result!=SLICKS_SETUP_SAVED) setup_known[0].size=setup_known[1].size=0;
+        else for(unsigned i=0;i<count;++i) setup_remember(index[i],files[i].bytes,files[i].size);
     }
     return report;
 }
@@ -278,17 +238,8 @@ static struct SlicksSetupLoadReport load_track_lists_work(
     unsigned char *buffer,unsigned long capacity,struct SlicksTrackLists *view)
 {
     struct SlicksSetupLoadReport report={SLICKS_SETUP_LOADED,0,0,0,0};
-    struct SlicksSetupStorageReport io={SLICKS_SETUP_SAVE_FAILED,0,0};
     if(!buffer || !view || capacity<8) { report.result=SLICKS_SETUP_LOAD_INVALID; return report; }
     if(capacity>SLICKS_AMIGA_TRACK_LIST_BYTES) capacity=SLICKS_AMIGA_TRACK_LIST_BYTES;
-    const char *leftovers[]={"SLICKS.TRK.new","SLICKS.TRK.bak"};
-    for(unsigned i=0;i<2;++i) {
-        int present=exists(&io,leftovers[i]);
-        if(present) {
-            report.result=present>0?SLICKS_SETUP_LOAD_RECOVERY:SLICKS_SETUP_LOAD_IO_ERROR;
-            report.io_error=io.io_error; report.path=leftovers[i]; return report;
-        }
-    }
     long size=read_file(&report,"SLICKS.TRK",buffer,capacity);
     if(size==-1) {
         const unsigned char empty[8]={'S','S','T','r','k',26,0,0};
@@ -348,21 +299,32 @@ void slicks_amiga_track_list_cache_refresh(struct SlicksAmigaTrackListCache *cac
         next.bytes=cache->storage; cache->view=next;
     }
 }
+void slicks_amiga_track_list_cache_publish(struct SlicksAmigaTrackListCache *cache,
+    const unsigned char *bytes,unsigned long size)
+{
+    struct SlicksTrackLists next;
+    cache->report=(struct SlicksSetupLoadReport){SLICKS_SETUP_LOAD_INVALID,0,"SLICKS.TRK",0,0};
+    if(!cache->storage || !bytes || bytes==cache->storage || size>SLICKS_AMIGA_TRACK_LIST_BYTES ||
+       slicks_track_lists_open(&next,bytes,size)) return;
+    for(unsigned long i=0;i<size;++i) cache->storage[i]=bytes[i];
+    next.bytes=cache->storage; cache->view=next;
+    cache->report.result=SLICKS_SETUP_LOADED; cache->report.path=0;
+}
 struct SlicksSetupStorageReport slicks_amiga_store_track_lists(
     const struct SlicksTrackLists *lists,int remove,const unsigned char *title,
     const struct SlicksTrackPlaylist *playlist,unsigned total,
     const unsigned char *(*name)(void *,unsigned),void *context,
     unsigned char *buffer,unsigned long capacity)
 {
-    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,0};
+    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,0,0};
     if(!buffer || capacity<SLICKS_AMIGA_TRACK_LIST_BYTES) { report.io_error=ERROR_NO_FREE_STORE; report.path="SLICKS.TRK"; return report; }
     long size=slicks_track_lists_write(lists,remove,title,playlist,total,name,context,
         buffer,SLICKS_AMIGA_TRACK_LIST_BYTES);
     if(size<0) { report.path="SLICKS.TRK"; report.io_error=ERROR_OBJECT_WRONG_TYPE; }
     else {
-        const struct SlicksSetupFile file={"SLICKS.TRK","SLICKS.TRK.new","SLICKS.TRK.bak",buffer,(unsigned long)size};
-        const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
-        report.result=store_files(&file,1,&ops);
+        const struct SlicksSetupFile file={"SLICKS.TRK",buffer,(unsigned long)size};
+        report.result=store_files(&file,1,&report);
+        report.size=(unsigned long)size;
     }
     return report;
 }
@@ -372,7 +334,6 @@ struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
     unsigned char *buffer,unsigned long buffer_capacity)
 {
     struct SlicksSetupLoadReport report={SLICKS_SETUP_LOADED,0,path,0,0};
-    struct SlicksSetupStorageReport io={SLICKS_SETUP_SAVE_FAILED,0,0};
     unsigned length=0;
     if(path) while(length<120 && path[length]) ++length;
     if(!game || !tracks || !length || length>=120 || capacity>SLICKS_SAVED_GAME_TRACK_MAX) {
@@ -383,28 +344,16 @@ struct SlicksSetupLoadReport slicks_amiga_load_saved_game(const char *path,
         report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_NO_FREE_STORE;
         return report;
     }
-    char leftover[124];
-    for(unsigned i=0;i<length;++i) leftover[i]=path[i];
-    const char *suffixes[]={".new",".bak"};
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr;
     process->pr_WindowPtr=(APTR)-1;
 #endif
-    for(unsigned suffix=0;suffix<2;++suffix) {
-        for(unsigned i=0;i<5;++i) leftover[length+i]=suffixes[suffix][i];
-        int present=exists(&io,leftover);
-        if(present) {
-            report.result=present>0?SLICKS_SETUP_LOAD_RECOVERY:SLICKS_SETUP_LOAD_IO_ERROR;
-            report.io_error=io.io_error; goto done;
-        }
-    }
     long size=read_file(&report,path,buffer,buffer_size);
     if(size==-1) {
         report.result=SLICKS_SETUP_LOAD_IO_ERROR; report.io_error=ERROR_OBJECT_NOT_FOUND;
     } else if(size>=0 && slicks_load_game_bytes(game,tracks,capacity,buffer,(unsigned long)size))
         report.result=SLICKS_SETUP_LOAD_INVALID;
-done:
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
     process->pr_WindowPtr=window;
 #endif
@@ -415,23 +364,18 @@ done:
 struct SlicksSetupStorageReport slicks_amiga_store_saved_game(const char *path,const struct SlicksSavedGame *game,
     unsigned char *bytes,unsigned long capacity)
 {
-    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
+    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path,0};
     long size=slicks_saved_game_size(game);
     if(!path || size<0) { report.io_error=ERROR_OBJECT_WRONG_TYPE; return report; }
     if(!bytes || capacity<(unsigned long)size) { report.io_error=ERROR_NO_FREE_STORE; return report; }
     unsigned length=0; while(length<120 && path[length]) ++length;
     if(!length || length>=120) { report.io_error=ERROR_OBJECT_WRONG_TYPE; return report; }
-    char temporary[124],backup[124];
-    for(unsigned i=0;i<length;++i) temporary[i]=backup[i]=path[i];
-    const char *suffixes[]={".new",".bak"};
-    for(unsigned i=0;i<5;++i) { temporary[length+i]=suffixes[0][i]; backup[length+i]=suffixes[1][i]; }
     if(slicks_save_game_bytes(game,bytes,(unsigned long)size)!=size) report.io_error=ERROR_OBJECT_WRONG_TYPE;
     else {
-        const struct SlicksSetupFile file={path,temporary,backup,bytes,(unsigned long)size};
-        const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
-        report.result=store_files(&file,1,&ops);
+        const struct SlicksSetupFile file={path,bytes,(unsigned long)size};
+        report.path=0;
+        report.result=store_files(&file,1,&report);
     }
-    /* The filesystem callbacks may have recorded a stack-local suffix path. */
     report.path=path;
     return report;
 }
@@ -440,7 +384,7 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *pat
     const struct SlicksTrackRecords *source,unsigned char *changed,
     unsigned char *buffer,unsigned long capacity)
 {
-    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path};
+    struct SlicksSetupStorageReport report={SLICKS_SETUP_SAVE_FAILED,0,path,0};
     if(changed) *changed=0;
     if(!path || !source || !changed) return report;
     if(g_slicks_diag_record_write_alloc_fault) {
@@ -448,36 +392,31 @@ struct SlicksSetupStorageReport slicks_amiga_store_track_records(const char *pat
         g_slicks_diag_record_write_alloc_reached=1; buffer=0;
     }
     if(!buffer || capacity<8192) { report.io_error=ERROR_NO_FREE_STORE; return report; }
-    unsigned length=0; while(length<120 && path[length]) ++length;
-    if(!length || length>=120) return report;
-    char temporary[124],backup[124];
-    for(unsigned i=0;i<length;++i) temporary[i]=backup[i]=path[i];
-    const char *suffixes[]={".new",".bak"};
-    for(unsigned i=0;i<5;++i) { temporary[length+i]=suffixes[0][i]; backup[length+i]=suffixes[1][i]; }
     report.path=0;
-    int staged=exists(&report,temporary),backed=exists(&report,backup);
-    if(staged<0 || backed<0) goto done;
-    if(staged || backed) { report.result=SLICKS_SETUP_RECOVERY_REQUIRED; goto done; }
-    int present=exists(&report,path);
-    if(present!=1) { if(!present) report.io_error=ERROR_OBJECT_NOT_FOUND; goto done; }
     struct SlicksSetupLoadReport load={SLICKS_SETUP_LOADED,0,0,0,0};
     long size=read_file(&load,path,buffer,8192);
-    if(size<6 || load.result!=SLICKS_SETUP_LOADED || buffer[2]!='S' || buffer[3]!='S' || buffer[4]!=0x7e) {
+    if(size==-1) report.io_error=ERROR_OBJECT_NOT_FOUND;
+    else if(size<6 || load.result!=SLICKS_SETUP_LOADED || buffer[2]!='S' || buffer[3]!='S' || buffer[4]!=0x7e) {
         report.io_error=load.io_error?load.io_error:ERROR_OBJECT_WRONG_TYPE;
     } else {
+        /* The record block is bytes 8..362. Rewrite the complete file only
+         * when it changes, so clearing already-clear tracks costs no write. */
+        unsigned char before[355];
+        unsigned long span=(unsigned long)size<363?0:355;
+        for(unsigned long i=0;i<span;++i) before[i]=buffer[8+i];
         struct SlicksTrackRecords records=*source;
         int encoded=slicks_write_track_records(buffer,(unsigned long)size,&records);
+        unsigned char same=encoded>0;
+        for(unsigned long i=0;same && i<span;++i) same=before[i]==buffer[8+i];
         if(encoded<0) report.io_error=ERROR_OBJECT_WRONG_TYPE;
-        else if(!encoded) report.result=SLICKS_SETUP_SAVED; /* Original old-format no-op. */
+        else if(!encoded || same) report.result=SLICKS_SETUP_SAVED; /* Old format: original no-op. */
         else {
-            const struct SlicksSetupFile file={path,temporary,backup,buffer,(unsigned long)size};
-            const struct SlicksSetupFileOps ops={exists,write_new,rename_file,remove_file,&report};
-            report.result=store_files(&file,1,&ops);
-            *changed=(unsigned char)(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING);
+            const struct SlicksSetupFile file={path,buffer,(unsigned long)size};
+            report.result=store_files(&file,1,&report);
+            *changed=(unsigned char)(report.result==SLICKS_SETUP_SAVED);
         }
     }
-done:
-    report.path=path; /* Never return pointers into local suffix buffers. */
+    report.path=path;
     return report;
 }
 
@@ -494,16 +433,6 @@ struct SlicksSetupLoadReport slicks_amiga_load_setup(
     unsigned short date_first,unsigned short date_second,unsigned short date_third)
 {
     struct SlicksSetupLoadReport report={SLICKS_SETUP_LOADED,0,0,0,0};
-    struct SlicksSetupStorageReport io={SLICKS_SETUP_SAVE_FAILED,0,0};
-    const char *leftovers[]={"SLICKS.CFG.new","SLICKS.CFG.bak",
-        "SLICKS.PLR.new","SLICKS.PLR.bak"};
-    for(unsigned i=0;i<4;++i) {
-        int present=exists(&io,leftovers[i]);
-        if(present) {
-            report.result=present>0?SLICKS_SETUP_LOAD_RECOVERY:SLICKS_SETUP_LOAD_IO_ERROR;
-            report.path=leftovers[i]; report.io_error=io.io_error; return report;
-        }
-    }
     const unsigned long capacity=3UL+58UL*(SLICKS_PROFILE_MAX-3);
     unsigned char *buffer=AllocMem(capacity,MEMF_ANY);
     struct SlicksPlayerProfiles *next=AllocMem(sizeof(*next),MEMF_ANY);
@@ -513,8 +442,10 @@ struct SlicksSetupLoadReport slicks_amiga_load_setup(
         goto done;
     }
     *next=*profiles;
+    setup_known[0].size=setup_known[1].size=0;
     long size=read_file(&report,"SLICKS.CFG",buffer,142);
     if(size==-2) goto done;
+    if(size>0) setup_remember(0,buffer,(unsigned long)size);
     report.configuration_present=size>=0;
     if(size>=0 && (size!=142 || buffer[0]!=15)) {
         report.result=SLICKS_SETUP_LOAD_INVALID; report.path="SLICKS.CFG"; goto done;
@@ -526,6 +457,7 @@ struct SlicksSetupLoadReport slicks_amiga_load_setup(
         SLICKS_AMIGA_CONFIG_SIGNATURE,date_first,date_second,date_third);
     size=read_file(&report,"SLICKS.PLR",buffer,capacity);
     if(size==-2) goto done;
+    if(size>0) setup_remember(1,buffer,(unsigned long)size);
     report.profiles_present=size>=0;
     if(size>=0) {
         unsigned count=size>=3?((unsigned)buffer[1]<<8)|buffer[2]:0;

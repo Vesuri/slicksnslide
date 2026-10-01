@@ -54,6 +54,14 @@ __attribute__((noinline)) int slicks_resource_archive_open_impl(struct SlicksRes
     archive->file = Open((CONST_STRPTR)path, MODE_OLDFILE);
     if (!archive->file)
         return -1;
+    if(reservation) {
+        /* The startup directory stays valid: rereading it would cost two
+         * more disk operations (two WHDLoad OS switches) on every open. */
+        reservation->busy=1;archive->reservation=reservation;
+        archive->directory=reservation->bytes;
+        archive->count=(unsigned short)(reservation->capacity/19UL);
+        return 0;
+    }
     if (Read(archive->file, header, sizeof(header)) != sizeof(header) ||
         header[0] != 'M' || header[1] != 'F' || header[2] != 0x1a) {
         slicks_resource_archive_close(archive);
@@ -65,13 +73,7 @@ __attribute__((noinline)) int slicks_resource_archive_open_impl(struct SlicksRes
         return -1;
     }
     directory_size = (unsigned long)archive->count * 19UL;
-    if(reservation) {
-        if(directory_size>reservation->capacity) {
-            slicks_resource_archive_close(archive); return -1;
-        }
-        reservation->busy=1;archive->reservation=reservation;
-        archive->directory=reservation->bytes;
-    } else archive->directory = (unsigned char *)AllocMem(directory_size, MEMF_ANY);
+    archive->directory = (unsigned char *)AllocMem(directory_size, MEMF_ANY);
     if (!archive->directory ||
         Read(archive->file, archive->directory, (LONG)directory_size) !=
             (LONG)directory_size) {
@@ -190,29 +192,23 @@ long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
     return (long)size;
 }
 
-/* Two streaming passes avoid a 64K temporary allocation. RLE is private,
- * lossless storage of the supplied bytes, never a substitute rendered asset. */
-static long pack_resource(BPTR file, unsigned long offset, unsigned long size,
+/* RLE is private, lossless storage of the supplied bytes, never a
+ * substitute rendered asset. Count only when out is null. */
+static long pack_bytes(const unsigned char *in, unsigned long size,
     unsigned char *out, unsigned long capacity)
 {
-    unsigned char buffer[256], value=0;
+    unsigned char value=0;
     unsigned run=0;
     unsigned long used=0;
-    if (Seek(file,(LONG)offset,OFFSET_BEGINNING)<0) return -1;
-    while (size) {
-        unsigned n=size>sizeof buffer?sizeof buffer:(unsigned)size;
-        if (Read(file,buffer,n)!=(LONG)n) return -1;
-        for (unsigned i=0; i<n; ++i) {
-            if (run && (buffer[i]!=value || run==255)) {
-                if (out) {
-                    if (used+2>capacity) return -1;
-                    out[used]=(unsigned char)run; out[used+1]=value;
-                }
-                used+=2; run=0;
+    for (unsigned long i=0; i<size; ++i) {
+        if (run && (in[i]!=value || run==255)) {
+            if (out) {
+                if (used+2>capacity) return -1;
+                out[used]=(unsigned char)run; out[used+1]=value;
             }
-            value=buffer[i]; ++run;
+            used+=2; run=0;
         }
-        size-=n;
+        value=in[i]; ++run;
     }
     if (run) {
         if (out) {
@@ -238,9 +234,10 @@ void slicks_resource_cache_destroy(struct SlicksResourceCache *cache)
 }
 
 struct SlicksResourceCache *slicks_resource_cache_create(
-    struct SlicksResourceArchive *disk, const char *const *names, unsigned short count)
+    struct SlicksResourceArchive *disk, const char *const *names, unsigned short count,
+    unsigned char *staging, unsigned long staging_size)
 {
-    if (!disk || !disk->file || disk->cache || !names || !count) return 0;
+    if (!disk || !disk->file || disk->cache || !names || !count || !staging) return 0;
     struct SlicksResourceCache *cache=AllocMem(sizeof *cache,MEMF_ANY);
     if (!cache) return 0;
     cache->count=count;
@@ -256,17 +253,18 @@ struct SlicksResourceCache *slicks_resource_cache_create(
         while (j<16 && names[i][j]) { e->name[j]=(unsigned char)names[i][j]; ++j; }
         if (j==16 && names[i][j]) goto failed;
         while (j<16) e->name[j++]=0;
-        long packed=pack_resource(disk->file,offset,e->size,0,0);
-        if (packed<=0) goto failed;
+        /* One read per resource: each read is an OS switch under WHDLoad. */
+        if (!e->size || e->size>staging_size ||
+            Seek(disk->file,(LONG)offset,OFFSET_BEGINNING)<0 ||
+            Read(disk->file,staging,(LONG)e->size)!=(LONG)e->size) goto failed;
+        long packed=pack_bytes(staging,e->size,0,0);
         e->packed=(unsigned long)packed<e->size;
         e->stored=e->packed?(unsigned long)packed:e->size;
         e->data=AllocMem(e->stored,MEMF_ANY);
         if (!e->data) goto failed;
         if (e->packed) {
-            if (pack_resource(disk->file,offset,e->size,e->data,e->stored)!=(long)e->stored)
-                goto failed;
-        } else if (Seek(disk->file,(LONG)offset,OFFSET_BEGINNING)<0 ||
-                   Read(disk->file,e->data,(LONG)e->size)!=(LONG)e->size) goto failed;
+            if (pack_bytes(staging,e->size,e->data,e->stored)!=(long)e->stored) goto failed;
+        } else for (unsigned long j=0; j<e->size; ++j) e->data[j]=staging[j];
         cache->bytes+=e->stored;
     }
     return cache;

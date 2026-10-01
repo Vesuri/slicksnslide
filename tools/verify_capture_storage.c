@@ -15,22 +15,18 @@ int main(void)
     assert(slicks_amiga_store_setup(0,0,0,0,SLICKS_AMIGA_SETUP_BYTES).io_error==ERROR_NO_FREE_STORE);
     assert(slicks_amiga_store_setup(0,0,0,scratch,SLICKS_AMIGA_SETUP_BYTES-1).io_error==ERROR_NO_FREE_STORE);
     assert(!operation && !allocations);
-    unsigned calls=0;
+    unsigned calls=0,failed=0;
     for(unsigned fail=0;fail<=calls+1;++fail) {
-        memset(files,0,sizeof files); operation=error=0;
+        initialize((const unsigned char *)"\173",1);
         fail_first=fail; fail_second=0;
-        files[0].present=1; files[0].size=1; files[0].bytes[0]=123;
         struct SlicksSetupStorageReport report=slicks_amiga_store_capture(pixels,palette,scratch,sizeof scratch);
-        assert(!allocations && files[0].present && files[0].size==1 && files[0].bytes[0]==123);
-        if(!fail) { calls=operation; assert(report.result==SLICKS_SETUP_SAVED); }
-        if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING)
-            assert(equals(3,encoded,sizeof encoded));
-        if(files[3].present) assert(equals(3,encoded,sizeof encoded));
+        /* An existing capture is never replaced. */
+        assert(!allocations && files[0].present && files[0].size==1 && files[0].bytes[0]==123 && writes<=1);
+        if(!fail) { calls=operation; assert(report.result==SLICKS_SETUP_SAVED && writes==1); }
+        if(report.result==SLICKS_SETUP_SAVED) assert(equals(1,encoded,sizeof encoded));
+        else ++failed;
     }
-    memset(files,0,sizeof files); operation=error=fail_first=fail_second=0;
-    files[1].present=1; files[1].size=1; files[1].bytes[0]=42;
-    assert(slicks_amiga_store_capture(pixels,palette,scratch,sizeof scratch).result==SLICKS_SETUP_RECOVERY_REQUIRED);
-    assert(!allocations && files[1].size==1 && files[1].bytes[0]==42 && !files[0].present);
-    printf("Capture storage: %u single-fault points, no overwrite, retained recovery file pass\n",calls);
+    assert(failed);
+    printf("Capture storage: %u single-fault points, one complete write, never replaces a capture\n",calls);
     return 0;
 }

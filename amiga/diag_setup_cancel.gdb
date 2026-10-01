@@ -53,7 +53,7 @@ end
 break slicks_diag_setup_save_cancelled
 commands
   silent
-  # The diagnostic removes its CFG.new obstruction using retained I/O too.
+  # The injected write fault leaves no file to clean up.
   if $ends != $failure_ends || $ends
     printf "SAVE_CANCEL_UNEXPECTED_TEARDOWN ends=%u at_failure=%u\n",$ends,$failure_ends
     quit 1

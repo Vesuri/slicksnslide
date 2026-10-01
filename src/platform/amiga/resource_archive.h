@@ -22,8 +22,8 @@ struct SlicksResourceArchive {
 
 int slicks_resource_archive_open(struct SlicksResourceArchive *archive,
                                  const char *path);
-/* Adopt the first startup directory; later disk opens reread into that same
- * exclusive span. A larger replacement archive is rejected, never resized. */
+/* Adopt the first startup directory; later disk opens reuse it exclusively
+ * without rereading. The archive must not change while the game runs. */
 int slicks_resource_directory_adopt(struct SlicksArchiveDirectory *,struct SlicksResourceArchive *);
 int slicks_resource_directory_destroy(struct SlicksArchiveDirectory *);
 int slicks_resource_archive_open_reserved(struct SlicksResourceArchive *,const char *,struct SlicksArchiveDirectory *);
@@ -33,10 +33,11 @@ long slicks_resource_archive_load(struct SlicksResourceArchive *archive,
                                   unsigned long capacity);
 
 /* Explicit memory-only provider: a miss never opens a disk archive. The cache
- * owns copies of names/data and must outlive every borrowed archive handle. */
+ * owns copies of names/data and must outlive every borrowed archive handle.
+ * Each resource is read whole into caller staging at least as large. */
 struct SlicksResourceCache *slicks_resource_cache_create(
     struct SlicksResourceArchive *disk, const char *const *names,
-    unsigned short count);
+    unsigned short count, unsigned char *staging, unsigned long staging_size);
 void slicks_resource_cache_destroy(struct SlicksResourceCache *cache);
 int slicks_resource_archive_cached(struct SlicksResourceArchive *archive,
     const struct SlicksResourceCache *cache);

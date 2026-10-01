@@ -28,18 +28,14 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-- [ ] **B14. Batch WHDLoad saves:** the manual production-icon test now exits
-  successfully, but standings continuation and Quit each trigger about 16
-  separate disk-access periods of roughly five seconds. Eliminate the repeated
-  switches without reintroducing the cached-new-file hang or silently raising
-  the documented memory requirement. Verify both record and setup saves.
-  Whole-file code is implemented and measured: 8 MiB/PRELOAD meets a maximum
-  of one OS switch per transaction; 4 MiB/no-PRELOAD still needs multiple
-  switches. Resolve the remaining 4 MiB behavior or obtain an explicit memory
-  requirement decision; the watched 8 MiB/PRELOAD save test is confirmed
-  acceptable (evidence in [whdload.md](whdload.md)).
+- [x] **B14. Batch WHDLoad saves.** Closed 2026-10-01: each save is one
+  complete write per file, with no `.new`/`.bak` files, existence checks,
+  renames or deletes. Unchanged CFG/PLR and record blocks are not rewritten.
+  Startup reads each resident resource in one read. The slave adds no
+  expansion memory and needs no special WHDLoad options. Evidence is in
+  [whdload.md](whdload.md) and [release-verification.md](release-verification.md).
 
-B1–B13 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
+B1–B14 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and
 [release-verification.md](release-verification.md).
 
@@ -78,7 +74,7 @@ validation candidate still says 0.1; apply the final version after D-3 passes.
   5. save a championship at intermission;
   6. quit to Workbench;
   7. repeat steps 2–4 and 6 from the WHDLoad icon, with and without PRELOAD, at
-     the memory configuration `docs/whdload.md` documents.
+     2 MiB Fast RAM and the installed icon (PreLoad only; no other options).
   **Resume point:** standalone race/intermission/save/Workbench-exit retry
   passed on 2026-10-01. Complete the production-icon WHDLoad passes in step 7,
   with and without PRELOAD. Automated WHDLoad launch/exit checks already pass

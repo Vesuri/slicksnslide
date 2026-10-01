@@ -89,14 +89,6 @@ void slicks_amiga_saved_files_refresh(struct SlicksAmigaSavedFilesCache *cache)
 }
 int slicks_amiga_saved_file_delete(const char *path)
 {
-    /* Recovery files may contain the last good version: never delete them. */
-    char side[17]; unsigned n=0;
-    while(path[n] && n<12) { side[n]=path[n]; ++n; }
-    if(path[n] || n<5) return -1;
-    side[n]='.'; side[n+1]='n'; side[n+2]='e'; side[n+3]='w'; side[n+4]=0;
-    if(slicks_amiga_saved_file_exists(side)!=0) return -1;
-    side[n+1]='b'; side[n+2]='a'; side[n+3]='k';
-    if(slicks_amiga_saved_file_exists(side)!=0) return -1;
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr; process->pr_WindowPtr=(APTR)-1;
     int result=DeleteFile((CONST_STRPTR)path)?0:-1;

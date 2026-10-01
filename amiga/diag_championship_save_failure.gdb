@@ -1,7 +1,6 @@
 # Fresh empty isolated directory, SLICKS_CHAMPIONSHIP=save-fail and
 # SLICKS_DEBUG_READ_ONLY=1. All input uses native raw-key queues.
 source diag_saved_resident.gdb
-init-if-undefined $expect_recovery = 0
 set $pickers = 0
 set $names = 0
 set $warnings = 0
@@ -17,7 +16,7 @@ break championship_notice
 commands
   silent
   printf "SAVE_FAILURE_NOTICE %s\n",text
-  if text[0] != 83 || text[1] != 65 || text[2] != 86 || text[3] != 69 || text[5] != ($expect_recovery ? 82 : 70)
+  if text[0] != 83 || text[1] != 65 || text[2] != 86 || text[3] != 69 || text[5] != 70
     printf "UNEXPECTED_SAVE_FAILURE_NOTICE\n"
     quit 1
   end
@@ -62,7 +61,7 @@ commands
     printf "CHAMPIONSHIP_SAVE_FAILURE_GATE_FAILED pickers=%u names=%u warnings=%u returns=%u starts=%u\n",$pickers,$names,$warnings,$returns,$starts
     quit 1
   end
-  printf "NATIVE_CHAMPIONSHIP_SAVE_FAILURE_WARNING_REOPEN_CANCEL_EXIT_OK recovery=%u\n",$expect_recovery
+  printf "NATIVE_CHAMPIONSHIP_SAVE_FAILURE_WARNING_REOPEN_CANCEL_EXIT_OK\n"
   quit
 end
 continue

@@ -1281,9 +1281,7 @@ static unsigned char championship_test,championship_test_stage,championship_pick
 static unsigned char championship_dialog_step;
 static unsigned char championship_delete_test;
 static unsigned char championship_scan_test;
-static unsigned char championship_cleanup_test;
 volatile unsigned short g_slicks_diag_save_buffer_fault;
-extern unsigned char g_slicks_diag_backup_protect;
 extern unsigned char g_slicks_diag_saved_lock_failure;
 extern unsigned char g_slicks_diag_saved_next_failure;
 void __attribute__((noinline)) slicks_diag_saved_ready(void) { __asm__ volatile("" ::: "memory"); }
@@ -1302,16 +1300,6 @@ static void championship_dialog_checkpoint(struct SlicksAmigaPlatform *p)
         static const unsigned char retry[]={0x44,0x44};
         g_slicks_diag_save_buffer_fault=3;
         championship_test_keys(p,retry,sizeof retry);return;
-    }
-    if(championship_cleanup_test) {
-        static const unsigned char phases[]={1,3,3};
-        static const unsigned char keys[][3]={{0x42,0x42,0x44},{0x15,0,0},{0x44,0x59,0x45}};
-        static const unsigned char counts[]={3,1,3};
-        unsigned step=championship_dialog_step++;
-        if(step>=3 || g_slicks_diag_saved_phase!=phases[step]) {
-            g_slicks_diag_force_exit=1; return;
-        }
-        championship_test_keys(p,keys[step],counts[step]); return;
     }
     if(championship_scan_test) {
         static const unsigned char leave[]={0x44,0x59,0x45};
@@ -1477,7 +1465,7 @@ again:
             slicks_amiga_saved_files_refresh(&saved_files_cache);
             if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
             if(failed &&
-               championship_notice(p,m,(const unsigned char *)"DELETE FAILED - CHECK NEW/BAK FILES")<0) goto done;
+               championship_notice(p,m,(const unsigned char *)"DELETE FAILED")<0) goto done;
         }
         goto again;
     }
@@ -1503,13 +1491,11 @@ again:
             if(save_bytes) slicks_amiga_storage_workspace_release(save_bytes);
             slicks_amiga_saved_files_refresh(&saved_files_cache);
             if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
-            if(report.result==SLICKS_SETUP_SAVED || report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
-                if(championship_notice(p,m,(const unsigned char *)(report.result==SLICKS_SETUP_SAVED?
-                    "GAME SAVED":"GAME SAVED - BACKUP REMAINS"))<0) goto done;
+            if(report.result==SLICKS_SETUP_SAVED) {
+                if(championship_notice(p,m,(const unsigned char *)"GAME SAVED")<0) goto done;
                 result=1; goto done;
             }
-            error=report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
-                "SAVE RECOVERY REQUIRED - KEEP NEW/BAK":"SAVE FAILED - RETRY OR ESC";
+            error="SAVE FAILED - RETRY OR ESC";
         }
     } else {
         if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
@@ -1517,11 +1503,9 @@ again:
         unsigned char *load_bytes=slicks_amiga_storage_workspace_acquire(load_size);
         struct SlicksSetupLoadReport report=slicks_amiga_load_saved_game(path,game,tracks,256,load_bytes,load_size);
         if(load_bytes) slicks_amiga_storage_workspace_release(load_bytes);
-        slicks_amiga_saved_files_refresh(&saved_files_cache);
         if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
         if(report.result==SLICKS_SETUP_LOADED) { result=1; goto done; }
-        error=report.result==SLICKS_SETUP_LOAD_RECOVERY?"KEEP SAVE NEW/BAK FILES - RECOVERY REQUIRED":
-            report.result==SLICKS_SETUP_LOAD_INVALID?"INVALID SAVED GAME":"LOAD FAILED - RETRY OR ESC";
+        error=report.result==SLICKS_SETUP_LOAD_INVALID?"INVALID SAVED GAME":"LOAD FAILED - RETRY OR ESC";
     }
     if(championship_notice(p,m,(const unsigned char *)error)<0) goto done;
     goto again;
@@ -1855,21 +1839,18 @@ static int track_lists_commit(struct SlicksAmigaPlatform *platform,short total,v
     g_slicks_track_lists_save=slicks_amiga_store_track_lists(&lists->catalogue,remove,
         remove<0?lists->name:0,&g_slicks_track_playlist,total,native_track_name,names,
         work,SLICKS_AMIGA_TRACK_LIST_BYTES);
-    slicks_amiga_storage_workspace_release(work);
     if(platform->io_active && slicks_amiga_platform_end_io(platform)) return -1;
-    const char *error=0;
-    switch(g_slicks_track_lists_save.result) {
-    case SLICKS_SETUP_SAVED: break;
-    case SLICKS_SETUP_SAVED_CLEANUP_PENDING: error="SAVED - BACKUP REMAINS"; break;
-    case SLICKS_SETUP_RECOVERY_REQUIRED: error="KEEP SLICKS.TRK NEW/BAK FILES"; break;
-    default: error="SLICKS.TRK SAVE FAILED"; break;
-    }
-    /* Close every borrowed view before publishing a refreshed catalogue.
-     * Do not open a warning child until transaction scratch is released. */
+    const char *error=g_slicks_track_lists_save.result==SLICKS_SETUP_SAVED?0:"SLICKS.TRK SAVE FAILED";
+    /* Close every borrowed view before publishing the new catalogue. The
+     * bytes just written become the cache; only a failed save rereads. */
     slicks_amiga_track_lists_close(g_slicks_track_menu);
-    if(platform->active && slicks_amiga_platform_begin_io(platform)) return -1;
-    refresh_track_list_cache();
-    if(platform->io_active && slicks_amiga_platform_end_io(platform)) return -1;
+    if(!error) slicks_amiga_track_list_cache_publish(&track_list_cache,work,g_slicks_track_lists_save.size);
+    slicks_amiga_storage_workspace_release(work);
+    if(error || track_list_cache.report.result!=SLICKS_SETUP_LOADED) {
+        if(platform->active && slicks_amiga_platform_begin_io(platform)) return -1;
+        refresh_track_list_cache();
+        if(platform->io_active && slicks_amiga_platform_end_io(platform)) return -1;
+    }
     return track_lists_finish(platform,total,error);
 }
 static int track_lists_key(struct SlicksAmigaPlatform *platform,short total,void *names,
@@ -3712,33 +3693,22 @@ save_records:
         for(;;) {
             if(platform->active && slicks_amiga_platform_begin_io(platform)) goto done;
             unsigned char changed;
-            char obstruction[80]; unsigned at=0;
-            unsigned char own_obstruction=0;
             if(g_slicks_diag_record_faults&2) {
                 g_slicks_diag_record_faults&=(unsigned char)~2;
-                while(path[at] && at<75) { obstruction[at]=path[at]; ++at; }
-                if(path[at]) goto done;
-                obstruction[at++]='.'; obstruction[at++]='n'; obstruction[at++]='e'; obstruction[at++]='w'; obstruction[at]=0;
-                BPTR lock=CreateDir((CONST_STRPTR)obstruction);
-                if(!lock) goto done;
-                UnLock(lock); own_obstruction=1;
+                g_slicks_diag_write_fault=1;
             }
             bytes=slicks_amiga_storage_workspace_acquire(8192);
             g_slicks_diag_record_save=slicks_amiga_store_track_records(path,&records,&changed,bytes,8192);
             if(bytes) { slicks_amiga_storage_workspace_release(bytes); bytes=0; }
-            /* Remove only the empty directory this diagnostic just created.
-             * Real recovery files are never removed by the UI. */
-            if(own_obstruction && !DeleteFile((CONST_STRPTR)obstruction)) goto done;
             if(platform->io_active && slicks_amiga_platform_end_io(platform)) goto done;
             /* Old-format tracks are an intentional original no-op, not a
              * failed write requiring an endless Retry prompt. */
             if(g_slicks_diag_record_save.result==SLICKS_SETUP_SAVED) break;
             g_slicks_diag_record_results_phase=5;
             int choice=record_retry_notice(platform,race,chunky,palette,
-                (const unsigned char *)(changed?"RECORDS SAVED; BACKUP KEPT. ENTER / ESC":
-                    "RECORD SAVE FAILED: ENTER RETRY / ESC SKIP"),diagnostic);
+                (const unsigned char *)"RECORD SAVE FAILED: ENTER RETRY / ESC SKIP",diagnostic);
             if(choice<0) goto done;
-            if(changed || !choice) break;
+            if(!choice) break;
         }
     }
     g_slicks_diag_record_results_phase=3; slicks_diag_record_results_ready();
@@ -4445,8 +4415,6 @@ int main(void)
                 PutStr((CONST_STRPTR)"\n");
             }
             switch(g_slicks_setup_load_report.result) {
-            case SLICKS_SETUP_LOAD_RECOVERY:
-                PutStr((CONST_STRPTR)"Recovery required: preserve and inspect .new/.bak files before restarting.\n"); break;
             case SLICKS_SETUP_LOAD_FOREIGN:
                 PutStr((CONST_STRPTR)"Foreign CFG signature: this configuration requires explicit import.\n"); break;
             case SLICKS_SETUP_LOAD_INVALID:
@@ -4478,7 +4446,7 @@ int main(void)
         argv+=8;
     }
     if(slicks_amiga_storage_create()) {
-        PutStr((CONST_STRPTR)"Slicks: cannot reserve WHDLoad whole-file save workspace.\n");
+        PutStr((CONST_STRPTR)"Slicks: WHDLoad whole-file save interface missing.\n");
         goto cleanup;
     }
     while (argv[argc])
@@ -4811,9 +4779,7 @@ int main(void)
     championship_scan_test=(unsigned char)(championship_test==1 && argc==9 ?
         (argv[8]=='X'?1:argv[8]=='Y'?2:0):0);
     if(championship_scan_test) championship_test=6;
-    championship_cleanup_test=(unsigned char)(championship_test==1 && argc==9 && argv[8]=='B');
     if(championship_test==1 && argc==9 && argv[8]=='M')g_slicks_diag_save_buffer_fault=1;
-    if(championship_cleanup_test) { championship_test=6; g_slicks_diag_backup_protect=1; }
     original_setup=(unsigned char)(!argc || title_start_test || natural_results_test || championship_test || setup_session_test || player_menu_test || options_test || title_help_test || tracks_test);
     if(original_setup) {
         struct DateStamp now;
@@ -5142,8 +5108,9 @@ int main(void)
     }
     if(slicks_amiga_menu_keymap_init() ||
        slicks_resource_archive_open_reserved(&archive,"SLICKS.000",&archive_directory)) goto cleanup;
+    /* Track-list storage is not loaded yet: stage whole resources there. */
     menu_cache=slicks_resource_cache_create(&archive,slicks_menu_resources,
-        SLICKS_MENU_RESOURCE_COUNT);
+        SLICKS_MENU_RESOURCE_COUNT,track_list_cache.storage,SLICKS_AMIGA_TRACK_LIST_BYTES);
     slicks_resource_archive_close(&archive);
     if(!menu_cache) goto cleanup;
     g_slicks_menu_cache_bytes=slicks_resource_cache_bytes(menu_cache);
@@ -5738,11 +5705,8 @@ int main(void)
             slicks_amiga_audio_stop(&audio);
             if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
             if(((persistence_test && (argv[7]=='T' || argv[7]=='V')) || demo_lifecycle_test==8 || demo_lifecycle_test==10) && !failure_injected) {
-                /* Isolated diagnostic fault, using AmigaDOS throughout so
-                 * emulator host-directory caching cannot affect recovery. */
-                BPTR obstruction=CreateDir((CONST_STRPTR)"SLICKS.CFG.new");
-                if(!obstruction) goto cleanup;
-                UnLock(obstruction); failure_injected=1;
+                /* Isolated diagnostic fault: AmigaDOS rejects the next write. */
+                g_slicks_diag_write_fault=1; failure_injected=1;
             }
             unsigned char *setup_buffer=slicks_amiga_storage_workspace_acquire(SLICKS_AMIGA_SETUP_BYTES);
             g_slicks_setup_save_report=slicks_amiga_store_setup(&configuration,&g_slicks_profiles,
@@ -5769,28 +5733,18 @@ int main(void)
             /* Keep live settings and ownership on failure. This platform
              * error screen is intentionally not presented as original DOS UI. */
             save_prompt=1;
-            if(g_slicks_setup_save_report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING) {
-                setup_dirty=0; race_statistics_dirty=0;
-                player_menu_state.dirty=0; g_slicks_options_state.dirty=0; save_prompt=2;
-            }
             slicks_amiga_audio_stop(&audio);
             g_slicks_diag_ingame=0;
             if(hold_title_menu_display(&platform)) goto cleanup;
             clear_title_rectangle(logical,0,0,320,200);
-            slicks_draw_title_text(logical,save_prompt==2?"SAVED - BACKUP CLEANUP FAILED":"SETUP SAVE FAILED",160,70,15);
-            slicks_draw_title_text(logical,g_slicks_setup_save_report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
-                "PRESERVE NEW AND BAK FILES":"YOUR SETTINGS ARE STILL IN MEMORY",160,90,15);
-            slicks_draw_title_text(logical,save_prompt==2?"ENTER TO EXIT":"ENTER RETRIES - ESC RETURNS",160,110,15);
+            slicks_draw_title_text(logical,"SETUP SAVE FAILED",160,70,15);
+            slicks_draw_title_text(logical,"YOUR SETTINGS ARE STILL IN MEMORY",160,90,15);
+            slicks_draw_title_text(logical,"ENTER RETRIES - ESC RETURNS",160,110,15);
             slicks_convert_to_amiga(logical,chunky,platform.views[0].bitmap);
             if(slicks_amiga_platform_set_view(&platform,0,source_palette) ||
                show_menu(&platform)) goto cleanup;
             slicks_diag_setup_save_failed();
-            if(failure_injected==1) {
-                if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
-                if(!DeleteFile((CONST_STRPTR)"SLICKS.CFG.new")) goto cleanup;
-                failure_injected=2;
-                if(slicks_amiga_platform_end_io(&platform)) goto cleanup;
-            }
+            if(failure_injected==1) failure_injected=2;
             if(persistence_test && save_prompt==1) {
                 /* Diagnostic retry is still ordinary input; the fault and
                  * recovery are supplied outside the target's game state. */
@@ -5924,7 +5878,6 @@ int main(void)
             }
             if(save_prompt) {
                 if(code==0x44) {
-                    if(save_prompt==2) { result=0; goto cleanup; }
                     exit_requested=1;
                 } else if(code==0x45) {
                     save_prompt=0;
@@ -6243,9 +6196,7 @@ int main(void)
                         g_slicks_track_lists_load=slicks_amiga_track_lists_open(g_slicks_track_menu,
                             &track_list_cache,slicks_original_track_list_actions,slicks_original_players_footer_percent);
                         if(g_slicks_track_lists_load.result!=SLICKS_SETUP_LOADED) {
-                            const char *error=g_slicks_track_lists_load.result==SLICKS_SETUP_LOAD_RECOVERY?
-                                "KEEP SLICKS.TRK NEW/BAK FILES":"SLICKS.TRK LOAD FAILED";
-                            if(track_lists_finish(&platform,(short)track_count,error)) goto cleanup;
+                            if(track_lists_finish(&platform,(short)track_count,"SLICKS.TRK LOAD FAILED")) goto cleanup;
                         } else if(slicks_amiga_profile_picker_draw(g_slicks_track_menu,picker_clock.ticks)) goto cleanup;
                         present_menu_surface(&platform,g_slicks_track_menu);
                         if(show_menu(&platform)) goto cleanup;
@@ -6283,7 +6234,7 @@ int main(void)
                              * and warning/path notices retain the live display. */
                             if(slicks_amiga_platform_begin_io(&platform)) goto cleanup;
                             static char path[SLICKS_TRACK_NAME_SIZE+8];
-                            g_slicks_track_clear_report=(struct SlicksSetupStorageReport){SLICKS_SETUP_SAVED,0,0};
+                            g_slicks_track_clear_report=(struct SlicksSetupStorageReport){SLICKS_SETUP_SAVED,0,0,0};
                             g_slicks_track_clear_changed=0;
                             unsigned char *record_scratch=slicks_amiga_storage_workspace_acquire(8192);
                             for(unsigned i=0;i<track_count;++i) {
@@ -6298,9 +6249,7 @@ int main(void)
                             g_slicks_track_clear_phase=2;
                             if(g_slicks_track_clear_report.result!=SLICKS_SETUP_SAVED) {
                                 g_slicks_track_clear_phase=3;
-                                message=(const unsigned char *)(g_slicks_track_clear_report.result==SLICKS_SETUP_RECOVERY_REQUIRED?
-                                    "PARTIAL CLEAR - KEEP NEW/BAK FILES":g_slicks_track_clear_report.result==SLICKS_SETUP_SAVED_CLEANUP_PENDING?
-                                    "PARTIAL CLEAR - BACKUP REMAINS":"CLEAR FAILED - MAY BE PARTIAL");
+                                message=(const unsigned char *)"CLEAR FAILED - MAY BE PARTIAL";
                             }
                             if(present_track_clear_message(&platform,message)) goto cleanup;
                         } else if(g_slicks_track_clear_phase==3 && g_slicks_track_clear_report.path) {
@@ -7609,7 +7558,6 @@ cleanup:
     slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
     g_slicks_options_renderer.surface=0;
     slicks_amiga_menu_workspace_destroy();
-    slicks_amiga_storage_destroy();
     slicks_amiga_help_workspace_unbind();
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);

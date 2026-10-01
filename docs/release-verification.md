@@ -1579,3 +1579,53 @@ recoverable under single/double failures. Standalone storage suites also pass.
 The maximum 10,000-track save roundtrip remains allocation-free during saving.
 This implements whole-file writes but does not close B14's manual pause-count
 gate or establish the one-switch result at 4 MiB.
+# Direct whole-file I/O and zero-expansion slave — 2026-10-01 (B14 closed)
+
+User direction: avoid WHDLoad OS switches, load and save files in one go, no
+save backups, minimal memory, no special WHDLoad options.
+
+Changes: the `.new`/`.bak` transaction, leftover/recovery checks, copy-based
+renames and the 80,218-byte WHDLoad copy buffer are removed. Each save is one
+complete write per file (resload_SaveFile under WHDLoad; Open/Write/Close
+standalone), as the DOS original writes. CFG/PLR writes are skipped when the
+bytes match the last loaded or saved copy, and track files when their record
+block is unchanged. A saved SLICKS.TRK is published to the resident cache
+without a reread. The resident menu cache reads each of its 57 resources in
+one read (previously about 900 streamed 256-byte reads); reserved archive
+opens reuse the startup directory. The slave's expansion memory is 0. The
+installer icon follows the Vette template: Slave and PreLoad only.
+
+Same records fixture (race, record save, CFG/PLR save, quit), FileLog:
+1,450 operations before (`tmp/whdload-test-qu_10c8u`), 467 after
+(`tmp/whdload-test-oy2wi7j0`): one `[Write]` per saved file, no `[Delete]`,
+no `.new`/`.bak` names.
+
+WHDLoad 19.2 / A600 40.063, 68020, 2 MiB Chip, production slave (0 expansion):
+
+- records, 2 MiB Fast, no PRELOAD (`whdload-test-kvjbh07v`): pass; 2 saves,
+  3 writes, 14 OS switches for the whole session.
+- records, 2 MiB Fast, PRELOAD (`whdload-test-26de2g70`): pass; 13 switches.
+- warm records reusing that CFG/PLR (`whdload-test-nrb43t58`): pass; the
+  unchanged CFG/PLR were still rewritten by that build, which led to the
+  unchanged-file skip. With the final build the same warm run
+  (`whdload-test-qidzzwqg`) writes only `TRACKS/BASIC.SS`: one save, zero OS
+  switches during saving, 14 for the session.
+- championship create (`g574psc4`): 1 write, 1 switch; championship edit
+  (`5dzx_4f0`): create/overwrite/delete, at most 1 switch per save, the only
+  delete is the user's; quit (`d6u6cy95`) and race (`2538pxht`) pass.
+- records at 1 MiB Fast (`a5mpn_9k`): passes, but WHDLoad cannot cache files,
+  so the session takes 152 switches. 2 MiB Fast is the recommended minimum.
+- An unfixed production slave also ran the idle demo for 10 emulated minutes
+  (8 races) at 2 MiB Fast with no expansion memory.
+
+Host gates pass: storage suites (setup pair, setup load, capture, track
+records, saved game, track lists, saved files, KickFS pair and unchanged-file
+skip), resource archive (one read per cached resource; reopen without
+directory reread), and the release host checks.
+
+Native standalone, muted 2 MiB Chip / no Fast RAM, warp: record recovery
+retry, skip and read-skip (`diag_standings.gdb`), setup failure/cancel/retry
+(`diag_setup_cancel.gdb`, injected write fault), championship save and
+read-only save failure, track-list save then reload (`diag_track_lists.gdb`),
+read-only track-list save failure (`TRACKSF`, error 214), and clear records (`diag_clear_records.gdb`)
+all pass. The four recovery-only fixtures were removed with the feature.

@@ -97,8 +97,10 @@ def main():
             dump=(game/'.whdl_dump').read_bytes()
             marker=b'SLKSTAT1'; at=dump.find(marker)
             if at>=0:
-                stats=struct.unpack_from('>5I',dump,at+len(marker))
-                print('SAVE_STATS transactions=%d switches=%d max_switches=%d whole_writes=%d max_bytes=%d'%stats)
+                stats=struct.unpack_from('>6I',dump,at+len(marker))
+                print('SAVE_STATS transactions=%d switches=%d max_switches=%d whole_writes=%d max_bytes=%d'%stats[:5])
+                # The slave's CBSWITCH counter follows the copied save stats.
+                print('SESSION_SWITCHES total=%d'%stats[5])
             if args.max_save_switches is not None:
                 assert at>=0 and stats[0]>0, 'Missing save-switch measurements'
                 assert stats[2]<=args.max_save_switches, 'Too many disk switches: '+str(stats)
@@ -128,8 +130,15 @@ def main():
                     if args.mode == 'championship-edit':
                         assert not (game/'data/TEMP.SSS').exists(), 'Deleted test save remains'
                         files = (game/'.whdl_log').read_text(encoding='latin1')
-                        for operation, name in (('[Write]', 'TEMP.SSS'), ('[Write]', 'E2E.SSS.bak'), ('[Delete]', 'TEMP.SSS')):
-                            assert any(operation in line and 'name='+name in line for line in files.splitlines()), (operation,name)
+                        for operation, name in (('[Write]', 'TEMP.SSS'), ('[Write]', 'E2E.SSS'), ('[Delete]', 'TEMP.SSS')):
+                            assert any(operation in line and 'name='+name+' ' in line+' ' for line in files.splitlines()), (operation,name)
+                        # Overwrite replaces E2E.SSS in place; only the user's delete removes a file.
+                        deletes=[line for line in files.splitlines() if '[Delete]' in line]
+                        assert len(deletes)==1 and 'name=TEMP.SSS' in deletes[0], deletes
+                if (game/'.whdl_log').exists():
+                    files = (game/'.whdl_log').read_text(encoding='latin1')
+                    staged=[line for line in files.splitlines() if '.new' in line or '.bak' in line]
+                    assert not staged, 'Temporary/backup file operations: '+'\n'.join(staged[:5])
                 print(f'PASS: {args.mode} slave returned normally; WHDLoad core saved')
         finally:
             emu.terminate()

@@ -65,10 +65,10 @@
 (copyfiles (source (tackon #source "Slicks")) (dest #data) (help @copyfiles-help))
 (copyfiles (source (tackon #source "Slicks.slave")) (dest #dest) (help @copyfiles-help))
 (copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Slicks.info") (help @copyfiles-help))
-; Leave room for WHDLoad's write cache on 4 MiB Fast machines. PRELOAD is
-; optional on larger machines, not the installed default.
+; Keep these explicit, as in the WHDLoad install template. The game needs no
+; other WHDLoad options.
 (tooltype (dest (tackon #dest "Slicks")) (setdefaulttool "WHDLoad")
-  (settooltype "Slave" "Slicks.slave") (settooltype "WriteCache" "")
+  (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "")
   (setstack 16384) (noposition))
 ; Retire the previous launch icons on upgrades; never remove game data/saves.
 (if (= (exists (tackon #dest "Play")) 1)
