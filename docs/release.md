@@ -49,18 +49,19 @@ Before tagging, on the release candidate:
    race and quit from the WHDLoad icon at 2 MiB Fast, with and without
    PRELOAD.
 
-## 0.90 (30.09.2026)
+## 0.90 (01.10.2026)
 
-Package `SlicksNSlide-0.90.lha`, 281,948 bytes. Repacked on 2026-10-01 to
-omit `CREDITS.txt`, retaining credits in ReadMe and unchanged validated
-release binaries. The exact-content audit passes with ten archive members.
+Package `SlicksNSlide-0.90.lha`, 281,944 bytes. Rebuilt on 2026-10-01 with
+release date 01.10.2026 throughout the game, slave, installer, helper and
+ReadMe, including archive timestamps. `CREDITS.txt` is omitted; credits remain
+in ReadMe. The exact-content audit passes with ten archive members.
 
 | File | SHA-256 |
 |---|---|
-| `SlicksNSlide-0.90.lha` | `81a08559b99a8cde9e81b4067cdda1903b52ab96507f4c99c8c5d33d8befbb5b` |
-| `SlicksNSlide` (stripped game) | `e99da8fc04053f1fd9c2608147e895614f5d1a559a04ff37f950e58978c75d3d` |
-| `SlicksNSlide.slave` | `b488a62cad803fce834ab83292bb91a99e41ad7e516648d12e3249fb3d657c2d` |
-| `SlicksNSlideInstallData` | `0488941c22a2544a140ee759f87a0f14340240a640318fd2d14e1753b2046c0b` |
+| `SlicksNSlide-0.90.lha` | `79b927470811e95c217f9e4c1c3922d6f4492e595df2305ea23d81467af646f8` |
+| `SlicksNSlide` (stripped game) | `bb6b00614bc383ee1f7b2cf029565a4665e03fbe526e8033736f2c5dbb802214` |
+| `SlicksNSlide.slave` | `90594fcd36767b9ee2268b28b0a0ac51dbd764ba77295d9471f92cc2b47be990` |
+| `SlicksNSlideInstallData` | `a2d1c648811d360cf4e5b54356156281c8cc0d950036128fe56f8be232fdc843` |
 
 The game build is deterministic (`make release-check`); the archive is
 reproducible because the packager owns every LH5 header field.

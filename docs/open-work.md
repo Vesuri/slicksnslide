@@ -9,7 +9,7 @@ items are not work items. Intentional differences from the original are listed
 in [fidelity.md](fidelity.md); working rules are in
 [development-verification.md](development-verification.md).
 
-## Release 0.90 (30.09.2026)
+## Release 0.90 (01.10.2026)
 
 - [ ] Tag `v0.90` on the release commit when the user asks.
 

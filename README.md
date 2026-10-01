@@ -8,7 +8,7 @@ direct AGA/Paula platform layer. There is no x86 emulator and no generated-C
 CPU emulation; the original executable running under a PC reference emulator
 is the ground truth that every routine is tested against.
 
-Release **0.90 (30.09.2026)**. The end-user package `SlicksNSlide-0.90.lha`
+Release **0.90 (01.10.2026)**. The end-user package `SlicksNSlide-0.90.lha`
 contains the native executable, a WHDLoad slave and an Installer script that
 extracts the original data from the publisher's freely available
 [Slix151.zip](https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip).

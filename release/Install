@@ -1,6 +1,6 @@
 ; Slicks 'N' Slide WHDLoad installation, Installer V43+.
 ; WHDLoad Install Template conventions, adapted as in Vette's installer.
-; $VER: Install 0.90 (30.09.2026)
+; $VER: Install 0.90 (01.10.2026)
 (set @app-name "Slicks 'N' Slide")
 (if (< @installer-version (* 43 65536))
   (abort "This installation requires Amiga Installer 43 or newer."))

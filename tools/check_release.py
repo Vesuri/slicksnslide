@@ -22,10 +22,10 @@ def check_release_versions(payloads, version, archive_name):
     for name, marker in markers.items():
         expected = marker+version+b' ('
         if version == b'0.90':
-            expected += b'30.09.2026)'
+            expected += b'01.10.2026)'
         assert expected in payloads[name], 'wrong release version/date: '+name
     if version == b'0.90':
-        assert b'Version 0.90 (30.09.2026)' in payloads['SlicksNSlide.slave'], 'wrong slave information version/date'
+        assert b'Version 0.90 (01.10.2026)' in payloads['SlicksNSlide.slave'], 'wrong slave information version/date'
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
