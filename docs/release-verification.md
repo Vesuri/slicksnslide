@@ -1,5 +1,31 @@
 # Development release audit
 
+## 2026-10-01 — manual stock-A1200 intermission/save retry; B11 closed
+
+The user operated the isolated `tmp/manual-final-0PFkfs` installation with the
+verified stripped executable (`cd579a700f6490e32e61c9832f2bb79aca0649469e26fb696943a3278fe15282`).
+Launcher: PAL A1200, 68020 real speed, 2 MiB Chip, no Fast/slow/Zorro RAM,
+Workbench loaded, default Shell stack (no Stack command), muted debug audio.
+
+The main menu appeared, the BASIC race completed, and the actual intermission
+screen appeared with next-track preview and 1/195 instead of the former error
+fallback (user screenshot `FS-UAE_Full_261001-0901_01.png`). The original
+hidden F2/close-Change-Cars/Down/Enter route opened the saved-game dialog
+(`...0904_00.png`). Save As MANUAL succeeded with the visible GAME SAVED
+message (`...0905_00.png`); the user then confirmed normal return to Workbench.
+
+The resulting local-only `MANUAL.SSS` is 1,732 bytes, signature 53 08, 195
+track names all resolving to installed files, next-track index 1, and four
+complete driver records (PLAYER and three COMPUTER). Parsing consumes exactly
+the file length. SHA-256:
+`b97369003d4ab265405313fe0d26e4a18ec4dec105fec40104046df4acf0dedc`.
+No transaction .new/.bak files remain; the .uaem file is emulator metadata.
+The owned test emulator was closed after the user confirmed Workbench.
+
+This completes B11's stock-machine regression and therefore B9–B12. The
+separate D-3 production-icon WHDLoad manual passes and D-4 final version/package
+remain release work; automated launch/exit checks do not mark them complete.
+
 ## 2026-10-01 — final native memory workflow; B12 closed
 
 All runs below use the stripped executable with SHA-256

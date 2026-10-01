@@ -28,22 +28,9 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-B1–B10 and B12 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
+B1–B12 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and
 [release-verification.md](release-verification.md).
-
-- [ ] **B11. Intermission fails in stock-A1200 manual session:** After the
-  completed race, `ENTER: RETRY / ESC: END MATCH` appeared instead of the
-  intermission menu. This is `run_intermission`'s unavailable/error path, not
-  the ordinary match-end prompt. Track selection is 195/195 and mode is
-  Classic. Isolated Workbench-loaded 2 MiB/4 KB-stack reproduction identifies
-  the 65,536-byte preview arena allocation in `slicks_amiga_intermission_open`
-  as the failure, after data and menu allocations succeed. Preview now borrows
-  the dead VGA race image's startup allocation; stock-2-MiB intermission/edit/
-  next-race and pixel-publication checks pass. The rebuilt stripped release
-  also passes championship save/edit with zero post-startup allocations and
-  clean shutdown. Finish the manual intermission/save retry and end-to-end
-  release checklist below; automated results do not count as manual observation.
 
 ## C. Packaging
 
@@ -81,10 +68,10 @@ validation candidate still says 0.1; apply the final version after D-3 passes.
   6. quit to Workbench;
   7. repeat steps 2–4 and 6 from the WHDLoad icon, with and without PRELOAD, at
      the memory configuration `docs/whdload.md` documents.
-  **Resume point:** retry the corrected build after a natural demo, open
-  Players, and continue the race/save/quit checklist. Automated cleanup,
-  allocation-failure, repeated-launch and default-4-KB-stack checks are now
-  covered; they do not replace the user's manual session.
+  **Resume point:** standalone race/intermission/save/Workbench-exit retry
+  passed on 2026-10-01. Complete the production-icon WHDLoad passes in step 7,
+  with and without PRELOAD. Automated WHDLoad launch/exit checks already pass
+  but do not replace those manual race checks.
 - [ ] **D-4.** Change VERSION and all game/slave/Installer/ReadMe version strings
   to **0.90 (30.09.2026)**, rebuild and audit **Slicks-0.90.lha**, record the hashes
   in [release-verification.md](release-verification.md), and tag the version in git.
