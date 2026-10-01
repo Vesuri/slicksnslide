@@ -1629,3 +1629,8 @@ retry, skip and read-skip (`diag_standings.gdb`), setup failure/cancel/retry
 read-only save failure, track-list save then reload (`diag_track_lists.gdb`),
 read-only track-list save failure (`TRACKSF`, error 214), and clear records (`diag_clear_records.gdb`)
 all pass. The four recovery-only fixtures were removed with the feature.
+
+`make release-check` rerun from the committed tree (2e41684) passes: release
+host checks, 197 exact original files through the data helper, deterministic
+stripped executable `7303f9e85bb4600adde776e7d06bbed50c849167a53a2d1d4e68b92c664b7626`,
+and the 11-member package audit including the PreLoad-only icon.
