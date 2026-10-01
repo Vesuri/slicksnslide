@@ -45,6 +45,8 @@ and maximums from the slave snapshot; `--max-save-switches 1` enforces the
 one-switch limit. This does not count the final exit-time cache flush. Whole-file
 writes alone do not guarantee a single switch: the measured 4 MiB/no-PRELOAD
 case still takes up to four per transaction; 8 MiB/PRELOAD meets the limit.
+Use `--real-time` in the test harness for watchable runs without fast-forward,
+with real CPU speed. Allow a longer `--seconds` host safety ceiling for these runs.
 
 Build with `make -C whdload`. `race-test` and `exit-test` create separate test
 slaves which only pass native diagnostic arguments to the unchanged game.

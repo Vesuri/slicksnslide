@@ -31,6 +31,7 @@ def main():
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68020')
     p.add_argument('--fast',type=int,default=4096,help='Fast RAM in KiB')
+    p.add_argument('--real-time', action='store_true', help='Disable fast-forward for a watchable real-speed run')
     p.add_argument('--no-preload', action='store_true')
     p.add_argument('--no-write-cache', action='store_true', help='Diagnostic control for cached file creation')
     p.add_argument('--write-delay', type=int, help='WHDLoad physical-write delay in PAL fields')
@@ -81,7 +82,8 @@ def main():
             '--kickstart_file='+os.environ['KICKSTART'],
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
             '--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
-            '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode=1', '--fullscreen=0',
+            '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode='+('0' if args.real_time else '1'), '--fullscreen=0',
+            *(['--uae_cpu_speed=real'] if args.real_time else []),
             '--window_width=720', '--window_height=568', '--state_dir='+str(base/'state')], stdout=log, stderr=log, env=dict(os.environ,SDL_AUDIODRIVER='dummy'))
         try:
             deadline = time.monotonic()+args.seconds
