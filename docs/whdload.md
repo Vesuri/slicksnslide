@@ -22,6 +22,19 @@ Both launch methods use identical native game code and the same data/saves.
 Normal menu exit saves pending changes. F10 is immediate WHDLoad quit and
 cannot execute deferred game saving. Keep the installation writable.
 
+**Saving requires NOWRITECACHE.** The installer sets this tooltype alongside
+PRELOAD. For a Shell launch use `WHDLoad Slicks.slave PRELOAD NOWRITECACHE`;
+PRELOAD can be omitted. Do not remove NOWRITECACHE: the tested WHDLoad 19.2
+KickFS combination stalls with newly created cached saves even after avoiding
+its unsupported Rename operation. The uncached path returns normally.
+
+The slave prefixes the game arguments with `WHDLOAD `, selecting a bounded
+512-byte copy/close/delete replacement for Rename. Standalone keeps native
+Rename. Both paths retain the same staging, backup and recovery guards; no
+runtime allocation is added. Incomplete copies never cause deletion of their
+source, and failure to remove a partial destination stops the transaction
+with recovery files retained.
+
 Build with `make -C whdload`. `race-test` and `exit-test` create separate test
 slaves which only pass native diagnostic arguments to the unchanged game.
 They are never packaged. `timed` uses the actual production slave and normal
@@ -40,3 +53,10 @@ Use `--exe build/release/Slicks` to test the stripped release executable and
 `--fast` accepts KiB. The decoder `tools/whdload_picture.py` inspects actual
 eight-plane, interleaved game output from local WHDLoad dumps, not reference
 images. All dumps/pictures remain ignored local evidence.
+
+Save regressions use `championship-test`, `championship-edit-test` and
+`records-test` build targets, and the matching `--mode championship`,
+`--mode championship-edit`, and `--mode records`. Pass `--no-write-cache` for
+the supported launch configuration; omission is a diagnostic negative control.
+The edit test takes `--seed-save PATH/TO/E2E.SSS` from a successful first run.
+It exercises ordinary menu input for cancel, create, overwrite and delete.

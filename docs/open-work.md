@@ -28,7 +28,7 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
-B1–B12 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
+B1–B13 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and
 [release-verification.md](release-verification.md).
 

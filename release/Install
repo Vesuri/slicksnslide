@@ -67,7 +67,8 @@
 (copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Slicks.info") (help @copyfiles-help))
 ; Explicit default tool, Slave and PreLoad, as in the WHDLoad Install Template.
 (tooltype (dest (tackon #dest "Slicks")) (setdefaulttool "WHDLoad")
-  (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "") (setstack 16384) (noposition))
+  (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "")
+  (settooltype "NoWriteCache" "") (setstack 16384) (noposition))
 ; Retire the previous launch icons on upgrades; never remove game data/saves.
 (if (= (exists (tackon #dest "Play")) 1)
   (delete (tackon #dest "Play") (optional "force")))

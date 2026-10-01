@@ -12,7 +12,12 @@ struct FileInfoBlock { long fib_DirEntryType; };
 enum { MEMF_ANY,ACCESS_READ,MODE_NEWFILE,MODE_OLDFILE,
     ERROR_OBJECT_NOT_FOUND=205,ERROR_OBJECT_WRONG_TYPE=212,
     ERROR_OBJECT_EXISTS=203,ERROR_DISK_FULL=221,ERROR_NO_FREE_STORE=103 };
-#ifdef SLICKS_CAPTURE_STORAGE_TEST
+#ifdef SLICKS_PAIR_STORAGE_TEST
+struct File { unsigned char bytes[6000]; unsigned size,offset,present; };
+static struct File files[6];
+static const char *paths[]={"SLICKS.CFG","SLICKS.CFG.new","SLICKS.CFG.bak",
+    "SLICKS.PLR","SLICKS.PLR.new","SLICKS.PLR.bak"};
+#elif defined(SLICKS_CAPTURE_STORAGE_TEST)
 struct File { unsigned char bytes[65536]; unsigned size,offset,present; };
 static struct File files[6];
 static const char *paths[]={"TUNING00.BMP","TUNING00.BMP.new","TUNING00.BMP.bak",
@@ -28,6 +33,7 @@ static const char *paths[]={"TRACKS/TEST.SS","TRACKS/TEST.SS.new","TRACKS/TEST.S
 #endif
 static unsigned operation,fail_first,fail_second,allocations,allocation_calls;
 static LONG error;
+static int kickfs_mode;
 static int fault(void)
 { ++operation; if(operation==fail_first || operation==fail_second) { error=999; return 1; } return 0; }
 static unsigned index_of(const char *path)
@@ -64,6 +70,7 @@ static LONG Close(BPTR file) { (void)file; return !fault(); }
 static LONG Flush(BPTR file) { (void)file; return !fault(); }
 static LONG Rename(CONST_STRPTR a,CONST_STRPTR b)
 {
+    assert(!kickfs_mode); /* Unsupported packet must never reach KickFS. */
     if(fault()) return 0; unsigned from=index_of(a),to=index_of(b);
     assert(files[from].present && !files[to].present); files[to]=files[from]; files[from].present=0; return 1;
 }
@@ -75,6 +82,8 @@ static int equals(unsigned i,const unsigned char *bytes,unsigned size)
 { return files[i].present && files[i].size==size && !memcmp(files[i].bytes,bytes,size); }
 static void initialize(const unsigned char *bytes,unsigned size)
 {
+    kickfs_mode=getenv("SLICKS_TEST_KICKFS")!=0;
+    g_slicks_whdload=(unsigned char)kickfs_mode;
     memset(files,0,sizeof files); memcpy(files[0].bytes,bytes,size); files[0].size=size; files[0].present=1;
     operation=error=0; assert(!allocations);
 }

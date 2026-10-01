@@ -1465,3 +1465,55 @@ total 389,316 bytes (excluding runtime allocations and OS memory). All four
 archive entries were reread and compared to their source content. No release
 was uploaded. Integration/release open items 1–3 are now complete within the
 native-port scope; general translator expansion remains explicitly deferred.
+# WHDLoad save regression — 2026-10-01
+
+The user's post-race Space transition reproduced a stalled WHDLoad session.
+The private uncached championship control `tmp/whdload-test-40f8tlo_` wrote
+`E2E.SSS.new`, then trapped with ACTION_RENAME_OBJECT (17) in the DH0 task.
+The SDK KickFS dispatch does not implement that packet. Pokeri's production
+adapter explicitly avoids it too.
+
+The Amiga adapter now uses bounded copy/close/delete moves under the slave's
+`WHDLOAD ` argument prefix. Standalone Rename is unchanged. It allocates no
+memory during saving. Partial-copy failures retain the source; unremovable
+destinations stop publication and preserve recovery files. The existing
+transaction still protects paired CFG/PLR saves and detects leftovers.
+
+Rename-free default-cache control `tmp/whdload-test-9iyqlx5u` still timed out
+after the final save write, without a WHDLoad core/normal return. Do not infer
+an exact stuck instruction from the buffered FileLog. The corresponding
+NOWRITECACHE run `tmp/whdload-test-grk2qgtg` returned OK. Thus removing Rename
+alone is insufficient in the tested 19.2/KickFS combination. Installer now
+sets NOWRITECACHE; Shell launch instructions require it. No fixed save slots,
+restricted save names or changes to the original file formats were introduced.
+
+Passing native tests, 2 MiB Chip / 4 MiB Fast / 68020 / muted debug runs:
+
+- `tmp/whdload-test-grk2qgtg`: create championship, exit, PRELOAD; diagnostic
+  WRITEDELAY=0 control.
+- `tmp/whdload-test-8wuvbbuj`: create championship and exit without PRELOAD,
+  default write delay.
+- `tmp/whdload-test-kwk2j3kq`: warm launch seeded from the first save; cancel,
+  create TEMP, cancel/accept E2E overwrite, cancel/accept TEMP deletion, exit.
+  FileLog confirms backup creation, replacement and deletion; no leftovers.
+- `tmp/whdload-test-01sr3031` and `tmp/whdload-test-7pbaosgu`: natural race,
+  track-record save, CFG/PLR save and normal return, respectively with and
+  without PRELOAD, using default write delay. No `.new`/`.bak` remain.
+- `tmp/installer-script-_979qqls`: real Installer Use-existing pass; installed
+  icon contains NOWRITECACHE; existing settings/key/save placeholders retained.
+
+`make verify-kickfs-storage` passes 4,186 paired-save single/double-fault cases,
+10,296 saved-game cases, 4,656 track-record cases and 1,371 track-list cases.
+Mocks reject any Rename call in KickFS mode and cover short reads/writes.
+Standalone storage suites also pass. All owned automated emulators terminated;
+the stalled manual Slicks session was closed; unrelated Revs was untouched.
+
+Intermediate candidate (still 0.1 pending D-3, not final 0.90 release):
+
+- `build/release/Slicks` SHA-256:
+  `651827a38a1985b3e76e5afb29e6e1b222dd87d884b49f12f099e3124bf544a4`.
+- `build/release-whdload-fix/Slicks-0.1.lha` SHA-256:
+  `70a5b440dfbcc41d8d7791aafffb1cd2d480c05e32a5e7a70da3e3e35115e673`.
+  Eleven-member archive audit passes, including the required installer
+  NoWriteCache setting. Automated menu-input tests do not close the separate
+  manual production-icon release gate.

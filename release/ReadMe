@@ -27,6 +27,11 @@
  512 KiB Kickstart space; the host system, WHDLoad and PRELOAD need additional
  memory. Tested with 2 MiB Chip and 4 MiB Fast RAM, including PRELOAD.
 
+ Keep the installed NoWriteCache tooltype enabled: cached creation of save
+ files can hang WHDLoad on return. For a Shell launch use:
+   WHDLoad Slicks.slave PRELOAD NOWRITECACHE
+ PRELOAD is optional; NOWRITECACHE is required for reliable saving.
+
  WHDLoad also requires a legally obtained Kickstart 3.1 image and matching
  relocation file in "Devs:Kickstarts" or "WHDCOMMON:". Supported pairs are:
 

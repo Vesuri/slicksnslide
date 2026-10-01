@@ -41,6 +41,16 @@ slv_config dc.b 0
         dc.b "$VER: Slicks.slave 0.1 (30.09.2026)",0
 _program dc.b "Slicks",0
 _args
+        dc.b "WHDLOAD "
+        IFD RECORDTEST
+        dc.b "NATURALF",10,0
+        ELSE
+        IFD CHAMPTEST
+        dc.b "CHAMPSAVE",10,0
+        ELSE
+        IFD EDITTEST
+        dc.b "CHAMPEDIT",10,0
+        ELSE
         IFD RACETEST
         dc.b "NATURALOBQ",10,0
         ELSE
@@ -48,6 +58,9 @@ _args
         dc.b "REGCHECK",10,0
         ELSE
         dc.b 10,0
+        ENDC
+        ENDC
+        ENDC
         ENDC
         ENDC
 _argsend

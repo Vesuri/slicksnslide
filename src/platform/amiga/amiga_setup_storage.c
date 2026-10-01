@@ -9,6 +9,7 @@
 #include "../../game/track_records.h"
 #include "../../ui/screen_capture.h"
 unsigned char g_slicks_diag_backup_protect;
+unsigned char g_slicks_whdload;
 unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
 unsigned char g_slicks_diag_record_write_alloc_fault,g_slicks_diag_record_write_alloc_reached;
 
@@ -55,6 +56,37 @@ static int rename_file(void *context,const char *from,const char *to)
     struct SlicksSetupStorageReport *r=context;
     int present=exists(context,to);
     if(present) { if(present>0) failure(r,to,ERROR_OBJECT_EXISTS); return -1; }
+    if(g_slicks_whdload) {
+        /* KickFS has no ACTION_RENAME_OBJECT. Copy to an absent destination,
+         * close both handles successfully, then remove the source. Never
+         * discard the only complete image after a partial copy. */
+        unsigned char buffer[512];
+        BPTR input=Open((CONST_STRPTR)from,MODE_OLDFILE);
+        if(!input) { failure(r,from,IoErr()); return -1; }
+        BPTR output=Open((CONST_STRPTR)to,MODE_NEWFILE);
+        if(!output) { failure(r,to,IoErr()); Close(input); return -1; }
+        int failed=0;
+        for(;;) {
+            LONG got=Read(input,buffer,sizeof buffer);
+            if(got<0) { failure(r,from,IoErr()); failed=1; break; }
+            if(!got) break;
+            LONG at=0;
+            while(at<got) {
+                LONG n=Write(output,buffer+at,got-at);
+                if(n<=0) { failure(r,to,n<0?IoErr():ERROR_DISK_FULL); failed=1; break; }
+                at+=n;
+            }
+            if(failed) break;
+        }
+        if(!failed && !Flush(output)) { failure(r,to,IoErr()); failed=1; }
+        if(!Close(output)) { failure(r,to,IoErr()); failed=1; }
+        if(!Close(input)) { failure(r,from,IoErr()); failed=1; }
+        if(!failed && DeleteFile((CONST_STRPTR)from)) return 0;
+        if(!failed) failure(r,from,IoErr());
+        /* -2 forbids transaction rollback from deleting staged recovery data. */
+        if(!DeleteFile((CONST_STRPTR)to)) { failure(r,to,IoErr()); return -2; }
+        return -1;
+    }
     if(!Rename((CONST_STRPTR)from,(CONST_STRPTR)to)) { failure(r,from,IoErr()); return -1; }
     return 0;
 }

@@ -68,6 +68,7 @@ def main():
     for other in (b"Rescue on Fractalus",b"Vette"): assert other not in payloads["Install.info"]
     assert b"MultiView\0" in payloads["ReadMe.info"]
     assert b'(settooltype "Slave" "Slicks.slave")' in payloads["Install"]
+    assert b'(settooltype "NoWriteCache" "")' in payloads["Install"]
     assert b'(set #dest (tackon #parent "Slicks"))' in payloads["Install"]
     assert b'(newname "Slicks.info")' in payloads["Install"]
     assert b'(newname "Play.info")' not in payloads["Install"]

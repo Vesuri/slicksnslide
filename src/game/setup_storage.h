@@ -16,7 +16,9 @@ struct SlicksSetupFileOps {
      * report errors: -1 may leave our partial file, -2 created nothing.
      * The distinction prevents cleanup removing a file we never owned. */
     int (*write)(void *,const char *,const unsigned char *,unsigned long);
-    int (*rename)(void *,const char *,const char *); /* must not replace */
+    /* Must not replace. -1 leaves source intact and destination absent;
+     * -2 leaves recovery artifacts: stop without removing any other files. */
+    int (*rename)(void *,const char *,const char *);
     int (*remove)(void *,const char *); /* absent is success */
     void *context;
 };
@@ -53,11 +55,15 @@ static inline enum SlicksSetupSaveResult slicks_store_files(
         if(result) goto rollback;
     }
     for(unsigned i=0;i<count;++i) if(existed[i]) {
-        if(ops->rename(c,files[i].path,files[i].backup)) goto rollback;
+        int moved=ops->rename(c,files[i].path,files[i].backup);
+        if(moved==-2) return SLICKS_SETUP_RECOVERY_REQUIRED;
+        if(moved) goto rollback;
         backed[i]=1;
     }
     for(unsigned i=0;i<count;++i) {
-        if(ops->rename(c,files[i].temporary,files[i].path)) goto rollback;
+        int moved=ops->rename(c,files[i].temporary,files[i].path);
+        if(moved==-2) return SLICKS_SETUP_RECOVERY_REQUIRED;
+        if(moved) goto rollback;
         staged[i]=0; installed[i]=1;
     }
     {

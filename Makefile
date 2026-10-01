@@ -541,6 +541,12 @@ build/verify_saved_game_storage: tools/verify_saved_game_storage.c tools/verify_
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-saved-game-storage: build/verify_saved_game_storage
 	build/verify_saved_game_storage
+.PHONY: verify-kickfs-storage
+build/verify_kickfs_storage: tools/verify_kickfs_storage.c tools/verify_track_storage.c src/platform/amiga/amiga_setup_storage.c src/game/setup_storage.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
+verify-kickfs-storage: build/verify_kickfs_storage
+	build/verify_kickfs_storage
+	SLICKS_TEST_KICKFS=1 $(MAKE) verify-track-storage verify-saved-game-storage verify-track-list-storage
 build/verify_saved_game: tools/verify_saved_game.c src/game/saved_game.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-saved-game: build/verify_saved_game

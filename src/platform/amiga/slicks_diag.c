@@ -4469,6 +4469,14 @@ int main(void)
         argv = "";
     while (*argv == ' ' || *argv == '\t')
         ++argv;
+    /* Private launcher prefix, stripped before the existing diagnostic args. */
+    unsigned whd_prefix=0;
+    while(whd_prefix<8 && argv[whd_prefix]=="WHDLOAD "[whd_prefix]) ++whd_prefix;
+    if(whd_prefix==8) {
+        extern unsigned char g_slicks_whdload;
+        g_slicks_whdload=1;
+        argv+=8;
+    }
     while (argv[argc])
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')

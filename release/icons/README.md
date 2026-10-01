@@ -9,7 +9,7 @@ them into standard .info files. No image data is changed.
 - `readme.info.b64`: the same release's `ReadMe.info` (MultiView default tool).
 
 The released reference archive is https://whdload.de/games/RescueOnFractalus.lha.
-The game icon is copied to Slicks.info and given WHDLoad/Slave/PreLoad tooltypes
+The game icon is copied to Slicks.info and given WHDLoad/Slave/PreLoad/NoWriteCache settings
 by Installer, following the template. ReadMe.info is copied with ReadMe.
 
 The project icon retains its classic and ColorIcon images. Packaging changes
