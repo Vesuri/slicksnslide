@@ -28,12 +28,6 @@ endif
 ifeq ($(TITLEPROFILE),1)
 obj/slicks_diag.o: CCFLAGS += -DSLICKS_TITLE_PROFILE
 endif
-DIV100CHECK ?= 0
-ifneq ($(DIV100CHECK),0)
-ifneq ($(DIV100CHECK),1)
-$(error DIV100CHECK must be 0 or 1)
-endif
-endif
 ifneq ($(INNER_PROFILE),0)
 ifneq ($(INNER_PROFILE),1)
 $(error INNER_PROFILE must be 0 or 1)
@@ -60,9 +54,6 @@ endif
 # RETCHECK=1: compare every racing update with a non-retention reference.
 ifeq ($(RETCHECK),1)
 CCFLAGS += -DSLICKS_RETENTION_CHECK
-endif
-ifeq ($(DIV100CHECK),1)
-CCFLAGS += -DSLICKS_DIV100_CHECK
 endif
 LDFLAGS  = -Wl,--emit-relocs,--gc-sections,-Ttext=0,-Map=$(OUT).map
 ifeq ($(INNER_PROFILE),1)
@@ -113,12 +104,6 @@ ifeq ($(wildcard obj/inner-profile-$(INNER_PROFILE).stamp),)
 INNER_PROFILE_FORCE = force-inner-profile
 .PHONY: force-inner-profile
 force-inner-profile:
-endif
-
-ifeq ($(wildcard obj/div100-check-$(DIV100CHECK).stamp),)
-DIV100_CHECK_FORCE = force-div100-check
-.PHONY: force-div100-check
-force-div100-check:
 endif
 
 ifeq ($(wildcard obj/stack-check-$(STACKCHECK).stamp),)
@@ -222,7 +207,7 @@ obj/track_scene.o: $(REPO)/src/game/track_scene.c \
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/race_runtime.o: $(REPO)/src/game/race_runtime.c Makefile \
-		$(INNER_PROFILE_FORCE) $(DIV100_CHECK_FORCE) \
+		$(INNER_PROFILE_FORCE) \
 		$(REPO)/src/game/sprite_retention.inc \
 		$(REPO)/src/game/race_runtime.h \
 		$(REPO)/src/ui/font_resource.h \
@@ -230,8 +215,6 @@ obj/race_runtime.o: $(REPO)/src/game/race_runtime.c Makefile \
 	$(CC) $(CCFLAGS) $(GAMEPLAY_CFLAGS) -c -o $@ $<
 	rm -f obj/inner-profile-0.stamp obj/inner-profile-1.stamp
 	touch obj/inner-profile-$(INNER_PROFILE).stamp
-	rm -f obj/div100-check-0.stamp obj/div100-check-1.stamp
-	touch obj/div100-check-$(DIV100CHECK).stamp
 
 obj/particle_runtime.o: $(REPO)/src/game/particle_runtime.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<

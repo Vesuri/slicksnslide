@@ -31,8 +31,6 @@ if [ -n "${SLICKS_AUDIO_CAPTURE_FILE:-}" ]; then
   export SDL_AUDIODRIVER=disk SDL_DISKAUDIOFILE="$SLICKS_AUDIO_CAPTURE_FILE"
   AUDIO_ARGS=(--audio_driver=sdl)
 fi
-LUA_ARGS=()
-if [ -n "${SLICKS_DEBUG_LUA:-}" ]; then LUA_ARGS=("--uae_lua=$SLICKS_DEBUG_LUA"); fi
 DEBUG_JOYSTICK=nothing
 if [ "${SLICKS_DEBUG_JOYSTICK_KEYS:-0}" = 1 ]; then
   # The installed FSEMU build ignores legacy keyboard_key_* overrides.
@@ -116,9 +114,6 @@ elif [ "${SLICKS_HOLD_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag HOLDT\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_AUDIO_PCM_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURALQB\n' > "$DH0/s/startup-sequence"
-elif [ -n "${SLICKS_TRAJECTORY:-}" ]; then
-  case "$SLICKS_TRAJECTORY" in mixed) trajectory=T;; identical) trajectory=I;; pc-audio) trajectory=Q;; *) exit 2;; esac
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s\n' "$trajectory" > "$DH0/s/startup-sequence"
 elif [ -n "${SLICKS_WEAPON_TRANSITION:-}" ]; then
   case "$SLICKS_WEAPON_TRANSITION" in P|R|E|C|A) ;; *) exit 2;; esac
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NATURAL%s\n' "$SLICKS_WEAPON_TRANSITION" > "$DH0/s/startup-sequence"
@@ -286,10 +281,6 @@ elif [ "${SLICKS_SETUP_RELOAD:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPR\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_SETUP_INPUT:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUPI\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_SETUP_SESSION:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SETUP\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_WEAPON_HUD:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag WEAPONHUD\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_DAMAGE_RACE:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag CONFIGDR\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_FUEL_RACE:-0}" = 2 ]; then
@@ -306,22 +297,6 @@ elif [ "${SLICKS_SHADOW_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag JUMP\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_BENCHMARK:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag MEASURE\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_AUDIO_IN_BLANK:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag VBLANKAUDIO\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_AUDIO_NO_DMA:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DMAOFF\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_NO_AUDIO:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag NOAUDIO\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_NO_PARTICLES:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag PARTICLESOFF\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 3 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUTF\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 2 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUTC\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_SCANOUT_ONLY:-0}" = 1 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag SCANOUT\n' > "$DH0/s/startup-sequence"
-elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 3 ]; then
-  printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag BITMAPMISS\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 2 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag BITMAPFAULT\n' > "$DH0/s/startup-sequence"
 elif [ "${SLICKS_BITMAP_AUDIT:-0}" = 1 ]; then
@@ -368,7 +343,6 @@ fsuae_claim_port
 "$FSUAE" \
   "${AUDIO_ARGS[@]}" \
   "${WARP_ARGS[@]}" \
-  "${LUA_ARGS[@]}" \
   --amiga_model=A1200 --chip_memory=2048 --fast_memory=0 \
   --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \

@@ -25,12 +25,6 @@
 /* Published at race start so diagnostics verify the actual running build. */
 volatile unsigned char slicks_race_inner_profile_enabled;
 
-#if defined(__m68k__) && defined(SLICKS_DIV100_CHECK)
-volatile unsigned long slicks_div100_checks,slicks_div100_mismatches;
-volatile long slicks_div100_first_input,slicks_div100_first_actual,
-              slicks_div100_first_expected;
-#endif
-
 static inline int profile_scope(const struct SlicksRaceRuntime *race,unsigned scope)
 {
 #if SLICKS_HAVE_INNER_PROFILE

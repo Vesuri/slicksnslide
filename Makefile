@@ -37,7 +37,6 @@ ABS_ROOT := $(abspath .)
 	reference-frame-hash verify-reference-race verify-execution-trace \
 	verify-interrupt-trace verify-port-trace analyze-execution-trace \
 	verify-memory-trace verify-primitive-trace verify-race-state \
-	analyze-race-velocity \
 	analyze-vga-sites unpack rebuild-mz \
 	verify-runtime verify-native-graphics trace-summary \
 	verify-car-collision verify-drive-physics verify-surface-effects \
@@ -134,10 +133,6 @@ verify-primitive-trace:
 
 verify-race-state:
 	$(PYTHON) tools/verify_race_state.py \
-		$(REFERENCE_FIXED_ROOT)/slicks-race-state.csv
-
-analyze-race-velocity:
-	$(PYTHON) tools/analyze_race_velocity.py \
 		$(REFERENCE_FIXED_ROOT)/slicks-race-state.csv
 
 analyze-vga-sites: verify-memory-trace
@@ -1386,16 +1381,6 @@ build/sgfx_planar_subrect_blit.bin: src/graphics/sgfx_planar_subrect_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
-build/sgfx_planar_subrect_blit_far.bin: src/graphics/sgfx_planar_subrect_blit_far.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -o $@ $<
-
-build/verify_subrect_far: tools/verify_subrect_far.c tools/verify_native_graphics.c
-	@mkdir -p build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib $< -lunicorn -o $@
-
-.PHONY: verify-subrect-far
 build/sprite_opaque.bin: tools/sprite_opaque_test.s src/game/sprite_opaque.s src/game/track_sprite_fast.s src/game/track_sprite_animation.s src/game/track_sprite_animation_publish.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
@@ -1429,17 +1414,6 @@ build/verify_particle_advance: tools/verify_particle_advance.c tools/verify_dos_
 .PHONY: verify-particle-advance
 verify-particle-advance: unpack build/particle_advance.bin build/verify_particle_advance
 	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin
-
-# Isolated representation experiment; intentionally not linked by amiga/Makefile.
-build/particle_compact_trial.bin: tools/particle_compact_trial_test.s src/game/particle_compact_trial.s | build
-	$(VASM) -quiet -m68020 -no-opt -Fbin -I. -o $@ $<
-
-build/particle_compact_legacy.bin: tools/particle_advance_test.s src/game/particle_runtime.s | build
-	$(VASM) -quiet -m68020 -DSLICKS_PARTICLE_WORD_COORDINATES=1 -Fbin -o $@ $<
-
-.PHONY: verify-particle-compact-trial
-verify-particle-compact-trial: unpack build/particle_advance.bin build/particle_compact_trial.bin build/particle_compact_legacy.bin build/verify_particle_advance
-	build/verify_particle_advance disasm/runtime.bin build/particle_advance.bin build/particle_compact_trial.bin build/particle_compact_legacy.bin
 
 # Target structure offsets from the 68020 compiler for native-routine tests.
 build/offsets/race_offsets.i: src/game/race_offsets.c src/game/race_runtime.h src/game/weapon_runtime.h src/game/car_display.h | build
@@ -1477,16 +1451,6 @@ build/verify_actor_advance: tools/verify_actor_advance.c src/game/race_runtime.c
 .PHONY: verify-actor-advance
 verify-actor-advance: build/actor_advance.bin build/verify_actor_advance build/offsets/race_offsets.i
 	build/verify_actor_advance build/actor_advance.bin build/offsets/race_offsets.i
-
-build/car_progress.bin: tools/car_progress_test.s src/game/car_progress.s build/offsets/race_offsets.i | build
-	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
-
-build/verify_car_progress: tools/verify_car_progress.c src/game/race_runtime.c src/game/race_runtime.h src/game/signed_division.h | build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-
-.PHONY: verify-car-progress
-verify-car-progress: build/car_progress.bin build/verify_car_progress build/offsets/race_offsets.i
-	build/verify_car_progress build/car_progress.bin build/offsets/race_offsets.i
 
 build/emission_scan.bin: tools/emission_scan_test.s src/game/car_emission.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
@@ -1588,9 +1552,6 @@ verify-car-draw: build/car_draw.bin build/verify_car_draw
 
 verify-particle-draw: build/particle_draw.bin build/verify_particle_draw
 	build/verify_particle_draw build/particle_draw.bin
-
-verify-subrect-far: unpack build/sgfx_planar_subrect_blit_far.bin build/verify_subrect_far
-	build/verify_subrect_far disasm/runtime.bin build/sgfx_planar_subrect_blit_far.bin
 
 build/verify_screen_capture: tools/verify_screen_capture.c tools/verify_native_graphics.c src/ui/screen_capture.h
 	@mkdir -p build
@@ -1794,20 +1755,6 @@ build/verify_c2p16: tools/verify_c2p16.c | build
 verify-c2p16: build/c2p16_test.bin build/verify_c2p16
 	build/verify_c2p16 build/c2p16_test.bin
 
-build/c2p8_test.bin: src/platform/amiga/c2p8_interleaved.s | build
-	$(VASM) -quiet -m68020 -Fbin -I$(HOME)/.local/opt/m68k-amiga-elf/sys-include -o $@ $<
-
-.PHONY: verify-c2p8
-verify-c2p8: build/c2p8_test.bin build/verify_c2p16
-	build/verify_c2p16 build/c2p8_test.bin 8
-
-build/c2p_hybrid_test.bin: tools/c2p_hybrid_test.s src/platform/amiga/c2p8_16_interleaved.s src/platform/amiga/c2p8_interleaved.s src/platform/amiga/c2p16_interleaved.s | build
-	$(VASM) -quiet -m68020 -Fbin -I. -I$(HOME)/.local/opt/m68k-amiga-elf/sys-include -o $@ $<
-
-.PHONY: verify-c2p-hybrid
-verify-c2p-hybrid: build/c2p_hybrid_test.bin build/verify_c2p16
-	build/verify_c2p16 build/c2p_hybrid_test.bin hybrid
-
 build/actor_order.bin: src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
 
@@ -1820,16 +1767,6 @@ build/verify_signed_div100: tools/verify_signed_div100.c | build
 .PHONY: verify-signed-div100
 verify-signed-div100: build/signed_div100.bin build/verify_signed_div100
 	build/verify_signed_div100 build/signed_div100.bin
-
-build/velocity_division.bin: tools/velocity_division_test.s src/game/velocity_division.i | build
-	$(VASM) -quiet -m68020 -no-opt -Fbin -I. -o $@ $<
-
-build/verify_velocity_division: tools/verify_velocity_division.c | build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-
-.PHONY: verify-velocity-division
-verify-velocity-division: build/velocity_division.bin build/verify_velocity_division
-	build/verify_velocity_division build/velocity_division.bin
 
 build/actor_compact_order.bin: tools/actor_compact_order_test.s src/game/actor_order.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
@@ -1844,33 +1781,6 @@ build/verify_actor_order: tools/verify_actor_order.c src/game/race_runtime.c src
 .PHONY: verify-actor-order
 verify-actor-order: build/actor_order.bin build/verify_actor_order
 	build/verify_actor_order build/actor_order.bin build/offsets/race_offsets.i
-
-build/car_prepare.bin: tools/car_prepare_test.s src/game/car_prepare.s build/offsets/race_offsets.i | build
-	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
-
-build/verify_car_prepare: tools/verify_car_prepare.c src/game/race_runtime.c src/game/race_runtime.h | build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-
-.PHONY: verify-car-prepare
-verify-car-prepare: build/car_prepare.bin build/verify_car_prepare
-	build/verify_car_prepare build/car_prepare.bin build/offsets/race_offsets.i
-
-build/car_prepare_motion.bin: tools/car_prepare_motion_test.s src/game/car_prepare.s src/game/car_motion.s build/offsets/race_offsets.i | build
-	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -o $@ $<
-
-build/verify_car_prepare_motion: tools/verify_car_prepare.c src/game/race_runtime.c src/game/race_runtime.h | build
-	$(CC) -DREAL_MOTION=1 -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-
-.PHONY: verify-car-prepare-motion
-verify-car-prepare-motion: build/car_prepare_motion.bin build/verify_car_prepare_motion
-	build/verify_car_prepare_motion build/car_prepare_motion.bin build/offsets/race_offsets.i
-
-build/verify_car_prepare_all: tools/verify_car_prepare.c src/game/race_runtime.c src/game/race_runtime.h | build
-	$(CC) -DREAL_MOTION=1 -DALL_CARS=1 -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-
-.PHONY: verify-car-prepare-all
-verify-car-prepare-all: build/car_prepare_motion.bin build/verify_car_prepare_all
-	build/verify_car_prepare_all build/car_prepare_motion.bin build/offsets/race_offsets.i
 
 build/car_integration.bin: tools/car_integration_test.s src/game/car_motion.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
@@ -1894,16 +1804,6 @@ verify-car-integration: build/car_integration.bin build/verify_car_integration
 
 build/point_restore.bin: tools/point_restore_test.s src/game/point_restore.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
-
-build/actor_restore.bin: tools/actor_restore_test.s tools/sprite_opaque_test.s src/game/actor_restore.s src/game/track_sprite_fast.s src/game/sprite_opaque.s src/game/track_sprite_animation.s src/game/track_sprite_animation_publish.s build/offsets/race_offsets.i | build
-	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<
-
-build/verify_actor_restore: tools/verify_actor_restore.c tools/verify_point_restore.c | build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
-
-.PHONY: verify-actor-restore
-verify-actor-restore: build/actor_restore.bin build/verify_actor_restore
-	build/verify_actor_restore build/actor_restore.bin build/offsets/race_offsets.i
 
 build/point_compact_restore.bin: tools/point_compact_restore_test.s src/game/point_restore.s build/offsets/race_offsets.i | build
 	$(VASM) -quiet -m68020 -no-opt -Fbin -Ibuild/offsets -I. -o $@ $<

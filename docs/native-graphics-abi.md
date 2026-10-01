@@ -95,18 +95,10 @@ memory remain classified at their callers because those destinations have
 hardware semantics beyond an ordinary flat byte fill.
 
 The genuine race-entry trace adds a screen-transition call from `185ff`
-whose `source_y + height` exceeds the declared sprite height. Its compatibility
-entry is `sgfx_planar_subrect_blit_far`: the same register ABI plus `a6` pointing
-at the complete retained 64 KiB source segment. `a1` points at its sprite header.
-It wraps source reads at 16 bits and uses the original byte-sized height
-subtraction. Both exact observed page variants and 126 randomized source-wrap
-cases pass full-plane comparisons against the original executable with
-`make verify-subrect-far`. Header offsets must be at most `fffe`; nonzero
-dimensions and valid word-copy destinations remain caller contracts. Tests
-isolate source wrapping from VGA word accesses crossing the aperture boundary.
-Current native title crops use bounded assets and retain the original fast
-helper; the compatibility entry must not be used with a bare sprite allocation
-that does not retain the rest of its guest segment.
+whose `source_y + height` exceeds the declared sprite height, so the original
+reads wrap within the 64 KiB source segment. The current native title crops use
+bounded assets with the ordinary helper, so no wrapping entry is linked (an
+oracle-tested `sgfx_planar_subrect_blit_far` is in git history).
 
 The `verify-native-graphics` gate runs the original unpacked x86 helper bytes
 and these assembled 68020 routines in independent Unicorn engines. It compares

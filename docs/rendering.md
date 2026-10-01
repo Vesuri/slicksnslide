@@ -60,8 +60,7 @@ pixels only.
 
 `c2p16_interleaved` is a 16-pixel Kalms butterfly that stores only the final
 eight plane words of each block, never transpose intermediates.
-`c2p8_interleaved` and `c2p8_16_interleaved` are isolated experiments, not
-production paths. `make verify-c2p16` and `tools/verify_planar_writes.sh`
+Rejected 8-pixel and hybrid converters are in git history. `make verify-c2p16` and `tools/verify_planar_writes.sh`
 check the converters on a 68020 emulator against independent bit-level
 references, including every destination store.
 

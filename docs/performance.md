@@ -50,7 +50,6 @@ and RETCHECK, which need a forced rebuild (see below).
 | `INNER_PROFILE=1` | Stage timers for `SLICKS_BENCHMARK_DETAIL` 1–7; required for those modes |
 | `SHADOW=1` | Dual execution of native replacements against their C references |
 | `RETCHECK=1` | Compares every racing update with a reference that keeps nothing between frames |
-| `DIV100CHECK=1` | Checks every `slicks_div100` call against a separate C expression |
 | `STACKCHECK=1` | Native stack watermark ([release-verification.md](release-verification.md)) |
 | `TITLEPROFILE=1` | Title phase timestamps |
 
@@ -101,7 +100,7 @@ Native replacements keep their C references; sites are `SHADOW_SITES` bits.
   surface-effect switch (site 9); lazy AI velocity direction; actor scans and
   priority-bucket clears bounded by their populated range.
 - Division: direct 68020 constant division, and direct C coordinate/speed
-  division (`slicks_div100`, guarded by `DIV100CHECK`).
+  division (`slicks_div100`, oracle `make verify-signed-div100`).
 - `src/game/particle_runtime.s`: one-pass particle advance, compaction and
   handle publication. Site 6.
 - `src/game/particle_draw.s`: cache-sized point drawing loop, precomputed
@@ -126,8 +125,8 @@ Native replacements keep their C references; sites are `SHADOW_SITES` bits.
 
 ## Rejected approaches
 
-Isolated oracle sources still in the tree, not linked into the game:
-`actor_restore.s` (one restoration chain: mixed total, maximum +23 lines),
+Rejected native routines, removed from the tree but kept in git history with
+their oracles: `actor_restore.s` (one restoration chain: mixed total, maximum +23 lines),
 `car_prepare.s` (whole-car preparation: worse maximum), `car_progress.s`
 (clock/checkpoint/lap block: 0.03–0.4%), `particle_compact_trial.s` (20-byte
 particle record: regressed when integrated), and `c2p8_interleaved.s` /
