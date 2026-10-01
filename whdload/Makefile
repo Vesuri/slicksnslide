@@ -5,7 +5,7 @@ VASM ?= $(HOME)/.local/vasmm68k_mot
 OUT := ../build/whdload
 
 .PHONY: all test smoke boot-test load-test race-test exit-test championship-test championship-edit-test FORCE
-all: $(OUT)/Slicks.slave
+all: $(OUT)/SlicksNSlide.slave
 test: $(OUT)/SlicksTest.slave
 smoke: $(OUT)/Smoke.slave
 boot-test: $(OUT)/BootTest.slave
@@ -32,7 +32,7 @@ $(OUT)/SlicksTest.slave: VASMFLAGS += -DTEST=1
 
 # Reassemble the small slave on every invocation: SDK includes and assembler
 # options must never leave an old diagnostic slave in a release package.
-$(OUT)/Slicks.slave $(OUT)/SlicksTest.slave $(OUT)/BootTest.slave $(OUT)/LoadTest.slave $(OUT)/RaceTest.slave $(OUT)/ExitTest.slave $(OUT)/ChampionshipTest.slave $(OUT)/ChampionshipEditTest.slave $(OUT)/RecordsTest.slave: SlicksSlave.s FORCE
+$(OUT)/SlicksNSlide.slave $(OUT)/SlicksTest.slave $(OUT)/BootTest.slave $(OUT)/LoadTest.slave $(OUT)/RaceTest.slave $(OUT)/ExitTest.slave $(OUT)/ChampionshipTest.slave $(OUT)/ChampionshipEditTest.slave $(OUT)/RecordsTest.slave: SlicksSlave.s FORCE
 	@mkdir -p $(OUT)/include/lvo
 	@for lib in dos exec graphics expansion; do ln -sf "$(NDK)/lvo/$${lib}_lib.i" "$(OUT)/include/lvo/$$lib.i"; done
 	$(VASM) -m68020 -pic -x -devpac -Fhunkexe -nosym $(VASMFLAGS) -I$(OUT)/include -I"$(WHDLOAD)/Include" -I"$(WHDLOAD)/Src/sources" -I"$(NDK)" -o $@ $<

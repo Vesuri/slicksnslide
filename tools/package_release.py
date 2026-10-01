@@ -13,7 +13,7 @@ from installer_icon import installer_icon, drawer_icon, readme_icon
 ORIGINAL_HASHES = {
     "d12114fccdd86b10e9d77d652acec35ea0a45230fcbe3fb32970431c18b55c2c",
 }
-PREFIX = "Slicks Install"
+PREFIX = "SlicksNSlide Install"
 
 def crc16(data):
     crc = 0
@@ -58,10 +58,10 @@ def main():
     root = Path(__file__).resolve().parent.parent
     version = (root / "VERSION").read_text().strip()
     files = {
-        "Slicks": args.executable.read_bytes(),
-        "Slicks.slave": (root / "build/whdload/Slicks.slave").read_bytes(),
-        "Slicks.inf": installer_icon(game=True),
-        "SlicksInstallData": (root / "build/install-data/SlicksInstallData.exe").read_bytes(),
+        "SlicksNSlide": args.executable.read_bytes(),
+        "SlicksNSlide.slave": (root / "build/whdload/SlicksNSlide.slave").read_bytes(),
+        "SlicksNSlide.inf": installer_icon(game=True),
+        "SlicksNSlideInstallData": (root / "build/install-data/SlicksNSlideInstallData.exe").read_bytes(),
         "Install": (root / "release/Install").read_bytes(),
         "Install.info": installer_icon(),
         "ReadMe.info": readme_icon(),
@@ -73,7 +73,7 @@ def main():
         if hashlib.sha256(data).hexdigest() in ORIGINAL_HASHES:
             raise SystemExit("refusing to package original game data: " + name)
     args.output_directory.mkdir(parents=True, exist_ok=True)
-    archive = args.output_directory / f"Slicks-{version}.lha"
+    archive = args.output_directory / f"SlicksNSlide-{version}.lha"
     if archive.exists():
         raise SystemExit("Refusing to replace an existing release archive: " + str(archive))
     temporary = archive.with_suffix(".lha.part")

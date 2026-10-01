@@ -18,8 +18,9 @@ in [fidelity.md](fidelity.md); working rules are in
 - [x] D-1 clean-tree `make release-check`; D-2 F1/CITY/WHACKO display audits
   and the RETCHECK retention check; D-3 manual stock-A1200 session
   (installer, standalone, WHDLoad icon with and without PRELOAD).
-- [ ] D-4: build and audit `Slicks-0.90.lha`, record its hashes in
-  [release.md](release.md), then tag `v0.90` when the user asks.
+- [x] D-4: `SlicksNSlide-0.90.lha` built and audited; hashes recorded in
+  [release.md](release.md).
+- [ ] Tag `v0.90` on the release commit when the user asks.
 
 ## Not in scope
 

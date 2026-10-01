@@ -70,7 +70,7 @@ def main():
     # Never increase the Shell stack or wrap the executable in a Play script.
     launch='C:SetPatch QUIET\n'+('C:LoadWB\nWait 2\n' if args.workbench else '')+'CD data\n'
     for iteration in range(args.repeat):
-        launch+='Slicks '+args.args+'\n'
+        launch+='SlicksNSlide '+args.args+'\n'
         if args.repeat>1:
             launch+='If WARN\nEcho failed >DH0:restart-failed\nQuit 20\nEndIf\n'
             launch+='Echo launch-%d >>DH0:restarts.log\n'%(iteration+1)
@@ -123,7 +123,7 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
           '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10','--hard_drive_1='+str(installed),
           '--hard_drive_1_read_only='+str(int(args.read_only)),
           '--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
-          '--remote_debugger=20','--remote_debugger_port='+str(port),'--remote_debugger_trigger=Slicks',
+          '--remote_debugger=20','--remote_debugger_port='+str(port),'--remote_debugger_trigger=SlicksNSlide',
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=env)
         try:
             for _ in range(150):

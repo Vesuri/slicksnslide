@@ -8,7 +8,7 @@
 | tools/check_release.py requires the version to match VERSION.
 	.section .rodata.version,"aR"
 	.balign 2
-	.asciz "$VER: Slicks 0.90 (30.09.2026)"
+	.asciz "$VER: SlicksNSlide 0.90 (30.09.2026)"
 	.balign 2
 	.section .data.whd_storage,"awR"
 	.balign 4

@@ -1,14 +1,14 @@
-# Slicks'n'Slide for the Amiga
+# Slicks 'N' Slide for the Amiga
 
 A native A1200 port of Timo Kauppinen's DOS shareware racing game
-Slicks'n'Slide 1.51. The original 16-bit x86 game was recovered from its
+Slicks 'N' Slide 1.51. The original 16-bit x86 game was recovered from its
 executable and rebuilt as native 68020 code: game and UI logic recovered into C
 and C++, with hot routines translated to hand-checked 68020 assembly, on a
 direct AGA/Paula platform layer. There is no x86 emulator and no generated-C
 CPU emulation; the original executable running under a PC reference emulator
 is the ground truth that every routine is tested against.
 
-Release **0.90 (30.09.2026)**. The end-user package `Slicks-0.90.lha`
+Release **0.90 (30.09.2026)**. The end-user package `SlicksNSlide-0.90.lha`
 contains the native executable, a WHDLoad slave and an Installer script that
 extracts the original data from the publisher's freely available
 [Slix151.zip](https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip).
@@ -36,7 +36,7 @@ Revs, Vette).
 make amiga            # debug/diagnostic game build: amiga/out/SlicksDiag.exe
 make -C whdload       # production and test WHDLoad slaves
 make release          # stripped game, slave and installer helper
-make dist             # dist/Slicks-$(cat VERSION).lha
+make dist             # dist/SlicksNSlide-$(cat VERSION).lha
 make release-check    # host checks, determinism, package build and audit
 ```
 
@@ -56,7 +56,7 @@ amiga/                 target build, FS-UAE/GDB run scripts and fixtures
 whdload/               WHDLoad slave and test slaves
 release/               Installer script, ReadMe and icon sources
 tools/                 reference capture, oracles, host verifiers, packaging
-tools/install-data/    SlicksInstallData ZIP extraction helper
+tools/install-data/    SlicksNSlideInstallData ZIP extraction helper
 tools/patches/         DOSBox instrumentation used for reference captures
 ghidra_scripts/        headless Ghidra analysis scripts
 reference/             DOSBox reference configurations

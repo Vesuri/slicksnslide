@@ -20,7 +20,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="slicks-install-amiga-",dir=ROOT/"tmp") as tmp:
         base=Path(tmp); boot=base/"boot"; (boot/"s").mkdir(parents=True)
         (base/"state").mkdir(); (base/"home").mkdir()
-        shutil.copyfile(build/"SlicksInstallData.exe",boot/"Extract")
+        shutil.copyfile(build/"SlicksNSlideInstallData.exe",boot/"Extract")
         (boot/"scratch").mkdir()
         (boot/"s/startup-sequence").write_text('CD DH0:\nStack 4096\nExtract "DH1:tmp/Slix151-release.zip" "DH2:installed" "DH0:scratch"\n')
         sock=socket.socket(); sock.bind(("127.0.0.1",0)); port=sock.getsockname()[1]; sock.close()
@@ -55,7 +55,7 @@ quit
                     time.sleep(.2)
                 logfile=ROOT/"tmp/installer-amiga.log"
                 with logfile.open("w") as debuglog:
-                    result=subprocess.run(["m68k-amiga-elf-gdb","-q","-batch","-x",str(commands),str(build/"SlicksInstallData.elf")],env=env,stdout=debuglog,stderr=debuglog,timeout=900)
+                    result=subprocess.run(["m68k-amiga-elf-gdb","-q","-batch","-x",str(commands),str(build/"SlicksNSlideInstallData.elf")],env=env,stdout=debuglog,stderr=debuglog,timeout=900)
                 report=logfile.read_text(); print(report)
                 assert result.returncode==0 and "INSTALLER result=0" in report
                 for name,data in expected_files().items():

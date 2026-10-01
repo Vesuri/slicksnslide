@@ -1637,9 +1637,9 @@ release-package dist:
 	. amiga/env.sh && $(MAKE) -C tools/install-data amiga
 	$(MAKE) -C whdload
 	mkdir -p build/release
-	. amiga/env.sh && elf2hunk amiga/out/SlicksDiag.elf build/release/Slicks -s
-	$(PYTHON) tools/package_release.py build/release/Slicks $(RELEASE_DIR)
-	$(PYTHON) tools/check_release.py $(RELEASE_DIR)/Slicks-$(shell cat VERSION).lha
+	. amiga/env.sh && elf2hunk amiga/out/SlicksDiag.elf build/release/SlicksNSlide -s
+	$(PYTHON) tools/package_release.py build/release/SlicksNSlide $(RELEASE_DIR)
+	$(PYTHON) tools/check_release.py $(RELEASE_DIR)/SlicksNSlide-$(shell cat VERSION).lha
 # Host oracles, helper tests, a two-build determinism check and a scratch
 # package audit. The shipped archive is built separately by `make dist`.
 release-check: $(RELEASE_HOST_CHECKS) install-data-test

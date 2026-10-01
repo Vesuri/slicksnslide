@@ -74,7 +74,7 @@ make ghidra-live   # seed observed blocks and curated VGA symbols, export listin
 make ghidra-live-normalized # apply the same live map to the normalized MZ
 make todo          # open work and tracked work markers
 make release       # stripped game, production slave and installer helper
-make dist          # dist/Slicks-$(cat VERSION).lha
+make dist          # dist/SlicksNSlide-$(cat VERSION).lha
 make release-check # release host checks, determinism, package build and audit
 make -C whdload    # production and test WHDLoad slaves (see whdload.md)
 ```

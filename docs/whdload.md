@@ -26,7 +26,7 @@ Normal menu exit saves pending changes. F10 is immediate WHDLoad quit and
 cannot execute deferred game saving. Keep the installation writable.
 
 **No special WHDLoad options are needed.** The installed icon sets only the
-template's Slave and PreLoad tooltypes; a Shell launch is `WHDLoad Slicks.slave`.
+template's Slave and PreLoad tooltypes; a Shell launch is `WHDLoad SlicksNSlide.slave`.
 WHDLoad's default file and write caches apply.
 
 ## File operations
@@ -71,7 +71,7 @@ python3 tools/test_whdload.py --mode race --rom /local/kick40063.A600 --rtb /loc
 python3 tools/test_whdload.py --mode quit --rom /local/kick40063.A600 --rtb /local/kick40063.A600.RTB --ticks 5000
 ```
 
-Use `--exe build/release/Slicks` to test the stripped release executable and
+Use `--exe build/release/SlicksNSlide` to test the stripped release executable and
 `--no-preload` to test live disk reads. Tests default to 4 MiB Fast RAM;
 `--fast` accepts KiB. Without `--no-preload` the harness adds PRELOAD; it never
 adds write-cache options. The decoder `tools/whdload_picture.py` inspects actual

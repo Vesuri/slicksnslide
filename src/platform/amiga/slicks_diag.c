@@ -4409,7 +4409,7 @@ int main(void)
         g_slicks_setup_load_report=slicks_amiga_load_setup(&configuration,&g_slicks_profiles,
             date.year<1997?0:date.mday,date.month,date.year);
         if(g_slicks_setup_load_report.result!=SLICKS_SETUP_LOADED) {
-            PutStr((CONST_STRPTR)"Slicks: setup could not be loaded; no files were changed.\n");
+            PutStr((CONST_STRPTR)"SlicksNSlide: setup could not be loaded; no files were changed.\n");
             if(g_slicks_setup_load_report.path) {
                 PutStr((CONST_STRPTR)g_slicks_setup_load_report.path);
                 PutStr((CONST_STRPTR)"\n");
@@ -4446,7 +4446,7 @@ int main(void)
         argv+=8;
     }
     if(slicks_amiga_storage_create()) {
-        PutStr((CONST_STRPTR)"Slicks: WHDLoad whole-file save interface missing.\n");
+        PutStr((CONST_STRPTR)"SlicksNSlide: WHDLoad whole-file save interface missing.\n");
         goto cleanup;
     }
     while (argv[argc])
@@ -4816,7 +4816,7 @@ int main(void)
     if(!configuration.field_05e1) {
         int language=choose_startup_language(&archive);
         if(language<1) {
-            PutStr((CONST_STRPTR)"Slicks: language selection needs an interactive console.\n");
+            PutStr((CONST_STRPTR)"SlicksNSlide: language selection needs an interactive console.\n");
             goto cleanup;
         }
         configuration.field_05e1=(unsigned char)language; setup_dirty=1;
@@ -4889,14 +4889,14 @@ int main(void)
         goto cleanup;
     track_count = discover_tracks(&track_names,&track_name_capacity,(unsigned char)!original_setup);
     if(!track_count) {
-        PutStr((CONST_STRPTR)"Slicks: no tracks found or insufficient memory for the track catalogue.\n");
+        PutStr((CONST_STRPTR)"SlicksNSlide: no tracks found or insufficient memory for the track catalogue.\n");
         goto cleanup;
     }
     if(track_count>g_slicks_track_playlist.capacity) {
         unsigned capacity=(unsigned)track_count+2;
         short *selection=allocate_track_storage(capacity*sizeof *selection);
         if(!selection) {
-            PutStr((CONST_STRPTR)"Slicks: insufficient memory for the track selection.\n");
+            PutStr((CONST_STRPTR)"SlicksNSlide: insufficient memory for the track selection.\n");
             goto cleanup;
         }
         track_selection=selection;
@@ -5099,11 +5099,11 @@ int main(void)
     /* Reserve the largest remaining contiguous block before the cache's
      * small resource allocations divide the released startup scratch. */
     if(slicks_amiga_menu_workspace_create()) {
-        PutStr((CONST_STRPTR)"Slicks: insufficient memory for menu and track workspace.\n");
+        PutStr((CONST_STRPTR)"SlicksNSlide: insufficient memory for menu and track workspace.\n");
         goto cleanup;
     }
     if(slicks_amiga_track_list_cache_create(&track_list_cache)) {
-        PutStr((CONST_STRPTR)"Slicks: insufficient memory for track-list storage.\n");
+        PutStr((CONST_STRPTR)"SlicksNSlide: insufficient memory for track-list storage.\n");
         goto cleanup;
     }
     if(slicks_amiga_menu_keymap_init() ||

@@ -8,8 +8,8 @@ dated development audit that led to 0.90 is in git history
 
 ```sh
 make release-check                      # full gate from a clean tree
-make dist                               # dist/Slicks-$(cat VERSION).lha
-python3 tools/check_release.py dist/Slicks-$(cat VERSION).lha
+make dist                               # dist/SlicksNSlide-$(cat VERSION).lha
+python3 tools/check_release.py dist/SlicksNSlide-$(cat VERSION).lha
 ```
 
 `make release-check` runs the release host checks (`RELEASE_HOST_CHECKS`), the
@@ -20,9 +20,9 @@ member independently with Lhasa and checks the allowlisted contents, CRCs,
 HUNK headers, icons, Installer tooltypes, `$VER` strings against `VERSION`,
 and that no original data, key, save, ROM or diagnostic binary is included.
 
-The package follows the sibling WHDLoad packages: a `Slicks` drawer with its
-icon, the native `Slicks` executable, `Slicks.slave`, the game icon template
-`Slicks.inf`, `SlicksInstallData`, `Install`/`ReadMe` and their icons,
+The package follows the sibling WHDLoad packages: a `SlicksNSlide` drawer with its
+icon, the native `SlicksNSlide` executable, `SlicksNSlide.slave`, the game icon template
+`SlicksNSlide.inf`, `SlicksNSlideInstallData`, `Install`/`ReadMe` and their icons,
 `CREDITS.txt` and `puff-license.txt`.
 
 Version strings live in `VERSION`, `src/platform/amiga/version.s`,
@@ -51,6 +51,19 @@ Before tagging, on the release candidate:
 
 ## 0.90 (30.09.2026)
 
+Package `SlicksNSlide-0.90.lha`, 282,472 bytes, built by `make dist` from the
+release commit:
+
+| File | SHA-256 |
+|---|---|
+| `SlicksNSlide-0.90.lha` | `67b359350405bbc21847d8eb9f40e212b627910883af49ed867088871588f30e` |
+| `SlicksNSlide` (stripped game) | `e99da8fc04053f1fd9c2608147e895614f5d1a559a04ff37f950e58978c75d3d` |
+| `SlicksNSlide.slave` | `b488a62cad803fce834ab83292bb91a99e41ad7e516648d12e3249fb3d657c2d` |
+| `SlicksNSlideInstallData` | `0488941c22a2544a140ee759f87a0f14340240a640318fd2d14e1753b2046c0b` |
+
+The game build is deterministic (`make release-check`); the archive is
+reproducible because the packager owns every LH5 header field.
+
 Gate results on the 0.90 code:
 
 - `make release-check` passes; the stripped executable is deterministic.
@@ -67,3 +80,8 @@ Gate results on the 0.90 code:
   and read-only failure; track-list save, reload and read-only failure;
   clear records.
 - The manual stock-A1200 session passed standalone and from the WHDLoad icon.
+- After the final rename to `SlicksNSlide` file names and the "Slicks 'N'
+  Slide" display name, `make release-check`, the real-Installer package test
+  (`test_installer_script.py --package`) and the WHDLoad race, quit, records
+  and championship regressions at 2 MiB Fast were rerun on the packaged
+  binaries and pass.

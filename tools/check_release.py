@@ -8,14 +8,14 @@ from pathlib import Path
 from package_release import ORIGINAL_HASHES, PREFIX, crc16
 from installer_icon import installer_icon, readme_icon
 
-REQUIRED = {"Slicks", "Slicks.slave", "Slicks.inf", "SlicksInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt", "CREDITS.txt"}
+REQUIRED = {"SlicksNSlide", "SlicksNSlide.slave", "SlicksNSlide.inf", "SlicksNSlideInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt", "CREDITS.txt"}
 
 def check_release_versions(payloads, version, archive_name):
-    assert archive_name == 'Slicks-'+version.decode('ascii')+'.lha', 'wrong archive version'
+    assert archive_name == 'SlicksNSlide-'+version.decode('ascii')+'.lha', 'wrong archive version'
     markers = {
-        'Slicks': b'$VER: Slicks ',
-        'Slicks.slave': b'$VER: Slicks.slave ',
-        'SlicksInstallData': b'$VER: SlicksInstallData ',
+        'SlicksNSlide': b'$VER: SlicksNSlide ',
+        'SlicksNSlide.slave': b'$VER: SlicksNSlide.slave ',
+        'SlicksNSlideInstallData': b'$VER: SlicksNSlideInstallData ',
         'Install': b'; $VER: Install ',
         'ReadMe': b'version ',
     }
@@ -25,7 +25,7 @@ def check_release_versions(payloads, version, archive_name):
             expected += b'30.09.2026)'
         assert expected in payloads[name], 'wrong release version/date: '+name
     if version == b'0.90':
-        assert b'Version 0.90 (30.09.2026)' in payloads['Slicks.slave'], 'wrong slave information version/date'
+        assert b'Version 0.90 (30.09.2026)' in payloads['SlicksNSlide.slave'], 'wrong slave information version/date'
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -60,36 +60,36 @@ def main():
         payloads[name] = data
         pos += packed
     assert raw[pos:] == b"\0" and set(payloads) == REQUIRED | {'@drawer'}, "wrong archive contents"
-    for name in ("Slicks", "SlicksInstallData", "Slicks.slave"):
+    for name in ("SlicksNSlide", "SlicksNSlideInstallData", "SlicksNSlide.slave"):
         assert payloads[name][:4] == b"\0\0\3\xf3", "not an Amiga HUNK executable"
-    assert b'WHDLOADS' in payloads['Slicks.slave'], 'missing WHDLoad slave header'
-    for name, kind in (("Slicks.inf", 4), ("ReadMe.info", 4), ("Install.info", 4), ('@drawer', 2)):
+    assert b'WHDLOADS' in payloads['SlicksNSlide.slave'], 'missing WHDLoad slave header'
+    for name, kind in (("SlicksNSlide.inf", 4), ("ReadMe.info", 4), ("Install.info", 4), ('@drawer', 2)):
         assert payloads[name][:4] == b"\xe3\x10\0\1" and payloads[name][48] == kind
     root=Path(__file__).resolve().parent.parent
-    assert payloads["Slicks"] == (root/"build/release/Slicks").read_bytes()
-    assert payloads["Slicks.slave"] == (root/"build/whdload/Slicks.slave").read_bytes()
-    assert payloads["SlicksInstallData"] == (root/"build/install-data/SlicksInstallData.exe").read_bytes()
+    assert payloads["SlicksNSlide"] == (root/"build/release/SlicksNSlide").read_bytes()
+    assert payloads["SlicksNSlide.slave"] == (root/"build/whdload/SlicksNSlide.slave").read_bytes()
+    assert payloads["SlicksNSlideInstallData"] == (root/"build/install-data/SlicksNSlideInstallData.exe").read_bytes()
     for name in ("Install","ReadMe"):
         assert payloads[name] == (root/"release"/name).read_bytes()
-    assert b"APPNAME=Slicks\0" in payloads["Install.info"]
+    assert b"APPNAME=Slicks 'N' Slide\0" in payloads["Install.info"]
     assert b"MINUSER=AVERAGE\0" in payloads["Install.info"]
     assert b"MINUSER=NOVICE\0" not in payloads["Install.info"]
-    assert payloads["Slicks.inf"]==installer_icon(game=True)
+    assert payloads["SlicksNSlide.inf"]==installer_icon(game=True)
     assert payloads["ReadMe.info"]==readme_icon()
     assert b"Mark Adler" in payloads["puff-license.txt"]
     assert not any(n.lower().endswith((".rek",".cfg",".plr",".sss",".000",".dat",".ss")) for n in payloads)
     version=(root/"VERSION").read_text().strip().encode("ascii")
     check_release_versions(payloads, version, args.archive.name)
-    assert b"$VER: Slicks "+version+b" (" in payloads["Slicks"], "wrong game version"
-    assert b"$VER: Slicks.slave "+version+b" (" in payloads["Slicks.slave"], "wrong slave version"
+    assert b"$VER: SlicksNSlide "+version+b" (" in payloads["SlicksNSlide"], "wrong game version"
+    assert b"$VER: SlicksNSlide.slave "+version+b" (" in payloads["SlicksNSlide.slave"], "wrong slave version"
     assert b"; $VER: Install "+version+b" (" in payloads["Install"], "wrong installer version"
     for other in (b"Rescue on Fractalus",b"Vette"): assert other not in payloads["Install.info"]
     assert b"MultiView\0" in payloads["ReadMe.info"]
-    assert b'(settooltype "Slave" "Slicks.slave")' in payloads["Install"]
+    assert b'(settooltype "Slave" "SlicksNSlide.slave")' in payloads["Install"]
     assert b'(settooltype "PreLoad" "")' in payloads["Install"]
     assert b'WriteCache' not in payloads["Install"]
-    assert b'(set #dest (tackon #parent "Slicks"))' in payloads["Install"]
-    assert b'(newname "Slicks.info")' in payloads["Install"]
+    assert b'(set #dest (tackon #parent "SlicksNSlide"))' in payloads["Install"]
+    assert b'(newname "SlicksNSlide.info")' in payloads["Install"]
     assert b'(newname "Play.info")' not in payloads["Install"]
     assert b'(set #whd' not in payloads["Install"]
     assert b'(choices "Reinstall" "Use existing") (default 0)' in payloads["Install"]

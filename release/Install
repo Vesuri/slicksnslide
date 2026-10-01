@@ -1,7 +1,7 @@
-; Slicks WHDLoad installation, Installer V43+.
+; Slicks 'N' Slide WHDLoad installation, Installer V43+.
 ; WHDLoad Install Template conventions, adapted as in Vette's installer.
 ; $VER: Install 0.90 (30.09.2026)
-(set @app-name "Slicks")
+(set @app-name "Slicks 'N' Slide")
 (if (< @installer-version (* 43 65536))
   (abort "This installation requires Amiga Installer 43 or newer."))
 (welcome)
@@ -21,10 +21,10 @@
      (message "WHDLoad needs a Kickstart 3.1 image and matching .RTB file in Devs:Kickstarts or WHDCOMMON: before playing. See ReadMe for supported image names." (all)))
 (set #parent
   (askdir
-    (prompt "Where should Slicks be installed? A Slicks drawer will be created here.")
+    (prompt "Where should Slicks 'N' Slide be installed? A SlicksNSlide drawer will be created here.")
     (help "Choose a hard disk with at least 3 MB free. Existing settings, records and registration keys are preserved.")
     (default @default-dest)))
-(set #dest (tackon #parent "Slicks"))
+(set #dest (tackon #parent "SlicksNSlide"))
 (set #data (tackon #dest "data"))
 (set #install-data 1)
 (if (and (= (exists (tackon #data "SLICKS.000")) 1)
@@ -52,7 +52,7 @@
          ((set #attempt (+ #attempt 1))
           (set #stage (tackon #temp (".slicks-data-%ld" #attempt)))))
        (working "Checking the original ZIP and extracting data. Please wait.")
-       (set #result (run ("\"%s\" \"%s\" \"%s\"" (tackon #source "SlicksInstallData") #archive #stage)))
+       (set #result (run ("\"%s\" \"%s\" \"%s\"" (tackon #source "SlicksNSlideInstallData") #archive #stage)))
        (if (<> #result 0)
          (abort "Data extraction failed. Existing installation files have not been replaced. Check the ZIP, available RAM and disk space; see the helper error message."))
        (makedir #dest (infos) (help @makedir-help))
@@ -62,13 +62,13 @@
 (makedir #dest (infos) (help @makedir-help))
 (makedir #data (help @makedir-help))
 (complete 80)
-(copyfiles (source (tackon #source "Slicks")) (dest #data) (help @copyfiles-help))
-(copyfiles (source (tackon #source "Slicks.slave")) (dest #dest) (help @copyfiles-help))
-(copyfiles (source (tackon #source "Slicks.inf")) (dest #dest) (newname "Slicks.info") (help @copyfiles-help))
+(copyfiles (source (tackon #source "SlicksNSlide")) (dest #data) (help @copyfiles-help))
+(copyfiles (source (tackon #source "SlicksNSlide.slave")) (dest #dest) (help @copyfiles-help))
+(copyfiles (source (tackon #source "SlicksNSlide.inf")) (dest #dest) (newname "SlicksNSlide.info") (help @copyfiles-help))
 ; Keep these explicit, as in the WHDLoad install template. The game needs no
 ; other WHDLoad options.
-(tooltype (dest (tackon #dest "Slicks")) (setdefaulttool "WHDLoad")
-  (settooltype "Slave" "Slicks.slave") (settooltype "PreLoad" "")
+(tooltype (dest (tackon #dest "SlicksNSlide")) (setdefaulttool "WHDLoad")
+  (settooltype "Slave" "SlicksNSlide.slave") (settooltype "PreLoad" "")
   (setstack 16384) (noposition))
 ; Retire the previous launch icons on upgrades; never remove game data/saves.
 (if (= (exists (tackon #dest "Play")) 1)

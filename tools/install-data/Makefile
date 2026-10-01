@@ -12,12 +12,12 @@ AMIGA_NM = $(dir $(shell command -v $(AMIGA_CC)))../m68k-amiga-elf/bin/nm
 AMIGA_FLAGS = -std=c99 -O2 -g -m68000 -msoft-float -nostdlib -fno-builtin -fno-tree-loop-distribute-patterns -fstack-usage -Wall -Wextra -Wno-volatile-register-var -DINSTALL_AMIGA
 AMIGA_FLAGS += $(EXTRA_AMIGA_FLAGS)
 .PHONY: all amiga test
-all: $(BUILD)/SlicksInstallData
+all: $(BUILD)/SlicksNSlideInstallData
 $(BUILD):
 	mkdir -p $@
-$(BUILD)/SlicksInstallData: $(SOURCES) io_unix.c $(HEADERS) | $(BUILD)
+$(BUILD)/SlicksNSlideInstallData: $(SOURCES) io_unix.c $(HEADERS) | $(BUILD)
 	$(CC) $(CFLAGS) $(WARN) $(SOURCES) io_unix.c -o $@
-amiga: $(BUILD)/SlicksInstallData.exe
+amiga: $(BUILD)/SlicksNSlideInstallData.exe
 $(BUILD)/install.o: install.c $(HEADERS) Makefile | $(BUILD)
 	$(AMIGA_CC) $(AMIGA_FLAGS) -c $< -o $@
 $(BUILD)/sha256.o: sha256.c sha256.h io.h Makefile | $(BUILD)
@@ -26,14 +26,14 @@ $(BUILD)/io_amiga.o: io_amiga.c io.h Makefile | $(BUILD)
 	$(AMIGA_CC) $(AMIGA_FLAGS) -c $< -o $@
 $(BUILD)/start.o: start.s | $(BUILD)
 	$(AMIGA_CC) -m68000 -c $< -o $@
-$(BUILD)/SlicksInstallData.elf: $(BUILD)/start.o $(BUILD)/install.o $(BUILD)/sha256.o $(BUILD)/puff.o $(BUILD)/io_amiga.o
-	$(AMIGA_CC) -nostdlib -m68000 -Wl,--emit-relocs,-Ttext=0,-e,_start,-Map=$(BUILD)/SlicksInstallData.map $^ -o $@
+$(BUILD)/SlicksNSlideInstallData.elf: $(BUILD)/start.o $(BUILD)/install.o $(BUILD)/sha256.o $(BUILD)/puff.o $(BUILD)/io_amiga.o
+	$(AMIGA_CC) -nostdlib -m68000 -Wl,--emit-relocs,-Ttext=0,-e,_start,-Map=$(BUILD)/SlicksNSlideInstallData.map $^ -o $@
 	$(AMIGA_NM) -u $@ > $(BUILD)/undefined.txt
 	@test ! -s $(BUILD)/undefined.txt
-$(BUILD)/SlicksInstallData.exe: $(BUILD)/SlicksInstallData.elf
+$(BUILD)/SlicksNSlideInstallData.exe: $(BUILD)/SlicksNSlideInstallData.elf
 	elf2hunk $< $@ -s
 test: all
-	python3 test_install.py $(BUILD)/SlicksInstallData
+	python3 test_install.py $(BUILD)/SlicksNSlideInstallData
 
 $(BUILD)/puff.o: puff.c puff.h Makefile | $(BUILD)
 	$(AMIGA_CC) $(AMIGA_FLAGS) -g0 -fno-unwind-tables -fno-asynchronous-unwind-tables -c $< -o $@

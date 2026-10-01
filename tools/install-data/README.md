@@ -1,4 +1,4 @@
-# SlicksInstallData
+# SlicksNSlideInstallData
 
 Self-contained Amiga/host extraction helper for the publisher's Slix151.zip.
 See ../../docs/install-original-data.md for input validation, memory use,

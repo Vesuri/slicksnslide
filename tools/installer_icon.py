@@ -14,7 +14,7 @@ def readme_icon():
 
 def installer_icon(game=False):
     if game:
-        # Distributed as Slicks.inf, renamed and configured by Installer, exactly
+        # Distributed as SlicksNSlide.inf, renamed and configured by Installer, exactly
         # as RoF.inf in the reference package. No synthetic replacement artwork.
         return template_icon('game.inf.b64')
     data = template_icon('install.info.b64')
@@ -22,7 +22,7 @@ def installer_icon(game=False):
     # NOVICE when launching Installer from test or manual startup scripts.
     assert b'MINUSER=AVERAGE\0' in data
     old = b'APPNAME=Rescue on Fractalus!\0'
-    new = b'APPNAME=Slicks\0'
+    new = b"APPNAME=Slicks 'N' Slide\0"
     field = struct.pack('>I', len(old)) + old
     assert data.count(field) == 1
     return data.replace(field, struct.pack('>I', len(new)) + new)

@@ -6,7 +6,7 @@ oracle; registration is not a new port-specific licence or an override switch.
 ## Installation and privacy
 
 Put your legitimately obtained `SLICKS.REK` in the installed `data/` drawer,
-beside `Slicks` (the game's working directory). Without it, the game remains shareware. A malformed key is
+beside `SlicksNSlide` (the game's working directory). Without it, the game remains shareware. A malformed key is
 an error, not an unlock or a silent fallback. Registration is read at startup;
 it is never stored in configuration, profiles or saved championships.
 

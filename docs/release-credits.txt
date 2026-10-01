@@ -1,7 +1,7 @@
 Components and provenance
 =========================
 
-Original game and data: Slicks'n'Slide by Timo Kauppinen. Original data is not
+Original game and data: Slicks 'N' Slide by Timo Kauppinen. Original data is not
 included. Obtain it separately under its applicable distribution terms.
 
 Amiga display/platform framework: dA JoRMaS AmigaHardware, Bitmap, CopperList

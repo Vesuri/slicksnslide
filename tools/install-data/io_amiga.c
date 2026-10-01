@@ -6,7 +6,7 @@
 #include <string.h>
 struct ExecBase *SysBase;
 struct DosLibrary *DOSBase;
-static const char version[] __attribute__((used,section(".text.ver"))) = "$VER: SlicksInstallData 0.90 (30.09.2026)";
+static const char version[] __attribute__((used,section(".text.ver"))) = "$VER: SlicksNSlideInstallData 0.90 (30.09.2026)";
 #ifdef INSTALL_STACK_TEST
 volatile uint32_t installer_stack_size,installer_stack_unused;
 volatile int installer_result;
@@ -77,7 +77,7 @@ int amiga_main(void) {
     } else if((DOSBase=(struct DosLibrary *)OpenLibrary((CONST_STRPTR)"dos.library",37))) {
         args=ReadArgs((CONST_STRPTR)"ARCHIVE/A,DESTINATION/A,TEMPDIR",values,0);
         if(args) { result=install_data((const char *)values[0],(const char *)values[1],(const char *)(values[2]?values[2]:values[1])); FreeArgs(args); }
-        else io_message("Usage: SlicksInstallData Slix151.zip destination-directory [temporary-directory]");
+        else io_message("Usage: SlicksNSlideInstallData Slix151.zip destination-directory [temporary-directory]");
         CloseLibrary((struct Library *)DOSBase);
     }
 #ifdef INSTALL_STACK_TEST

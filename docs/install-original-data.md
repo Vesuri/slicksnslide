@@ -1,6 +1,6 @@
 # Installer and release packaging
 
-The current distribution is `dist/Slicks-0.90.lha`, containing a `Slicks Install`
+The current distribution is `dist/SlicksNSlide-0.90.lha`, containing a `SlicksNSlide Install`
 drawer and its icon. It replaces the earlier four-file developer ZIP. The
 end-user instructions are [release/ReadMe](../release/ReadMe).
 
@@ -15,12 +15,12 @@ Installer and SetPatch are user-supplied OS tools.
 Installed layout:
 
 ```text
-Slicks/
+SlicksNSlide/
   ReadMe, ReadMe.info
-  Slicks.slave                  WHDLoad launch
-  Slicks.info                   sole game icon (WHDLoad)
+  SlicksNSlide.slave            WHDLoad launch
+  SlicksNSlide.info             sole game icon (WHDLoad)
   data/
-    Slicks                     native game executable
+    SlicksNSlide               native game executable
     SLICKS.000, SLICKS.DAT      untouched publisher originals
     TRACKS/*.SS                195 original tracks
     SLICKS.REK                 optional user's key, never distributed
@@ -49,24 +49,24 @@ staging and the helper; disk scratch is recommended on a 2 MiB machine.
 No private key is read by
 installation, packaging or extraction tests.
 Upgrades remove the obsolete `Play` script, `Play.info` and `SlicksWHDLoad.info`
-launch icons, replacing them with the standard `Slicks.info` WHDLoad icon. The installer
+launch icons, replacing them with the standard `SlicksNSlide.info` WHDLoad icon. The installer
 does not offer to delete the whole drawer containing keys, profiles and saves.
 
 ## Manual installation without Installer 43
 
 From the unpacked installer drawer, create a fresh destination parent and run
-`SlicksInstallData Slix151.zip <destination>/data`. Copy the supplied native
-`Slicks` executable to that data drawer. Change to the data drawer and run
-`Slicks` directly on the default 4096-byte Shell stack. SetPatch should already
+`SlicksNSlideInstallData Slix151.zip <destination>/data`. Copy the supplied native
+`SlicksNSlide` executable to that data drawer. Change to the data drawer and run
+`SlicksNSlide` directly on the default 4096-byte Shell stack. SetPatch should already
 have run at system startup. This uses ordinary AmigaDOS tools; no WHDLoad or
 Installer program is required. For Workbench icons use the normal installer.
-If installing manually under WHDLoad, put `Slicks.slave` beside `data`, then run
-`WHDLoad Slicks.slave PRELOAD`. Requirements are in [whdload.md](whdload.md).
+If installing manually under WHDLoad, put `SlicksNSlide.slave` beside `data`, then run
+`WHDLoad SlicksNSlide.slave PRELOAD`. Requirements are in [whdload.md](whdload.md).
 
 ## Building
 
 Source `amiga/env.sh`. `make dist` builds the game, helper and production slave,
-strips the game HUNK symbols, and creates/audits `dist/Slicks-$(cat VERSION).lha`.
+strips the game HUNK symbols, and creates/audits `dist/SlicksNSlide-$(cat VERSION).lha`.
 Set `RELEASE_DIR` for a separate candidate; an existing archive is never replaced.
 For a release after diagnostic builds, clean/rebuild `amiga` with default options
 while no emulator is using its ELF. Do not package SHADOW/RETCHECK/profile builds.
@@ -87,7 +87,7 @@ Icons follow Vette/Rescue on Fractalus; see [icon provenance](../release/icons/R
 Release: `make release-check` runs the host oracles, the helper test, a
 two-build byte comparison of the stripped executable and a scratch package
 audit in `build/release-check/`. `make dist` (alias `make release`) does a clean
-Amiga rebuild and writes `dist/Slicks-$(cat VERSION).lha`. It refuses to
+Amiga rebuild and writes `dist/SlicksNSlide-$(cat VERSION).lha`. It refuses to
 overwrite an existing archive. `tools/check_release.py` also requires the
 game, slave and Installer `$VER` strings to match `VERSION`, the ReadMe
 section headings and history entry, and the project URL.
@@ -97,12 +97,12 @@ Tests:
 ```sh
 make -C tools/install-data test
 python3 tools/install-data/test_amiga.py
-python3 tools/install-data/test_installer_script.py /local/Installer --package dist/Slicks-0.90.lha
+python3 tools/install-data/test_installer_script.py /local/Installer --package dist/SlicksNSlide-0.90.lha
 python3 tools/install-data/test_installer_script.py /local/Installer --keep  # needs KICKSTART (amiga/env.sh)
 python3 tools/install-data/test_installer_script.py /local/Installer --reinstall
 python3 tools/install-data/test_installer_script.py /local/Installer --no-whd
-python3 tools/test_standalone_release.py /local/test-install/Slicks
-python3 tools/check_release.py dist/Slicks-0.90.lha
+python3 tools/test_standalone_release.py /local/test-install/SlicksNSlide
+python3 tools/check_release.py dist/SlicksNSlide-0.90.lha
 ```
 
 Native tests use locally owned Kickstart/Workbench/SetPatch and the downloaded

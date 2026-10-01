@@ -33,7 +33,7 @@ def main():
     ram_temp='--ram-temp' in sys.argv
     base=Path(tempfile.mkdtemp(prefix='installer-script-',dir=ROOT/'tmp'))
     boot=base/'boot';(boot/'s').mkdir(parents=True);(base/'state').mkdir();(base/'out').mkdir();(base/'scratch').mkdir()
-    dest=base/'out/Slicks';expected=expected_files()
+    dest=base/'out/SlicksNSlide';expected=expected_files()
     if keep or reinstall or incomplete:
         (dest/'data').mkdir(parents=True)
         for name,data in expected.items():
@@ -49,16 +49,16 @@ def main():
         (dest/'SlicksWHDLoad.info').write_bytes(b'legacy WHDLoad icon')
         if not incomplete:(dest/'data/TRACKS/BASIC.SS').write_bytes(b'user modified track and records')
         if keep:expected['TRACKS/BASIC.SS']=b'user modified track and records'
-    for source,name in ((installer,'Installer'),(ROOT/'build/install-data/SlicksInstallData.exe','SlicksInstallData'),
-      (ROOT/'amiga/out/SlicksDiag.exe','Slicks'),(ROOT/'build/whdload/Slicks.slave','Slicks.slave'),
+    for source,name in ((installer,'Installer'),(ROOT/'build/install-data/SlicksNSlideInstallData.exe','SlicksNSlideInstallData'),
+      (ROOT/'amiga/out/SlicksDiag.exe','SlicksNSlide'),(ROOT/'build/whdload/SlicksNSlide.slave','SlicksNSlide.slave'),
       (Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad','WHDLoad'),(ROOT/'release/ReadMe','ReadMe')):
         if not (no_whd and name=='WHDLoad'):shutil.copyfile(source,boot/name)
-    (boot/'Install.info').write_bytes(installer_icon());(boot/'Slicks.inf').write_bytes(installer_icon(game=True));(boot/'ReadMe.info').write_bytes(readme_icon())
+    (boot/'Install.info').write_bytes(installer_icon());(boot/'SlicksNSlide.inf').write_bytes(installer_icon(game=True));(boot/'ReadMe.info').write_bytes(readme_icon())
     script=(ROOT/'release/Install').read_text()
     if '--package' in sys.argv:
         package=Path(sys.argv[sys.argv.index('--package')+1]).resolve()
-        for name in ('Slicks','SlicksInstallData','Slicks.slave','Slicks.inf','Install.info','ReadMe.info','ReadMe','Install'):
-            data=subprocess.run(['lha','pq',str(package),'Slicks Install/'+name],check=True,capture_output=True).stdout
+        for name in ('SlicksNSlide','SlicksNSlideInstallData','SlicksNSlide.slave','SlicksNSlide.inf','Install.info','ReadMe.info','ReadMe','Install'):
+            data=subprocess.run(['lha','pq',str(package),'SlicksNSlide Install/'+name],check=True,capture_output=True).stdout
             (boot/name).write_bytes(data)
         script=(boot/'Install').read_text()
     script=replace_form(script,'(welcome)','(if 0 (welcome))')
@@ -78,7 +78,7 @@ def main():
     script=replace_form(script,'(set #install-data\n    (askbool',f'(set #install-data {int(reinstall)})')
     script=replace_form(script,'(exit)','(exit (quiet))')
     (boot/'Install').write_text(script)
-    (boot/'s/startup-sequence').write_text('CD DH0:\nStack 16384\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nMakeDir RAM:T\nAssign T: RAM:T\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME Slicks MINUSER AVERAGE DEFUSER AVERAGE LOGFILE DH2:installer.log NOPRETEND >DH2:console.log\nList T: ALL >DH2:temp-after.log\nEcho done >DH2:finished\n')
+    (boot/'s/startup-sequence').write_text('CD DH0:\nStack 16384\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nMakeDir RAM:T\nAssign T: RAM:T\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME SlicksNSlide MINUSER AVERAGE DEFUSER AVERAGE LOGFILE DH2:installer.log NOPRETEND >DH2:console.log\nList T: ALL >DH2:temp-after.log\nEcho done >DH2:finished\n')
     print('Fixture:',base,flush=True)
     with (base/'emulator.log').open('w') as log:
         emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory='+('4096' if ram_temp else '0'),
@@ -94,18 +94,18 @@ def main():
             report=(base/'console.log').read_text(errors='replace')
             if no_whd:
                 assert (base/'missing-whd').exists(),report
-                assert not (dest/'data/Slicks').exists()
+                assert not (dest/'data/SlicksNSlide').exists()
                 print('PASS: missing WHDLoad fails before installation')
                 return
             for name,data in expected.items():assert (dest/'data'/name).read_bytes()==data,name
-            assert (dest/'data/Slicks').read_bytes()==(boot/'Slicks').read_bytes(),report
+            assert (dest/'data/SlicksNSlide').read_bytes()==(boot/'SlicksNSlide').read_bytes(),report
             assert not (dest/'Play').exists()
             assert not (dest/'Play.info').exists()
             assert not (dest/'SlicksWHDLoad.info').exists()
-            icon=(dest/'Slicks.info').read_bytes()
-            assert b'WHDLoad\0' in icon and b'SLAVE=SLICKS.SLAVE\0' in icon.upper()
+            icon=(dest/'SlicksNSlide.info').read_bytes()
+            assert b'WHDLoad\0' in icon and b'SLAVE=SLICKSNSLIDE.SLAVE\0' in icon.upper()
             assert b'PRELOAD\0' in icon.upper() and b'WRITECACHE' not in icon.upper()
-            assert (dest/'Slicks.slave').read_bytes()==(boot/'Slicks.slave').read_bytes()
+            assert (dest/'SlicksNSlide.slave').read_bytes()==(boot/'SlicksNSlide.slave').read_bytes()
             if keep or reinstall or incomplete:
                 assert (dest/'data/SLICKS.CFG').read_bytes()==b'keep settings'
                 assert (dest/'data/SLICKS.REK').read_bytes()==b'private placeholder, not a key'

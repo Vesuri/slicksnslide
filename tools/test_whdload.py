@@ -42,19 +42,19 @@ def main():
         p.error('--write-delay must be nonnegative')
     if args.mode == 'championship-edit' and not args.seed_save:
         p.error('--seed-save is required for championship-edit')
-    slave = {'smoke':'Smoke.slave', 'boot':'BootTest.slave', 'load':'LoadTest.slave','race':'RaceTest.slave','quit':'ExitTest.slave','championship':'ChampionshipTest.slave','championship-edit':'ChampionshipEditTest.slave','records':'RecordsTest.slave'}.get(args.mode, 'Slicks.slave')
+    slave = {'smoke':'Smoke.slave', 'boot':'BootTest.slave', 'load':'LoadTest.slave','race':'RaceTest.slave','quit':'ExitTest.slave','championship':'ChampionshipTest.slave','championship-edit':'ChampionshipEditTest.slave','records':'RecordsTest.slave'}.get(args.mode, 'SlicksNSlide.slave')
     base = Path(tempfile.mkdtemp(prefix='whdload-test-', dir=ROOT/'tmp'))
     print('Fixture:', base, flush=True)
     boot, game = base/'boot', base/'game'
     for d in (boot/'s', boot/'devs/Kickstarts', game/'data', base/'state'):
         d.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(args.whdload, game/'WHDLoad')
-    shutil.copyfile(ROOT/'build/whdload'/slave, game/'Slicks.slave')
+    shutil.copyfile(ROOT/'build/whdload'/slave, game/'SlicksNSlide.slave')
     if args.mode != 'smoke':
         shutil.copyfile(args.rom, boot/'devs/Kickstarts'/args.rom.name)
         shutil.copyfile(args.rtb, boot/'devs/Kickstarts'/(args.rom.name+'.RTB'))
     if args.mode in ('load', 'quit', 'timed','race','championship','championship-edit','records'):
-        shutil.copyfile(args.exe, game/'data/Slicks')
+        shutil.copyfile(args.exe, game/'data/SlicksNSlide')
     if args.mode in ('quit', 'timed','race','championship','championship-edit','records'):
         with zipfile.ZipFile(ROOT/'tmp/Slix151-release.zip') as z:
             for name in z.namelist():
@@ -73,7 +73,7 @@ def main():
     (boot/'s/startup-sequence').write_text(
         'DF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\n'
         'DF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\n'
-        f'CD DH1:\nWHDLoad Slicks.slave {preload}{write_options}SPLASHDELAY=0 NOREQ COREDUMP FILELOG TIMEOUT={args.ticks} >DH0:result\n'
+        f'CD DH1:\nWHDLoad SlicksNSlide.slave {preload}{write_options}SPLASHDELAY=0 NOREQ COREDUMP FILELOG TIMEOUT={args.ticks} >DH0:result\n'
         'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\n')
     with (base/'emulator.log').open('w') as log:
         emu = subprocess.Popen(['fs-uae', '--amiga_model=A1200', '--cpu='+args.cpu,

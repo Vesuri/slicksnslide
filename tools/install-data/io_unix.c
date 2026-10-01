@@ -43,6 +43,6 @@ int io_rename(const char *a,const char *b) { return rename(a,b)==0; }
 void io_message(const char *s) { fputs(s,stdout); fputc('\n',stdout); fflush(stdout); }
 int main(int argc,char **argv) {
     signal(SIGINT,cancel); signal(SIGTERM,cancel);
-    if(argc!=3 && argc!=4) { io_message("Usage: SlicksInstallData Slix151.zip destination-directory [temporary-directory]"); return 20; }
+    if(argc!=3 && argc!=4) { io_message("Usage: SlicksNSlideInstallData Slix151.zip destination-directory [temporary-directory]"); return 20; }
     return install_data(argv[1],argv[2],argc==4?argv[3]:argv[2]);
 }
