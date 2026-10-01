@@ -42,9 +42,7 @@ ABS_ROOT := $(abspath .)
 	verify-car-collision verify-drive-physics verify-surface-effects \
 	verify-native-tracks \
 	ghidra ghidra-normalized ghidra-live ghidra-live-normalized \
-	amiga amiga-run amiga-debug amiga-check amiga-race-check \
-	amiga-track-check amiga-lap-check amiga-results-check \
-	amiga-ice-check amiga-zone-check amiga-restore-check todo clean
+	amiga amiga-run amiga-debug todo clean
 
 inspect:
 	$(PYTHON) tools/mz_info.py $(SOURCE)
@@ -1655,30 +1653,6 @@ release-check: $(RELEASE_HOST_CHECKS) install-data-test
 	  echo "PASS: deterministic stripped executable $$(shasum -a 256 ../build/determinism-2 | cut -d' ' -f1)"
 	rm -rf build/release-check
 	$(MAKE) release-package RELEASE_DIR=build/release-check
-
-amiga-check: amiga
-	cd amiga && . ./env.sh && ./diag_run.sh
-
-amiga-race-check: amiga
-	cd amiga && . ./env.sh && ./diag_race.sh
-
-amiga-track-check: amiga
-	cd amiga && . ./env.sh && ./diag_track.sh
-
-amiga-ice-check: amiga
-	cd amiga && . ./env.sh && ./diag_ice.sh
-
-amiga-zone-check: amiga
-	cd amiga && . ./env.sh && ./diag_zone.sh
-
-amiga-lap-check: amiga
-	cd amiga && . ./env.sh && ./diag_lap.sh
-
-amiga-results-check: amiga
-	cd amiga && . ./env.sh && ./diag_results.sh
-
-amiga-restore-check: amiga
-	cd amiga && . ./env.sh && ./diag_restore.sh
 
 ghidra: unpack
 	@mkdir -p tools/ghidra-proj

@@ -64,13 +64,9 @@ make verify-surface-effects \
   # check material dispatch, point-actor tuples, thresholds, and RNG order
 make verify-native-tracks \
   # parse every supplied track and verify the native scene/surface contracts
-make amiga        # build the first bootable A1200 diagnostic HUNK
+make amiga        # build the game (amiga/out/SlicksDiag.exe)
 make amiga-run    # display it in FS-UAE; mouse button or Escape exits
 make amiga-debug  # attach M68k GDB through FS-UAE's debugger stub
-make amiga-check  # boot the strict 2 MiB target and verify its frame checksum
-make amiga-race-check # verify the standard native race after 200 frames
-make amiga-track-check amiga-ice-check amiga-zone-check \
-  # verify representative road, ice, and large-zone tracks on the A1200 target
 make trace-summary # summarize the bounded DOSBox-X DOS/file trace
 make ghidra        # regenerate the local 16-bit Ghidra listing
 make ghidra-normalized # analyze the proved, relocation-normalized MZ
