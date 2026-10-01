@@ -4477,6 +4477,10 @@ int main(void)
         g_slicks_whdload=1;
         argv+=8;
     }
+    if(slicks_amiga_storage_create()) {
+        PutStr((CONST_STRPTR)"Slicks: cannot reserve WHDLoad whole-file save workspace.\n");
+        goto cleanup;
+    }
     while (argv[argc])
         ++argc;
     while (argc && (unsigned char)argv[argc - 1] <= ' ')
@@ -7605,6 +7609,7 @@ cleanup:
     slicks_amiga_player_menu_destroy(g_slicks_title_help); g_slicks_title_help=0;
     g_slicks_options_renderer.surface=0;
     slicks_amiga_menu_workspace_destroy();
+    slicks_amiga_storage_destroy();
     slicks_amiga_help_workspace_unbind();
     g_slicks_options_configuration=0;
     slicks_amiga_audio_destroy(&audio);

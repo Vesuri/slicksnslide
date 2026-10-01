@@ -33,6 +33,9 @@ Working rules are in [development-verification.md](development-verification.md).
   separate disk-access periods of roughly five seconds. Eliminate the repeated
   switches without reintroducing the cached-new-file hang or silently raising
   the documented memory requirement. Verify both record and setup saves.
+  Whole-file code is implemented and measured: 8 MiB/PRELOAD meets a maximum
+  of one OS switch per transaction; 4 MiB/no-PRELOAD still needs multiple
+  switches. Await the user's WHDLoad-memory choice and manual confirmation.
 
 B1–B13 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and

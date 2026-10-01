@@ -10,3 +10,11 @@
 	.balign 2
 	.asciz "$VER: Slicks 0.1 (30.09.2026)"
 	.balign 2
+	.section .data.whd_storage,"awR"
+	.balign 4
+	.globl slicks_whd_storage
+slicks_whd_storage:
+	.ascii "SLKSIO01"
+	.word 1,40
+	.long 0,0
+	.long 0,0,0,0,0

@@ -1543,3 +1543,39 @@ The default memory requirement remains 4 MiB Fast; PRELOAD is optional at
 Manual switch-count confirmation remains open: the updated icon is installed
 in `tmp/manual-whd-final-ITpRib`. These findings supersede the preceding
 NOWRITECACHE recommendation; no single-switch claim is made from FileLog alone.
+# Whole-file WHDLoad writer — 2026-10-01 (B14 implementation)
+
+This is a game-code change, not another icon-setting workaround. A versioned
+retained descriptor binds the slave's C-ABI resload_SaveFile bridge. Every
+write passes a complete encoded file. Copy-based moves read the complete source
+before the single write, using 80,218 bytes reserved only at WHDLoad startup
+and released on cleanup. No 512-byte write loop or KickFS empty-file creation
+remains in this path. Standalone storage is unchanged.
+
+The CBSWITCH callback measures real OS round trips; it uses the documented
+no-stack/A0-continuation ABI. An initial instrumentation error used RTS and was
+caught by WHDLoad's destroyed-register check (`tmp/whdload-test-eabdjik8`);
+the corrected callback is used in all passing results below. Transaction
+counters are copied to the slave before UnLoadSeg for independent dump reading.
+
+- `tmp/whdload-test-yfwumdyx`, 4 MiB/no PRELOAD: two transactions, seven
+  switches total, maximum four, seven whole-file writes, largest 1,694 bytes.
+- `tmp/whdload-test-rc1n2kqn`, 8 MiB/PRELOAD: two transactions, one switch
+  total, maximum one, seven whole-file writes, largest 1,694 bytes.
+- `tmp/whdload-test-qe_mg225`, warm championship create/overwrite/delete,
+  8 MiB/PRELOAD: two transactions, zero switches, five whole-file writes.
+  Explicit `--max-save-switches 1` passes.
+- `tmp/whdload-test-6up5vz_f`, warm CFG/PLR and record overwrite,
+  8 MiB/PRELOAD: two transactions, two switches total, maximum one, nine
+  whole-file writes. Explicit `--max-save-switches 1` passes.
+- 4 MiB/PRELOAD still times out (`tmp/whdload-test-x_8d8f8k`). Reducing slave
+  Fast reservation to 512 KiB and zero also times out (`r9l8_vjf`, `barg0fjk`).
+  These were isolated slave build overrides; the production reservation stays
+  1 MiB plus Kickstart. No memory-requirement increase has been adopted.
+
+Host whole-file failure gates: 2,278 paired-save cases, 2,080 championship
+cases, 2,080 track-record cases and 676 track-list cases, with complete originals
+recoverable under single/double failures. Standalone storage suites also pass.
+The maximum 10,000-track save roundtrip remains allocation-free during saving.
+This implements whole-file writes but does not close B14's manual pause-count
+gate or establish the one-switch result at 4 MiB.

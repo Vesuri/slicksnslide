@@ -5,7 +5,9 @@
         INCLUDE whdmacros.i
 
 CHIPMEMSIZE = $200000
+        IFND FASTMEMSIZE
 FASTMEMSIZE = $100000
+        ENDC
 NUMDRIVES = 0
 WPDRIVES = 0
 BLACKSCREEN
@@ -93,6 +95,7 @@ _bootdos
         jsr (_LVOLoadSeg,a6)
         move.l d0,d7
         beq .readerror
+        bsr _patch_storage
         IFD TEST
         lea (_loadmark,pc),a0
         bsr _mark
@@ -137,6 +140,12 @@ _bootdos
         lea (_args,pc),a0
         jsr (4,a1)
         move.l d0,d6
+        ; Preserve transaction counters before UnLoadSeg for the dump auditor.
+        move.l (_storage_stats,pc),a0
+        lea (_saved_stats,pc),a1
+        moveq #4,d0
+.stats  move.l (a0)+,(a1)+
+        dbf d0,.stats
         move.l 4.w,a6
         lea (_stack,pc),a0
         jsr (_LVOStackSwap,a6)
@@ -187,6 +196,76 @@ _stackmem dc.l 0
 _stack dc.l 0,0,0
 _oldhome dc.l 0
 _oldargs dc.l 0
+_storage_stats dc.l 0
+        dc.b "SLKSTAT1"
+_saved_stats dc.l 0,0,0,0,0
+_switches dc.l 0
+_switch_tags dc.l WHDLTAG_CBSWITCH_SET
+        dc.l 0,0
+
+_patch_storage
+        move.l d7,d0
+.seg    tst.l d0
+        beq .missing
+        add.l d0,d0
+        add.l d0,d0
+        move.l d0,a0
+        move.l (-4,a0),d1
+        move.l (a0)+,d0
+        sub.l #48,d1          ; segment overhead plus complete 40-byte block
+        bmi .seg
+        move.l a0,a1
+        add.l d1,a1
+.scan   cmpa.l a1,a0
+        bhi .seg
+        cmp.l #$534c4b53,(a0)+
+        bne .scan
+        cmp.l #$494f3031,(a0)
+        bne .scan
+        cmp.l #$00010028,(4,a0)
+        bne .scan
+        tst.l (8,a0)
+        bne .missing
+        lea (_whole_save,pc),a1
+        move.l a1,(8,a0)
+        lea (_switches,pc),a1
+        move.l a1,(12,a0)
+        lea (16,a0),a0
+        lea (_storage_stats,pc),a1
+        move.l a0,(a1)
+        lea (_switch_tags,pc),a0
+        lea (_count_switch,pc),a1
+        move.l a1,(4,a0)
+        jsr (resload_Control,a2)
+        rts
+.missing
+        pea (_storage_missing,pc)
+        pea TDREASON_FAILMSG
+        jmp (resload_Abort,a2)
+
+; C ABI: name, bytes, size, error pointer. One resload operation creates and
+; writes the complete file: no KickFS empty-file creation or partial writes.
+_whole_save
+        move.l a2,-(sp)
+        move.l (8,sp),a0
+        move.l (12,sp),a1
+        move.l (16,sp),d0
+        move.l (_resload,pc),a2
+        jsr (resload_SaveFile,a2)
+        move.l (20,sp),a0
+        move.l d1,(a0)
+        move.l (sp)+,a2
+        rts
+_count_switch
+        ; CBSWITCH has no usable stack and returns through A0, not RTS.
+        ; Only D0/D1 may be clobbered; preserve the borrowed address register.
+        move.l a1,d1
+        lea (_switches,pc),a1
+        addq.l #1,(a1)
+        move.l d1,a1
+        jmp (a0)
+_storage_missing dc.b "Slicks whole-file save interface missing or invalid.",0
+        EVEN
         IFD TEST
 _bootearly
         move.l (_resload,pc),a2

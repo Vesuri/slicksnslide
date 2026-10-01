@@ -9,6 +9,7 @@ import argparse
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import tempfile
 import time
@@ -20,6 +21,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--mode', choices=('smoke', 'boot', 'load', 'quit', 'timed','race','championship','championship-edit','records'), default='quit')
     p.add_argument('--seed-save', type=Path, help='Previous test E2E.SSS for overwrite/restart validation')
+    p.add_argument('--seed-setup', type=Path, help='Previous test data drawer containing CFG and PLR for warm-save validation')
+    p.add_argument('--max-save-switches', type=int, help='Maximum measured OS round trips per save transaction')
     p.add_argument('--whdload', type=Path, default=Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad')
     p.add_argument('--rom', type=Path)
     p.add_argument('--rtb', type=Path)
@@ -58,6 +61,9 @@ def main():
                     target=game/'data'/name; target.parent.mkdir(parents=True,exist_ok=True); target.write_bytes(z.read(name))
     if args.seed_save:
         shutil.copyfile(args.seed_save, game/'data/E2E.SSS')
+    if args.seed_setup:
+        for name in ('SLICKS.CFG','SLICKS.PLR'):
+            shutil.copyfile(args.seed_setup/name,game/'data'/name)
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
     write_options = 'NOWRITECACHE ' if args.no_write_cache else ''
@@ -86,6 +92,14 @@ def main():
             output = (boot/'result').read_text(errors='replace') if (boot/'result').exists() else ''
             report = (game/'.whdl_register').read_text(encoding='latin1') if (game/'.whdl_register').exists() else ''
             assert report, f'No WHDLoad core dump: {base}\n{output}'
+            dump=(game/'.whdl_dump').read_bytes()
+            marker=b'SLKSTAT1'; at=dump.find(marker)
+            if at>=0:
+                stats=struct.unpack_from('>5I',dump,at+len(marker))
+                print('SAVE_STATS transactions=%d switches=%d max_switches=%d whole_writes=%d max_bytes=%d'%stats)
+            if args.max_save_switches is not None:
+                assert at>=0 and stats[0]>0, 'Missing save-switch measurements'
+                assert stats[2]<=args.max_save_switches, 'Too many disk switches: '+str(stats)
             if args.mode in ('timed','race'):
                 assert 'DEBUG caused.' in report, report + output
                 files = (game/'.whdl_log').read_text(encoding='latin1')
@@ -98,7 +112,7 @@ def main():
                     assert (game/'smoke-passed').read_bytes() == b'PASS'
                 if args.mode == 'records':
                     files = (game/'.whdl_log').read_text(encoding='latin1')
-                    assert any('[WritOff]' in line and 'name=TRACKS/' in line for line in files.splitlines()), 'No record write exercised'
+                    assert any('[Write]' in line and 'name=TRACKS/' in line for line in files.splitlines()), 'No whole-file record write exercised'
                     assert (game/'data/SLICKS.CFG').is_file() and (game/'data/SLICKS.PLR').is_file()
                     with zipfile.ZipFile(ROOT/'tmp/Slix151-release.zip') as original:
                         assert any(p.read_bytes()!=original.read('TRACKS/'+p.name)
@@ -112,7 +126,7 @@ def main():
                     if args.mode == 'championship-edit':
                         assert not (game/'data/TEMP.SSS').exists(), 'Deleted test save remains'
                         files = (game/'.whdl_log').read_text(encoding='latin1')
-                        for operation, name in (('[WritOff]', 'TEMP.SSS'), ('[WritOff]', 'E2E.SSS.bak'), ('[Delete]', 'TEMP.SSS')):
+                        for operation, name in (('[Write]', 'TEMP.SSS'), ('[Write]', 'E2E.SSS.bak'), ('[Delete]', 'TEMP.SSS')):
                             assert any(operation in line and 'name='+name in line for line in files.splitlines()), (operation,name)
                 print(f'PASS: {args.mode} slave returned normally; WHDLoad core saved')
         finally:

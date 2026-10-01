@@ -30,12 +30,21 @@ combination, but passes at 4 MiB without PRELOAD and 8 MiB with PRELOAD.
 NOWRITECACHE avoids the hang but exposes every transaction write as a slow
 OS switch; it is a diagnostic fallback, not the installed default.
 
-The slave prefixes the game arguments with `WHDLOAD `, selecting a bounded
-512-byte copy/close/delete replacement for Rename. Standalone keeps native
-Rename. Both paths retain the same staging, backup and recovery guards; no
-runtime allocation is added. Incomplete copies never cause deletion of their
-source, and failure to remove a partial destination stops the transaction
-with recovery files retained.
+The slave prefixes the game arguments with `WHDLOAD ` and patches the retained
+40-byte `SLKSIO01` interface. All WHDLoad file writes now call resload_SaveFile
+with a complete image: no empty-file creation followed by partial writes.
+Copy/delete replacements for Rename read the complete source into an 80,218-byte
+WHDLoad-only buffer reserved at startup and freed on shutdown. Standalone keeps
+native Rename and allocates no extra buffer. Both paths retain the same staging,
+backup and recovery guards. Incomplete copies never cause deletion of their
+source; unremovable partial destinations preserve recovery files.
+
+The slave's documented CBSWITCH callback counts actual OS round trips, using
+no stack and returning via A0. The test harness reports per-transaction totals
+and maximums from the slave snapshot; `--max-save-switches 1` enforces the
+one-switch limit. This does not count the final exit-time cache flush. Whole-file
+writes alone do not guarantee a single switch: the measured 4 MiB/no-PRELOAD
+case still takes up to four per transaction; 8 MiB/PRELOAD meets the limit.
 
 Build with `make -C whdload`. `race-test` and `exit-test` create separate test
 slaves which only pass native diagnostic arguments to the unchanged game.
@@ -62,3 +71,4 @@ Save regressions use `championship-test`, `championship-edit-test` and
 the default 4 MiB configuration, or `--fast 8192` to test PRELOAD.
 The edit test takes `--seed-save PATH/TO/E2E.SSS` from a successful first run.
 It exercises ordinary menu input for cancel, create, overwrite and delete.
+Use `--seed-setup PATH/TO/data` for warm CFG/PLR overwrite tests.

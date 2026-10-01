@@ -76,6 +76,16 @@ static LONG Rename(CONST_STRPTR a,CONST_STRPTR b)
 }
 static LONG DeleteFile(CONST_STRPTR path)
 { if(fault()) return 0; files[index_of(path)].present=0; return 1; }
+static LONG whole_file_write(const char *path,const unsigned char *bytes,unsigned long size,LONG *io_error)
+{
+    struct File *f=&files[index_of(path)];
+    assert(!f->present && size<=sizeof f->bytes);
+    int failed=fault();
+    f->present=1; f->size=failed?(unsigned)size/2:(unsigned)size;
+    memcpy(f->bytes,bytes,f->size);
+    *io_error=failed?999:0;
+    return !failed;
+}
 #define SLICKS_SETUP_STORAGE_HOST_TEST
 #include "../src/platform/amiga/amiga_setup_storage.c"
 static int equals(unsigned i,const unsigned char *bytes,unsigned size)

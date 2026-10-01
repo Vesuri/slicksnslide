@@ -10,6 +10,37 @@
 #include "../../ui/screen_capture.h"
 unsigned char g_slicks_diag_backup_protect;
 unsigned char g_slicks_whdload;
+#ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+struct WhdStorage {
+    unsigned char magic[8]; unsigned short version,size;
+    LONG (*save)(const char *,const unsigned char *,unsigned long,LONG *);
+    volatile unsigned long *switches;
+    unsigned long transactions,total_switches,max_switches,writes,max_write;
+};
+_Static_assert(sizeof(struct WhdStorage)==40,"WHDLoad storage descriptor ABI");
+extern struct WhdStorage slicks_whd_storage;
+static unsigned char *copy_buffer;
+int slicks_amiga_storage_create(void)
+{
+    if(!g_slicks_whdload) return 0;
+    if(!slicks_whd_storage.save) return -1;
+    copy_buffer=AllocMem(SLICKS_SAVED_GAME_MAX_BYTES,MEMF_ANY);
+    return copy_buffer?0:-1;
+}
+void slicks_amiga_storage_destroy(void)
+{
+    if(copy_buffer) FreeMem(copy_buffer,SLICKS_SAVED_GAME_MAX_BYTES);
+    copy_buffer=0;
+}
+static LONG whole_file_write(const char *path,const unsigned char *bytes,unsigned long size,LONG *error)
+{
+    ++slicks_whd_storage.writes;
+    if(size>slicks_whd_storage.max_write) slicks_whd_storage.max_write=size;
+    return slicks_whd_storage.save(path,bytes,size,error);
+}
+#else
+static unsigned char copy_buffer[SLICKS_SAVED_GAME_MAX_BYTES];
+#endif
 unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
 unsigned char g_slicks_diag_record_write_alloc_fault,g_slicks_diag_record_write_alloc_reached;
 
@@ -39,6 +70,11 @@ static int write_new(void *context,const char *path,const unsigned char *bytes,u
     struct SlicksSetupStorageReport *r=context;
     int present=exists(context,path);
     if(present) { if(present>0) failure(r,path,ERROR_OBJECT_EXISTS); return -2; }
+    if(g_slicks_whdload) {
+        LONG error=0;
+        if(whole_file_write(path,bytes,size,&error)) return 0;
+        failure(r,path,error); return -1;
+    }
     BPTR file=Open((CONST_STRPTR)path,MODE_NEWFILE);
     if(!file) { failure(r,path,IoErr()); return -2; }
     unsigned long at=0; int failed=0;
@@ -60,29 +96,28 @@ static int rename_file(void *context,const char *from,const char *to)
         /* KickFS has no ACTION_RENAME_OBJECT. Copy to an absent destination,
          * close both handles successfully, then remove the source. Never
          * discard the only complete image after a partial copy. */
-        unsigned char buffer[512];
         BPTR input=Open((CONST_STRPTR)from,MODE_OLDFILE);
         if(!input) { failure(r,from,IoErr()); return -1; }
-        BPTR output=Open((CONST_STRPTR)to,MODE_NEWFILE);
-        if(!output) { failure(r,to,IoErr()); Close(input); return -1; }
         int failed=0;
-        for(;;) {
-            LONG got=Read(input,buffer,sizeof buffer);
+        unsigned long size=0;
+        while(size<SLICKS_SAVED_GAME_MAX_BYTES) {
+            LONG got=Read(input,copy_buffer+size,SLICKS_SAVED_GAME_MAX_BYTES-size);
             if(got<0) { failure(r,from,IoErr()); failed=1; break; }
             if(!got) break;
-            LONG at=0;
-            while(at<got) {
-                LONG n=Write(output,buffer+at,got-at);
-                if(n<=0) { failure(r,to,n<0?IoErr():ERROR_DISK_FULL); failed=1; break; }
-                at+=n;
-            }
-            if(failed) break;
+            size+=(unsigned long)got;
         }
-        if(!failed && !Flush(output)) { failure(r,to,IoErr()); failed=1; }
-        if(!Close(output)) { failure(r,to,IoErr()); failed=1; }
+        if(!failed && size==SLICKS_SAVED_GAME_MAX_BYTES) {
+            unsigned char extra;
+            LONG got=Read(input,&extra,1);
+            if(got) { failure(r,from,got<0?IoErr():ERROR_OBJECT_WRONG_TYPE); failed=1; }
+        }
         if(!Close(input)) { failure(r,from,IoErr()); failed=1; }
-        if(!failed && DeleteFile((CONST_STRPTR)from)) return 0;
-        if(!failed) failure(r,from,IoErr());
+        if(failed) return -1; /* Destination has not been created. */
+        LONG error=0;
+        if(whole_file_write(to,copy_buffer,size,&error)) {
+            if(DeleteFile((CONST_STRPTR)from)) return 0;
+            failure(r,from,IoErr());
+        } else failure(r,to,error);
         /* -2 forbids transaction rollback from deleting staged recovery data. */
         if(!DeleteFile((CONST_STRPTR)to)) { failure(r,to,IoErr()); return -2; }
         return -1;
@@ -117,9 +152,16 @@ static enum SlicksSetupSaveResult store_files(const struct SlicksSetupFile *file
     struct Process *process=(struct Process *)FindTask(0);
     APTR window=process->pr_WindowPtr;
     process->pr_WindowPtr=(APTR)-1;
+    unsigned long before=g_slicks_whdload?*slicks_whd_storage.switches:0;
 #endif
     enum SlicksSetupSaveResult result=slicks_store_files(files,count,ops);
 #ifndef SLICKS_SETUP_STORAGE_HOST_TEST
+    if(g_slicks_whdload) {
+        unsigned long switches=*slicks_whd_storage.switches-before;
+        ++slicks_whd_storage.transactions;
+        slicks_whd_storage.total_switches+=switches;
+        if(switches>slicks_whd_storage.max_switches) slicks_whd_storage.max_switches=switches;
+    }
     process->pr_WindowPtr=window;
 #endif
     return result;

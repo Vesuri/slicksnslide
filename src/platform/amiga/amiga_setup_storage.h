@@ -5,6 +5,9 @@
 #include "../../game/setup_storage.h"
 #include "../../game/track_lists.h"
 #include "../../game/saved_game.h"
+/* WHDLoad-only whole-file copy scratch, reserved before hardware takeover. */
+int slicks_amiga_storage_create(void);
+void slicks_amiga_storage_destroy(void);
 /* Explicit TRACKSQ/TRACKSC diagnostics only; zero during normal launches. */
 extern unsigned char g_slicks_diag_track_read_fault,g_slicks_diag_track_read_reached;
 /* OPTIONSBX/Y: one rejected record-save scratch span, never normal input. */
