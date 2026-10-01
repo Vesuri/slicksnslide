@@ -35,7 +35,9 @@ Working rules are in [development-verification.md](development-verification.md).
   the documented memory requirement. Verify both record and setup saves.
   Whole-file code is implemented and measured: 8 MiB/PRELOAD meets a maximum
   of one OS switch per transaction; 4 MiB/no-PRELOAD still needs multiple
-  switches. Await the user's WHDLoad-memory choice and manual confirmation.
+  switches. Resolve the remaining 4 MiB behavior or obtain an explicit memory
+  requirement decision; the watched 8 MiB/PRELOAD save test is confirmed
+  acceptable (evidence in [whdload.md](whdload.md)).
 
 B1–B13 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and

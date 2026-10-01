@@ -48,6 +48,15 @@ case still takes up to four per transaction; 8 MiB/PRELOAD meets the limit.
 Use `--real-time` in the test harness for watchable runs without fast-forward,
 with real CPU speed. Allow a longer `--seconds` host safety ceiling for these runs.
 
+On 2026-10-01 the user watched the real-time, muted records test with 8 MiB
+Fast RAM and PRELOAD and confirmed that disk accesses were now reasonable,
+including the observed exit. Fixture `tmp/whdload-test-qu_10c8u` returned
+normally: two save transactions, nine whole-file writes, one measured OS
+round trip in total (maximum one per transaction). Record changes and setup
+files passed the harness checks. This confirms the visible save behavior in
+that configuration, not the unresolved 4 MiB case or the full production-icon
+release checklist.
+
 Build with `make -C whdload`. `race-test` and `exit-test` create separate test
 slaves which only pass native diagnostic arguments to the unchanged game.
 They are never packaged. `timed` uses the actual production slave and normal
