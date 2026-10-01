@@ -8,7 +8,7 @@ from pathlib import Path
 from package_release import ORIGINAL_HASHES, PREFIX, crc16
 from installer_icon import installer_icon, readme_icon
 
-REQUIRED = {"SlicksNSlide", "SlicksNSlide.slave", "SlicksNSlide.inf", "SlicksNSlideInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt", "CREDITS.txt"}
+REQUIRED = {"SlicksNSlide", "SlicksNSlide.slave", "SlicksNSlide.inf", "SlicksNSlideInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt"}
 
 def check_release_versions(payloads, version, archive_name):
     assert archive_name == 'SlicksNSlide-'+version.decode('ascii')+'.lha', 'wrong archive version'

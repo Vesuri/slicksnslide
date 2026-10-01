@@ -11,24 +11,9 @@ in [fidelity.md](fidelity.md); working rules are in
 
 ## Release 0.90 (30.09.2026)
 
-- [x] Fixes B1–B14 (real-time race clock, adaptive publication, fidelity
-  fixes, one complete write per saved file, zero-expansion WHDLoad slave).
-- [x] Packaging in the sibling WHDLoad layout
-  ([install-original-data.md](install-original-data.md), [whdload.md](whdload.md)).
-- [x] D-1 clean-tree `make release-check`; D-2 F1/CITY/WHACKO display audits
-  and the RETCHECK retention check; D-3 manual stock-A1200 session
-  (installer, standalone, WHDLoad icon with and without PRELOAD).
-- [x] D-4: `SlicksNSlide-0.90.lha` built and audited; hashes recorded in
-  [release.md](release.md).
 - [ ] Tag `v0.90` on the release commit when the user asks.
 
-## Not in scope
-
-- Worst-case 20 ms updates. Game speed is correct at any frame rate; see
-  [frame-pacing.md](frame-pacing.md) and [performance.md](performance.md).
-- The rate of once-per-drawn-update work (particle ageing, actor animation,
-  homing turn step). On DOS it is CPU-dependent and the Amiga's up to 50
-  updates/s falls inside the PC range.
-- The registration order-form image: the original `webf_ord.bmp` is absent.
-- The manual joystick test, deferred by the user.
-- General translator expansion; see [phases.md](phases.md).
+Completed release checks and package hashes are in [release.md](release.md).
+No implementation or release-validation items remain open. Intentional
+differences and limitations are documented in [fidelity.md](fidelity.md),
+[performance.md](performance.md) and [phases.md](phases.md).

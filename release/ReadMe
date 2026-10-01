@@ -152,8 +152,8 @@
  --------
  Original game: Timo Kauppinen. Amiga port: Vesa Halttunen (Vesuri).
  WHDLoad kick31/kickfs framework: WHDLoad SDK (public domain).
- Further third-party acknowledgements are in the installer drawer's
- CREDITS.txt.
+ Amiga display framework: dA JoRMaS, from DanceDiverse3.
+ Chunky-to-planar conversion: Mikael Kalms (public domain).
 
 
  Installer helper:

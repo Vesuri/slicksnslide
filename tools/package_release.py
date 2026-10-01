@@ -67,7 +67,6 @@ def main():
         "ReadMe.info": readme_icon(),
         "ReadMe": (root / "release/ReadMe").read_bytes(),
         "puff-license.txt": (root / "tools/install-data/puff.h").read_bytes(),
-        "CREDITS.txt": (root / "docs/release-credits.txt").read_bytes(),
     }
     for name, data in files.items():
         if hashlib.sha256(data).hexdigest() in ORIGINAL_HASHES:

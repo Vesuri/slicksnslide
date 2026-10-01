@@ -23,7 +23,7 @@ and that no original data, key, save, ROM or diagnostic binary is included.
 The package follows the sibling WHDLoad packages: a `SlicksNSlide` drawer with its
 icon, the native `SlicksNSlide` executable, `SlicksNSlide.slave`, the game icon template
 `SlicksNSlide.inf`, `SlicksNSlideInstallData`, `Install`/`ReadMe` and their icons,
-`CREDITS.txt` and `puff-license.txt`.
+and `puff-license.txt`. Credits are included in ReadMe, not a separate file.
 
 Version strings live in `VERSION`, `src/platform/amiga/version.s`,
 `whdload/SlicksSlave.s` (`slv_info` and `$VER`),
@@ -51,12 +51,13 @@ Before tagging, on the release candidate:
 
 ## 0.90 (30.09.2026)
 
-Package `SlicksNSlide-0.90.lha`, 282,472 bytes, built by `make dist` from the
-release commit:
+Package `SlicksNSlide-0.90.lha`, 281,948 bytes. Repacked on 2026-10-01 to
+omit `CREDITS.txt`, retaining credits in ReadMe and unchanged validated
+release binaries. The exact-content audit passes with ten archive members.
 
 | File | SHA-256 |
 |---|---|
-| `SlicksNSlide-0.90.lha` | `67b359350405bbc21847d8eb9f40e212b627910883af49ed867088871588f30e` |
+| `SlicksNSlide-0.90.lha` | `81a08559b99a8cde9e81b4067cdda1903b52ab96507f4c99c8c5d33d8befbb5b` |
 | `SlicksNSlide` (stripped game) | `e99da8fc04053f1fd9c2608147e895614f5d1a559a04ff37f950e58978c75d3d` |
 | `SlicksNSlide.slave` | `b488a62cad803fce834ab83292bb91a99e41ad7e516648d12e3249fb3d657c2d` |
 | `SlicksNSlideInstallData` | `0488941c22a2544a140ee759f87a0f14340240a640318fd2d14e1753b2046c0b` |
