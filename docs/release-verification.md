@@ -1517,3 +1517,29 @@ Intermediate candidate (still 0.1 pending D-3, not final 0.90 release):
   Eleven-member archive audit passes, including the required installer
   NoWriteCache setting. Automated menu-input tests do not close the separate
   manual production-icon release gate.
+# WHDLoad repeated save pauses — 2026-10-01 (B14)
+
+User manual evidence: the production icon now launches, trial nag reaches the
+main menu, and Quit returns to Workbench. However, standings continuation and
+Quit each cause roughly 16 disk-access periods, around five seconds each.
+NOWRITECACHE is therefore not an acceptable installed default.
+
+Pokeri's newer memory-bisection evidence motivated two controls on the same
+Slicks executable. Normal write caching passes new-file creation and return at
+4 MiB Fast without PRELOAD (`tmp/whdload-test-oxlmpk8l`), and at 8 MiB Fast with
+PRELOAD (`tmp/whdload-test-f9fzm9r6`). The prior 4 MiB/PRELOAD cached control
+still represents a failing configuration, not a general prohibition on caching.
+
+Further passing controls: `tmp/whdload-test-u3l3wmta` runs a natural race,
+updates track records and saves CFG/PLR at 4 MiB without PRELOAD;
+`tmp/whdload-test-2z1axouz` validates warm create/overwrite/delete;
+`tmp/whdload-test-y2899lrw` runs the record/CFG/PLR flow at 8 MiB with PRELOAD.
+All return normally with write caching enabled and no transaction leftovers.
+`tmp/installer-script-qvsm0429` confirms the real Installer writes WRITECACHE
+and neither PRELOAD nor NOWRITECACHE, retaining existing data.
+
+The default memory requirement remains 4 MiB Fast; PRELOAD is optional at
+8 MiB. The unchanged save transaction now uses WHDLoad's normal deferred writes.
+Manual switch-count confirmation remains open: the updated icon is installed
+in `tmp/manual-whd-final-ITpRib`. These findings supersede the preceding
+NOWRITECACHE recommendation; no single-switch claim is made from FileLog alone.

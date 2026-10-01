@@ -103,8 +103,9 @@ def main():
             assert not (dest/'Play.info').exists()
             assert not (dest/'SlicksWHDLoad.info').exists()
             icon=(dest/'Slicks.info').read_bytes()
-            assert b'WHDLoad\0' in icon and b'SLAVE=SLICKS.SLAVE\0' in icon.upper() and b'PRELOAD\0' in icon.upper()
-            assert b'NOWRITECACHE\0' in icon.upper()
+            assert b'WHDLoad\0' in icon and b'SLAVE=SLICKS.SLAVE\0' in icon.upper()
+            assert b'WRITECACHE\0' in icon.upper()
+            assert b'NOWRITECACHE\0' not in icon.upper() and b'PRELOAD\0' not in icon.upper()
             assert (dest/'Slicks.slave').read_bytes()==(boot/'Slicks.slave').read_bytes()
             if keep or reinstall or incomplete:
                 assert (dest/'data/SLICKS.CFG').read_bytes()==b'keep settings'

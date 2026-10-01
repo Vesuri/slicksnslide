@@ -3,7 +3,8 @@
 Standalone remains supported on PAL A1200 / 2 MiB Chip / no Fast RAM.
 WHDLoad is optional and has separate overhead: the slave reserves 2 MiB Chip,
 1 MiB expansion memory and 512 KiB Kickstart space. Tested with 4 MiB Fast RAM
-and PRELOAD; this is not a claim that WHDLoad fits a stock no-Fast-RAM machine.
+without PRELOAD, or 8 MiB Fast with PRELOAD; this is not a claim that WHDLoad
+fits a stock no-Fast-RAM machine.
 
 WHDLoad 17+, 68020 and AGA are required. Supply Kickstart 3.1 and its matching
 RTB in Devs:Kickstarts or WHDCOMMON:. The SDK supports kick40063.A600,
@@ -22,11 +23,12 @@ Both launch methods use identical native game code and the same data/saves.
 Normal menu exit saves pending changes. F10 is immediate WHDLoad quit and
 cannot execute deferred game saving. Keep the installation writable.
 
-**Saving requires NOWRITECACHE.** The installer sets this tooltype alongside
-PRELOAD. For a Shell launch use `WHDLoad Slicks.slave PRELOAD NOWRITECACHE`;
-PRELOAD can be omitted. Do not remove NOWRITECACHE: the tested WHDLoad 19.2
-KickFS combination stalls with newly created cached saves even after avoiding
-its unsupported Rename operation. The uncached path returns normally.
+**Use WRITECACHE without PRELOAD at 4 MiB Fast.** This is the installed default.
+For a Shell launch use `WHDLoad Slicks.slave WRITECACHE`. PRELOAD is supported
+at 8 MiB Fast. Creating cached files stalls in the tested 4 MiB/PRELOAD
+combination, but passes at 4 MiB without PRELOAD and 8 MiB with PRELOAD.
+NOWRITECACHE avoids the hang but exposes every transaction write as a slow
+OS switch; it is a diagnostic fallback, not the installed default.
 
 The slave prefixes the game arguments with `WHDLOAD `, selecting a bounded
 512-byte copy/close/delete replacement for Rename. Standalone keeps native
@@ -56,7 +58,7 @@ images. All dumps/pictures remain ignored local evidence.
 
 Save regressions use `championship-test`, `championship-edit-test` and
 `records-test` build targets, and the matching `--mode championship`,
-`--mode championship-edit`, and `--mode records`. Pass `--no-write-cache` for
-the supported launch configuration; omission is a diagnostic negative control.
+`--mode championship-edit`, and `--mode records`. Pass `--no-preload` for
+the default 4 MiB configuration, or `--fast 8192` to test PRELOAD.
 The edit test takes `--seed-save PATH/TO/E2E.SSS` from a successful first run.
 It exercises ordinary menu input for cancel, create, overwrite and delete.

@@ -28,6 +28,12 @@ Working rules are in [development-verification.md](development-verification.md).
 
 ## B. Fixes
 
+- [ ] **B14. Batch WHDLoad saves:** the manual production-icon test now exits
+  successfully, but standings continuation and Quit each trigger about 16
+  separate disk-access periods of roughly five seconds. Eliminate the repeated
+  switches without reintroducing the cached-new-file hang or silently raising
+  the documented memory requirement. Verify both record and setup saves.
+
 B1–B13 are closed; evidence is in [frame-pacing.md](frame-pacing.md),
 [fidelity-audit.md](fidelity-audit.md) and
 [release-verification.md](release-verification.md).

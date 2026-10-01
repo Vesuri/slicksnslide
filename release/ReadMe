@@ -25,12 +25,15 @@
  The WHDLoad icon requires WHDLoad version 17.0 or better and extra
  Fast RAM. The slave reserves 2 MiB ChipMem plus 1 MiB expansion memory and
  512 KiB Kickstart space; the host system, WHDLoad and PRELOAD need additional
- memory. Tested with 2 MiB Chip and 4 MiB Fast RAM, including PRELOAD.
+ memory. Use 4 MiB Fast without PRELOAD, or 8 MiB Fast with PRELOAD.
 
- Keep the installed NoWriteCache tooltype enabled: cached creation of save
- files can hang WHDLoad on return. For a Shell launch use:
-   WHDLoad Slicks.slave PRELOAD NOWRITECACHE
- PRELOAD is optional; NOWRITECACHE is required for reliable saving.
+ The installed icon enables WriteCache and leaves PRELOAD off, preserving
+ memory for cached saves and avoiding repeated disk-access pauses. For a
+ Shell launch on a 4 MiB Fast machine use:
+   WHDLoad Slicks.slave WRITECACHE
+ PRELOAD may be added with 8 MiB Fast. Do not enable it at 4 MiB: creating
+ cached saves can hang when too little memory remains. NOWRITECACHE avoids
+ that hang but causes long, repeated disk-access pauses and is not recommended.
 
  WHDLoad also requires a legally obtained Kickstart 3.1 image and matching
  relocation file in "Devs:Kickstarts" or "WHDCOMMON:". Supported pairs are:
