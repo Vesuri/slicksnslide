@@ -10,6 +10,23 @@ from installer_icon import installer_icon, readme_icon
 
 REQUIRED = {"Slicks", "Slicks.slave", "Slicks.inf", "SlicksInstallData", "Install", "Install.info", "ReadMe", "ReadMe.info", "puff-license.txt", "CREDITS.txt"}
 
+def check_release_versions(payloads, version, archive_name):
+    assert archive_name == 'Slicks-'+version.decode('ascii')+'.lha', 'wrong archive version'
+    markers = {
+        'Slicks': b'$VER: Slicks ',
+        'Slicks.slave': b'$VER: Slicks.slave ',
+        'SlicksInstallData': b'$VER: SlicksInstallData ',
+        'Install': b'; $VER: Install ',
+        'ReadMe': b'version ',
+    }
+    for name, marker in markers.items():
+        expected = marker+version+b' ('
+        if version == b'0.90':
+            expected += b'30.09.2026)'
+        assert expected in payloads[name], 'wrong release version/date: '+name
+    if version == b'0.90':
+        assert b'Version 0.90 (30.09.2026)' in payloads['Slicks.slave'], 'wrong slave information version/date'
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)
@@ -62,6 +79,7 @@ def main():
     assert b"Mark Adler" in payloads["puff-license.txt"]
     assert not any(n.lower().endswith((".rek",".cfg",".plr",".sss",".000",".dat",".ss")) for n in payloads)
     version=(root/"VERSION").read_text().strip().encode("ascii")
+    check_release_versions(payloads, version, args.archive.name)
     assert b"$VER: Slicks "+version+b" (" in payloads["Slicks"], "wrong game version"
     assert b"$VER: Slicks.slave "+version+b" (" in payloads["Slicks.slave"], "wrong slave version"
     assert b"; $VER: Install "+version+b" (" in payloads["Install"], "wrong installer version"
