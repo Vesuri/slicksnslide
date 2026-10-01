@@ -1,5 +1,10 @@
 # Direct native translation architecture
 
+This is the design for an automatic translator. The shipped port did not
+complete it: each routine was instead recovered into native C/C++ or hand-written
+68020 assembly under the same rules (byte-exact little-endian guest data,
+oracle-tested against the original x86 code). See [phases.md](phases.md).
+
 The production path never represents the running 286 as generated C operating
 on a CPU structure. A context exists only as the interchange format at runtime
 boundaries.

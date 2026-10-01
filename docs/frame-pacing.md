@@ -1,224 +1,122 @@
-# Race frame pacing and the 20 ms target (2026-09-30)
+# Race frame pacing
 
-Measured basis for the frame-pacing items in [open-work.md](open-work.md).
-Build: HEAD `538c6f5` plus the uncommitted Load-storage draft (menu-only; no
-gameplay code). Stock PAL A1200, 68020, 2 MiB Chip, no Fast RAM, 603 racing
-updates per track. Logs are local-only: `tmp/ship-audit-20260930-{0..3}.log`
-(`amiga/bench_tracks.sh`, DETAIL 0) and
-`tmp/pcprof-ship-audit-t{0..3}-20260930.{bin,elf,log}` (`amiga/pc_profile.sh`).
+Two parts set the race's timing. The race clock decides how much game time
+each rendered update runs. The publication policy decides when a prepared
+update reaches the display. Both match the original's behaviour on a slow
+PC: game speed is correct at any frame rate, and only the number of drawn
+updates per second varies.
 
-## Update cost
+## The original's model
 
-One raster line is 64 µs, and one PAL frame is 312 lines (20 ms).
-"Work" is step, HUD, audio and C2P, and excludes the sync wait
-(`tools/summarize_benchmark.sh`).
+The DOS game programs PIT channel 0 to about 91 Hz (count 13107 at speed
+100). Each rendered update runs as many physics ticks as have elapsed since
+the previous one, capped at 45 (`1000:fe5e..fe98`; see
+[rendering.md](rendering.md)).
 
-| Track | Mean | p50 | p90 | p95 | p99 | Max | Over 20 ms |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| BASIC | 15.3 | 15.3 | 18.8 | 19.7 | 21.0 | 22.3 | 22 (3.6%) |
-| F1 | 18.3 | 18.0 | 22.1 | 23.3 | 25.0 | 26.0 | 186 (30.8%) |
-| CITY | 14.9 | 14.5 | 18.1 | 19.2 | 20.2 | 21.4 | 9 (1.5%) |
-| WHACKO | 15.7 | 15.1 | 19.8 | 21.0 | 22.6 | 24.9 | 50 (8.3%) |
+- Car physics, the countdown and the lap clocks run in real time on any CPU.
+- Particle ageing, actor animation and the page toggle advance once per
+  rendered update, so their rate depends on frame rate on DOS too. The
+  Amiga's rate of up to 50 updates/s is within the DOS range.
 
-The mean is under 20 ms on every track. Meeting a worst case of 20 ms
-would need a 24% cut on F1 and 4–20% on the other tracks.
+## Real-time race clock (B1)
 
-Since 2026-09-26, dozens of accepted and rejected experiments have each moved
-work by 0.03–1% (see [performance-profiling.md](performance-profiling.md)).
-No remaining candidate is known to deliver double-digit percentages.
+`next_physics_ticks` (`src/game/race_runtime.c`) follows `fe5e..fe98`
+whenever the race has a raster clock:
 
-## Where the time goes
+- **Source.** `slicks_amiga_platform_raster_time`
+  (`src/platform/amiga/amiga_platform.cpp`) returns PAL raster lines as
+  `vblank_count*313 + line`, reread until the frame count and beam position
+  agree. `slicks_physics_clock_lines` (`src/game/race_timing.h`) adds 1193182
+  phase units per line, and one tick consumes `divisor*15625`. The rate is
+  therefore exact for the real 15625 Hz line rate, not the nominal 50 Hz.
+- **First update.** It records the clock origin, waits for one tick and
+  integrates a batch of one.
+- **Later updates.** Each takes every tick elapsed since the previous read,
+  waits while none has elapsed, and caps the batch at
+  `SLICKS_PHYSICS_BATCH_MAX` (45).
+- **Lagging read.** A read just after line 0, before the VBI has counted
+  the frame, appears to go backwards. `physics_clock_lines` adds no time
+  then and keeps its reference. Single reads are clamped to 40000 lines,
+  which is more than 45 ticks at the slowest divisor.
+- **Speed changes.** `slicks_race_set_timer` restarts only the phase, so
+  game time stays monotonic. This is adaptation D4: the original refunds
+  time here.
+- **Lap clocks** advance two units per tick (`advance_car_clock`).
 
-This is the target CIA-B PC sampler. Its roughly 12% uniform overhead makes it
-good for shares only. "Wait" is time spent in
-`slicks_amiga_platform_wait_display_end`. The other columns split the
-remaining busy time, grouping routines by name.
+**Pause.** As in the original, the clock keeps running while paused. The
+first update after a pause therefore runs a capped batch of 45 ticks
+(about half a second of game time) and then continues normally.
 
-| Track | Wait (all / over-budget updates) | Simulation | Wheel emission | Particles | Track sprites/retention | Cars+shadows | Dirty+C2P | HUD | Audio | Other |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| BASIC | 28% / 44% | 28% | 7% | 18% | 8% | 10% | 10% | 4% | 4% | 10% |
-| F1 | 34% / 42% | 28% | 5% | 14% | 20% | 8% | 10% | 4% | 3% | 7% |
-| CITY | 24% / 45% | 31% | 6% | 12% | 16% | 10% | 11% | 5% | 4% | 7% |
-| WHACKO | 32% / 45% | 28% | 7% | 14% | 15% | 9% | 12% | 5% | 3% | 7% |
+**Installation.** `slicks_diag.c` sets `race->raster_clock` on every plain
+launch. Benchmarks opt in with `NATURAL{B,S}<track>RT`
+(`SLICKS_REALTIME_CLOCK=1`, DETAIL 0 or 8, no HUD phase).
 
-- **Busy work is flat.** No single routine exceeds 7% of samples. The largest is
-  the C race-step body with inlined helpers.
-- **Over-budget updates** shift about 5–10 points of busy time towards
-  particles and wheel emission.
-- **On F1**, track sprites and retention are the one track-specific excess.
+**Fixed-clock diagnostic mode.** Without a raster clock, `next_physics_ticks`
+calls `slicks_physics_clock_advance`. This credits exactly 1193182/50 PIT
+input cycles per update, however long the update took. All deterministic
+fixtures, benchmarks, shadow and RETCHECK runs, and the WHDLoad diagnostic
+races use this mode. Their `FINAL_STATE` therefore depends only on the
+inputs, not on timing, so a performance change must reproduce it exactly.
+In real play, the fixed clock caused slow motion: an update that spanned
+two frames ran game time at half speed. That is why B1 replaced it on
+plain launches.
 
-The largest single item is the wait itself. On an over-budget update, the loop
-misses the display-end edge and spins until the next one. That is up to a full
-frame of idle CPU, and it snaps the update to 40 ms.
+The HUD status clock follows vblanks on its own (`slicks_status_clock_advance`).
 
-## Game-time defect: fixed time per update
+Checks: `make verify-race-timing` (line clock against 64-bit arithmetic at
+all 151 UI speeds) and `make verify-drive-physics` (first batch, zero-tick
+wait, long-run total, 45 cap, lagging read, disabled timer). Real-time
+benchmarks print `REALTIME_CLOCK`; ticks match raster time within one tick.
 
-**The original.** It programs PIT channel 0 to about 91.03 Hz (count 13107 at
-speed 100). Each rendered update then runs as many physics ticks as have
-elapsed, capped at 45 (`1000:fe5e..fe98`; [actor-layers.md](actor-layers.md)).
-- Car physics, the countdown and lap clocks therefore run in real time on any
-  CPU.
-- Particles, actors and the page toggle advance once per rendered update,
-  so their rate is frame-rate dependent on DOS too.
+## Adaptive publication (B2)
 
-**The port.** `slicks_physics_clock_advance` (`src/game/race_timing.h`) credits
-exactly 1/50 s (1193182 PIT input cycles / 50) to every update, however long
-the update really took.
-- An update that spans two frames therefore runs game time at half speed.
-- At the measured cadence, cars and lap clocks run at 74% of real time on F1,
-  90% on WHACKO, 94% on BASIC and 97% on CITY.
-- The HUD status clock alone follows real vblanks (`slicks_status_clock_advance`).
+The display is single-buffered. C2P writes the dirty regions of the shown
+bitmap. The race loop in `slicks_diag.c` prepares an update and then calls
+`slicks_amiga_platform_wait_publication`:
 
-**The faithful fix** feeds elapsed real time into the same accumulator, adding
-1193182/50 per elapsed vblank. It keeps the 45-tick cap. The inner integrator
-already loops per tick. Nothing else needs to change: the original's
-once-per-update particle and actor work remains once per update.
+- If the update finished before the first display-end edge (line $100)
+  after the previous publication, it waits for that edge. C2P then writes
+  during the lower and upper borders, as it did before B2.
+- Otherwise it publishes at once and returns 1. The update is late and may
+  tear, but only where the beam crosses a dirty region while C2P writes it.
+  Unchanged background and HUD cells cannot tear.
+- The next deadline is the first edge strictly after the publication time.
+  `slicks_amiga_platform_begin` clears it. Missed slots are not queued, and
+  the loop never waits a second time between audio and C2P.
 
-## Publication policy
+Late-publication side effects are bounded:
 
-**Current policy** (`803fbf2`): prepare the update, then publish at the next
-fresh display-end edge (line $100).
-- Visible writes stay inside the lower border and upper border.
-- The display is single-buffered: C2P writes the displayed bitmap's dirty
-  regions.
+- Effect requests are interrupt-locked and staged for the VBI (`play_effect`,
+  `slicks_amiga_audio_tick`), so a mid-frame start is safe.
+- A boundary palette change can split one frame.
+- The audio-in-blank diagnostic skips late publications.
 
-**Model.** `tools/sync_policy_model.py` replays each log's per-update
-`WORK_SAMPLE` sequence. Its prediction for the current policy lands within
-2.5% of the measured cadence.
+`LATE_PUBLICATIONS` in benchmark logs counts late updates in the measured
+window. `diag_display_end_limit.gdb` checks the one-publication-per-VBlank
+limit and the on-time publication row. Publication timing never feeds back
+into simulation: a fixed-clock run with adaptive publication keeps its
+`FINAL_STATE`.
 
-**Adaptive policy.** Publish at the next edge if the update finished before
-it; otherwise publish at once.
+**Result.** With both B1 and B2, the four benchmark tracks run at about
+46–50 updates/s. Without B2 the rate was 33–48, because an over-budget
+update snapped to 40 ms. F1 is the heaviest track, and about half its
+updates publish late. The user watched an F1 race on the normal build and
+saw no visible tearing.
 
-| Track | Measured fps now | Model, current | Model, adaptive | Late (torn) publications | Worst interval |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| BASIC | 47.2 | 48.2 | 50.0 | 35 (6%) | 22.3 ms |
-| F1 | 37.0 | 38.2 | 48.9 | 239 (40%) | 26.0 ms |
-| CITY | 48.6 | 49.3 | 50.0 | 14 (2%) | 21.4 ms |
-| WHACKO | 45.2 | 46.2 | 49.8 | 66 (11%) | 24.9 ms |
+## Alternatives not taken
 
-**What tears.** A late publication can tear only where the beam crosses a
-dirty region while C2P writes it. Static background and HUD cells that did not
-change cannot tear.
-
-**Late-publication side effects.**
-- Boundary palette copper writes and audio effect starts, which today follow
-  the wait, happen mid-frame.
-- The palette change is a rare one-frame split.
-- Audio uses VBI-staged DMA restarts ([audio-channel-plan.md](audio-channel-plan.md)),
-  so late starts must be checked rather than assumed safe.
-
-## Alternatives considered
-
-- **Several simulation steps per rendered frame** (fixed-step logic, render
-  skip): rejected.
-  - `slicks_race_step` interleaves restore, simulation, particle ageing,
-    permanent-mark commits (`actor_page` parity) and drawing.
-  - Running it twice per publication doubles restore and draw on the frames
-    that are already slow.
-  - It drops the first step's sound events (reset per step).
-  - It ages particles faster than the original ever does on a slow machine.
-  - The original's own scheme is variable ticks per update, and the
-    real-time accumulator above reproduces that scheme exactly.
-- **Double buffering** to remove tearing: rejected for this release.
-  - It needs a second 64 KB Chip bitmap. The 10,000-track fixture leaves only
-    about 95 KB free.
-  - Every dirty region must also reach the other buffer, so C2P traffic rises
-    on every frame.
-- **Further micro-optimization towards a worst case of 20 ms:** not planned.
-  With the two changes above, game speed is correct at any frame rate, and
-  the modelled cadence is 49–50 fps on all four benchmark tracks.
-
-## Real-time race clock implemented (B1, 2026-09-30)
-
-`next_physics_ticks` now follows `1000:fe5e..fe98` whenever a race has a
-raster clock. The clock is installed on every plain launch; benchmark
-fixtures opt in with `NATURAL{B,S}<track>RT` (`SLICKS_REALTIME_CLOCK=1`).
-
-**Clock source.** `slicks_amiga_platform_raster_time` returns 15625 Hz PAL
-raster lines (`vblank_count*313+line`). Each line adds 1193182 phase units,
-and a tick consumes `divisor*15625`. So the rate is exact for the actual
-PAL line rate, not the nominal 50 Hz.
-
-**Update rules** (as in the original):
-- The first update waits for one tick and integrates a batch of one.
-- Later updates take every tick elapsed since the previous read, waiting
-  while none has elapsed, capped at 45.
-- The counter keeps running while paused, so the first update after a pause
-  is capped at 45.
-- A read that lags the VBI by one frame adds no time.
-
-**Deterministic fixtures** keep the nominal one-update clock unchanged.
-
-### Checks
-
-- `verify-race-timing` passes: the line clock is exact against 64-bit
-  arithmetic at all 151 UI speeds, including 40000-line reads.
-- `verify-drive-physics` passes: first batch of one, waiting on zero ticks, the
-  rational total over 20000 reads, the 45 cap, a lagging read, and the
-  disabled timer.
-- Fixed-clock benchmarks (`tmp/b1-fixed-{0..3}.log`) reproduce every
-  `FINAL_STATE` from `tmp/ship-audit-20260930-*`.
-- The real-time benchmarks (`tmp/b1-realtime-{0..3}.log`) print
-  `REALTIME_CLOCK`. Game ticks match the raster time to within one tick:
-
-| Track | Ticks | Raster lines | Expected ticks |
-| --- | ---: | ---: | ---: |
-| BASIC | 1415 | 242912 | 1416.3 |
-| F1 | 1956 | 335876 | 1957.9 |
-| CITY | 1393 | 239152 | 1394.4 |
-| WHACKO | 1504 | 258256 | 1505.6 |
-
-Expected ticks include the first batch of one. Lap clocks advance two units
-per tick (`advance_car_clock`), so they are real time too.
-
-### Cost
-
-Real-time physics runs more ticks on slow updates. Previously the game ran
-slower than real time, which is why it did less work per second. Real-time
-work per update:
-
-| Track | Mean | p95 | Max | fps now (hard sync) | Model, adaptive | Late |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| BASIC | 15.5 | 21.0 | 24.9 | 44.5 | 49.9 | 15% |
-| F1 | 19.7 | 25.6 | 30.7 | 33.1 | 46.8 | 53% |
-| CITY | 14.2 | 17.2 | 22.5 | 48.4 | 50.0 | 3% |
-| WHACKO | 16.6 | 21.9 | 26.1 | 41.5 | 49.5 | 21% |
-
-The adaptive model replays the measured real-time samples. It ignores the
-feedback whereby faster publication runs fewer ticks per update, so its
-estimate is slightly pessimistic.
-
-## Adaptive publication implemented (B2, 2026-09-30)
-
-`slicks_amiga_platform_wait_publication` replaces the race loop's
-unconditional edge wait:
-- if the update finished before the first display-end edge after the previous
-  publication, it waits for that edge as before;
-- otherwise it publishes immediately and returns 1.
-
-The deadline uses the 313-line raster clock and is cleared by
-`platform_begin`. The audio-in-blank diagnostic skips late publications.
-Effect requests are interrupt-locked and staged for the VBI (`play_effect`,
-`slicks_amiga_audio_tick`), so they are safe mid-frame. The benchmark's
-zero-VBI-spill gate held on every run. `LATE_PUBLICATIONS` counts late
-publications in the benchmark window.
-
-Results, real-time clock plus adaptive publication (`tmp/b2-adaptive-rt-{0..3}.log`):
-
-| Track | Updates | Late | fps | Hard-sync fps (B1 runs) | Model prediction |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| BASIC | 603 | 43 | 49.8 | 44.5 | 49.9 |
-| F1 | 622 | 308 | 46.1 | 33.1 | 46.8 |
-| CITY | 607 | 34 | 50.0 | 48.4 | 50.0 |
-| WHACKO | 603 | 95 | 49.9 | 41.5 | 49.5 |
-
-Other checks:
-- **Fixed-clock F1** (`tmp/b2-adaptive-fixed-1.log`) keeps `FINAL_STATE`
-  unchanged; publication timing does not affect simulation.
-- **`diag_display_end_limit.gdb`**, updated to count late publications, passes
-  in `NATURALQB` (`tmp/b2-limit.log`): 120 publications over 120 VBlanks,
-  3 late, and every on-time publication at row 257.
-
-**User acceptance (2026-09-30).** The user watched an F1 race on the normal
-build (`amiga/run.sh`, real-time clock, adaptive publication) and accepted it,
-reporting no visible tearing. B2 is closed.
+- **Several simulation steps per drawn frame.** `slicks_race_step` interleaves
+  restore, simulation, particle ageing, permanent-mark commits and drawing.
+  Running it twice doubles restore and draw on frames that are already slow,
+  drops the first step's sound events, and ages particles faster than the
+  original ever does. Variable ticks per update is the original's own model.
+- **Double buffering to remove tearing.** It needs a second 64 KB Chip bitmap,
+  and the 10,000-track fixture leaves about 95 KB free. Every dirty region
+  would also have to reach both buffers.
+- **A 20 ms worst-case update.** Mean work is below 20 ms on every track, but
+  the slowest updates reach 21–26 ms. Fixing that would need a 4–24% cut,
+  most of it on F1. Busy time is spread thinly: no routine exceeds about 7%
+  of samples. Dozens of later experiments each moved total work by
+  0.03–1% (see [performance.md](performance.md)). With B1 and B2, game speed
+  is correct whatever the frame rate, so worst-case 20 ms updates are out of
+  ship scope ([open-work.md](open-work.md)).

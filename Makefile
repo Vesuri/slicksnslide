@@ -1760,9 +1760,9 @@ ghidra-live-normalized: analyze-execution-trace analyze-vga-sites rebuild-mz
 			$(ABS_ROOT)/disasm/live-normalized-listing.txt
 
 todo:
-	@sed -n '/^## Immediate next step/,$$p' PROJECT.md
+	@sed -n '/^## /,$$p' docs/open-work.md
 	@printf '\nTracked work markers:\n'
-	@! git grep -nE 'TODO|FIXME|HACK' -- ':!PROJECT.md' ':!docs/open-work.md' || true
+	@! git grep -nwE 'TODO|FIXME|HACK' -- ':!docs/open-work.md' || true
 
 build/memory_test.bin: tools/memory_test.s src/platform/amiga/memory.s | build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<

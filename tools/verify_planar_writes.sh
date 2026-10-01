@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 unicorn_prefix="${UNICORN_PREFIX:-/opt/homebrew/opt/unicorn}"
 test_dir="$(mktemp -d "${TMPDIR:-/tmp}/slicks-planar.XXXXXX")"
 sdk_dir="$(cd "$(dirname "$(command -v m68k-amiga-elf-gcc)")/../m68k-amiga-elf/sys-include" && pwd)"
-for name in vga_to_chunky c2p1x1_8_c5_bm; do
+for name in vga_to_chunky c2p1x1_8_c5_bm c2p16_interleaved; do
   vasmm68k_mot -m68020 -Felf -quiet -x -no-opt -nowarn=62 \
     -I"$sdk_dir" -o "$test_dir/$name.o" "src/platform/amiga/$name.s"
 done
@@ -14,7 +14,7 @@ vasmm68k_mot -m68020 -Felf -quiet -x -no-opt \
   -o "$test_dir/particle_runtime.o" src/game/particle_runtime.s
 vasmm68k_mot -m68020 -Felf -quiet -x -no-opt \
   -o "$test_dir/sgfx_mult320.o" src/graphics/sgfx_mult320.s
-objects=("$test_dir/vga_to_chunky.o" "$test_dir/c2p1x1_8_c5_bm.o" "$test_dir/particle_runtime.o" "$test_dir/sgfx_mult320.o")
+objects=("$test_dir/vga_to_chunky.o" "$test_dir/c2p1x1_8_c5_bm.o" "$test_dir/c2p16_interleaved.o" "$test_dir/particle_runtime.o" "$test_dir/sgfx_mult320.o")
 m68k-amiga-elf-ld --section-start=code=0x1000 \
   -e slicks_chunky_rect_to_amiga --oformat=binary \
   -o "$test_dir/writers.bin" "${objects[@]}"

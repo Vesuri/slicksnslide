@@ -56,4 +56,5 @@ ground truth.
 4. Prove x86 semantics and 68020 lowering on isolated instructions and blocks.
 5. Run a translated end-to-end skeleton on the target before optimizing.
 
-See `PROJECT.md` and `docs/phases.md` for current status and exit criteria.
+See `README.md` for the project overview, `docs/open-work.md` for current work
+and `docs/phases.md` for how the gates were met.

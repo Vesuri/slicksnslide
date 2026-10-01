@@ -76,7 +76,11 @@ make ghidra        # regenerate the local 16-bit Ghidra listing
 make ghidra-normalized # analyze the proved, relocation-normalized MZ
 make ghidra-live   # seed observed blocks and curated VGA symbols, export listing
 make ghidra-live-normalized # apply the same live map to the normalized MZ
-make todo          # immediate step and tracked work markers
+make todo          # open work and tracked work markers
+make release       # stripped game, production slave and installer helper
+make dist          # dist/Slicks-$(cat VERSION).lha
+make release-check # release host checks, determinism, package build and audit
+make -C whdload    # production and test WHDLoad slaves (see whdload.md)
 ```
 
 The AGA diagnostic launchers require the user's AmigaOS `SetPatch` at

@@ -3,7 +3,7 @@
 ## Supplied artifact
 
 The supplied `SLICKS.EXE` is a Compack-compressed DOS MZ executable. Its exact
-identity and the derived runtime identity are recorded in `PROJECT.md`. Original
+identity and the derived runtime identity are recorded in `README.md`. Original
 and byte-derived files are ignored by Git.
 
 ## Companion files named by the runtime

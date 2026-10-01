@@ -1,7 +1,23 @@
 # Phases and gates
 
-Architectural roadmap, not the day-to-day completion queue. Current native-port
-work and deferred checks live in [open-work.md](open-work.md).
+The original roadmap and how it was actually met. Current work lives in
+[open-work.md](open-work.md).
+
+## Outcome at 0.90
+
+Phases 0, 1, 5 and 7 are complete. Phase 6 is complete for the shipped game:
+every subsystem runs natively, and optimization stopped once B1/B2 made game
+speed correct at any frame rate ([performance.md](performance.md)).
+
+Phases 2–4 (a general automatic x86 -> IR -> 68020 translator) were
+deliberately not completed. The live entry-point and external-surface map
+(Phase 2) was taken as far as the port needed
+([external-surface.md](external-surface.md)), and the game was then ported by
+recovering each routine into native C/C++ or hand-written 68020 assembly, every
+one checked against the original x86 code under an independent oracle
+([validation-harness.md](validation-harness.md)). The principles in
+[architecture.md](architecture.md) still describe how a translator should be
+built if that work resumes; it is outside the current scope.
 
 ## Phase 0 — scaffold and source proof
 

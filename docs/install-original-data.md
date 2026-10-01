@@ -1,6 +1,6 @@
 # Installer and release packaging
 
-The current distribution is `dist/Slicks-0.1.lha`, containing a `Slicks Install`
+The current distribution is `dist/Slicks-0.90.lha`, containing a `Slicks Install`
 drawer and its icon. It replaces the earlier four-file developer ZIP. The
 end-user instructions are [release/ReadMe](../release/ReadMe).
 
@@ -97,12 +97,12 @@ Tests:
 ```sh
 make -C tools/install-data test
 python3 tools/install-data/test_amiga.py
-python3 tools/install-data/test_installer_script.py /local/Installer --package dist/Slicks-0.1.lha
+python3 tools/install-data/test_installer_script.py /local/Installer --package dist/Slicks-0.90.lha
 python3 tools/install-data/test_installer_script.py /local/Installer --keep  # needs KICKSTART (amiga/env.sh)
 python3 tools/install-data/test_installer_script.py /local/Installer --reinstall
 python3 tools/install-data/test_installer_script.py /local/Installer --no-whd
 python3 tools/test_standalone_release.py /local/test-install/Slicks
-python3 tools/check_release.py dist/Slicks-0.1.lha
+python3 tools/check_release.py dist/Slicks-0.90.lha
 ```
 
 Native tests use locally owned Kickstart/Workbench/SetPatch and the downloaded

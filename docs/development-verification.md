@@ -2,9 +2,10 @@
 
 Working procedures, not an open-work list. See [open-work.md](open-work.md)
 for scope, pending decisions and paused/deferred work, and [../CLAUDE.md](../CLAUDE.md)
-for project rules. Historical evidence and rejected experiments belong in
-[performance-profiling.md](performance-profiling.md) and [fidelity-audit.md](fidelity-audit.md).
-Consult those records before revisiting a rejected design or repeating a test.
+for project rules. Accepted and rejected optimizations are summarised in
+[performance.md](performance.md) and intentional deviations in
+[fidelity.md](fidelity.md); the detailed historical logs are in git history.
+Consult them before revisiting a rejected design or repeating a test.
 An isolated routine oracle, a native smoke test and a production-screen comparison
 prove different things; none alone proves whole-game fidelity.
 
@@ -14,10 +15,8 @@ prove different things; none alone proves whole-game fidelity.
   comparison, then expensive correctness/rendering validation only for
   promising candidates, followed by final timing confirmation. Do not pay
   for full validation of a candidate already rejected by performance.
-- Current profiling baseline is
-  `tmp/pcprof-post-bound-{f1,whacko}-20260928`, captured from 7eeeb1f
-  with exact companion ELFs and zero missed samples.
-  The profiling document records all earlier measurements and rejected work.
+- Profile with the CIA-B PC sampler (`amiga/pc_profile.sh`, see
+  [performance.md](performance.md)); GDB sampling is vsync-locked.
 - Compare `amiga/bench_tracks.sh` against an exact parent-build control;
   FINAL_STATE must match. Use uninterrupted timing, not debugger-stopped runs.
   Include HUD phases when timing variation could obscure a regression.
@@ -32,7 +31,7 @@ prove different things; none alone proves whole-game fidelity.
   Force relevant object rebuilds when changing SHADOW/RETCHECK flags.
 - Never rebuild an ELF in use by an emulator. Debug runs are muted; keep
   run.sh audible. Close every emulator session started for this work.
-- Commit each verified piece as Vesa Halttunen <vesuri@jormas.com>, with
+- Commit each verified piece with the repository's Vesuri identity, with
   hooks/signing disabled and no co-author trailer. Push only when asked.
   Never commit original executables, dumps, traces, screenshots or other
   byte-derived game material.
