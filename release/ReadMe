@@ -8,7 +8,9 @@
  PARTY HAS BEEN POINTED AT SUCH POSSIBILITIES OF DAMAGE.
 
  This install applies to "Slicks'n'Slide", a native Amiga port of the DOS
- shareware racing game by Timo Kauppinen.
+ shareware racing game by Timo Kauppinen. The game data is not included:
+ the installer takes it from the original shareware Slix151.zip, which is
+ freely available from the publisher (see Installation below).
 
 
  Requirements:
@@ -112,15 +114,26 @@
 
  Registration:
  -------------
- Support the original author by registering. Place your own valid SLICKS.REK
- in the installed data/ drawer. Shareware restrictions and reminders remain
- without it; a valid key enables the original registered functionality.
- Invalid keys are rejected. This package contains no key or bypass.
+ Slicks'n'Slide is shareware, and this port keeps the original shareware
+ features to encourage registering: restricted shop weapons, the trial
+ reminder at startup and the ordering screen on exit. Please support the
+ original author by registering at:
+
+ https://www.slicksnslide.com
+
+ The game's own ordering help (Y or F1 on the exit screen) also explains it.
+ Registering gives you a personal key file, SLICKS.REK. To use it, copy
+ SLICKS.REK into the installed Slicks/data/ drawer, next to the Slicks
+ executable, and start the game again. The same file works for both WHDLoad
+ and standalone play, and reinstalling or updating keeps it. The registered
+ owner's name then appears on the title screen and the shareware restrictions
+ and reminders are gone. An invalid key is rejected. This package contains no
+ key or bypass.
 
 
  History:
  --------
- version 0.1 (30.09.2026):
+ version 0.90 (30.09.2026):
  - initial Amiga release
 
 
