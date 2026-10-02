@@ -339,11 +339,15 @@ cp -f ../ref/SLICKS.DAT "$DH1/SLICKS.DAT"
 mkdir -p "$DH1/TRACKS"
 cp -f ../ref/TRACKS/*.SS "$DH1/TRACKS/"
 
+# Diagnostic builds whose snapshots no longer fit beside the game (RETCHECK)
+# may add Fast RAM; the target and every timing run use 0.
+FAST_KB="${SLICKS_DEBUG_FAST_KB:-0}"
+case "$FAST_KB" in 0|2048|4096|8192) ;; *) echo 'SLICKS_DEBUG_FAST_KB must be 0, 2048, 4096 or 8192' >&2; exit 2;; esac
 fsuae_claim_port
 "$FSUAE" \
   "${AUDIO_ARGS[@]}" \
   "${WARP_ARGS[@]}" \
-  --amiga_model=A1200 --chip_memory=2048 --fast_memory=0 \
+  --amiga_model=A1200 --chip_memory=2048 --fast_memory="$FAST_KB" \
   --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --hard_drive_1_read_only="${SLICKS_DEBUG_READ_ONLY:-0}" \

@@ -37,8 +37,8 @@ Before tagging, on the release candidate:
 2. F1, CITY and WHACKO full-frame display audits on the stripped candidate
    (`SLICKS_LIVE_STATS=0 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3
    ./debug.sh "" diag_dirty_sprites.gdb`), and the `make -C amiga RETCHECK=1`
-   retention check with `diag_retention_check.gdb` on BASIC, F1, CITY and
-   WHACKO; every mismatch counter must be zero.
+   retention check with `diag_retention_check.gdb` and
+   `SLICKS_DEBUG_FAST_KB=2048` on BASIC, F1, CITY and WHACKO; every mismatch counter must be zero.
 3. WHDLoad regressions (`tools/test_whdload.py --mode records`,
    `championship`, `championship-edit`, `race`, `quit`) at 2 MiB Fast, with and
    without PRELOAD; see [whdload.md](whdload.md).
