@@ -61,10 +61,6 @@ record block changes. Under WHDLoad each write is one `resload_SaveFile`
 ([whdload.md](whdload.md#file-operations)). Code: `write_whole` and
 `slicks_amiga_store_setup` in `amiga_setup_storage.c`.
 
-Older descriptions of "atomic saves" and "recovery files" (including the
-`.SSS.new` rejection case in `championship-save-resume.md`) are obsolete;
-the transactional writer was removed.
-
 A championship `.SSS` stores the next race in the original format, not cars
 in motion. Options, bindings, colour ramps and RNG state are not in that
 format; resume uses the persisted setup and keeps the running process's RNG.
