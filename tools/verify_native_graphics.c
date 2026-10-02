@@ -27,18 +27,10 @@ enum {
     x86_transparent_stop = 0x3a9f1,
     x86_opaque_start = 0x3a9f2,
     x86_opaque_stop = 0x3aa67,
-    x86_readback_start = 0x3aae5,
-    x86_readback_stop = 0x3ab81,
     x86_subrect_start = 0x3b8de,
     x86_subrect_stop = 0x3b9b0,
-    x86_direct_plot_start = 0x3b40a,
-    x86_direct_plot_stop = 0x3b42a,
     x86_plot_start = 0x3b45e,
     x86_plot_stop = 0x3b48d,
-    x86_read_start = 0x3b48e,
-    x86_read_stop = 0x3b4ba,
-    x86_checker_start = 0x1a598,
-    x86_checker_stop = 0x1a5f6,
     x86_title_start = 0x296f0,
     x86_title_stop = 0x2973a,
     x86_title_crop_start = 0x297ec,
@@ -55,8 +47,6 @@ enum {
     x86_color_slot_stop = 0x2feae,
     x86_title_tail_start = 0x29f4a,
     x86_title_tail_stop = 0x29fef,
-    x86_remap_start = 0x34599,
-    x86_remap_stop = 0x34653,
     x86_title_phase_address = 0x3dd34,
     x86_title_state_pointer_address = 0x3d270,
     x86_title_optional_text_address = 0x3d21f,
@@ -337,7 +327,7 @@ static void prepare_m68k(uc_engine *uc, const uint16_t x, const uint16_t y,
 
 static void check_m68k_live_out(uc_engine *uc, const uint16_t x,
                                 const uint16_t y, const uint8_t pixel,
-                                const uint16_t screen_base, const int is_read,
+                                const uint16_t screen_base,
                                 const unsigned case_number)
 {
     static const int registers[] = {
@@ -345,9 +335,9 @@ static void check_m68k_live_out(uc_engine *uc, const uint16_t x,
         UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_A0,
     };
     const uint32_t expected[] = {
-        is_read ? pixel : 0x11110000u | x,
+        0x11110000u | x,
         0x22220000u | y,
-        0x33330000u | (is_read ? 0u : pixel),
+        0x33330000u | pixel,
         0x44440000u | screen_base,
         0x55550064u,
         m68k_plane_base,
@@ -358,9 +348,8 @@ static void check_m68k_live_out(uc_engine *uc, const uint16_t x,
                  uc_reg_read(uc, registers[i], &actual));
         if (actual != expected[i]) {
             fprintf(stderr,
-                    "%s case %u corrupted live register %zu: %08x != %08x\n",
-                    is_read ? "read" : "plot", case_number, i, actual,
-                    expected[i]);
+                    "plot case %u corrupted live register %zu: %08x != %08x\n",
+                    case_number, i, actual, expected[i]);
             exit(1);
         }
     }
@@ -380,9 +369,8 @@ static void reset_x86_hook(uc_engine *uc, VgaPortState *state, uc_hook *hook)
                          1, 0, UC_X86_INS_OUT));
 }
 
-static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
+static void run_case(uc_engine *x86_plot,
                      uc_engine *m68k_plot, const size_t m68k_plot_size,
-                     uc_engine *m68k_read, const size_t m68k_read_size,
                      const uint16_t x, const uint16_t y, const uint8_t pixel,
                      const uint16_t screen_base, const unsigned case_number)
 {
@@ -414,7 +402,7 @@ static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
                           m68k_code_base + m68k_plot_size - 2, 0, 0));
     check_uc("read m68k plot result",
              uc_mem_read(m68k_plot, native_address, &native_result, 1));
-    check_m68k_live_out(m68k_plot, x, y, pixel, screen_base, 0, case_number);
+    check_m68k_live_out(m68k_plot, x, y, pixel, screen_base, case_number);
     if (ports.bad_port_value || ports.plane != (int)expected_plane ||
         x86_result != pixel || native_result != x86_result) {
         fprintf(stderr,
@@ -425,37 +413,6 @@ static void run_case(uc_engine *x86_plot, uc_engine *x86_read,
         exit(1);
     }
     check_uc("delete plot OUT hook", uc_hook_del(x86_plot, hook));
-    hook = 0;
-
-    check_uc("seed x86 read byte", uc_mem_write(x86_read, x86_address,
-                                                 &pixel, 1));
-    check_uc("seed m68k read byte", uc_mem_write(m68k_read, native_address,
-                                                  &pixel, 1));
-    const uint16_t read_args[] = {x, y, screen_base};
-    prepare_x86_stack(x86_read, read_args, 3, 0x3b45);
-    reset_x86_hook(x86_read, &ports, &hook);
-    check_uc("run x86 read",
-             uc_emu_start(x86_read, x86_read_start, x86_read_stop, 0, 0));
-    uint16_t x86_ax = 0;
-    uint32_t native_d0 = 0;
-    check_uc("read x86 AX", uc_reg_read(x86_read, UC_X86_REG_AX, &x86_ax));
-    prepare_m68k(m68k_read, x, y, 0, screen_base);
-    check_uc("run m68k read",
-             uc_emu_start(m68k_read, m68k_code_base,
-                          m68k_code_base + m68k_read_size - 2, 0, 0));
-    check_uc("read m68k D0",
-             uc_reg_read(m68k_read, UC_M68K_REG_D0, &native_d0));
-    check_m68k_live_out(m68k_read, x, y, pixel, screen_base, 1, case_number);
-    if (ports.bad_port_value || ports.plane != (int)expected_plane ||
-        x86_ax != pixel || native_d0 != x86_ax) {
-        fprintf(stderr,
-                "read case %u failed: x=%04x y=%04x base=%04x plane=%d/%u "
-                "x86=%04x m68k=%08x\n",
-                case_number, x, y, screen_base, ports.plane, expected_plane,
-                x86_ax, native_d0);
-        exit(1);
-    }
-    check_uc("delete read OUT hook", uc_hook_del(x86_read, hook));
 }
 
 static uint32_t random_state = 0x534c4943u;
@@ -1402,91 +1359,6 @@ static void run_title_tail_case(
     }
 }
 
-static void prepare_m68k_readback(uc_engine *uc, const uint16_t x,
-                                  const uint16_t y, const uint16_t width,
-                                  const uint8_t height,
-                                  const uint16_t screen_base)
-{
-    uint32_t value = m68k_plane_base;
-    check_uc("write readback A0", uc_reg_write(uc, UC_M68K_REG_A0, &value));
-    value = m68k_source_base + x86_source_offset;
-    check_uc("write readback A1", uc_reg_write(uc, UC_M68K_REG_A1, &value));
-    value = 0x11110000u | x;
-    check_uc("write readback D0", uc_reg_write(uc, UC_M68K_REG_D0, &value));
-    value = 0x22220000u | y;
-    check_uc("write readback D1", uc_reg_write(uc, UC_M68K_REG_D1, &value));
-    value = 0x33330000u | width;
-    check_uc("write readback D2", uc_reg_write(uc, UC_M68K_REG_D2, &value));
-    value = 0x44440000u | screen_base;
-    check_uc("write readback D3", uc_reg_write(uc, UC_M68K_REG_D3, &value));
-    value = 0x55550064u;
-    check_uc("write readback D4", uc_reg_write(uc, UC_M68K_REG_D4, &value));
-    value = 0x66660000u | height;
-    check_uc("write readback D5", uc_reg_write(uc, UC_M68K_REG_D5, &value));
-}
-
-static void run_readback_case(uc_engine *x86, uc_engine *m68k,
-                              const size_t m68k_code_size, const uint16_t x,
-                              const uint16_t y, const uint16_t width,
-                              const uint8_t height, const uint16_t screen_base,
-                              const unsigned case_number, uint8_t *planes,
-                              uint8_t *x86_destination,
-                              uint8_t *native_destination)
-{
-    for (size_t i = 0; i < m68k_plane_size; ++i)
-        planes[i] =
-            (uint8_t)(i * 61u + (i >> 16) * 47u + case_number * 19u);
-    memset(x86_destination, 0xa7, x86_source_size);
-    memset(native_destination, 0xa7, m68k_source_size);
-    check_uc("seed native readback planes",
-             uc_mem_write(m68k, m68k_plane_base, planes, m68k_plane_size));
-    check_uc("seed x86 readback destination",
-             uc_mem_write(x86, x86_source_base, x86_destination,
-                          x86_source_size));
-    check_uc("seed native readback destination",
-             uc_mem_write(m68k, m68k_source_base, native_destination,
-                          m68k_source_size));
-
-    const uint16_t arguments[] = {x, y, width, height, x86_source_offset,
-                                  x86_source_segment, screen_base};
-    prepare_x86_stack(x86, arguments, 7, 0x3a90);
-    VgaPortState ports = {-1, -1, -1, 0, planes, 0};
-    uc_hook out_hook = 0;
-    reset_x86_hook(x86, &ports, &out_hook);
-    check_uc("run x86 readback",
-             uc_emu_start(x86, x86_readback_start, x86_readback_stop, 0, 0));
-    check_uc("delete readback OUT hook", uc_hook_del(x86, out_hook));
-    check_uc("read x86 readback destination",
-             uc_mem_read(x86, x86_source_base, x86_destination,
-                         x86_source_size));
-
-    prepare_m68k_readback(m68k, x, y, width, height, screen_base);
-    check_uc("run m68k readback",
-             uc_emu_start(m68k, m68k_code_base,
-                          m68k_code_base + m68k_code_size - 2, 0, 0));
-    check_m68k_blit_preserved(m68k, "readback", case_number);
-    check_uc("read native readback destination",
-             uc_mem_read(m68k, m68k_source_base, native_destination,
-                         m68k_source_size));
-    if (ports.bad_port_value ||
-        memcmp(x86_destination, native_destination, x86_source_size) != 0) {
-        size_t difference = 0;
-        while (difference < x86_source_size &&
-               x86_destination[difference] == native_destination[difference])
-            ++difference;
-        fprintf(stderr,
-                "readback case %u failed: x=%04x y=%04x width=%04x "
-                "height=%02x base=%04x last-plane=%d",
-                case_number, x, y, width, height, screen_base, ports.plane);
-        if (difference < x86_source_size)
-            fprintf(stderr, " difference offset=%04zx x86=%02x m68k=%02x",
-                    difference, x86_destination[difference],
-                    native_destination[difference]);
-        fputc('\n', stderr);
-        exit(1);
-    }
-}
-
 static void prepare_m68k_subrect(uc_engine *uc, const uint16_t destination_x,
                                  const uint16_t destination_y,
                                  const uint16_t source_x,
@@ -1586,171 +1458,6 @@ static void run_subrect_case(
                 case_number, destination_x, destination_y, source_x, source_y,
                 width, height, source_width, source_height, screen_base,
                 ports.plane);
-        if (difference < m68k_plane_size)
-            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
-                            "m68k=%02x",
-                    difference >> 16, difference & 0xffffu,
-                    expected_planes[difference], actual_planes[difference]);
-        fputc('\n', stderr);
-        exit(1);
-    }
-}
-
-static void run_direct_plot_case(uc_engine *x86, uc_engine *m68k,
-                                 const size_t m68k_code_size,
-                                 const uint16_t x, const uint16_t y,
-                                 const uint8_t pixel,
-                                 const uint16_t screen_base,
-                                 const uint16_t plane,
-                                 const unsigned case_number)
-{
-    const uint16_t offset = guest_offset(x, y, screen_base);
-    const uint64_t x86_address = x86_vga_base + offset;
-    const uint64_t native_address =
-        m68k_plane_base + (plane & 3u) * x86_vga_size + offset;
-    const uint8_t sentinel = (uint8_t)(pixel ^ 0x5au);
-    check_uc("seed x86 direct plot", uc_mem_write(x86, x86_address,
-                                                   &sentinel, 1));
-    check_uc("seed native direct plot", uc_mem_write(m68k, native_address,
-                                                       &sentinel, 1));
-    const uint16_t arguments[] = {x, y, pixel, screen_base};
-    prepare_x86_stack(x86, arguments, 4, 0x3b3f);
-    check_uc("run x86 direct plot",
-             uc_emu_start(x86, x86_direct_plot_start, x86_direct_plot_stop,
-                          0, 0));
-
-    prepare_m68k(m68k, x, y, pixel, screen_base);
-    uint32_t native_plane = 0x66660000u | plane;
-    check_uc("write direct plot D5",
-             uc_reg_write(m68k, UC_M68K_REG_D5, &native_plane));
-    check_uc("run m68k direct plot",
-             uc_emu_start(m68k, m68k_code_base,
-                          m68k_code_base + m68k_code_size - 2, 0, 0));
-    uint8_t x86_result = 0;
-    uint8_t native_result = 0;
-    check_uc("read x86 direct plot",
-             uc_mem_read(x86, x86_address, &x86_result, 1));
-    check_uc("read native direct plot",
-             uc_mem_read(m68k, native_address, &native_result, 1));
-    check_m68k_live_out(m68k, x, y, pixel, screen_base, 0, case_number);
-    check_uc("read direct plot D5",
-             uc_reg_read(m68k, UC_M68K_REG_D5, &native_plane));
-    if (x86_result != pixel || native_result != x86_result ||
-        native_plane != (0x66660000u | plane)) {
-        fprintf(stderr,
-                "direct plot case %u failed: x=%04x y=%04x base=%04x "
-                "plane=%u x86=%02x m68k=%02x D5=%08x\n",
-                case_number, x, y, screen_base, plane, x86_result,
-                native_result, native_plane);
-        exit(1);
-    }
-}
-
-static void prepare_m68k_checker(uc_engine *uc, const uint16_t x0,
-                                 const uint16_t y0, const uint16_t x1,
-                                 const uint16_t y1, const uint8_t pixel,
-                                 const uint16_t screen_base)
-{
-    const uint32_t values[] = {
-        m68k_plane_base, 0x11110000u | x0, 0x22220000u | y0,
-        0x33330000u | x1, 0x44440000u | y1, 0x55550000u | pixel,
-        0x66660000u | screen_base, 0x77770064u, 0x88888888u,
-        0x11111111u, 0x22222222u, 0x33333333u,
-        0x44444444u, 0x55555555u, 0x66666666u,
-    };
-    const int registers[] = {
-        UC_M68K_REG_A0, UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
-        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5, UC_M68K_REG_D6,
-        UC_M68K_REG_D7, UC_M68K_REG_A1, UC_M68K_REG_A2, UC_M68K_REG_A3,
-        UC_M68K_REG_A4, UC_M68K_REG_A5, UC_M68K_REG_A6,
-    };
-    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
-        check_uc("write checker register",
-                 uc_reg_write(uc, registers[i], &values[i]));
-    uint32_t stack_pointer = m68k_stack_base + m68k_stack_size / 2;
-    check_uc("write checker A7",
-             uc_reg_write(uc, UC_M68K_REG_A7, &stack_pointer));
-}
-
-static void run_checker_case(
-    uc_engine *x86, uc_engine *m68k, const size_t plot_code_size,
-    const size_t checker_code_size, const uint16_t x0, const uint16_t y0,
-    const uint16_t x1, const uint16_t y1, const uint8_t pixel,
-    const uint16_t screen_base, const unsigned case_number,
-    uint8_t *expected_planes, uint8_t *actual_planes)
-{
-    for (size_t i = 0; i < m68k_plane_size; ++i)
-        expected_planes[i] =
-            (uint8_t)(i * 31u + (i >> 16) * 59u + case_number * 7u);
-    check_uc("seed native checker planes",
-             uc_mem_write(m68k, m68k_plane_base, expected_planes,
-                          m68k_plane_size));
-
-    uint8_t page[2];
-    write_le16(page, screen_base);
-    check_uc("write x86 checker page",
-             uc_mem_write(x86, x86_screen_base_address, page, sizeof(page)));
-    const uint16_t arguments[] = {x0, y0, x1, y1, pixel};
-    prepare_x86_stack(x86, arguments, 5, 0x1987);
-    uint16_t relocated_data_segment = 0x3cbf;
-    check_uc("write relocated checker DS",
-             uc_reg_write(x86, UC_X86_REG_DS, &relocated_data_segment));
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
-    uc_hook out_hook = 0;
-    uc_hook memory_hook = 0;
-    reset_x86_hook(x86, &ports, &out_hook);
-    check_uc("add checker VGA memory hook",
-             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
-                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
-                         x86_vga_base + x86_vga_size - 1));
-    check_uc("run x86 checker",
-             uc_emu_start(x86, x86_checker_start, x86_checker_stop, 0, 0));
-    check_uc("delete checker OUT hook", uc_hook_del(x86, out_hook));
-    check_uc("delete checker VGA hook", uc_hook_del(x86, memory_hook));
-
-    prepare_m68k_checker(m68k, x0, y0, x1, y1, pixel, screen_base);
-    check_uc("run m68k checker",
-             uc_emu_start(m68k, m68k_code_base + plot_code_size,
-                          m68k_code_base + checker_code_size - 2, 0, 0));
-    const int preserved_registers[] = {
-        UC_M68K_REG_D2, UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
-        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0, UC_M68K_REG_A1,
-        UC_M68K_REG_A2, UC_M68K_REG_A3, UC_M68K_REG_A4, UC_M68K_REG_A5,
-        UC_M68K_REG_A6,
-    };
-    const uint32_t preserved_values[] = {
-        0x33330000u | x1, 0x44440000u | y1, 0x55550000u | pixel,
-        0x66660000u | screen_base, 0x77770064u, 0x88888888u,
-        m68k_plane_base, 0x11111111u, 0x22222222u, 0x33333333u,
-        0x44444444u, 0x55555555u, 0x66666666u,
-    };
-    int bad_preserved_register = -1;
-    uint32_t bad_register_value = 0;
-    for (size_t i = 0;
-         i < sizeof(preserved_registers) / sizeof(preserved_registers[0]);
-         ++i) {
-        uint32_t value = 0;
-        check_uc("read checker preserved register",
-                 uc_reg_read(m68k, preserved_registers[i], &value));
-        if (value != preserved_values[i] && bad_preserved_register < 0) {
-            bad_preserved_register = (int)i;
-            bad_register_value = value;
-        }
-    }
-    check_uc("read native checker planes",
-             uc_mem_read(m68k, m68k_plane_base, actual_planes,
-                         m68k_plane_size));
-    if (ports.bad_port_value || bad_preserved_register >= 0 ||
-        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
-        size_t difference = 0;
-        while (difference < m68k_plane_size &&
-               expected_planes[difference] == actual_planes[difference])
-            ++difference;
-        fprintf(stderr,
-                "checker case %u failed: (%04x,%04x)-(%04x,%04x) "
-                "pixel=%02x base=%04x plane=%d preserved=%d/%08x",
-                case_number, x0, y0, x1, y1, pixel, screen_base,
-                ports.plane, bad_preserved_register, bad_register_value);
         if (difference < m68k_plane_size)
             fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
                             "m68k=%02x",
@@ -1968,119 +1675,22 @@ static void run_bevel_case(
     }
 }
 
-static void prepare_m68k_remap(
-    uc_engine *uc, const uint16_t x0, const uint16_t y0,
-    const uint16_t x1, const uint16_t y1, const uint16_t screen_base)
-{
-    static const int registers[] = {
-        UC_M68K_REG_D0, UC_M68K_REG_D1, UC_M68K_REG_D2,
-        UC_M68K_REG_D3, UC_M68K_REG_D4, UC_M68K_REG_D5,
-        UC_M68K_REG_D6, UC_M68K_REG_D7, UC_M68K_REG_A0,
-        UC_M68K_REG_A1,
-    };
-    const uint32_t values[] = {
-        0x11110000u | x0, 0x22220000u | y0,
-        0x33330000u | x1, 0x44440000u | y1,
-        0x55550064u, 0x66660000u | screen_base,
-        0x77777777u, 0x88888888u, m68k_plane_base,
-        m68k_source_base + x86_source_offset,
-    };
-    for (size_t i = 0; i < sizeof(registers) / sizeof(registers[0]); ++i)
-        check_uc("write remap register",
-                 uc_reg_write(uc, registers[i], &values[i]));
-    uint32_t stack_pointer = m68k_stack_base + m68k_stack_size / 2;
-    check_uc("write remap A7",
-             uc_reg_write(uc, UC_M68K_REG_A7, &stack_pointer));
-}
-
-static void run_remap_case(
-    uc_engine *x86, uc_engine *m68k, const size_t m68k_code_size,
-    const uint16_t x0, const uint16_t y0, const uint16_t x1,
-    const uint16_t y1, const uint16_t screen_base,
-    const unsigned case_number, uint8_t *expected_planes,
-    uint8_t *actual_planes)
-{
-    uint8_t table[256];
-    for (size_t i = 0; i < sizeof(table); ++i)
-        table[i] = (uint8_t)(i * 197u + case_number * 29u + 17u);
-    for (size_t i = 0; i < m68k_plane_size; ++i)
-        expected_planes[i] =
-            (uint8_t)(i * 43u + (i >> 16) * 53u + case_number * 17u);
-
-    check_uc("write x86 remap table",
-             uc_mem_write(x86, x86_source_base + x86_source_offset,
-                          table, sizeof(table)));
-    check_uc("write native remap table",
-             uc_mem_write(m68k, m68k_source_base + x86_source_offset,
-                          table, sizeof(table)));
-    check_uc("seed native remap planes",
-             uc_mem_write(m68k, m68k_plane_base, expected_planes,
-                          m68k_plane_size));
-
-    const uint16_t arguments[] = {
-        x0, y0, x1, y1, x86_source_offset, x86_source_segment, screen_base,
-    };
-    prepare_x86_stack(x86, arguments, 7, 0x3449);
-    VgaPortState ports = {-1, -1, -1, 0, expected_planes, 0};
-    uc_hook out_hook = 0;
-    uc_hook memory_hook = 0;
-    reset_x86_hook(x86, &ports, &out_hook);
-    check_uc("add remap VGA memory hook",
-             uc_hook_add(x86, &memory_hook, UC_HOOK_MEM_WRITE,
-                         (void *)hook_x86_vga_write, &ports, x86_vga_base,
-                         x86_vga_base + x86_vga_size - 1));
-    check_uc("run x86 remap",
-             uc_emu_start(x86, x86_remap_start, x86_remap_stop, 0, 0));
-    check_uc("delete remap OUT hook", uc_hook_del(x86, out_hook));
-    check_uc("delete remap VGA hook", uc_hook_del(x86, memory_hook));
-
-    prepare_m68k_remap(m68k, x0, y0, x1, y1, screen_base);
-    check_uc("run m68k remap",
-             uc_emu_start(m68k, m68k_code_base,
-                          m68k_code_base + m68k_code_size - 2, 0, 0));
-    check_uc("read native remap planes",
-             uc_mem_read(m68k, m68k_plane_base, actual_planes,
-                         m68k_plane_size));
-    if (ports.bad_port_value ||
-        memcmp(expected_planes, actual_planes, m68k_plane_size) != 0) {
-        size_t difference = 0;
-        while (difference < m68k_plane_size &&
-               expected_planes[difference] == actual_planes[difference])
-            ++difference;
-        fprintf(stderr,
-                "remap case %u failed: rect=%u,%u..%u,%u base=%04x",
-                case_number, x0, y0, x1, y1, screen_base);
-        if (difference < m68k_plane_size)
-            fprintf(stderr, " difference plane=%zu offset=%04zx x86=%02x "
-                            "m68k=%02x",
-                    difference >> 16, difference & 0xffffu,
-                    expected_planes[difference], actual_planes[difference]);
-        fputc('\n', stderr);
-        exit(1);
-    }
-}
-
 int main(int argc, char **argv)
 {
-    if (argc != 19) {
+    if (argc != 14) {
         fprintf(stderr,
-                "usage: %s runtime.bin plot.bin read.bin opaque.bin "
-                "transparent.bin readback.bin subrect.bin direct-plot.bin "
-                "checker-fill.bin title-pages.bin title-crop.bin "
+                "usage: %s runtime.bin plot.bin opaque.bin "
+                "transparent.bin subrect.bin title-pages.bin title-crop.bin "
                 "palette-nearest.bin title-ui-step.bin color-slot.bin "
-                "title-tail.bin span-fill.bin remap.bin bevel.bin\n",
+                "title-tail.bin span-fill.bin bevel.bin\n",
                 argv[0]);
         return 2;
     }
     size_t runtime_bytes = 0;
     size_t plot_bytes = 0;
-    size_t read_bytes = 0;
     size_t opaque_bytes = 0;
     size_t transparent_bytes = 0;
-    size_t readback_bytes = 0;
     size_t subrect_bytes = 0;
-    size_t direct_plot_bytes = 0;
-    size_t checker_bytes = 0;
     size_t title_bytes = 0;
     size_t crop_bytes = 0;
     size_t palette_nearest_bytes = 0;
@@ -2088,31 +1698,23 @@ int main(int argc, char **argv)
     size_t color_slot_bytes = 0;
     size_t title_tail_bytes = 0;
     size_t span_fill_bytes = 0;
-    size_t remap_bytes = 0;
     size_t bevel_bytes = 0;
     uint8_t *runtime = read_file(argv[1], &runtime_bytes);
     uint8_t *plot = read_file(argv[2], &plot_bytes);
-    uint8_t *read = read_file(argv[3], &read_bytes);
-    uint8_t *opaque = read_file(argv[4], &opaque_bytes);
-    uint8_t *transparent = read_file(argv[5], &transparent_bytes);
-    uint8_t *readback = read_file(argv[6], &readback_bytes);
-    uint8_t *subrect = read_file(argv[7], &subrect_bytes);
-    uint8_t *direct_plot = read_file(argv[8], &direct_plot_bytes);
-    uint8_t *checker = read_file(argv[9], &checker_bytes);
-    uint8_t *title = read_file(argv[10], &title_bytes);
-    uint8_t *crop = read_file(argv[11], &crop_bytes);
+    uint8_t *opaque = read_file(argv[3], &opaque_bytes);
+    uint8_t *transparent = read_file(argv[4], &transparent_bytes);
+    uint8_t *subrect = read_file(argv[5], &subrect_bytes);
+    uint8_t *title = read_file(argv[6], &title_bytes);
+    uint8_t *crop = read_file(argv[7], &crop_bytes);
     uint8_t *palette_nearest =
-        read_file(argv[12], &palette_nearest_bytes);
-    uint8_t *title_ui = read_file(argv[13], &title_ui_bytes);
-    uint8_t *color_slot = read_file(argv[14], &color_slot_bytes);
-    uint8_t *title_tail = read_file(argv[15], &title_tail_bytes);
-    uint8_t *span_fill = read_file(argv[16], &span_fill_bytes);
-    uint8_t *remap = read_file(argv[17], &remap_bytes);
-    uint8_t *bevel = read_file(argv[18], &bevel_bytes);
-    if (runtime_bytes != runtime_size || plot_bytes < 4 || read_bytes < 4 ||
-        opaque_bytes < 4 || transparent_bytes < 4 || readback_bytes < 4 ||
-        subrect_bytes < 4 || direct_plot_bytes < 4 ||
-        checker_bytes <= plot_bytes || memcmp(checker, plot, plot_bytes) ||
+        read_file(argv[8], &palette_nearest_bytes);
+    uint8_t *title_ui = read_file(argv[9], &title_ui_bytes);
+    uint8_t *color_slot = read_file(argv[10], &color_slot_bytes);
+    uint8_t *title_tail = read_file(argv[11], &title_tail_bytes);
+    uint8_t *span_fill = read_file(argv[12], &span_fill_bytes);
+    uint8_t *bevel = read_file(argv[13], &bevel_bytes);
+    if (runtime_bytes != runtime_size || plot_bytes < 4 ||
+        opaque_bytes < 4 || transparent_bytes < 4 || subrect_bytes < 4 ||
         title_bytes <= opaque_bytes || memcmp(title, opaque, opaque_bytes) ||
         crop_bytes <= subrect_bytes || memcmp(crop, subrect, subrect_bytes) ||
         palette_nearest_bytes < 4 || color_slot_bytes < 4 ||
@@ -2120,7 +1722,7 @@ int main(int argc, char **argv)
         memcmp(title_tail, palette_nearest, palette_nearest_bytes) ||
         memcmp(title_tail + palette_nearest_bytes,
                color_slot, color_slot_bytes) ||
-        span_fill_bytes < 4 || remap_bytes < 4 ||
+        span_fill_bytes < 4 ||
         bevel_bytes <= palette_nearest_bytes + span_fill_bytes ||
         memcmp(bevel, palette_nearest, palette_nearest_bytes) ||
         memcmp(bevel + palette_nearest_bytes, span_fill, span_fill_bytes) ||
@@ -2132,24 +1734,13 @@ int main(int argc, char **argv)
     }
 
     uc_engine *x86_plot = open_x86(runtime);
-    uc_engine *x86_read = open_x86(runtime);
     uc_engine *m68k_plot = open_m68k(plot, plot_bytes);
-    uc_engine *m68k_read = open_m68k(read, read_bytes);
     uc_engine *x86_opaque = open_x86(runtime);
     uc_engine *x86_transparent = open_x86(runtime);
     uc_engine *m68k_opaque = open_m68k(opaque, opaque_bytes);
     uc_engine *m68k_transparent = open_m68k(transparent, transparent_bytes);
-    uc_engine *x86_readback = open_x86(runtime);
-    uc_engine *m68k_readback = open_m68k(readback, readback_bytes);
     uc_engine *x86_subrect = open_x86(runtime);
     uc_engine *m68k_subrect = open_m68k(subrect, subrect_bytes);
-    uc_engine *x86_direct_plot = open_x86(runtime);
-    uc_engine *m68k_direct_plot =
-        open_m68k(direct_plot, direct_plot_bytes);
-    uc_engine *x86_remap = open_x86_relocated(runtime);
-    uc_engine *m68k_remap = open_m68k(remap, remap_bytes);
-    uc_engine *x86_checker = open_x86_relocated(runtime);
-    uc_engine *m68k_checker = open_m68k(checker, checker_bytes);
     uc_engine *x86_title = open_x86_relocated(runtime);
     uc_engine *m68k_title = open_m68k(title, title_bytes);
     uc_engine *x86_crop = open_x86_relocated(runtime);
@@ -2173,8 +1764,7 @@ int main(int argc, char **argv)
     unsigned cases = 0;
     for (size_t xi = 0; xi < sizeof(edge_x) / sizeof(edge_x[0]); ++xi) {
         for (size_t yi = 0; yi < sizeof(edge_y) / sizeof(edge_y[0]); ++yi) {
-            run_case(x86_plot, x86_read, m68k_plot, plot_bytes, m68k_read,
-                     read_bytes, edge_x[xi], edge_y[yi],
+            run_case(x86_plot, m68k_plot, plot_bytes, edge_x[xi], edge_y[yi],
                      (uint8_t)(xi * 37u + yi * 19u),
                      (yi & 1u) ? 32700 : 0, cases++);
         }
@@ -2184,8 +1774,7 @@ int main(int argc, char **argv)
         const uint16_t y = (uint16_t)next_random();
         const uint8_t pixel = (uint8_t)next_random();
         const uint16_t base = (uint16_t)next_random();
-        run_case(x86_plot, x86_read, m68k_plot, plot_bytes, m68k_read,
-                 read_bytes, x, y, pixel, base, cases++);
+        run_case(x86_plot, m68k_plot, plot_bytes, x, y, pixel, base, cases++);
     }
 
     uint8_t *expected_planes = malloc(m68k_plane_size);
@@ -2304,40 +1893,6 @@ int main(int argc, char **argv)
     }
     random_state = random_state_before_bevel;
 
-    static const struct {
-        uint16_t x0, y0, x1, y1, base;
-        uint8_t pixel;
-    } checker_edges[] = {
-        {0, 0, 1, 1, 0, 15},       {1, 2, 8, 7, 32700, 6},
-        {12, 9, 12, 20, 0, 3},     {20, 30, 10, 40, 0, 11},
-        {4, 6, 17, 6, 32700, 9},   {0xffff, 4, 3, 8, 0, 12},
-    };
-    unsigned checker_cases = 0;
-    for (size_t i = 0;
-         i < sizeof(checker_edges) / sizeof(checker_edges[0]); ++i) {
-        run_checker_case(
-            x86_checker, m68k_checker, plot_bytes, checker_bytes,
-            checker_edges[i].x0, checker_edges[i].y0, checker_edges[i].x1,
-            checker_edges[i].y1, checker_edges[i].pixel,
-            checker_edges[i].base, checker_cases++, expected_planes,
-            actual_planes);
-    }
-    for (unsigned i = 0; i < 250; ++i) {
-        const uint32_t sample = i * 2654435761u + 0x0a498u;
-        const uint16_t x0 = (uint16_t)(sample % 300u);
-        const uint16_t y0 = (uint16_t)((sample >> 8) % 170u);
-        const uint16_t width = (uint16_t)((sample >> 16) % 13u);
-        const uint16_t height = (uint16_t)((sample >> 24) % 9u);
-        const uint16_t x1 = (i % 17u == 0) ? (uint16_t)(x0 - 1u)
-                                           : (uint16_t)(x0 + width);
-        const uint16_t y1 = (i % 19u == 0) ? (uint16_t)(y0 - 1u)
-                                           : (uint16_t)(y0 + height);
-        run_checker_case(x86_checker, m68k_checker, plot_bytes,
-                         checker_bytes, x0, y0, x1, y1,
-                         (uint8_t)(sample >> 11), (i & 1u) ? 32700 : 0,
-                         checker_cases++, expected_planes, actual_planes);
-    }
-
     unsigned title_cases = 0;
     run_title_pages_case(x86_title, m68k_title, opaque_bytes, title_bytes,
                          0x7fbc, 0, 80, 200, title_cases++, expected_planes,
@@ -2406,46 +1961,6 @@ int main(int argc, char **argv)
         ++blit_cases;
     }
 
-    uint8_t *x86_destination = malloc(x86_source_size);
-    uint8_t *native_destination = malloc(m68k_source_size);
-    if (!x86_destination || !native_destination) {
-        fprintf(stderr, "cannot allocate readback test buffers\n");
-        return 1;
-    }
-    static const struct {
-        uint16_t x, y, width, base;
-        uint8_t height;
-    } readback_edges[] = {
-        {0, 0, 1, 0, 1},       {1, 1, 2, 32700, 3},
-        {2, 189, 3, 0, 2},     {3, 326, 7, 32700, 8},
-        {319, 0xffff, 400, 0x0100, 1},
-        {0xffff, 0xffff, 9, 0x0100, 7},
-    };
-    unsigned readback_cases = 0;
-    for (size_t i = 0;
-         i < sizeof(readback_edges) / sizeof(readback_edges[0]); ++i) {
-        run_readback_case(x86_readback, m68k_readback, readback_bytes,
-                          readback_edges[i].x, readback_edges[i].y,
-                          readback_edges[i].width, readback_edges[i].height,
-                          readback_edges[i].base, readback_cases++,
-                          expected_planes, x86_destination,
-                          native_destination);
-    }
-    for (unsigned i = 0; i < 250; ++i) {
-        const uint16_t x = (uint16_t)next_random();
-        const uint16_t y = (uint16_t)next_random();
-        const uint16_t width = (uint16_t)(next_random() % 64u + 1u);
-        const uint8_t height = (uint8_t)(next_random() % 12u + 1u);
-        const uint16_t without_base =
-            (uint16_t)((uint16_t)(y * 100u) + (x >> 2));
-        const uint16_t target_offset = (uint16_t)(next_random() & 0x7fffu);
-        const uint16_t base = (uint16_t)(target_offset - without_base);
-        run_readback_case(x86_readback, m68k_readback, readback_bytes, x, y,
-                          width, height, base, readback_cases++,
-                          expected_planes, x86_destination,
-                          native_destination);
-    }
-
     static const struct {
         uint16_t destination_x, destination_y, source_x, source_y;
         uint16_t width, base;
@@ -2501,64 +2016,14 @@ int main(int argc, char **argv)
                          sprite);
     }
 
-    unsigned direct_plot_cases = 0;
-    for (unsigned i = 0; i < 512; ++i) {
-        const uint16_t x = i < 8 ? edge_x[i] : (uint16_t)next_random();
-        const uint16_t y = i < 5 ? edge_y[i] : (uint16_t)next_random();
-        const uint8_t pixel = (uint8_t)next_random();
-        const uint16_t base = (uint16_t)next_random();
-        const uint16_t plane = (uint16_t)(i & 3u);
-        run_direct_plot_case(x86_direct_plot, m68k_direct_plot,
-                             direct_plot_bytes, x, y, pixel, base, plane,
-                             direct_plot_cases++);
-    }
-
-    static const struct {
-        uint16_t x0, y0, x1, y1, base;
-    } remap_edges[] = {
-        {0, 0, 320, 9, 0},
-        {0, 191, 320, 200, 0},
-        {118, 89, 295, 100, 0},
-        {7, 12, 8, 13, 0x7fbc},
-        {3, 1, 79, 20, 0xffff},
-    };
-    unsigned remap_cases = 0;
-    for (size_t i = 0; i < sizeof(remap_edges) / sizeof(remap_edges[0]); ++i)
-        run_remap_case(
-            x86_remap, m68k_remap, remap_bytes,
-            remap_edges[i].x0, remap_edges[i].y0,
-            remap_edges[i].x1, remap_edges[i].y1,
-            remap_edges[i].base, remap_cases++, expected_planes,
-            actual_planes);
-    for (unsigned i = 0; i < 251; ++i) {
-        const uint16_t x0 = (uint16_t)(next_random() % 320u);
-        const uint16_t y0 = (uint16_t)(next_random() % 200u);
-        const uint16_t x1 = (uint16_t)(x0 + next_random() % (321u - x0));
-        const uint16_t y1 = (uint16_t)(y0 + next_random() % (201u - y0));
-        const uint16_t base = (uint16_t)next_random();
-        run_remap_case(x86_remap, m68k_remap, remap_bytes,
-                       x0, y0, x1, y1, base, remap_cases++,
-                       expected_planes, actual_planes);
-    }
-
     uc_close(x86_plot);
-    uc_close(x86_read);
     uc_close(m68k_plot);
-    uc_close(m68k_read);
     uc_close(x86_opaque);
     uc_close(x86_transparent);
     uc_close(m68k_opaque);
     uc_close(m68k_transparent);
-    uc_close(x86_readback);
-    uc_close(m68k_readback);
     uc_close(x86_subrect);
     uc_close(m68k_subrect);
-    uc_close(x86_direct_plot);
-    uc_close(m68k_direct_plot);
-    uc_close(x86_remap);
-    uc_close(m68k_remap);
-    uc_close(x86_checker);
-    uc_close(m68k_checker);
     uc_close(x86_title);
     uc_close(m68k_title);
     uc_close(x86_crop);
@@ -2577,13 +2042,9 @@ int main(int argc, char **argv)
     uc_close(m68k_bevel);
     free(runtime);
     free(plot);
-    free(read);
     free(opaque);
     free(transparent);
-    free(readback);
     free(subrect);
-    free(direct_plot);
-    free(checker);
     free(title);
     free(crop);
     free(palette_nearest);
@@ -2591,23 +2052,17 @@ int main(int argc, char **argv)
     free(color_slot);
     free(title_tail);
     free(span_fill);
-    free(remap);
     free(bevel);
     free(expected_planes);
     free(actual_planes);
     free(sprite);
-    free(x86_destination);
-    free(native_destination);
-    printf("native graphics differential: %u plot/read, %u each opaque/"
-           "transparent blit, %u readback, %u subrect, %u direct-plot, "
-           "%u checker-control-flow, %u title-page-control-flow, %u "
+    printf("native graphics differential: %u plot, %u each opaque/"
+           "transparent blit, %u subrect, %u title-page-control-flow, %u "
            "title-crop-control-flow, %u palette-nearest, %u "
            "title-UI-control-flow, %u color-slot, %u title-tail, %u span-fill, "
-           "%u remap, and %u bevel cases "
-           "passed\n",
-           cases, blit_cases, readback_cases, subrect_cases,
-           direct_plot_cases, checker_cases, title_cases, crop_cases,
+           "and %u bevel cases passed\n",
+           cases, blit_cases, subrect_cases, title_cases, crop_cases,
            palette_cases, title_ui_cases, color_slot_cases, title_tail_cases,
-           span_fill_cases, remap_cases, bevel_cases);
+           span_fill_cases, bevel_cases);
     return 0;
 }

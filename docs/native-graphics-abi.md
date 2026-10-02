@@ -26,14 +26,8 @@ Common register contract:
 `sgfx_plot_plane` writes `d2.b` to plane `d0.w & 3` at the low 16 bits
 of `d3.w + d1.w * d4.w + (d0.w >> 2)`.
 
-`sgfx_plot` implements the adjacent helper whose VGA write plane was selected
-by its caller. The native ABI makes that implicit hardware state explicit in
-`d5.w`; all other inputs and the wrapped address calculation match
-`sgfx_plot_plane`. It preserves `d0-d5` and `a0`, clobbering only `d6-d7`.
-
-`sgfx_read_pixel` reads the same location and returns a zero-extended byte in
-`d0.l`. Both routines deliberately preserve the 286's unsigned logical shift
-and 16-bit address wrap. They do not load or store an emulated CPU structure.
+It deliberately preserves the 286's unsigned logical shift and 16-bit address
+wrap and does not load or store an emulated CPU structure.
 
 `sgfx_planar_blit` and `sgfx_transparent_blit` additionally receive `a1`
 pointing at the proved sprite format: byte width, byte height, then four plane
@@ -44,14 +38,6 @@ The transparent form skips source bytes equal to zero. These larger helpers
 clobber `d0-d3/d5-d7` and `a1-a5`, preserving the plane base in `a0` and stride
 in `d4`. Zero dimensions are excluded by the measured source-buffer contract.
 
-`sgfx_readback` receives pixel width in `d2.w`, height in `d5.b`, and the
-destination sprite-buffer pointer in `a1`; the other inputs retain their common
-meanings. It writes the two-byte `ceil(width/4), height` header, four rotated
-plane payloads, and the trailing right-edge padding count `(-width) & 3`.
-Starting `x & 3` selects the first source plane and carries into the 16-bit
-source offset as the four planes rotate. The helper preserves `a0` and `d4`
-and otherwise uses the larger-helper clobber set above.
-
 `sgfx_planar_subrect_blit` uses `d0.w,d1.w` for destination x/y, `d2.w,d3.w`
 for source x/y, `d5.w` for pixel width, `d6.b` for height, and `d7.w` for the
 screen base; `a0`, `a1`, and `d4` keep their common meanings. Matching the
@@ -60,13 +46,6 @@ also added to the destination address. Every row re-applies the source-x byte
 offset, while the end of each plane skips the uncopied source rows. Source
 bounds and nonzero dimensions remain caller contracts. The routine preserves
 `a0` and `d4` and clobbers `d0-d3/d5-d7` and `a1-a6`.
-
-`sgfx_remap_copy` translates runtime `24499h..24553h`. It receives a 256-byte
-translation table in `a1`, half-open rectangle coordinates in `d0-d3`, stride
-in `d4`, and page base in `d5`. It replaces every logical pixel through the
-four-plane store while preserving all data and address registers. The native
-routine passes 256 complete four-plane comparisons against the relocated x86
-implementation.
 
 `sgfx_clear_full` replaces the VGA clear at `2AD92h`. The original enables all
 four write planes, waits across a vertical-retrace edge, and clears the 64 KiB
@@ -85,15 +64,6 @@ width, including the traced width 400 that establishes stride 100. The native
 mode setup now runs in the A1200 diagnostic instead of relying on cleared
 allocation memory to stand in for VGA initialization.
 
-`sutil_fill_bytes` translates the portable semantics of the Borland far-memory
-fill helper at `00D9Fh`: a 16-bit byte count and the low byte of the value are
-written to a bounded destination. The 68020 implementation aligns once and
-uses repeated longword stores before its byte tail. It passes 256 complete
-64 KiB buffer comparisons, including zero count, odd destinations, all tail
-lengths, and the observed 65,535-byte maximum. Calls targeting VGA or text
-memory remain classified at their callers because those destinations have
-hardware semantics beyond an ordinary flat byte fill.
-
 The genuine race-entry trace adds a screen-transition call from `185ff`
 whose `source_y + height` exceeds the declared sprite height, so the original
 reads wrap within the 64 KiB source segment. The current native title crops use
@@ -102,15 +72,18 @@ oracle-tested `sgfx_planar_subrect_blit_far` is in git history).
 
 The `verify-native-graphics` gate runs the original unpacked x86 helper bytes
 and these assembled 68020 routines in independent Unicorn engines. It compares
-the VGA plane selected by the original port write, the wrapped address, the
-returned byte, and the write side effect over deterministic edge cases and
-random states. The pixel helpers pass 2,040 paired states; each sprite blitter
-passes 256 states with the complete four-plane 256 KiB destination compared
-after every call. Readback passes 256 states with its complete 64 KiB
-destination segment compared after every call. Sub-rectangle copy passes 256
-states with the complete four-plane destination compared after every call.
-The direct plot helper passes 512 states spanning all four caller-selected
-planes, and the colour remapper passes 256 whole-framebuffer states.
+the VGA plane selected by the original port write, the wrapped address, and
+the write side effect over deterministic edge cases and
+random states. The plane-selecting plot helper passes 2,040 states; each
+sprite blitter passes 256 states with the complete four-plane 256 KiB
+destination compared after every call. Sub-rectangle copy passes 256 states
+with the complete four-plane destination compared after every call.
+
+Oracle-tested translations of further helpers that the shipped game never
+links (caller-selected-plane plot, pixel read, sprite readback, colour remap
+copy, checker fill, the Borland far-memory byte fill, and the post-title
+four-player state initialization) were removed with their tests; they remain
+in git history.
 
 `sgfx_span_fill` translates the live half-open rectangle filler at `29E35h`.
 It receives signed `x0,y0,x1,y1` in `d0.w-d3.w`, the byte value in `d4.b`,
@@ -218,32 +191,3 @@ The native routine returns compact semantic case identifiers and is exhaustively
 checked for all 65,536 word-valued inputs. Amiga raw Escape, Return, Space,
 F1, F9, and F10 now enter this native classifier through the platform input
 boundary; mouse activation maps to the original Enter case.
-
-`sgame_post_title_init` is the first native block after the title routine has
-returned zero to its outer caller. It translates runtime offsets
-`16272h..162E4h` as one nested-loop region rather than as individual helpers.
-For four players it copies a shared seed word, clears all 13 state words, and,
-only when the mode word is zero, replaces a cleared word with 4 when the
-corresponding shared flag byte has bit zero set. Its register ABI receives the
-52-word grid, 13 flag bytes, four seed words, mode, and seed directly. The
-complete outputs agree with the relocated x86 block in 256 randomized cases,
-including both mode branches and all flag combinations encountered by the
-corpus; word memory is normalized for the expected x86/68020 endian difference.
-
-`sgfx_checker_fill` is the first translated application-level caller rather
-than an isolated VGA primitive. It corresponds to a recovered Slicks routine at
-runtime-image offset `A498h`; the bounded BASIC trace has not reached this
-caller, although it calls the heavily exercised live plot primitive. Its signed
-half-open nested loops toggle a byte at every visited coordinate and call
-`sgfx_plot_plane` on alternating pixels. The
-native entry receives `x0,y0,x1,y1` in `d0.w-d3.w`, the colour in `d4.b`, the
-screen base in `d5.w`, the stride in `d6.w`, and the plane store in `a0`.
-
-The checker routine passes 256 additional whole-framebuffer differentials,
-including empty and reversed signed ranges and both observed VGA pages. Unlike
-the earlier leaf tests, its original x86 side runs the captured image at the
-real DOS load address so its relocated far call reaches the original pixel
-helper. The M68k side uses a mapped stack and executes the native caller and
-callee together. At the temporary C platform boundary the routine preserves
-`d2-d7/a0-a6`; future translated-to-translated calls can adopt a narrower
-preservation contract once the block register allocator owns both sides.

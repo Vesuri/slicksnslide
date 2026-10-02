@@ -286,9 +286,6 @@ obj/gcc8_a_support.o: $(SUPPORT)/gcc8_a_support.s | obj
 obj/sgfx_plot_plane.o: $(REPO)/src/graphics/sgfx_plot_plane.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
-obj/sgfx_checker_fill.o: $(REPO)/src/graphics/sgfx_checker_fill.s | obj
-	$(VASM) $(VASMFLAGS) -o $@ $<
-
 obj/sgfx_planar_blit.o: $(REPO)/src/graphics/sgfx_planar_blit.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 

@@ -136,11 +136,11 @@ segment. One call fills VGA segment `A000h` and another fills text segment
 `B800h`, so the helper cannot be discarded as host-runtime scaffolding even
 though the other four calls target ordinary memory.
 
-Its bounded flat-memory behavior is now implemented by `sutil_fill_bytes` and
-passes complete-buffer differential tests. The VGA and text-memory calls are
-intentionally not routed through that generic routine: their native forms must
-replace the surrounding display operation rather than pretend those DOS
-segments are ordinary Amiga memory.
+An oracle-tested flat-memory translation (`sutil_fill_bytes`) was never
+linked into the game and has been removed; it remains in git history. The VGA
+and text-memory calls could not use such a generic routine in any case: their
+native forms must replace the surrounding display operation rather than
+pretend those DOS segments are ordinary Amiga memory.
 
 `live_vga_remap_copy(x0, y0, x1, y1, table_far, screen_base)` receives seven
 stack words and remaps a half-open rectangle in place. It visits the four VGA

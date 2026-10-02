@@ -1145,15 +1145,6 @@ build/verify_dos_ai build/verify_dos_points: src/graphics/row_offsets.h
 
 build/verify_dos_hud: src/game/track_scene.c
 
-build/sgfx_plot.bin: src/graphics/sgfx_plot.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -o $@ $<
-
-build/sgfx_checker_fill.bin: tools/sgfx_checker_fill_test.s \
-		src/graphics/sgfx_checker_fill.s src/graphics/sgfx_plot_plane.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
-
 build/sgfx_title_pages.bin: tools/sgfx_title_pages_test.s \
 		src/graphics/sgfx_title_pages.s src/graphics/sgfx_planar_blit.s
 	@mkdir -p build
@@ -1302,22 +1293,7 @@ verify-title-bridge: build/title_bridge.bin build/verify_title_bridge
 
 verify-native-graphics: verify-title-bridge
 
-build/sgame_post_title_init.bin: tools/sgame_post_title_init_test.s \
-		src/game/sgame_post_title_init.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
-
-build/verify_post_title_init: tools/verify_post_title_init.c
-	@mkdir -p build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
-		$< -lunicorn -o $@
-
 build/sgfx_span_fill.bin: src/graphics/sgfx_span_fill.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -o $@ $<
-
-build/sgfx_remap_copy.bin: src/graphics/sgfx_remap_copy.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
@@ -1343,35 +1319,16 @@ build/verify_mode_setup: tools/verify_mode_setup.c
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
 
-build/sutil_fill_bytes.bin: tools/sutil_fill_bytes_test.s \
-		src/util/sutil_fill_bytes.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
-
-build/verify_fill_bytes: tools/verify_fill_bytes.c
-	@mkdir -p build
-	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
-		$< -lunicorn -o $@
-
 build/sui_bevel.bin: tools/sui_bevel_test.s src/ui/sui_bevel.s \
 		src/util/sutil_palette_nearest.s src/graphics/sgfx_span_fill.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -I. -o $@ $<
-
-build/sgfx_read_pixel.bin: src/graphics/sgfx_read_pixel.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/sgfx_planar_blit.bin: src/graphics/sgfx_planar_blit.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
 build/sgfx_transparent_blit.bin: src/graphics/sgfx_transparent_blit.s
-	@mkdir -p build
-	$(VASM) -quiet -m68020 -Fbin -o $@ $<
-
-build/sgfx_readback.bin: src/graphics/sgfx_readback.s
 	@mkdir -p build
 	$(VASM) -quiet -m68020 -Fbin -o $@ $<
 
@@ -1574,40 +1531,33 @@ build/verify_native_graphics: tools/verify_native_graphics.c
 		-I$(UNICORN_PREFIX)/include -L$(UNICORN_PREFIX)/lib \
 		$< -lunicorn -o $@
 
-verify-native-graphics: unpack build/sgfx_plot_plane.bin build/sgfx_plot.bin \
-		build/sgfx_read_pixel.bin build/sgfx_planar_blit.bin \
-		build/sgfx_transparent_blit.bin build/sgfx_readback.bin \
-		build/sgfx_planar_subrect_blit.bin build/sgfx_checker_fill.bin \
+verify-native-graphics: unpack build/sgfx_plot_plane.bin \
+		build/sgfx_planar_blit.bin build/sgfx_transparent_blit.bin \
+		build/sgfx_planar_subrect_blit.bin \
 		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
 		build/sutil_palette_nearest.bin \
 		build/sui_title_step.bin \
 		build/sui_color_slot.bin \
 		build/sui_title_tail.bin \
 		build/sui_title_dispatch.bin build/verify_title_dispatch \
-		build/sgame_post_title_init.bin build/verify_post_title_init \
-		build/sgfx_span_fill.bin build/sgfx_remap_copy.bin \
+		build/sgfx_span_fill.bin \
 		build/sgfx_clear_full.bin build/verify_clear_full \
 		build/sgfx_mode_setup.bin build/verify_mode_setup \
-		build/sutil_fill_bytes.bin build/verify_fill_bytes \
 		build/sui_bevel.bin \
 		build/verify_native_graphics
 	build/verify_native_graphics disasm/runtime.bin \
-		build/sgfx_plot_plane.bin build/sgfx_read_pixel.bin \
+		build/sgfx_plot_plane.bin \
 		build/sgfx_planar_blit.bin build/sgfx_transparent_blit.bin \
-		build/sgfx_readback.bin build/sgfx_planar_subrect_blit.bin \
-		build/sgfx_plot.bin build/sgfx_checker_fill.bin \
+		build/sgfx_planar_subrect_blit.bin \
 		build/sgfx_title_pages.bin build/sgfx_title_crop.bin \
 		build/sutil_palette_nearest.bin build/sui_title_step.bin \
 		build/sui_color_slot.bin build/sui_title_tail.bin \
-		build/sgfx_span_fill.bin build/sgfx_remap_copy.bin \
+		build/sgfx_span_fill.bin \
 		build/sui_bevel.bin
 	build/verify_title_dispatch build/sui_title_dispatch.bin
-	build/verify_post_title_init disasm/runtime.bin \
-		build/sgame_post_title_init.bin
 	build/verify_clear_full disasm/runtime.bin build/sgfx_clear_full.bin
 	build/verify_mode_setup disasm/runtime.bin build/sgfx_clear_full.bin \
 		build/sgfx_mode_setup.bin
-	build/verify_fill_bytes disasm/runtime.bin build/sutil_fill_bytes.bin
 
 trace-summary:
 	$(PYTHON) tools/summarize_dosbox_x.py $(REFERENCE_ROOT)/dosbox-x.log
