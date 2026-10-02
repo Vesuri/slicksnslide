@@ -21,9 +21,16 @@ the deleted `docs/fidelity-audit.md` in git history. Release blockers belong in
 | Race clock (B1) | None at the logic level: each update runs as many 91 Hz physics ticks as real time allows, capped at 45, as in `1000:fe5e..fe98`. The clock is PAL raster lines, not the PIT. | Replaces an earlier fixed 1/50 s per update, which ran races in slow motion. | `src/game/race_runtime.c` (`next_physics_ticks`), `slicks_amiga_platform_raster_time` |
 | Speed change (D4) | Changing speed in the pause menu restarts only the tick phase, so game time stays monotonic. The original zeroes its tick counter but not the race loop's saved count; the next batch is then negative and refunds Arcade countdown time. | User decision: do not reproduce the glitch. | `slicks_race_set_timer` (`race_runtime.c`) |
 | Installation | A native installer extracts data from the publisher's `Slix151.zip`; WHDLoad is an optional launcher running the same executable. The CFG platform byte is a fixed Amiga tag (`0xa1`) instead of the DOS BIOS-derived byte; a CFG with another tag is refused at startup, with no files changed. | User request. No DOS BIOS identity exists on the Amiga. | `tools/install-data/`, `whdload/SlicksSlave.s`, `amiga_setup_storage.c` (`SLICKS_AMIGA_CONFIG_SIGNATURE`) |
-| Load Game (D1) | Not an adaptation: the title hides Load Game, as the supplied original does (`2985c` skips entry 4 unconditionally; no reachable route was found). Saving stays available at intermission: F2 opens Change Cars, and after it closes Down/Enter reaches the hidden Save action, as in DOS. | User decision to match the original. | `src/ui/title_navigation.h`, `src/ui/intermission_menu.h` |
 | Sparse shop (D2) | With non-contiguous active players (for example only driver 3), the original's shop caller passes an actual driver index where the painter expects a packed column and returns an uninitialised result. The port keeps actual driver IDs for transactions and converts them to packed columns for drawing. | User decision: safe mapping, never reproduce undefined indices. | `src/platform/amiga/amiga_shop.c` |
 | Language (D3) | A negative saved selector (the shipped default, `field_05e1 = 255`) means English. The original runs DOS KEYB and picks language 2 only for code 358, which has no Amiga equivalent. Positive selectors load their own language. Only a saved selector of 0 opens the console chooser, so a fresh installation never reaches it. | No KEYB on the Amiga; the publisher's archive has no `SLICKS.CFG`. | `slicks_diag.c` (startup language resolution), `src/gen/setup_defaults.h` |
+
+### Load Game (D1)
+
+Not a difference: the title hides Load Game, as the supplied original does
+(`2985c` skips entry 4 unconditionally; no reachable route was found). Saving
+stays available at intermission: F2 opens Change Cars, and after it closes
+Down/Enter reaches the hidden Save action, as in DOS. User decision to match
+the original (`src/ui/title_navigation.h`, `src/ui/intermission_menu.h`).
 
 ### Defensive parsing and I/O
 
