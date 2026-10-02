@@ -67,7 +67,7 @@ slicks_draw_particle:
 	move.l PD_Y(a0),d1
 	asr.l #6,d1
 	endif
-	move.b PD_FLAGS(a0),d3
+	move.l PD_FLAGS(a0),d3		; flags.b, -, occlusion.b, state.b
 	cmpi.w #319,d0
 	bhi.s .hidden
 	cmpi.w #183,d1
@@ -79,36 +79,36 @@ slicks_particle_address_start equ *
 	move.l (a6,d1.w*4),d2
 	add.w d0,d2
 slicks_particle_address_end equ *
-	moveq #0,d4
-	move.b PD_OCCLUSION(a0),d4
+	move.w d3,d4
+	lsr.w #8,d4			; occlusion limit, zero-extended
 	beq.s .visible
 	cmp.w (a2,d2.l*2),d4
 	bcs.s .hidden
 	bra.s .visible
 .hidden:
-	btst #1,d3
+	btst #25,d3			; flags bit 1: old pixel is displayed
 	beq.s .clear
+	move.l PD_OLD_X(a0),d3
 	bsr.s .queue_old
 .clear:
 	clr.b PD_FLAGS(a0)
 	bra.s .done
 .visible:
-	btst #1,d3
+	move.w d0,d4			; old_x:old_y form of the new pixel
+	swap d4
+	move.w d1,d4
+	btst #25,d3
 	beq.s .queue_new
-	cmp.w PD_OLD_X(a0),d0
-	bne.s .moved
-	cmp.w PD_OLD_Y(a0),d1
+	move.l PD_OLD_X(a0),d3
+	cmp.l d3,d4
 	beq.s .save_under
-.moved:
 	bsr.s .queue_old
 .queue_new:
-	move.w d0,(a4)+
-	move.b d1,(a4)+
-	clr.b (a4)+
+	move.l d4,d3			; dirty entry x.w, y.b, 0 (y is below 184)
+	lsl.w #8,d3
+	move.l d3,(a4)+
 	addq.w #1,d5
-.paint:
-	move.w d0,PD_OLD_X(a0)
-	move.w d1,PD_OLD_Y(a0)
+	move.l d4,PD_OLD_X(a0)
 .save_under:
 ; A restored point already at this pixel retains the same coordinates.
 ; Still save/repaint the pixel: earlier actors may have changed its underlay.
@@ -121,14 +121,13 @@ slicks_particle_address_end equ *
 	moveq #1,d0
 	movem.l (sp)+,d2-d5/a2-a6
 	rts
-.queue_old:
-	cmpi.w #319,PD_OLD_X(a0)
+.queue_old:			; d3 = old_x:old_y
+	cmpi.w #199,d3
 	bhi.s .old_done
-	cmpi.w #199,PD_OLD_Y(a0)
-	bhi.s .old_done
-	move.w PD_OLD_X(a0),(a4)+
-	move.b PD_OLD_Y+1(a0),(a4)+
-	clr.b (a4)+
+	cmpi.l #320<<16,d3
+	bcc.s .old_done
+	lsl.w #8,d3			; old_x.w, old_y.b, 0
+	move.l d3,(a4)+
 	addq.w #1,d5
 .old_done:
 	rts

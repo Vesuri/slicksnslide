@@ -411,7 +411,7 @@ slicks_emit_wheel_surface:
 	move.l	d6,RACE_RANDOM_STATE(a4)
 	swap	d6
 	andi.l	#$7fff,d6
-	mulu.l	d6,d0
+	mulu.w	d6,d0			; limit and draw are both below 65536
 	moveq	#15,d6
 	lsr.l	d6,d0
 	rts
@@ -468,13 +468,26 @@ slicks_emit_wheel_surface:
 	beq.w	.add_native
 	tst.w	SLOTS_CAPACITY(a0)
 	beq.w	.add_ret
-.add_scan:
-	cmp.w	SLOTS_HIGH_WATER(a0),d0
-	bcc.s	.add_extend
+.add_scan:				; lowest free slot in cursor..high_water-1
+	move.l	d6,-(sp)
+	move.w	SLOTS_HIGH_WATER(a0),d6
+	sub.w	d0,d6
+	bls.s	.add_scan_end		; cursor at or past high_water
+	lea	(a0,d0.w),a3
+	subq.w	#1,d6
+.add_scan_next:
+	tst.b	(a3)+
+	dbeq	d6,.add_scan_next
+	move.l	a3,d0
+	sub.l	a0,d0
+	subq.w	#1,d0
+	move.l	(sp)+,d6
 	tst.b	(a0,d0.w)
 	beq.s	.add_found
-	addq.w	#1,d0
-	bra.s	.add_scan
+	addq.w	#1,d0			; none free: cursor = high_water
+	bra.s	.add_extend
+.add_scan_end:
+	move.l	(sp)+,d6
 .add_extend:
 	move.w	d0,RACE_EMISSION_SLOT_CURSOR(a4)
 	move.w	SLOTS_HIGH_WATER(a0),d0

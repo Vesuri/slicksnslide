@@ -136,6 +136,49 @@ lines (206):
   attributions are indicative; subsystem rows rest on about 2,700 samples
   and have roughly ±10% relative error.
 
+## Review of the five largest growth rows (2026-10-02)
+
+All five rows above (particle draw, advance, emission, sprite retention,
+particle restore) were already hand-written 68020 code. Instruction-level
+samples from the same run show each spread over its Chip RAM loads and
+stores rather than one hot instruction, so the remaining lever is fewer
+Chip accesses per particle, not a different instruction choice.
+
+- Particle draw: an unmoved point made about 16 Chip accesses (chain walk 4,
+  body 12). Particles move at most 11/64 pixel per update, so most keep their
+  pixel and never queue dirty entries. Accepted: the flags/occlusion pair and
+  the old x/y pair are each read as one long, and the old position and
+  dirty entries are written as one long (`x.w, y.b, 0` from `lsl.w #8`).
+- Emission: the lowest-free slot scan ran once over the occupied slots per
+  update (about 15% of emission samples). Accepted: `tst.b (a3)+`/`dbeq`
+  with the high-water limit in a register, and a 16-bit multiply for the
+  Borland RNG scale (both operands are below 65536). The rest of emission
+  is spread over its body; the emitted count is game logic.
+- Sprite retention: the per-particle priority pre-test re-read the
+  threshold from memory. Accepted: the threshold stays in a register.
+- Particle advance: a 24-byte read and, once compaction starts, a 24-byte
+  write plus three handle-table stores per survivor. The trail-index store
+  is redundant only before the first compaction, which three-update road
+  marks make rare; not changed.
+- Particle restore: eight accesses per point, all needed; not changed.
+
+Results, fixed-clock benchmark against the parent (identical `FINAL_STATE`
+on every track; two parent runs differ by 35 lines):
+
+| Track | Work (parent → new) | Maximum lines |
+| --- | ---: | ---: |
+| BASIC | 145,817 → 145,194 (−0.43%) | 351 → 347 |
+| F1 | 173,417 → 172,490 (−0.53%) | 430 → 420 |
+| CITY | 141,740 → 141,185 (−0.39%) | 339 → 334 |
+| WHACKO | 149,796 → 149,283 (−0.34%) | 402 → 381 |
+
+The draw, emission and retention oracles, the emission SHADOW site on all
+four tracks, RETCHECK on all four tracks and the F1/CITY/WHACKO display
+audits pass. A larger cut needs fewer particle records or passes, for
+example retaining unmoved points, which was measured earlier and rejected
+(see below).
+
+## Accepted optimizations
 
 Native replacements keep their C references; sites are `SHADOW_SITES` bits.
 
@@ -154,7 +197,8 @@ Native replacements keep their C references; sites are `SHADOW_SITES` bits.
 - `src/game/particle_runtime.s`: one-pass particle advance, compaction and
   handle publication. Site 6.
 - `src/game/particle_draw.s`: cache-sized point drawing loop, precomputed
-  visibility and bounds-proven addressing.
+  visibility, bounds-proven addressing and long-merged record and dirty-list
+  accesses.
 - `point_restore.s`, `actor_order.s` (bidirectional draw chains),
   `actor_allocate.s`: consecutive point restore, chain build, allocator.
 - `src/game/sprite_retention.{s,inc}`: unchanged, isolated track sprites stay
@@ -219,11 +263,15 @@ candidate earns the expensive gates and a final timing confirmation.
   error or unexercised site; runs use warp and restore the normal build.
 - **RETCHECK** (drawing-order or retention changes). Remove
   `obj/race_runtime.o` and `obj/slicks_diag.o`, build `make RETCHECK=1`, then
-  run `SLICKS_SHADOW_TRACK=N ./debug.sh "" diag_retention_check.gdb` for each
-  track. Every racing update first runs from a snapshot with retention off,
-  then for real. It compares the chunky surfaces, particle records, geometry
-  cache, immutable maps and HUD status cache; a mismatch prints
-  `RETENTION_CHECK_FAILED`. Rebuild normally afterwards.
+  run `SLICKS_DEBUG_FAST_KB=2048 SLICKS_SHADOW_TRACK=N ./debug.sh ""
+  diag_retention_check.gdb` for each track. Its snapshot (64,000-byte surface
+  plus about 130 KB of state) no longer fits beside the game in 2 MiB Chip
+  RAM, so the check adds emulated Fast RAM; it compares two passes of the
+  same build, so the memory type does not affect the result. Every racing
+  update first runs from a snapshot with retention off, then for real. It
+  compares the chunky surfaces, particle records, geometry cache, immutable
+  maps and HUD status cache; a mismatch prints `RETENTION_CHECK_FAILED`.
+  Rebuild normally afterwards.
 - **Display audits** (rendering changes) on F1, CITY and WHACKO:
   `SLICKS_LIVE_STATS=0 SLICKS_TRACK_ACTOR_TEST=1 SLICKS_TRACK_ACTOR_CASE=1|2|3 ./debug.sh "" diag_dirty_sprites.gdb`.
 

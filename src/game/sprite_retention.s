@@ -226,12 +226,13 @@ slicks_prepare_sprite_retention:
 	lea	RACE_TRAIL_PARTICLES(a4),a0
 	lea	RET_ROWS(a5),a1
 	lea	RET_CELLS(a5),a2
+	move.b	RET_MAX_PRIORITY(a5),d6	; entry count is no longer needed
 	move.w	RACE_TRAIL_PARTICLE_COUNT(a4),d7
 	subq.w	#1,d7
 	bmi.w	.cars
 .point:
 	move.b	RP_PRIORITY(a0),d4	; only lower-priority points matter
-	cmp.b	RET_MAX_PRIORITY(a5),d4
+	cmp.b	d6,d4
 	bcc.s	.point_next
 .point_y:
 	ifne SLICKS_PARTICLE_WORD_COORDINATES
