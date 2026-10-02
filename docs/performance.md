@@ -50,7 +50,7 @@ and RETCHECK, which need a forced rebuild (see below).
 | `INNER_PROFILE=1` | Stage timers for `SLICKS_BENCHMARK_DETAIL` 1–7; required for those modes |
 | `SHADOW=1` | Dual execution of native replacements against their C references |
 | `RETCHECK=1` | Compares every racing update with a reference that keeps nothing between frames |
-| `STACKCHECK=1` | Native stack watermark ([release-verification.md](release-verification.md)) |
+| `STACKCHECK=1` | Native stack watermark |
 | `TITLEPROFILE=1` | Title phase timestamps |
 
 `GAMEPLAY_CFLAGS` defaults to `-O3` for `race_runtime.o`. With `-O2` the
@@ -85,7 +85,57 @@ Round numbers from the fixed-clock benchmark and the sampler:
 - Particle-heavy updates cost about 1.1 raster lines per live particle on
   top of about 270 lines of fixed work.
 
-## Accepted optimizations
+## F1 over-budget updates (2026-10-02 profile)
+
+Release 0.90 code, fixed-clock F1 benchmark (603 updates) without the
+sampler: mean 288 lines (18.4 ms), p50 283, p90 350, p95 369, p99 398,
+maximum 428 (27.4 ms); 184 updates (31%) exceed one 312-line frame.
+Work is about 248 lines plus 0.81 lines per live particle (r = 0.80), so
+the budget is crossed at about 79 particles: 2 of 295 updates under 25
+particles are over budget, but 108 of 115 with 100–149 are. Over-budget
+updates cluster in the race start burst and around updates 440–520.
+
+A matching CIA-B sampler run (same `FINAL_STATE`; 7,889 samples) was split
+by each update's un-instrumented work, and each update's lines were spread
+over its samples. Lines per update, over-budget (184) versus at most 260
+lines (206):
+
+| Subsystem (main routines) | > 312 | ≤ 260 | Growth |
+| --- | ---: | ---: | ---: |
+| Particle draw (`slicks_draw_particle` body, `draw_trail_priority`) | 32.7 | 10.7 | +22.0 |
+| Particle advance (`slicks_advance_shared_particles`) | 22.8 | 2.6 | +20.2 |
+| Particle emission (`slicks_emit_wheel_surface`, `add_trail_component`) | 25.3 | 11.7 | +13.7 |
+| Sprite retention (`slicks_prepare_sprite_retention`, touch, rebuild) | 25.2 | 14.6 | +10.6 |
+| Particle restore (`slicks_restore_point_chain`, trail restore) | 14.5 | 5.8 | +8.8 |
+| Dirty bookkeeping (`slicks_mark_dirty_rect`, pixel pruning) | 15.0 | 8.3 | +6.7 |
+| Actor draw order (`slicks_build_draw_order`) | 14.0 | 8.3 | +5.7 |
+| Audio (engine speeds, effect starts) | 11.9 | 7.1 | +4.7 |
+| C2P (`c2p16_interleaved`, sparse pixels, rectangles) | 21.4 | 18.8 | +2.6 |
+| Track-object and car sprite restore + draw | 54.5 | 50.1 | +4.4 |
+| Car physics and race logic (`slicks_race_step`, `slicks_integrate_car_motion`) | 49.7 | 49.4 | +0.3 |
+| AI, car pairs, track objects and weapons | 28.8 | 31.1 | −2.3 |
+| HUD | 10.0 | 9.3 | +0.7 |
+| Main loop, sound dispatch, other | 18.1 | 12.8 | +5.3 |
+| **Total** | **344** | **241** | **+103** |
+
+- Particles (advance, emission, draw, restore) are 95 lines of an
+  over-budget update and 65 of the 103-line growth; with retention, dirty
+  bookkeeping and draw order, which scale with the same effects, the growth
+  is 88 lines. The fixed per-update work (cars, AI, sprites, C2P, HUD) is
+  about the same in fast and slow updates and is itself about 240 lines.
+- Particle advance: the cost is the 24-byte record `movem` load and the
+  compaction store, about 12 µs per live particle per update.
+- Particle emission: the hottest instructions are `.add_scan`, the
+  lowest-free slot search in `car_emission.s` (about 3 lines per update).
+- The single worst update (index 409, 428 lines, 40 particles) is about
+  100 lines above its neighbours because of one `slicks_retention_rebuild`
+  (pairwise overlap pass plus map `memset`s) after a track sprite settled;
+  it occurred once in the race. Updates 376/389/399 add weapon projectile
+  sampling (`slicks_track_projectile_sample`).
+- The sampler resolves about 15 samples per update, so single-update
+  attributions are indicative; subsystem rows rest on about 2,700 samples
+  and have roughly ±10% relative error.
+
 
 Native replacements keep their C references; sites are `SHADOW_SITES` bits.
 
