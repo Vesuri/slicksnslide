@@ -80,5 +80,9 @@ make -C whdload    # production and test WHDLoad slaves (see whdload.md)
 ```
 
 The AGA diagnostic launchers require the user's AmigaOS `SetPatch` at
-`tmp/SetPatch`. They copy it and the original `ref/SLICKS.000` resource archive
-to the generated boot volume; neither is linked into the native executable.
+`~/.local/share/amiga/SetPatch`. They copy it and the original
+`ref/SLICKS.000` resource archive to the generated boot volume; neither is
+linked into the native executable. The installer, standalone and WHDLoad
+tests also use the Workbench 2.04 ADF and the WHDLoad Kickstart
+(`Kickstarts/kick40063.A600` and `.RTB`) from `~/.local/share/amiga`, and
+the publisher's archive from `ref/Slix151.zip`.

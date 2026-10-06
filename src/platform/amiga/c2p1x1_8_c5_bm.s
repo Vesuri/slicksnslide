@@ -1,5 +1,5 @@
 ; Mikael Kalms' Public Domain c2p1x1_8_c5_bm, imported from the
-; Kalms C2P collection in Vette/tmp/kalms-c2p/bitmap.
+; Kalms C2P collection in ~/.local/share/amiga/kalms-c2p/bitmap.
 ; Slicks adaptation: optional320-byte source stride for dirty rectangles;
 ; retain the original packed-source entry and final-value-only plane stores.
 

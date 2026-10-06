@@ -22,7 +22,7 @@ def main():
         (base/"state").mkdir(); (base/"home").mkdir()
         shutil.copyfile(build/"SlicksNSlideInstallData.exe",boot/"Extract")
         (boot/"scratch").mkdir()
-        (boot/"s/startup-sequence").write_text('CD DH0:\nStack 4096\nExtract "DH1:tmp/Slix151-release.zip" "DH2:installed" "DH0:scratch"\n')
+        (boot/"s/startup-sequence").write_text('CD DH0:\nStack 4096\nExtract "DH1:ref/Slix151.zip" "DH2:installed" "DH0:scratch"\n')
         sock=socket.socket(); sock.bind(("127.0.0.1",0)); port=sock.getsockname()[1]; sock.close()
         commands=base/"test.gdb"
         commands.write_text(f'''set pagination off

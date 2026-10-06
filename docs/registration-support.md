@@ -10,7 +10,7 @@ beside `SlicksNSlide` (the game's working directory). Without it, the game remai
 an error, not an unlock or a silent fallback. Registration is read at startup;
 it is never stored in configuration, profiles or saved championships.
 
-`amiga/run.sh` deploys an optional local `tmp/slicks.rek`, or the file selected
+`amiga/run.sh` deploys an optional local `ref/slicks.rek`, or the file selected
 by `SLICKS_REGISTRATION_KEY`. It preserves an already installed key when no
 local key is present. Debug runs only copy a key when that environment variable
 is explicitly supplied; use a fresh `FSUAE_RUN` directory for keyless tests.
@@ -71,7 +71,7 @@ checked plain-file reader; a failed read or close skips it like an absent file.
 
 ## Tests
 
-- `make verify-registration REGISTRATION_KEY=tmp/slicks.rek`: the original
+- `make verify-registration REGISTRATION_KEY=ref/slicks.rek`: the original
   loader against valid, absent, truncated, mutated, empty-name and
   trailing-data keys; every trial/exit gate input; all 256 name-byte case
   conversions; all 65,536 exit-help key values. Only file services and the

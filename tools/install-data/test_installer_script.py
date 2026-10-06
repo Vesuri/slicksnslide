@@ -73,7 +73,7 @@ def main():
         # without blocking on its requester.
         script=replace_form(script,'(message "WHDLoad needs','(set #kick-warned 1)')
     script=replace_form(script,'(set #parent','(set #parent "DH2:out")')
-    script=replace_form(script,'(set #archive','(abort "Use existing unexpectedly asked for ZIP")' if keep else '(set #archive "DH1:tmp/Slix151-release.zip")')
+    script=replace_form(script,'(set #archive','(abort "Use existing unexpectedly asked for ZIP")' if keep else '(set #archive "DH1:ref/Slix151.zip")')
     script=replace_form(script,'(set #temp','(abort "Use existing unexpectedly asked for scratch")' if keep else '(set #temp "'+('T:' if ram_temp else 'DH2:scratch')+'")')
     script=replace_form(script,'(set #install-data\n    (askbool',f'(set #install-data {int(reinstall)})')
     script=replace_form(script,'(exit)','(exit (quiet))')
@@ -83,7 +83,7 @@ def main():
     with (base/'emulator.log').open('w') as log:
         emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory='+('4096' if ram_temp else '0'),
           '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10',
-          '--hard_drive_1='+str(ROOT),'--hard_drive_2='+str(base),'--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
+          '--hard_drive_1='+str(ROOT),'--hard_drive_2='+str(base),'--floppy_drive_0='+str(Path.home()/'.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf'),
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=dict(os.environ,SDL_AUDIODRIVER='dummy'))
         try:
             deadline=time.monotonic()+180

@@ -5,7 +5,7 @@ import sys
 import tempfile
 import zipfile
 ROOT=Path(__file__).resolve().parents[2]
-SOURCE=ROOT/'tmp/Slix151-release.zip'
+SOURCE=ROOT/'ref/Slix151.zip'
 def expected_files():
     with zipfile.ZipFile(SOURCE) as z:
         return {n:z.read(n) for n in z.namelist() if n in ('SLICKS.000','SLICKS.DAT') or (n.startswith('TRACKS/') and n.endswith('.SS'))}

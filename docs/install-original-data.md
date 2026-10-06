@@ -106,6 +106,6 @@ python3 tools/check_release.py dist/SlicksNSlide-0.90.lha
 ```
 
 Native tests use locally owned Kickstart/Workbench/SetPatch and the downloaded
-ZIP under `tmp/Slix151-release.zip`. They are muted and close their own emulator.
+ZIP under `ref/Slix151.zip`. They are muted and close their own emulator.
 The Workbench test disk currently defaults to Vette's shared local test fixture;
 it is neither a game dependency nor included in the archive.

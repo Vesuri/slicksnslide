@@ -66,9 +66,9 @@ startup, while `race` reaches real racing and `quit` exercises normal exit.
 ```sh
 . amiga/env.sh
 make -C whdload all race-test exit-test
-python3 tools/test_whdload.py --mode timed --rom /local/kick40063.A600 --rtb /local/kick40063.A600.RTB
-python3 tools/test_whdload.py --mode race --rom /local/kick40063.A600 --rtb /local/kick40063.A600.RTB
-python3 tools/test_whdload.py --mode quit --rom /local/kick40063.A600 --rtb /local/kick40063.A600.RTB --ticks 5000
+python3 tools/test_whdload.py --mode timed
+python3 tools/test_whdload.py --mode race
+python3 tools/test_whdload.py --mode quit --ticks 5000
 ```
 
 Use `--exe build/release/SlicksNSlide` to test the stripped release executable and

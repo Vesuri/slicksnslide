@@ -24,8 +24,9 @@ def main():
     p.add_argument('--seed-setup', type=Path, help='Previous test data drawer containing CFG and PLR for warm-save validation')
     p.add_argument('--max-save-switches', type=int, help='Maximum measured OS round trips per save transaction')
     p.add_argument('--whdload', type=Path, default=Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad')
-    p.add_argument('--rom', type=Path)
-    p.add_argument('--rtb', type=Path)
+    kick=Path.home()/'.local/share/amiga/Kickstarts'
+    p.add_argument('--rom', type=Path, default=kick/'kick40063.A600')
+    p.add_argument('--rtb', type=Path, default=kick/'kick40063.A600.RTB')
     p.add_argument('--exe', type=Path, default=ROOT/'amiga/out/SlicksDiag.exe')
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
@@ -36,8 +37,8 @@ def main():
     p.add_argument('--no-write-cache', action='store_true', help='Diagnostic control for cached file creation')
     p.add_argument('--write-delay', type=int, help='WHDLoad physical-write delay in PAL fields')
     args = p.parse_args()
-    if args.mode != 'smoke' and (not args.rom or not args.rtb):
-        p.error('--rom and --rtb are required except for smoke mode')
+    if args.mode != 'smoke' and (not args.rom.is_file() or not args.rtb.is_file()):
+        p.error('--rom and --rtb must name a Kickstart image and its RTB file except for smoke mode')
     if args.write_delay is not None and args.write_delay < 0:
         p.error('--write-delay must be nonnegative')
     if args.mode == 'championship-edit' and not args.seed_save:
@@ -56,7 +57,7 @@ def main():
     if args.mode in ('load', 'quit', 'timed','race','championship','championship-edit','records'):
         shutil.copyfile(args.exe, game/'data/SlicksNSlide')
     if args.mode in ('quit', 'timed','race','championship','championship-edit','records'):
-        with zipfile.ZipFile(ROOT/'tmp/Slix151-release.zip') as z:
+        with zipfile.ZipFile(ROOT/'ref/Slix151.zip') as z:
             for name in z.namelist():
                 if name in ('SLICKS.000','SLICKS.DAT') or (name.startswith('TRACKS/') and name.endswith('.SS')):
                     target=game/'data'/name; target.parent.mkdir(parents=True,exist_ok=True); target.write_bytes(z.read(name))
@@ -81,7 +82,7 @@ def main():
             '--jit_compiler=0', '--chip_memory=2048', '--fast_memory='+str(args.fast),
             '--kickstart_file='+os.environ['KICKSTART'],
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
-            '--floppy_drive_0='+str(Path.home()/'Documents/Vette/tmp/Workbenchv2.04rev37.67Workbench.adf'),
+            '--floppy_drive_0='+str(Path.home()/'.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf'),
             '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode='+('0' if args.real_time else '1'), '--fullscreen=0',
             *(['--uae_cpu_speed=real'] if args.real_time else []),
             '--window_width=720', '--window_height=568', '--state_dir='+str(base/'state')], stdout=log, stderr=log, env=dict(os.environ,SDL_AUDIODRIVER='dummy'))
@@ -118,7 +119,7 @@ def main():
                     files = (game/'.whdl_log').read_text(encoding='latin1')
                     assert any('[Write]' in line and 'name=TRACKS/' in line for line in files.splitlines()), 'No whole-file record write exercised'
                     assert (game/'data/SLICKS.CFG').is_file() and (game/'data/SLICKS.PLR').is_file()
-                    with zipfile.ZipFile(ROOT/'tmp/Slix151-release.zip') as original:
+                    with zipfile.ZipFile(ROOT/'ref/Slix151.zip') as original:
                         assert any(p.read_bytes()!=original.read('TRACKS/'+p.name)
                                    for p in (game/'data/TRACKS').glob('*.SS')), 'No track records changed'
                     assert not list((game/'data').rglob('*.new'))

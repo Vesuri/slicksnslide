@@ -38,7 +38,7 @@ if [ "${SLICKS_DEBUG_JOYSTICK_KEYS:-0}" = 1 ]; then
   DEBUG_JOYSTICK=keyboard
 fi
 ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
-SETPATCH="${SETPATCH:-../tmp/SetPatch}"
+SETPATCH="${SETPATCH:-$HOME/.local/share/amiga/SetPatch}"
 DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
 [ -f "$DEBUG_BUILD.elf" ] || { echo "build first: make"; exit 1; }

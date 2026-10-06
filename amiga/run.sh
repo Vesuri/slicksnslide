@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 FSUAE="${FSUAE:-fs-uae}"
 ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
 EXE="${SLICKS_EXE:-out/SlicksDiag.exe}"
-SETPATCH="${SETPATCH:-../tmp/SetPatch}"
+SETPATCH="${SETPATCH:-$HOME/.local/share/amiga/SetPatch}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
 [ -f "$EXE" ] || { echo "not found: $EXE  (build first: make)"; exit 1; }
 [ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
@@ -24,7 +24,7 @@ cp -f "$SETPATCH" "$DH0/c/SetPatch"
 cp -f "$EXE" "$DH1/SlicksDiag"
 # Runtime-only personal key; never linked or packaged. Keep an installation's
 # existing key if no local file was supplied.
-REGISTRATION_KEY="${SLICKS_REGISTRATION_KEY:-../tmp/slicks.rek}"
+REGISTRATION_KEY="${SLICKS_REGISTRATION_KEY:-../ref/slicks.rek}"
 if [ -n "${SLICKS_REGISTRATION_KEY:-}" ] && [ ! -f "$REGISTRATION_KEY" ]; then
   echo 'Registration key file not found.' >&2; exit 2
 fi
