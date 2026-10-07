@@ -79,10 +79,26 @@ make release-check # release host checks, determinism, package build and audit
 make -C whdload    # production and test WHDLoad slaves (see whdload.md)
 ```
 
-The AGA diagnostic launchers require the user's AmigaOS `SetPatch` at
-`~/.local/share/amiga/SetPatch`. They copy it and the original
-`ref/SLICKS.000` resource archive to the generated boot volume; neither is
-linked into the native executable. The installer, standalone and WHDLoad
-tests also use the Workbench 2.04 ADF and the WHDLoad Kickstart
-(`Kickstarts/kick40063.A600` and `.RTB`) from `~/.local/share/amiga`, and
-the publisher's archive from `ref/Slix151.zip`.
+### Local Amiga inputs
+
+Common, locally owned Amiga files come from the shared `~/.local/share/amiga`;
+each has an environment override. Shell launchers (`amiga/env.sh`, `run.sh`,
+`debug.sh`) and the Python tests (`tools/amiga_inputs.py`) use the same
+defaults:
+
+| Variable | Default under `~/.local/share/amiga` | Used by |
+| --- | --- | --- |
+| `KICKSTART` | `Kickstarts/kick40063.A600` (KS 3.1 40.063) | every FS-UAE launch |
+| `SETPATCH` | `SetPatch` | AGA launchers, standalone test |
+| `WORKBENCH_ADF` | `Workbenchv2.04rev37.67Workbench.adf` | installer, standalone, WHDLoad tests |
+| `INSTALLER43` | `Installer43/Installer` | installer script test |
+| `WHDLOAD` | `WHDLoad/C/WHDLoad` | installer and WHDLoad tests |
+
+`tools/test_whdload.py` also takes `--rom`/`--rtb` for the Kickstart pair that
+WHDLoad itself loads (default `Kickstarts/kick40063.A600` and `.RTB`).
+The AGA launchers copy `SetPatch` and the original `ref/SLICKS.000` resource
+archive to the generated boot volume; neither is linked into the native
+executable. The installer tests read the publisher's archive from
+`ref/Slix151.zip`. FS-UAE screenshots from `run.sh`/`debug.sh` go to the
+ignored `tmp/screenshots` (`SCREENSHOT_DIR` overrides); all other scratch
+output also stays under `tmp/`.

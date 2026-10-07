@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 . "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
 
 FSUAE="${FSUAE:-fs-uae}"
-ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
+ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
 EXE="${SLICKS_EXE:-out/SlicksDiag.exe}"
 SETPATCH="${SETPATCH:-$HOME/.local/share/amiga/SetPatch}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
@@ -14,6 +14,8 @@ SETPATCH="${SETPATCH:-$HOME/.local/share/amiga/SetPatch}"
 [ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"
+SCREENSHOT_DIR="${SCREENSHOT_DIR:-$PWD/../tmp/screenshots}"
+mkdir -p "$SCREENSHOT_DIR"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state"
 if [ "${SLICKS_AUTO_RACE:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag AUTO\n' > "$DH0/s/startup-sequence"
@@ -43,4 +45,4 @@ exec "$FSUAE" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --joystick_port_0=mouse --joystick_port_1=nothing \
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  --ntsc_mode=0 --state_dir="$RUN/state"
+  --ntsc_mode=0 --state_dir="$RUN/state" --screenshots_output_dir="$SCREENSHOT_DIR"

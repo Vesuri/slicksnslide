@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import time
 ROOT=Path(__file__).resolve().parents[1]
+import amiga_inputs
 def load_checks(path, active=()):
     """Resolve diagnostic includes before moving GDB into its isolated cwd."""
     import shlex
@@ -66,7 +67,7 @@ def main():
     installed=args.installed.resolve()
     base=Path(tempfile.mkdtemp(prefix='standalone-release-',dir=ROOT/'tmp'))
     boot=base/'boot';(boot/'s').mkdir(parents=True);(boot/'c').mkdir();(base/'state').mkdir();(base/'home').mkdir()
-    shutil.copyfile(Path.home()/'.local/share/amiga/SetPatch',boot/'c/SetPatch')
+    shutil.copyfile(amiga_inputs.SETPATCH,boot/'c/SetPatch')
     # Never increase the Shell stack or wrap the executable in a Play script.
     launch='C:SetPatch QUIET\n'+('C:LoadWB\nWait 2\n' if args.workbench else '')+'CD data\n'
     for iteration in range(args.repeat):
@@ -120,9 +121,9 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
     with (base/'emulator.log').open('w') as log:
         emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory='+args.chip_memory,'--fast_memory=0',
           '--cpu='+args.cpu,'--uae_cpu_speed='+args.cpu_speed,
-          '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10','--hard_drive_1='+str(installed),
+          '--kickstart_file='+str(amiga_inputs.KICKSTART),'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10','--hard_drive_1='+str(installed),
           '--hard_drive_1_read_only='+str(int(args.read_only)),
-          '--floppy_drive_0='+str(Path.home()/'.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf'),
+          '--floppy_drive_0='+str(amiga_inputs.WORKBENCH_ADF),
           '--remote_debugger=20','--remote_debugger_port='+str(port),'--remote_debugger_trigger=SlicksNSlide',
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=env)
         try:

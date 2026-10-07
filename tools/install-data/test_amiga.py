@@ -12,6 +12,8 @@ import time
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(Path(__file__).resolve().parent))
+sys.path.insert(0,str(ROOT/'tools'))
+import amiga_inputs
 from test_install import expected_files
 
 def main():
@@ -41,7 +43,7 @@ quit
         env=os.environ.copy(); env.update(SDL_AUDIODRIVER="dummy", HOME=str(base/"home"),XDG_CACHE_HOME=str(base/"home"))
         with (base/"fsuae.log").open("w") as log:
             emu=subprocess.Popen(["fs-uae","--amiga_model=A1200","--chip_memory=2048","--fast_memory=0",
-                "--kickstart_file="+os.environ["KICKSTART"],"--hard_drive_0="+str(boot),
+                "--kickstart_file="+str(amiga_inputs.KICKSTART),"--hard_drive_0="+str(boot),
                 "--hard_drive_1="+str(ROOT),"--hard_drive_2="+str(base),"--warp_mode=1",
                 "--fullscreen=0","--window_width=720","--window_height=568",
                 "--remote_debugger=20",f"--remote_debugger_port={port}",

@@ -10,6 +10,7 @@ import tempfile
 import time
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
+import amiga_inputs
 from installer_icon import installer_icon,readme_icon
 from test_install import expected_files
 def replace_form(text,start,replacement):
@@ -26,7 +27,8 @@ def replace_form(text,start,replacement):
         i+=1
     raise ValueError('Unbalanced Installer form')
 def main():
-    installer=Path(sys.argv[1]).resolve();keep='--keep' in sys.argv
+    args=sys.argv[1:]
+    installer=Path(args[0] if args and not args[0].startswith('--') else amiga_inputs.INSTALLER43).resolve();keep='--keep' in sys.argv
     reinstall='--reinstall' in sys.argv
     no_whd='--no-whd' in sys.argv
     incomplete='--missing-tracks' in sys.argv
@@ -51,7 +53,7 @@ def main():
         if keep:expected['TRACKS/BASIC.SS']=b'user modified track and records'
     for source,name in ((installer,'Installer'),(ROOT/'build/install-data/SlicksNSlideInstallData.exe','SlicksNSlideInstallData'),
       (ROOT/'amiga/out/SlicksDiag.exe','SlicksNSlide'),(ROOT/'build/whdload/SlicksNSlide.slave','SlicksNSlide.slave'),
-      (Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad','WHDLoad'),(ROOT/'release/ReadMe','ReadMe')):
+      (amiga_inputs.WHDLOAD,'WHDLoad'),(ROOT/'release/ReadMe','ReadMe')):
         if not (no_whd and name=='WHDLoad'):shutil.copyfile(source,boot/name)
     (boot/'Install.info').write_bytes(installer_icon());(boot/'SlicksNSlide.inf').write_bytes(installer_icon(game=True));(boot/'ReadMe.info').write_bytes(readme_icon())
     script=(ROOT/'release/Install').read_text()
@@ -82,8 +84,8 @@ def main():
     print('Fixture:',base,flush=True)
     with (base/'emulator.log').open('w') as log:
         emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory='+('4096' if ram_temp else '0'),
-          '--kickstart_file='+os.environ['KICKSTART'],'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10',
-          '--hard_drive_1='+str(ROOT),'--hard_drive_2='+str(base),'--floppy_drive_0='+str(Path.home()/'.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf'),
+          '--kickstart_file='+str(amiga_inputs.KICKSTART),'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10',
+          '--hard_drive_1='+str(ROOT),'--hard_drive_2='+str(base),'--floppy_drive_0='+str(amiga_inputs.WORKBENCH_ADF),
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=dict(os.environ,SDL_AUDIODRIVER='dummy'))
         try:
             deadline=time.monotonic()+180

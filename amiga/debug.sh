@@ -37,7 +37,7 @@ if [ "${SLICKS_DEBUG_JOYSTICK_KEYS:-0}" = 1 ]; then
   # Use its built-in keyboard joystick: arrows and right Ctrl/Alt fire.
   DEBUG_JOYSTICK=keyboard
 fi
-ROM="${1:-${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}}"
+ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
 SETPATCH="${SETPATCH:-$HOME/.local/share/amiga/SetPatch}"
 DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
@@ -45,6 +45,8 @@ DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 [ -f "$SETPATCH" ] || { echo "SetPatch not found: $SETPATCH"; exit 1; }
 
 RUN="$FSUAE_RUN"; DH0="$RUN/dh0"; DH1="$RUN/dh1"; GDBHOME="$RUN/gdbhome"
+SCREENSHOT_DIR="${SCREENSHOT_DIR:-$PWD/../tmp/screenshots}"
+mkdir -p "$SCREENSHOT_DIR"
 mkdir -p "$DH0/c" "$DH0/s" "$DH1" "$RUN/state" "$GDBHOME"
 if [ "${SLICKS_DISPLAY_ALLOCATION_TEST:-0}" = 1 ]; then
   printf 'C:SetPatch QUIET\ncd dh1:\nSlicksDiag DISPMEM\n' > "$DH0/s/startup-sequence"
@@ -355,7 +357,7 @@ fsuae_claim_port
   --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
   --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" \
   --remote_debugger_trigger=SlicksDiag \
-  --ntsc_mode=0 --state_dir="$RUN/state" > "$RUN/fsuae-dbg.log" 2>&1 &
+  --ntsc_mode=0 --state_dir="$RUN/state" --screenshots_output_dir="$SCREENSHOT_DIR" > "$RUN/fsuae-dbg.log" 2>&1 &
 FSUAE_PID=$!
 fsuae_track "$FSUAE_PID"
 # Scripted tests own their emulator only until the debugger exits, whether

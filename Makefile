@@ -1106,16 +1106,16 @@ verify-planar-writes:
 .PHONY: verify-dos-points
 build/verify_dos_points: tools/verify_dos_points.c src/game/race_runtime.c src/game/signed_division.h src/game/race_runtime.h src/game/track_scene.c src/game/track_scene.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections \
-		-Wl,-dead_strip -I/opt/homebrew/opt/unicorn/include $< \
-		src/game/track_scene.c -L/opt/homebrew/opt/unicorn/lib -lunicorn -o $@
+		-Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< \
+		src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-dos-points: build/verify_dos_points
 	build/verify_dos_points disasm/runtime.bin
 
 build/verify_dos_particle_expiry: tools/verify_dos_particle_expiry.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror \
-		-I/opt/homebrew/opt/unicorn/include $< \
-		-L/opt/homebrew/opt/unicorn/lib -lunicorn -o $@
+		-I$(UNICORN_PREFIX)/include $< \
+		-L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-dos-particle-expiry: build/verify_dos_particle_expiry
 	build/verify_dos_particle_expiry disasm/runtime.bin

@@ -5,4 +5,4 @@
 #   . env.sh
 SLICKS_TC="$HOME/.local"
 export PATH="$SLICKS_TC/opt/bin:$SLICKS_TC:$SLICKS_TC/fs-uae:$PATH"
-export KICKSTART="${KICKSTART:-$HOME/Documents/RetroPie/BIOS/kick31.rom}"
+export KICKSTART="${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}"

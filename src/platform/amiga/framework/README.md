@@ -1,6 +1,6 @@
 # dA JoRMaS Amiga framework
 
-These sources come from `dA JoRMaS/Productions/DanceDiverse3/Source`. Slicks
+These sources come from the dA JoRMaS DanceDiverse3 framework. Slicks
 uses the framework's `AmigaHardware`, `Bitmap`, `CopperList`, and
 `Palette24Bit` classes directly for its AGA display. The `Palette.h`,
 `Sprite.h`, and `Util.h` headers are kept because those classes include them;

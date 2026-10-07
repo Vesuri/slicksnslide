@@ -15,6 +15,8 @@ import tempfile
 import time
 import zipfile
 
+import amiga_inputs
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def main():
@@ -23,8 +25,8 @@ def main():
     p.add_argument('--seed-save', type=Path, help='Previous test E2E.SSS for overwrite/restart validation')
     p.add_argument('--seed-setup', type=Path, help='Previous test data drawer containing CFG and PLR for warm-save validation')
     p.add_argument('--max-save-switches', type=int, help='Maximum measured OS round trips per save transaction')
-    p.add_argument('--whdload', type=Path, default=Path.home()/'.local/share/amiga/WHDLoad/C/WHDLoad')
-    kick=Path.home()/'.local/share/amiga/Kickstarts'
+    p.add_argument('--whdload', type=Path, default=amiga_inputs.WHDLOAD)
+    kick=amiga_inputs.SHARE/'Kickstarts'
     p.add_argument('--rom', type=Path, default=kick/'kick40063.A600')
     p.add_argument('--rtb', type=Path, default=kick/'kick40063.A600.RTB')
     p.add_argument('--exe', type=Path, default=ROOT/'amiga/out/SlicksDiag.exe')
@@ -80,9 +82,9 @@ def main():
         emu = subprocess.Popen(['fs-uae', '--amiga_model=A1200', '--cpu='+args.cpu,
             '--uae_cpu_model='+args.cpu, '--uae_cpu_24bit_addressing=false',
             '--jit_compiler=0', '--chip_memory=2048', '--fast_memory='+str(args.fast),
-            '--kickstart_file='+os.environ['KICKSTART'],
+            '--kickstart_file='+str(amiga_inputs.KICKSTART),
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
-            '--floppy_drive_0='+str(Path.home()/'.local/share/amiga/Workbenchv2.04rev37.67Workbench.adf'),
+            '--floppy_drive_0='+str(amiga_inputs.WORKBENCH_ADF),
             '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode='+('0' if args.real_time else '1'), '--fullscreen=0',
             *(['--uae_cpu_speed=real'] if args.real_time else []),
             '--window_width=720', '--window_height=568', '--state_dir='+str(base/'state')], stdout=log, stderr=log, env=dict(os.environ,SDL_AUDIODRIVER='dummy'))

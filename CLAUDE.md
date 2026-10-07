@@ -44,8 +44,8 @@ ground truth.
   failures immediately. Promising changes still require every applicable
   fidelity gate before acceptance and a final performance confirmation.
 - Reuse the established Amiga build, FS-UAE/GDB, measurement, and documentation
-  practices from `~/Documents/Rescue on Fractalus`, `~/Documents/Revs`, and
-  `~/Documents/Vette`; do not re-derive target-side lessons without evidence.
+  practices from the Rescue on Fractalus, Revs and Vette projects; do not
+  re-derive target-side lessons without evidence.
 
 ## Gates, in order
 

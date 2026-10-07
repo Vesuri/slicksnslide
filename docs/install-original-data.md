@@ -82,7 +82,7 @@ not extraction-only Homebrew Lhasa. The auditor separately decompresses with
 Lhasa, verifies every header/payload CRC, exact membership and source identity.
 The archive has 11 allowlisted members including the drawer icon. No recursive
 asset collection, original files, keys, saves, ROMs, RTBs or WHDLoad binary.
-Icons follow Vette/Rescue on Fractalus; see [icon provenance](../release/icons/README.md).
+Icons follow Vette and Rescue on Fractalus; see [icon provenance](../release/icons/README.md).
 
 Release: `make release-check` runs the host oracles, the helper test, a
 two-build byte comparison of the stripped executable and a scratch package
@@ -97,15 +97,17 @@ Tests:
 ```sh
 make -C tools/install-data test
 python3 tools/install-data/test_amiga.py
-python3 tools/install-data/test_installer_script.py /local/Installer --package dist/SlicksNSlide-0.90.lha
-python3 tools/install-data/test_installer_script.py /local/Installer --keep  # needs KICKSTART (amiga/env.sh)
-python3 tools/install-data/test_installer_script.py /local/Installer --reinstall
-python3 tools/install-data/test_installer_script.py /local/Installer --no-whd
-python3 tools/test_standalone_release.py /local/test-install/SlicksNSlide
+python3 tools/install-data/test_installer_script.py --package dist/SlicksNSlide-0.90.lha
+python3 tools/install-data/test_installer_script.py --keep
+python3 tools/install-data/test_installer_script.py --reinstall
+python3 tools/install-data/test_installer_script.py --no-whd
+python3 tools/test_standalone_release.py path/to/installed/SlicksNSlide
 python3 tools/check_release.py dist/SlicksNSlide-0.90.lha
 ```
 
-Native tests use locally owned Kickstart/Workbench/SetPatch and the downloaded
-ZIP under `ref/Slix151.zip`. They are muted and close their own emulator.
-The Workbench test disk currently defaults to Vette's shared local test fixture;
-it is neither a game dependency nor included in the archive.
+Native tests use locally owned Kickstart, Workbench, Installer, WHDLoad and
+SetPatch from `~/.local/share/amiga` (overrides in
+[toolchain.md](toolchain.md#local-amiga-inputs)) and the downloaded ZIP under
+`ref/Slix151.zip`. The installer script test takes an optional Installer path
+as its first argument. Tests are muted and close their own emulator. None of
+these inputs is a game dependency or included in the archive.
