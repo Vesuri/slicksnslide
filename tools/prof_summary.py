@@ -19,7 +19,8 @@ Legacy text logs instead filter the race-frame numbers printed in the log.
 import argparse, bisect, collections, os, re, subprocess, sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-TC = os.path.expanduser('~/.local/opt/bin/m68k-amiga-elf-')
+TC = os.path.join(os.environ.get('AMIGA_TOOLCHAIN') or os.path.expanduser('~/.local/opt'),
+                  'bin', 'm68k-amiga-elf-')
 
 def load_symbols(elf):
     out = subprocess.run([TC + 'objdump', '-t', elf], capture_output=True,

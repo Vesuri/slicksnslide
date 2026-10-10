@@ -11,7 +11,8 @@ averages 1155 E-clock ticks). Wait loops are listed but excluded from totals.
 """
 import argparse, bisect, collections, os, re, struct, subprocess, sys
 
-TC = os.path.expanduser('~/.local/opt/bin/m68k-amiga-elf-')
+TC = os.path.join(os.environ.get('AMIGA_TOOLCHAIN') or os.path.expanduser('~/.local/opt'),
+                  'bin', 'm68k-amiga-elf-')
 LINES_PER_SAMPLE = 25.4
 
 def load_symbols(elf):

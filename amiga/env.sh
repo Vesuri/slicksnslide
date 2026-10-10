@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Source this to expose the shared Amiga cross-toolchain and FS-UAE.
+# Source this for the shared Amiga environment that AmigaXDev installs (~/.local/share/amiga):
+# the toolchain, FS-UAE and the shared Python on PATH, and the Kickstarts, Workbench, SetPatch,
+# WHDLoad and LHa paths.  Every variable can be overridden from the environment.
 #   . amiga/env.sh
-# or, from amiga/:
+# or from the amiga/ directory:
 #   . env.sh
-SLICKS_TC="$HOME/.local"
-export PATH="$SLICKS_TC/opt/bin:$SLICKS_TC:$SLICKS_TC/fs-uae:$PATH"
-export KICKSTART="${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}"
+# WHDLoad 19.2: the version the slave builds against (whdload/) and the tests run.
+export WHDLOAD="${WHDLOAD:-$HOME/.local/share/amiga/WHDLoad}"
+. "${AMIGA_ENV:-$HOME/.local/share/amiga/env.sh}"

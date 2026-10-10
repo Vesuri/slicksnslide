@@ -2,23 +2,23 @@
 # Source-level debugging through FS-UAE's single-client GDB stub.
 set -euo pipefail
 cd "$(dirname "$0")"
-. "${FSUAE_COMMON:-$HOME/.local/share/amiga/fsuae_common.sh}"
+. ./env.sh
+. "$FSUAE_COMMON"
 
-FSUAE="${FSUAE:-fs-uae}"
 GDB="${GDB:-m68k-amiga-elf-gdb}"
 # Match Revs: silence host output without changing emulated audio/DMA.
 # This FS-UAE build does not implement the volume=0 path.
 # Opt in only when audible output is needed for a sound investigation.
-AUDIO_ARGS=(--audio_driver=dummy)
-if [ "${FSUAE_SOUND:-0}" = 1 ]; then AUDIO_ARGS=(); fi
-WARP_ARGS=()
-if [ "${SLICKS_DEBUG_WARP:-0}" = 1 ]; then
+# (fsuae_options makes the debug run silent this way; FSUAE_SOUND=1 or SOUND=1 opts in.)
+AUDIO_ARGS=()
+if [ "${FSUAE_SOUND:-0}" = 1 ]; then SOUND=1; fi
+if [ "${SLICKS_DEBUG_WARP:-0}" = 1 ]; then WARP=1; fi
+if [ "${WARP:-0}" = 1 ]; then
   # Revs uses warp for unattended correctness checks. Keep benchmark
   # pacing unchanged so existing performance runs remain comparable.
   if [ -n "${SLICKS_GAMEPLAY_BENCHMARK:-}" ] || [ "${SLICKS_BENCHMARK:-0}" = 1 ]; then
     echo 'Warp is disabled for performance fixtures.' >&2; exit 2
   fi
-  WARP_ARGS=(--warp_mode=1)
 fi
 # Installed FS-UAE uses SDL2. Record its actual emulated Paula output through
 # SDL's disk backend, never the host speakers. SDL3 uses different variables.
@@ -37,8 +37,7 @@ if [ "${SLICKS_DEBUG_JOYSTICK_KEYS:-0}" = 1 ]; then
   # Use its built-in keyboard joystick: arrows and right Ctrl/Alt fire.
   DEBUG_JOYSTICK=keyboard
 fi
-ROM="${1:-${KICKSTART:-$HOME/.local/share/amiga/Kickstarts/kick40063.A600}}"
-SETPATCH="${SETPATCH:-$HOME/.local/share/amiga/SetPatch}"
+ROM="${1:-$KICKSTART}"
 DEBUG_BUILD="${SLICKS_DEBUG_BUILD:-out/SlicksDiag}"
 [ -f "$ROM" ] || { echo "Kickstart ROM not found: $ROM"; exit 1; }
 [ -f "$DEBUG_BUILD.elf" ] || { echo "build first: make"; exit 1; }
@@ -346,20 +345,16 @@ cp -f ../ref/TRACKS/*.SS "$DH1/TRACKS/"
 FAST_KB="${SLICKS_DEBUG_FAST_KB:-0}"
 case "$FAST_KB" in 0|2048|4096|8192) ;; *) echo 'SLICKS_DEBUG_FAST_KB must be 0, 2048, 4096 or 8192' >&2; exit 2;; esac
 fsuae_claim_port
-"$FSUAE" \
+DEBUG=1 AMIGA_MODEL=A1200 KICKSTART="$ROM" CHIP_KB=2048 JOY0=mouse JOY1="$DEBUG_JOYSTICK"
+FSUAE_LOG="$RUN/fsuae-dbg.log"
+fsuae_options
+fsuae_launch \
   "${AUDIO_ARGS[@]}" \
-  "${WARP_ARGS[@]}" \
-  --amiga_model=A1200 --chip_memory=2048 --fast_memory="$FAST_KB" \
-  --kickstart_file="$ROM" \
   --hard_drive_0="$DH0" --hard_drive_1="$DH1" \
   --hard_drive_1_read_only="${SLICKS_DEBUG_READ_ONLY:-0}" \
-  --joystick_port_0=mouse --joystick_port_1="$DEBUG_JOYSTICK" \
-  --automatic_input_grab=0 --fullscreen=0 --window_width=720 --window_height=568 \
-  --remote_debugger=20 --remote_debugger_port="$DEBUG_PORT" \
+  --window_width=720 --window_height=568 \
   --remote_debugger_trigger=SlicksDiag \
-  --ntsc_mode=0 --state_dir="$RUN/state" --screenshots_output_dir="$SCREENSHOT_DIR" > "$RUN/fsuae-dbg.log" 2>&1 &
-FSUAE_PID=$!
-fsuae_track "$FSUAE_PID"
+  --state_dir="$RUN/state" --screenshots_output_dir="$SCREENSHOT_DIR" > /dev/null
 # Scripted tests own their emulator only until the debugger exits, whether
 # the check passes or fails. Keep the shell alive so the EXIT trap can run.
 if [ "${2:-}" ] && [ -f "$2" ]; then trap fsuae_stop EXIT; fi

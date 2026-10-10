@@ -81,10 +81,10 @@ make -C whdload    # production and test WHDLoad slaves (see whdload.md)
 
 ### Local Amiga inputs
 
-Common, locally owned Amiga files come from the shared `~/.local/share/amiga`;
-each has an environment override. Shell launchers (`amiga/env.sh`, `run.sh`,
-`debug.sh`) and the Python tests (`tools/amiga_inputs.py`) use the same
-defaults:
+Common, locally owned Amiga files come from the shared `~/.local/share/amiga`
+that AmigaXDev installs; each has an environment override. `amiga/env.sh` sources
+its `env.sh` (which `run.sh` and `debug.sh` source too), and the Python tests
+(`tools/amiga_inputs.py`) use the same names and defaults:
 
 | Variable | Default under `~/.local/share/amiga` | Used by |
 | --- | --- | --- |
@@ -92,7 +92,7 @@ defaults:
 | `SETPATCH` | `SetPatch` | AGA launchers, standalone test |
 | `WORKBENCH_ADF` | `Workbenchv2.04rev37.67Workbench.adf` | installer, standalone, WHDLoad tests |
 | `INSTALLER43` | `Installer43/Installer` | installer script test |
-| `WHDLOAD` | `WHDLoad/C/WHDLoad` | installer and WHDLoad tests |
+| `WHDLOAD_BINARY` | `WHDLoad/C/WHDLoad` (19.2; `amiga/env.sh` sets `WHDLOAD`, the SDK the slave builds with, to the same version) | installer and WHDLoad tests |
 
 `tools/test_whdload.py` also takes `--rom`/`--rtb` for the Kickstart pair that
 WHDLoad itself loads (default `Kickstarts/kick40063.A600` and `.RTB`).

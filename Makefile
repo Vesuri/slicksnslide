@@ -18,7 +18,9 @@ LIVE_VGA_SITES ?= disasm/live-vga-sites.csv
 CC ?= cc
 UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
 VASM ?= $(HOME)/.local/vasmm68k_mot
-M68K_CC ?= $(HOME)/.local/opt/bin/m68k-amiga-elf-gcc
+AMIGA_TOOLCHAIN ?= $(HOME)/.local/opt
+NDK ?= $(AMIGA_TOOLCHAIN)/m68k-amiga-elf/sys-include
+M68K_CC ?= $(AMIGA_TOOLCHAIN)/bin/m68k-amiga-elf-gcc
 JAVA_HOME ?= /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 export JAVA_HOME
 export PATH := $(JAVA_HOME)/bin:$(PATH)
@@ -1670,7 +1672,7 @@ verify-hud-restore: build/hud_restore_test.bin build/verify_hud_restore
 	build/verify_hud_restore build/hud_restore_test.bin
 
 build/c2p16_test.bin: src/platform/amiga/c2p16_interleaved.s | build
-	$(VASM) -quiet -m68020 -Fbin -I$(HOME)/.local/opt/m68k-amiga-elf/sys-include -o $@ $<
+	$(VASM) -quiet -m68020 -Fbin -I$(NDK) -o $@ $<
 
 build/verify_c2p16: tools/verify_c2p16.c | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
