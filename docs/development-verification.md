@@ -1,7 +1,7 @@
 # Development and verification rules
 
 Working procedures, not an open-work list. See [open-work.md](open-work.md)
-for scope, pending decisions and paused/deferred work, and [../CLAUDE.md](../CLAUDE.md)
+for scope, pending decisions and paused/deferred work, and [../AGENTS.md](../AGENTS.md)
 for project rules. Accepted and rejected optimizations are summarised in
 [performance.md](performance.md) and intentional deviations in
 [fidelity.md](fidelity.md); the detailed historical logs are in git history.
