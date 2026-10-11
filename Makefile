@@ -1,4 +1,7 @@
 PYTHON ?= python3
+# AmigaXDev's shared Python package (amigaxdev), for the tools run with -m.
+AMIGA_PYLIB ?= $(HOME)/.local/share/amiga/pylib
+AMIGA_GHIDRA_SCRIPTS ?= $(HOME)/.local/share/amiga/ghidra_scripts
 CXX ?= c++
 
 SOURCE ?= ref/SLICKS.EXE
@@ -47,7 +50,7 @@ ABS_ROOT := $(abspath .)
 	amiga amiga-run amiga-debug todo clean
 
 inspect:
-	$(PYTHON) tools/mz_info.py $(SOURCE)
+	PYTHONPATH="$(AMIGA_PYLIB)" $(PYTHON) -m amigaxdev.dos.mz_info $(SOURCE)
 
 hash:
 	shasum -a 256 $(SOURCE)
@@ -1612,16 +1615,16 @@ ghidra: unpack
 		-import disasm/runtime.bin \
 		-processor "x86:LE:16:Real Mode" \
 		-loader BinaryLoader -loader-baseAddr 0x10100 \
-		-scriptPath ghidra_scripts \
+		-scriptPath "ghidra_scripts;$(AMIGA_GHIDRA_SCRIPTS)" \
 		-preScript MarkEntries.java \
-		-postScript ExportListing.java $(ABS_ROOT)/disasm/listing.txt
+		-postScript ExportAuditListing.java $(ABS_ROOT)/disasm/listing.txt
 
 ghidra-normalized: rebuild-mz
 	@mkdir -p tools/ghidra-normalized-proj
 	$(GHIDRA)/support/analyzeHeadless tools/ghidra-normalized-proj SlicksNormalized \
 		-import disasm/runtime.exe \
-		-scriptPath ghidra_scripts \
-		-postScript ExportListing.java \
+		-scriptPath "ghidra_scripts;$(AMIGA_GHIDRA_SCRIPTS)" \
+		-postScript ExportAuditListing.java \
 		$(ABS_ROOT)/disasm/normalized-listing.txt
 
 ghidra-live: analyze-execution-trace analyze-vga-sites
@@ -1630,20 +1633,20 @@ ghidra-live: analyze-execution-trace analyze-vga-sites
 		-import disasm/runtime.bin -overwrite \
 		-processor "x86:LE:16:Real Mode" \
 		-loader BinaryLoader -loader-baseAddr 0x10100 \
-		-scriptPath ghidra_scripts \
+		-scriptPath "ghidra_scripts;$(AMIGA_GHIDRA_SCRIPTS)" \
 		-preScript MarkEntries.java \
 		-preScript SeedLiveMap.java $(ABS_ROOT)/$(LIVE_ENTRYPOINTS) \
 			0x10100 $(ABS_ROOT)/ghidra_scripts/vga-symbols.csv \
-		-postScript ExportListing.java $(ABS_ROOT)/disasm/live-listing.txt
+		-postScript ExportAuditListing.java $(ABS_ROOT)/disasm/live-listing.txt
 
 ghidra-live-normalized: analyze-execution-trace analyze-vga-sites rebuild-mz
 	@mkdir -p tools/ghidra-live-normalized-proj
 	$(GHIDRA)/support/analyzeHeadless tools/ghidra-live-normalized-proj \
 		SlicksLiveNormalized -import disasm/runtime.exe -overwrite \
-		-scriptPath ghidra_scripts \
+		-scriptPath "ghidra_scripts;$(AMIGA_GHIDRA_SCRIPTS)" \
 		-preScript SeedLiveMap.java $(ABS_ROOT)/$(LIVE_ENTRYPOINTS) \
 			0x10000 $(ABS_ROOT)/ghidra_scripts/vga-symbols.csv \
-		-postScript ExportListing.java \
+		-postScript ExportAuditListing.java \
 			$(ABS_ROOT)/disasm/live-normalized-listing.txt
 
 todo:

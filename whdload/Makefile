@@ -2,6 +2,7 @@
 WHDLOAD ?= $(HOME)/.local/share/amiga/WHDLoad
 NDK ?= $(HOME)/.local/opt/m68k-amiga-elf/sys-include
 VASM ?= $(HOME)/.local/vasmm68k_mot
+AMIGA_SHARE ?= $(HOME)/.local/share/amiga
 OUT := ../build/whdload
 
 .PHONY: all test smoke boot-test load-test race-test exit-test championship-test championship-edit-test FORCE
@@ -24,9 +25,10 @@ $(OUT)/ExitTest.slave: VASMFLAGS += -DEXITTEST=1
 $(OUT)/BootTest.slave: VASMFLAGS += -DBOOTONLY=1
 $(OUT)/LoadTest.slave: VASMFLAGS += -DLOADONLY=1
 
-$(OUT)/Smoke.slave: SmokeSlave.s FORCE
+# The smoke slave is AmigaXDev's shared one with this project's name (smoke_name.i).
+$(OUT)/Smoke.slave: $(AMIGA_SHARE)/whdload/SmokeSlave.s smoke_name.i FORCE
 	@mkdir -p $(OUT)
-	$(VASM) -m68000 -pic -x -devpac -Fhunkexe -nosym -I"$(WHDLOAD)/Include" -I"$(NDK)" -o $@ $<
+	$(VASM) -m68000 -pic -x -devpac -Fhunkexe -nosym -I. -I"$(WHDLOAD)/Include" -I"$(NDK)" -o $@ $<
 
 $(OUT)/SlicksTest.slave: VASMFLAGS += -DTEST=1
 

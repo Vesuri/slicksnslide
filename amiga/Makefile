@@ -4,6 +4,7 @@ AS       = m68k-amiga-elf-as
 VASM     = vasmm68k_mot
 OBJDUMP  = m68k-amiga-elf-objdump
 PYTHON   = python3
+AMIGA_PYLIB ?= $(HOME)/.local/share/amiga/pylib
 SDKDIR   = $(abspath $(dir $(shell which $(CC)))../m68k-amiga-elf/sys-include)
 SUPPORT  = $(abspath $(dir $(shell which $(CC)))../../support)
 REPO     = ..
@@ -137,7 +138,7 @@ obj/hud_restore.o: $(REPO)/src/game/hud_restore.s | obj
 	$(VASM) $(VASMFLAGS) -o $@ $<
 
 verify-runtime: obj/gcc8_c_support.o
-	$(PYTHON) $(REPO)/tools/verify_amiga_runtime.py $(OBJDUMP) $<
+	PYTHONPATH="$(AMIGA_PYLIB)" $(PYTHON) -m amigaxdev.dos.verify_amiga_runtime $(OBJDUMP) $<
 
 obj out:
 	@mkdir -p $@

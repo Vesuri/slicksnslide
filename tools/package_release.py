@@ -1,55 +1,27 @@
 #!/usr/bin/env python3
 """Create the minimal deterministic Amiga LHA distribution (LH5)."""
 import argparse
-import hashlib
-import os
-import shutil
-import struct
-import subprocess
-import tempfile
 from pathlib import Path
-from installer_icon import installer_icon, drawer_icon, readme_icon
+import _amigaxdev  # noqa: F401
+from amigaxdev import release
+from amigaxdev.release import crc16  # noqa: F401  (check_release.py imports it from here)
 
 ORIGINAL_HASHES = {
     "d12114fccdd86b10e9d77d652acec35ea0a45230fcbe3fb32970431c18b55c2c",
 }
 PREFIX = "SlicksNSlide Install"
+STAMP = release.dos_stamp(2026, 10, 1)
+ICONS = Path(__file__).resolve().parent.parent / "release/icons"
 
-def crc16(data):
-    crc = 0
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ (0xa001 if crc & 1 else 0)
-    return crc
+def installer_icon(game=False):
+    # SlicksNSlide.inf is distributed as is, renamed and configured by Installer, exactly
+    # as RoF.inf in the reference package. No synthetic replacement artwork.
+    # AVERAGE is Installer's Intermediate level. Do not override it with
+    # NOVICE when launching Installer from test or manual startup scripts.
+    return release.installer_icon(ICONS, "Slicks 'N' Slide", game=game, require=(b"MINUSER=AVERAGE\0",))
 
-def member(name, data):
-    # Use the established UNIX LHa encoder, but own the generic header so host
-    # timestamps, permissions and paths cannot affect release reproducibility.
-    encoder = os.environ.get("LHA", shutil.which("lha-compress") or
-                             str(Path.home()/".local/share/amiga/lha-compressor/src/lha"))
-    with tempfile.TemporaryDirectory(prefix="slicks-lh5-") as directory:
-        work = Path(directory)
-        (work / "payload").write_bytes(data)
-        try:
-            subprocess.run([encoder, "ao5g0", "member.lha", "payload"],
-                           cwd=work, check=True, capture_output=True)
-        except (OSError, subprocess.CalledProcessError) as error:
-            raise SystemExit("LH5 packaging requires LHa for UNIX (not Lhasa); "
-                             "set LHA to its absolute path. See docs/install-original-data.md") from error
-        raw = (work / "member.lha").read_bytes()
-    header = raw[2:2 + raw[0]]
-    if header[:5] != b"-lh5-" or header[18] != 0:
-        raise ValueError("compressor did not produce a level-zero LH5 member")
-    packed, unpacked = struct.unpack_from("<II", header, 5)
-    payload = raw[2 + raw[0]:2 + raw[0] + packed]
-    if unpacked != len(data) or len(payload) != packed:
-        raise ValueError("invalid compressor output lengths")
-    name = name.replace("/", "\\").encode("ascii")
-    stamp = (((2026 - 1980) << 9) | (10 << 5) | 1) << 16
-    body = b"-lh5-" + struct.pack("<III", len(payload), len(data), stamp)
-    body += bytes((0x20, 0, len(name))) + name + struct.pack("<H", crc16(data))
-    return bytes((len(body), sum(body) & 255)) + body + payload
+def readme_icon():
+    return release.template_icon(ICONS, "readme.info.b64")
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -69,17 +41,10 @@ def main():
         "ReadMe": (root / "release/ReadMe").read_bytes(),
         "puff-license.txt": (root / "tools/install-data/puff.h").read_bytes(),
     }
-    for name, data in files.items():
-        if hashlib.sha256(data).hexdigest() in ORIGINAL_HASHES:
-            raise SystemExit("refusing to package original game data: " + name)
-    args.output_directory.mkdir(parents=True, exist_ok=True)
-    archive = args.output_directory / f"SlicksNSlide-{version}.lha"
-    if archive.exists():
-        raise SystemExit("Refusing to replace an existing release archive: " + str(archive))
-    temporary = archive.with_suffix(".lha.part")
-    temporary.write_bytes(member(PREFIX + '.info', drawer_icon())
-        + b"".join(member(PREFIX + '/' + name, data) for name, data in sorted(files.items())) + b"\0")
-    temporary.replace(archive)
+    release.refuse_originals(files, ORIGINAL_HASHES)
+    archive = release.write(args.output_directory / f"SlicksNSlide-{version}.lha",
+                            release.archive(PREFIX, files, release.template_icon(ICONS, "drawer.info.b64"), STAMP),
+                            refuse_overwrite=True)
     print(f"{archive}: {len(files)} drawer contents plus drawer icon, {archive.stat().st_size} bytes")
 
 if __name__ == "__main__":

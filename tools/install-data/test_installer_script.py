@@ -11,7 +11,7 @@ import time
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools'))
 import amiga_inputs
-from installer_icon import installer_icon,readme_icon
+from package_release import installer_icon,readme_icon
 from test_install import expected_files
 def replace_form(text,start,replacement):
     a=text.index(start);depth=0;quoted=False;i=a

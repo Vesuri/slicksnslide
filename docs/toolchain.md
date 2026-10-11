@@ -9,8 +9,15 @@ Installed by AmigaXDev (`make setup`; its `docs/environment.md` lists them):
 - Ghidra under `~/.local/share/ghidra`, with OpenJDK 21 (exported by the Makefile
   for headless Ghidra)
 - the Amiga GCC/vasm/elf2hunk toolchain, FS-UAE and m68k GDB under `~/.local`
+- the `amigaxdev` Python package: `amigaxdev.release` builds the LH5 archive and installer
+  icons for `tools/package_release.py`, `amigaxdev.dos.mz_info` (`make inspect`) and
+  `amigaxdev.dos.verify_amiga_runtime` (`make -C amiga verify-runtime`)
+- the shared Ghidra scripts (`$AMIGA_GHIDRA_SCRIPTS`): `ExportAuditListing` writes the
+  listings; `MarkEntries` and `SeedLiveMap` in `ghidra_scripts/` are Slicks' own
+- the smoke slave (`whdload/smoke_name.i` names it)
 - the dA JoRMaS framework and diagnostic patterns are vendored here; the generic
-  lessons behind them are in AmigaXDev `docs/reference/`
+  lessons behind them are in AmigaXDev `docs/reference/`, and AmigaXDev's canonical
+  framework is compared with in `src/platform/amiga/framework/UPSTREAM.md`
 
 ## Additional reference/translation tools
 
