@@ -58,18 +58,12 @@ maximum update got worse, and `-Os` made total work 7–9% worse.
 
 ## Cost model
 
-All code and data are in Chip RAM, and the 68020 has no data cache. A Chip
-access costs about 7 cycles, a cached instruction about 2.5, and every
-longword fetched from outside the 256-byte instruction cache is a Chip
-access. Executed code volume, not arithmetic, is the main cost; profiles of
-compiled C are flat across routines run once per car or per update.
-
-- A literal assembly rewrite gains under 1%. The first native car-motion
-  translation still ran about 700 bytes of straight-line code per tick.
-- Gains come from executing less: inner loops that fit the cache, state in
-  registers, hoisted invariants, and skipping provably unchanged work.
-- Per-object overhead adds up. F1's 32 stationary track objects cover about
-  1000 pixels, yet once cost about 30% of F1's work.
+All code and data are in Chip RAM; the Chip-only 68020 cost model, and the
+lessons this game contributed to it, are in AmigaXDev
+`docs/reference/m68k-optimisation.md` §1. Here it meant: a literal assembly
+rewrite gained under 1% (the first native car-motion translation still ran
+about 700 bytes of straight-line code per tick), and F1's 32 stationary track
+objects, about 1000 pixels, once cost about 30% of F1's work.
 
 ## Current shape
 

@@ -19,7 +19,7 @@ It mounts data/, uses DOS LoadSeg, establishes PROGDIR, sets a null-terminated
 DOS argument string (the game uses GetArgStr), and supplies a 16 KiB Exec
 StackSwap stack. On normal return it restores arguments/PROGDIR, unloads the
 game and returns through resload_Abort. Do not use the SDK's A600 STACKSIZE
-ROM patch; Vette's documented opcode-offset problem applies here too.
+ROM patch: it overwrites the wrong opcode (AmigaXDev `docs/reference/port-toolchain.md`).
 
 Both launch methods use identical native game code and the same data/saves.
 Normal menu exit saves pending changes. F10 is immediate WHDLoad quit and

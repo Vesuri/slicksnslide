@@ -29,8 +29,8 @@ instructions.
 ## Building
 
 Host tools are listed in [docs/toolchain.md](docs/toolchain.md). The Amiga
-cross-toolchain and FS-UAE set-up follow the sibling ports (Rescue on Fractalus,
-Revs, Vette).
+cross-toolchain, FS-UAE and the other shared files come from AmigaXDev
+(`make setup` there).
 
 ```sh
 make amiga            # debug/diagnostic game build: amiga/out/SlicksDiag.exe

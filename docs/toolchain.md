@@ -4,13 +4,13 @@ Host: macOS on Apple Silicon. Target: A1200, 68020, 2 MiB.
 
 ## Existing shared tools
 
-- Ghidra 12.1 under `~/.local/share/ghidra`
-- OpenJDK 21 under `/opt/homebrew/opt/openjdk@21` (exported by the Makefile for
-  headless Ghidra)
-- Amiga GCC/vasm/elf2hunk toolchain under `~/.local`
-- FS-UAE and M68k GDB under `~/.local/fs-uae`
-- The proven Amiga framework and diagnostic patterns in the three preceding
-  port repositories
+Installed by AmigaXDev (`make setup`; its `docs/environment.md` lists them):
+
+- Ghidra under `~/.local/share/ghidra`, with OpenJDK 21 (exported by the Makefile
+  for headless Ghidra)
+- the Amiga GCC/vasm/elf2hunk toolchain, FS-UAE and m68k GDB under `~/.local`
+- the dA JoRMaS framework and diagnostic patterns are vendored here; the generic
+  lessons behind them are in AmigaXDev `docs/reference/`
 
 ## Additional reference/translation tools
 
