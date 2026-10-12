@@ -137,14 +137,13 @@ static void verify_bank_gain(void)
     }
     assert(!slicks_amiga_audio_create(&a,bank,at));
     for(unsigned i=0;i<27;++i) {
-        unsigned gain=(i&~1U)*9;
-        assert(a.samples[i].data[0]==-(int)(128*gain/255));
-        assert(a.samples[i].data[1]==-(int)(gain/255));
+        assert(a.samples[i].data[0]==-128);
+        assert(a.samples[i].data[1]==-1);
         assert(a.samples[i].data[2]==0);
-        assert(a.samples[i].data[3]==(int)(127*gain/255));
+        assert(a.samples[i].data[3]==127);
     }
     slicks_amiga_audio_destroy(&a); assert(!allocated_bytes);
-    puts("Sample bank gains: explicit and inherited gains retain signed PCM semantics");
+    puts("Sample bank gains: DOS attenuation bypassed for both header formats; full-range signed PCM preserved");
 }
 
 static void verify_bank_one_shots(struct SlicksAmigaAudio *a)

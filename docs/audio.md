@@ -13,8 +13,12 @@ the channels are allocated by a deliberate priority policy. The adapter is
 mono 8-bit RIFF/WAVE record at ID 1. Both formats advance the ID, as the
 original startup does; malformed or truncated records reject the whole bank.
 Each sample is converted once at load into Chip RAM as signed PCM using the
-original header gain (persistent across entries, signed division by 255
-toward zero). Its Paula period comes from the big-endian frequency in its
+full stored amplitude. The DOS header gain is consumed but ignored: Paula
+plays each voice on a separate hardware channel, so the port does not retain
+the DOS mixer attenuation. This user-requested adaptation raises gain-100
+samples by approximately 2.55 times (8.1 dB); gain-255 samples are unchanged.
+Conversion is only unsigned-to-signed PCM (XOR 0x80), with no multiplication
+or division. The source archive is unchanged. Its Paula period comes from the big-endian frequency in its
 header; the supplied samples are 11,025 Hz, period 322. The results music is
 a separate WAV loaded by `slicks_amiga_audio_add_music`.
 
@@ -34,7 +38,7 @@ quarter loop and scales the clock by the actual loop lengths; it returns to
 a longer loop with downward hysteresis. Zero or unrepresentably low
 frequencies are clamped, not claimed as exact.
 
-Volumes map the original master volume and sample gains to Paula's linear
+Channel volumes map the original master volume and background gain to Paula's linear
 0..64 range: effects and engines use gain 255, music uses the original
 background-volume gain. Volume changes are written once when they differ.
 
@@ -102,3 +106,11 @@ or DMA control back into display time.
 - The user accepted the matched PC/Amiga listening comparison on 2026-09-26.
   That acceptance does not claim identical race timing, sample phase or the
   PC's richer simultaneous-voice mix.
+
+## Full-amplitude Paula samples (2026-10-12)
+
+The adapter volume/lifecycle checks pass with full-range PCM expectations for
+both tS header formats. The original DOS gain helper remains oracle-tested
+for reference, but production sample-bank loading no longer calls it.
+The Amiga build and `OPTIONSV` menu-to-race volume smoke test also pass
+(`AUDIO_NATIVE_MENU_TO_RACE_VOLUME_OK`, Paula 16/3 at options 25/20).
