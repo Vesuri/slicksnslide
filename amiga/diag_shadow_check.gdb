@@ -1,5 +1,6 @@
 # SHADOW=1 build: report native/reference dual-execution results at the
 # benchmark checkpoint. Timing is irrelevant here; warp is allowed.
+init-if-undefined $shadow_frames=0
 set $race=(struct SlicksRaceRuntime *)0
 set $probes=0
 break slicks_track_actor_probe
@@ -15,9 +16,16 @@ commands
   printf "SHADOW_START sites=0x%lx\n",slicks_shadow_sites
   continue
 end
-break slicks_diag_gameplay_ready
+if $shadow_frames
+  break slicks_diag_frame_ready
+else
+  break slicks_diag_gameplay_ready
+end
 commands
   silent
+  if $shadow_frames && (!$race || $race->frame_count < $shadow_frames)
+    continue
+  end
   printf "SHADOW_SITES=0x%lx\n",slicks_shadow_sites
   if $race
     printf "TRACK_HITS probes=%u collisions=%lu special=%d,%d,%d,%d\n",$probes,$race->track_collision_count,$race->cars[0].special_drive_state,$race->cars[1].special_drive_state,$race->cars[2].special_drive_state,$race->cars[3].special_drive_state

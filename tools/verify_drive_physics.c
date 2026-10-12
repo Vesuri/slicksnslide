@@ -135,9 +135,7 @@ int main(void)
         expect(slicks_race_start(&race,logical,chunky),0,"participant grid start");
         for(unsigned i=0;i<4;++i)
             expect(race.cars[i].saved_valid,roles[i]!=0,"inactive car absent from grid");
-        slicks_race_step(&race,logical);
         for(unsigned i=0;i<4;++i) {
-            expect(race.cars[i].elapsed_time_units!=0,roles[i]!=0,"active countdown clock");
             if(!roles[i]) {
                 struct SlicksStatusRect rects[3];
                 race.fuel_option=10;

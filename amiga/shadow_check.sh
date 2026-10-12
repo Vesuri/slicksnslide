@@ -3,11 +3,19 @@
 # rebuild the normal executable. Cases are benchmark tracks 0..3 or
 # VAR=VALUE debug.sh fixtures (e.g. SLICKS_JUMP_TRACK=1).
 #   . ./env.sh; ./shadow_check.sh LABEL [CASES...]
+# SHADOW_FRAMES=50 selects a bounded startup check (default 700).
 # SHADOW_SITES=16 checks site 4; 256 car pairs; 512 surface tails; default 0x3fe checks all.
 set -uo pipefail
 cd "$(dirname "$0")"
 LABEL="${1:?label}"; shift
 CASES="${*:-0 1 2 3}"
+check_script=diag_shadow_check.gdb
+if [ -n "${SHADOW_FRAMES:-}" ]; then
+  case "$SHADOW_FRAMES" in ''|*[!0-9]*) echo 'SHADOW_FRAMES must be positive'; exit 2;; esac
+  [ "$SHADOW_FRAMES" -gt 0 ] || exit 2
+  check_script="../tmp/shadow-$LABEL.gdb"
+  printf 'set $shadow_frames=%s\nsource diag_shadow_check.gdb\n' "$SHADOW_FRAMES" > "$check_script"
+fi
 rm -f obj/race_runtime.o obj/slicks_diag.o
 make SHADOW=1 SHADOW_SITES="${SHADOW_SITES:-0x3fe}" >/dev/null || exit 1
 status=0
@@ -20,7 +28,7 @@ for c in $CASES; do
     *) echo "bad case $c"; exit 2;;
   esac
   env "$@" FSUAE_RUN="$PWD/.run/shadow-$LABEL-$name" DEBUG_PORT="${DEBUG_PORT:-2394}" \
-    SLICKS_DEBUG_WARP=1 ./debug.sh "" diag_shadow_check.gdb < /dev/null > "$log" 2>&1 || status=1
+    SLICKS_DEBUG_WARP=1 ./debug.sh "" "$check_script" < /dev/null > "$log" 2>&1 || status=1
   rm -rf ".run/shadow-$LABEL-$name"
   echo "$c:"; grep -E '^(SHADOW|RACE_ERROR|FINAL_STATE|DIFF|TRACK_HITS)' "$log" | head -20
   grep -q '^SHADOW calls' "$log" || status=1

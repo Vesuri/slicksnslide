@@ -8,7 +8,7 @@
 #include "../src/game/race_runtime.c"
 #include "../src/ui/service_options.h"
 
-/* Link guard for the countdown-only step test. Reaching the target-only
+/* Link guard for isolated runtime helper tests. Reaching the target-only
  * particle routine is a test failure, never an emulated successful call. */
 unsigned short slicks_advance_particles(struct SlicksTrailParticle *particles,
     unsigned long count, unsigned char indices[SLICKS_TRAIL_PRIORITY_COUNT][SLICKS_TRAIL_PARTICLE_MAX],
@@ -468,18 +468,16 @@ static void verify_clock(uc_engine *uc)
     puts("DOS clock: all 65536 formatter inputs match; 100000 variable-tick updates retain raw time");
     {
         static struct SlicksRaceRuntime race;
-        static unsigned char logical[0x40000];
         race.started=1;
-        race.countdown_ticks=120;
-        for(unsigned frame=0;frame<20;++frame)
-            slicks_race_step(&race,logical);
-        unsigned expected_ticks=(20u*1193182u)/655350u;
+        unsigned expected_ticks=0;
+        for(unsigned frame=0;frame<20;++frame) {
+            unsigned ticks=next_physics_ticks(&race);expected_ticks+=ticks;
+            for(unsigned driver=0;driver<4;++driver)advance_car_clock(&race.cars[driver],ticks);
+        }
         for(unsigned driver=0;driver<4;++driver)
             if(race.cars[driver].elapsed_time_units!=expected_ticks*2 ||
-               race.cars[driver].current_lap_time_units!=expected_ticks*2 ||
-               race.cars[driver].x || race.cars[driver].y) exit(1);
-        if(race.racing || race.countdown_stage || race.frame_count!=20) exit(1);
-        puts("Race clock epoch: all four stationary cars accumulate the first 20 countdown updates");
+               race.cars[driver].current_lap_time_units!=expected_ticks*2) exit(1);
+        puts("Race clock helpers: all four cars accumulate twenty tick batches");
     }
 }
 static void verify_zone_expansion(uc_engine *uc)

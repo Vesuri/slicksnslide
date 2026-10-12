@@ -21,12 +21,8 @@ below. Intentional differences and limitations are documented in
 
 Evidence and reproduction commands are in [fidelity.md](fidelity.md#confirmed-startup-defects--2026-10-12).
 
-- [ ] **F20/F21:** Restore the original combined start-light/audio/engine/first
-  driver-update sequence. Remove the native stationary countdown derived from
-  the boundary-palette timer, preserve the actual boundary animation, and stop
-  charging the extra stationary wait to lap time. Replace tests that assume
-  the wait with original caller-level comparisons. Verify light/cue ordering,
-  first input and physics update, clocks, fresh races and pause/resume on target.
+- [ ] **F21:** Restore the original combined light/audio sequence before the
+  first driver update. Verify light/cue ordering and publication on target.
 - [ ] **F22:** Restore the startup intro and weapons-notice actors with their
   original artwork, coordinates, motion, priorities and lifetimes. Preserve
   slot allocation; compare constructor state with original code and capture

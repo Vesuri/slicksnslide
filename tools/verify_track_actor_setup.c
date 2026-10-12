@@ -75,6 +75,7 @@ int main(void)
         /* A new race must not reuse pointers or masks from a previous track. */
         memset(race.track_draw_packets,0xa5,sizeof race.track_draw_packets);
         if(slicks_race_start(&race,logical,chunky))abort();
+        if(!race.racing || race.countdown_ticks)abort();
         for(unsigned i=0;i<64;++i)if(race.track_draw_packets[i].valid)abort();
         if(race.random_state!=(uint32_t)readdword(u,ds+0x2aaa) || next_handle!=count+5)abort();
         for(unsigned i=0;i<count;++i) {
@@ -100,8 +101,10 @@ int main(void)
                 race.navigation.actors[i].x=1600+i*160;
                 race.navigation.actors[i].y=1280;
             }
-            for(unsigned frame=0;frame<20;++frame)slicks_race_step(&race,logical);
-            if(race.racing || race.frame_count!=20 || race.trail_particle_count || race.random_state!=seed || race.collision_error)abort();
+            for(unsigned frame=0;frame<20;++frame) {
+                update_track_actor_motion(&race);advance_weapon_actors(&race);
+            }
+            if(race.trail_particle_count || race.random_state!=seed || race.collision_error)abort();
             for(unsigned i=0;i<count;++i) {
                 unsigned h=race.track_actor_handles[i];
                 if(race.weapons.actors[h].motion.frames==4 && !race.weapons.actors[h].motion.frame)abort();
@@ -111,6 +114,6 @@ int main(void)
         ++cases;
     }
     printf("Track actor setup: %u original count/order/position/hiding/frame/priority/RNG cases match\n",cases);
-    puts("First-frame background restoration and countdown actor animation/car gating pass");
+    puts("First-frame background restoration and isolated actor animation pass");
     check(uc_close(u));return 0;
 }

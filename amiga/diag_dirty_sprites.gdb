@@ -78,7 +78,13 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  printf "DIRTY_SPRITE_EARLY_EXIT\n"
+  # A real finish may precede 600 now that the invented grid wait is gone.
+  # Every published frame was audited; these globals survive race cleanup.
+  if g_slicks_diag_race_complete && g_slicks_diag_race_frame > 0 && !g_slicks_diag_race_error && g_slicks_diag_restore_status == 31 && g_slicks_diag_audit_bitmap && !g_slicks_diag_live_stats && (!$display_delay_required || $display_delay_seen)
+    printf "DIRTY_SPRITE_AUDIT_OK completed frames=%lu restore=31\n",g_slicks_diag_race_frame
+    quit
+  end
+  printf "DIRTY_SPRITE_EARLY_EXIT frame=%lu complete=%u error=%u restore=%u\n",g_slicks_diag_race_frame,g_slicks_diag_race_complete,g_slicks_diag_race_error,g_slicks_diag_restore_status
   quit 1
 end
 continue

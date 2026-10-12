@@ -4350,9 +4350,9 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     draw_arcade_timer(race, logical);
     if(race->track_actors_ready) draw_race_actors(race,logical);
     draw_start_light(race, logical, 0);
-    race->countdown_ticks = 0x78;
+    race->countdown_ticks = 0;
     race->countdown_stage = 0;
-    race->racing = 0;
+    race->racing = 1;
     race->laps_to_run = race->race_mode==5 ? 9999 : 4;
     race->started = 1;
     return 0;
@@ -4390,7 +4390,6 @@ void slicks_race_use_chunky_surface(struct SlicksRaceRuntime *race)
 void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
 {
     unsigned char profile;
-    unsigned short car;
     unsigned short ticks;
     if (!race || !logical || !race->started)
         return;
@@ -4410,39 +4409,9 @@ void slicks_race_step(struct SlicksRaceRuntime *race, unsigned char *logical)
             &race->boundary_direction,ticks,&race->random_state,
             race->boundary_colours))
         race->boundary_palette_pending=1;
-    if (!race->racing) {
-        if(race->track_actors_ready) {
-            restore_start_light(race,logical);
-            restore_race_actors(race,logical);
-        }
-        update_track_actor_motion(race);
-        /* fe3c resets the DOS clock before the lights; fe9f advances it
-         * before countdown handling. Lap timestamps start at zero (fdd1).
-         * Stationary grid time therefore belongs to the first lap. */
-        for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car)
-            if(driver_role(race,car)) advance_car_clock(&race->cars[car], ticks);
-        race->countdown_ticks -= ticks;
-        if (race->countdown_ticks < 0) {
-            ++race->countdown_stage;
-            race->countdown_ticks = 10;
-            if (!race->track_actors_ready && race->countdown_stage < SLICKS_START_LIGHT_COUNT)
-                draw_start_light(race, logical, race->countdown_stage);
-            else if (!race->track_actors_ready && race->countdown_stage == SLICKS_START_LIGHT_COUNT)
-                restore_start_light(race, logical);
-            if (race->countdown_stage > 5)
-                race->racing = 1;
-        }
-        advance_weapon_actors(race);
-        prepare_car_display(race,ticks);
-        if(race->track_actors_ready) {
-            draw_race_actors(race,logical);
-            if(race->countdown_stage<SLICKS_START_LIGHT_COUNT)
-                draw_start_light(race,logical,race->countdown_stage);
-        }
-        race->actor_page ^= 1;
-        ++race->frame_count;
-        return;
-    }
+    /* The start presentation belongs to the caller, before the DOS clock
+     * epoch. BP-60's 120/10 timer animates boundaries, never gates drivers. */
+    if(race->start_light_visible) restore_start_light(race,logical);
     /* Priority 0, layer-1 cars, priority 3, layer-0 cars, priorities 5/6.
      * Restore in reverse layer order, then redraw forward. */
     restore_race_actors(race,logical);

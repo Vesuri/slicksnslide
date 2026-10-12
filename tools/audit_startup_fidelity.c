@@ -4,6 +4,7 @@
 #include "verify_race_lap_limit.c"
 #undef main
 #include <assert.h>
+#include <setjmp.h>
 #include <stdint.h>
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
@@ -22,9 +23,10 @@ static void audit_run(uc_engine *u,unsigned start,unsigned end)
     audit_check(uc_reg_read(u,UC_X86_REG_IP,&ip));assert(ip==end-0x19870);
 }
 static unsigned polls,next_actor,configurations;
+static jmp_buf first_driver;
 static unsigned configured[2][13];
 static void poll_devices(struct SlicksRaceRuntime *race,unsigned short ticks)
-{(void)race;(void)ticks;++polls;}
+{(void)race;assert(ticks==1);++polls;longjmp(first_driver,1);}
 static void actor_boundary(uc_engine *u,uint64_t address,uint32_t size,void *context)
 {
     (void)size;(void)context;
@@ -54,7 +56,7 @@ static void cue_boundary(uc_engine *u,uint64_t address,uint32_t size,void *conte
 }
 int main(void)
 {
-    static unsigned char runtime[300000],logical[0x40000];
+    static unsigned char runtime[300000],logical[0x40000],chunky[64000];
     static struct SlicksRaceRuntime race;
     FILE *f=fopen("disasm/runtime.bin","rb");assert(f);size_t n=fread(runtime,1,sizeof runtime,f);fclose(f);
     uc_engine *u;audit_check(uc_open(UC_ARCH_X86,UC_MODE_16,&u));
@@ -66,10 +68,19 @@ int main(void)
     audit_word(u,ds+0x685e,0);audit_word(u,ds+0x6860,0);
     audit_run(u,0x1fe9b,0x2034f); /* Reaches per-driver update on first tick. */
     assert(audit_read(u,0x8efa0)==119 && audit_read(u,ds+0x685e)==1);
-    race.started=1;race.countdown_ticks=120;race.poll_driver_devices=poll_devices;
-    slicks_race_step(&race,logical);
-    assert(!polls && !race.racing && race.countdown_ticks<120);
-    printf("DIFFERENCE: DOS reaches driver update with boundary timer 119; native skips driver polling with countdown=%d, racing=%u\n",race.countdown_ticks,race.racing);
+    race.navigation.zone_count=1;race.font.ready=1;
+    race.participation_ready=1; /* No car artwork needed before the polling boundary. */
+    for(unsigned v=0;v<SLICKS_VEHICLE_COUNT;++v) {
+        race.properties[v].ready=1;
+        for(unsigned d=0;d<SLICKS_CAR_BASE_DIRECTIONS;++d)race.sprites[v][d].ready=1;
+    }
+    for(unsigned l=0;l<SLICKS_START_LIGHT_COUNT;++l)race.start_lights[l].ready=1;
+    assert(!slicks_race_start(&race,logical,chunky));
+    assert(race.racing && !race.game_clock_ticks);
+    race.poll_driver_devices=poll_devices;
+    if(!setjmp(first_driver)) { slicks_race_step(&race,logical);abort(); }
+    assert(polls==1 && race.game_clock_ticks==1 && race.boundary_timer==119);
+    puts("F20 MATCH: first native tick reaches driver polling, clock=1 and boundary timer=119, as in DOS");
     /* Original startup configures two drawable sprite actors, not just slots. */
     audit_word(u,ds+0x16ce,0);audit_word(u,ds+0x16d0,0xb000);
     audit_word(u,ds+0x3020,1);audit_word(u,0x8efd4,100);audit_word(u,0x8efd2,80);

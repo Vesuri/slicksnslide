@@ -12,12 +12,20 @@ unsigned short slicks_advance_particles(struct SlicksTrailParticle *particles,
 {
     (void)particles; (void)count; (void)indices; (void)counts; (void)pixels;
     (void)dirty_count; (void)chunky; (void)page;
-    fputs("Unexpected particle gameplay in countdown test\n",stderr); abort();
+    fputs("Unexpected particle gameplay in clock fixture\n",stderr); abort();
 }
 
 static unsigned track_awards;
 static void award_track(struct SlicksRaceRuntime *race) { (void)race; ++track_awards; }
 
+/* Timer/clock arithmetic fixture, not a substitute for first-driver oracle. */
+static void clock_fixture_step(struct SlicksRaceRuntime *race)
+{
+    unsigned short ticks=next_physics_ticks(race);
+    race->game_clock_ticks+=ticks;
+    for(unsigned i=0;i<4;++i) advance_car_clock(&race->cars[i],ticks);
+    ++race->frame_count;
+}
 int main(void)
 {
     static struct SlicksRaceRuntime race;
@@ -36,43 +44,42 @@ int main(void)
     slicks_race_set_laps(0, 9999);
     puts("Race lap-limit word storage: 65536 values passed");
     for(short speed=50;speed<=200;++speed) {
-        static unsigned char logical[0x40000];
-        memset(&race,0,sizeof race); race.started=1; race.countdown_ticks=10000;
+
+        memset(&race,0,sizeof race); race.started=1;
         slicks_race_set_timer(&race,slicks_speed_timer_argument(speed));
         unsigned long period=(6553600UL/(unsigned)(speed*5))*50;
         if(race.physics_timer_disabled || race.physics_tick_period!=period) return 1;
         for(unsigned frame=1;frame<=300;++frame) {
-            slicks_race_step(&race,logical);
+            clock_fixture_step(&race);
             unsigned long expected=(unsigned long)((unsigned long long)frame*1193182/period);
             if(race.game_clock_ticks!=expected || race.cars[0].elapsed_time_units!=expected*2 ||
-               race.frame_count!=frame || race.countdown_ticks!=10000-(long)expected) return 1;
+               race.frame_count!=frame) return 1;
         }
         unsigned long ticks=race.game_clock_ticks,elapsed=race.cars[0].elapsed_time_units;
         slicks_race_set_timer(&race,530);
         if(race.physics_tick_phase || race.physics_tick_period!=618250 ||
            race.game_clock_ticks!=ticks || race.cars[0].elapsed_time_units!=elapsed) return 1;
-        slicks_race_step(&race,logical);
+        clock_fixture_step(&race);
         if(race.game_clock_ticks!=ticks+1 || race.cars[0].elapsed_time_units!=elapsed+2) return 1;
         slicks_race_set_timer(&race,0);
-        slicks_race_step(&race,logical);
+        clock_fixture_step(&race);
         if(race.game_clock_ticks!=ticks+1 || race.cars[0].elapsed_time_units!=elapsed+2) return 1;
     }
-    puts("Actual race-step clock: all 151 UI speeds, 45300 grid updates, live reprogram preserving elapsed time and disabled timer passed");
-    /* Run the actual frame path while the grid is stationary. This checks
-     * inclusion of countdown time and the existing PIT-to-PAL accumulator. */
+    puts("Timer/clock helpers: all 151 UI speeds, 45300 updates, live reprogram preserving elapsed time and disabled timer passed");
+    /* Verify clock arithmetic separately from racing dispatch. */
     for(unsigned mode=0;mode<6;++mode) {
-        static unsigned char logical[0x40000];
+
         memset(&race,0,sizeof race);
         slicks_race_set_mode(&race,(short)mode,5);
         slicks_race_set_laps(&race,4);
         if(race.laps_to_run!=(mode==5?9999:4)) return 1;
         race.started=1;
-        race.countdown_ticks=10000;
+
         for(unsigned i=0;i<4;++i) race.cars[i].lap=1;
         slicks_race_set_mode(&race,17,99);
         if(race.race_mode!=(short)mode || race.arcade_seconds!=5) return 1;
         for(unsigned frame=1;frame<=300;++frame) {
-            slicks_race_step(&race,logical);
+            clock_fixture_step(&race);
             unsigned expected=(unsigned)((unsigned long long)frame*1193182/655350);
             if(race.game_clock_ticks!=expected || race.frame_count!=frame ||
                 race.cars[0].elapsed_time_units!=2*expected) return 1;
@@ -94,7 +101,7 @@ int main(void)
         advance_lap_checkpoints(&race,&race.cars[1]);
         if(!race.cars[1].finished || race.cars[1].finish_position!=2) return 1;
     }
-    puts("Race runtime: six modes, 1800 countdown frames, expiry/lap crossing passed");
+    puts("Race runtime: six modes, 1800 clock updates, expiry/lap crossing passed");
     /* The winner's lap adjustment is observable even for inactive slots.
      * A lapped entrant starts at -3 here, so next crossing takes rank 3,
      * not merely the second increment of a finish counter. */

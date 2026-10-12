@@ -16,14 +16,14 @@ the deleted `docs/fidelity-audit.md` in git history. Release blockers belong in
 These are **unintended differences**, not accepted adaptations. This focused
 caller-level audit does not establish completeness elsewhere in the game.
 The previous routine and startup smoke checks did not prove the combined
-light/audio/driver-update sequence. All three findings remain open in
+light/audio/driver-update sequence. Current status is tracked in
 [open-work.md](open-work.md).
 
-### F20 — invented stationary countdown (high priority)
+### F20 — invented stationary countdown (fixed)
 
-`race_runtime.c` sets `countdown_ticks=120`, `countdown_stage=0`, `racing=0`
-at race startup. Its `!racing` branch advances clocks but returns before
-input polling and car updates until six timer transitions have elapsed.
+The audited `race_runtime.c` set `countdown_ticks=120`, `countdown_stage=0`, `racing=0`
+at race startup. Its `!racing` branch advanced clocks but returned before
+input polling and car updates until six timer transitions had elapsed.
 The 120/10 timing belongs to DOS's animated boundary palette, not a start
 countdown: original `1fc41` initializes BP-60, and `1fec8..1ff97` updates
 DS:4c6c and colours 199..203. The port already implements that mechanism
@@ -31,10 +31,30 @@ separately in `animated_boundary.h`.
 
 The original-byte reproducer runs `1fe9b..2034f` with a one-tick update and
 boundary timer 120: it reaches the per-driver update with the timer at 119.
-The native public step with its startup state returns with no driver poll.
-The target audit reaches `racing=1` only at frame 97, game clock 176 and
+The audited native public step returned with no driver poll.
+The original audit reached `racing=1` only at frame 97, game clock 176 and
 car-0 elapsed time 352 (about 1.9 seconds at normal speed). That stationary
-time is charged to the first lap, after the new 900 ms audio prelude.
+time was charged to the first lap, after the new 900 ms audio prelude.
+
+The F20 fix removes that branch and marks the race ready for driving at
+construction. The caller still owns the pre-race presentation. The first
+public step now polls input and runs physics; boundary animation remains
+independent. The original-byte regression uses the public native constructor
+and checks first-poll clock=1 and boundary timer=119. Clock-arithmetic and
+track-animation fixtures no longer require an invented stationary phase.
+On the normal 2 MiB target build, `diag_audit_startup.gdb` confirms frame=1,
+clock=1, car-0 elapsed=2 after the four pre-race cues. The real pause-menu
+regression passes all 13 dialogs with one cue sequence and engines restarted
+only on resume. Host drive, lap-clock, track-actor setup and DOS AI checks
+also pass. A 50-update target shadow run exercises all nine sites with zero
+mismatches (200 calls each at sites 1, 2, 5, 7, 8 and 9; 50 at 3, 4 and 6).
+The diagnostic build uses 2 MiB extra RAM for comparison storage; normal
+startup and pause tests use the production 2 MiB configuration. Reproduce
+with `SHADOW_FRAMES=50 SLICKS_DEBUG_FAST_KB=2048 amiga/shadow_check.sh f20 0`.
+The default shadow checkpoint remains 700 updates. Full-frame display
+audits pass F1 and WHACKO for 600 frames and CITY through natural completion
+at frame 554. The display audit now accepts a clean completed race before
+600, rather than requiring the removed wait to keep the fixture running.
 
 ### F21 — cues and start-light changes are disconnected
 
@@ -47,8 +67,9 @@ FS-UAE records all four cues at `frame=0`, `light_stage=0`, `light_mask=1`.
 Thus commit `44c0fb8` restored the missing sounds but did not restore the
 complete start sequence. Its oracle and target test passed because they
 checked audio ordering, pitch and engine handover without checking the
-surrounding drawing and first driver-update boundary. Correct F20/F21 as
-one coordinated startup change, not by adding another independent timer.
+surrounding drawing and first driver-update boundary. F20 removes the
+invented wait; F21 must connect the light transitions to
+the same cue sequence, without adding another independent timer.
 
 ### F22 — startup sprite actors are invisible
 
@@ -69,11 +90,9 @@ PC/Amiga visual comparison when restoring these actors.
   informational known-difference audit, **not a passing fidelity gate**.
 - `SLICKS_AUTO_RACE=1 SLICKS_DEBUG_WARP=1 amiga/debug.sh '' diag_audit_startup.gdb`:
   reads target startup state through the cues and first enabled driving frame.
-- `verify_track_actor_setup.c` independently compares track actors but then
-  asserts that native cars stay stationary for twenty updates without an
-  original comparison. `verify_race_lap_limit.c` also assumes that grid wait.
-  These checks currently protect F20 rather than detect it; replace those
-  assumptions with a whole-startup original comparison during the fix.
+- The old track-actor and lap-clock fixtures assumed a stationary grid.
+  F20 replaces those assumptions with isolated helper checks and the
+  original first-driver boundary comparison.
 - This audit changed no game behavior. Source archives and emulator outputs
   remain local-only.
 
