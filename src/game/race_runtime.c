@@ -4196,6 +4196,17 @@ int slicks_race_add_weapon_icon(struct SlicksRaceRuntime *race,
     return 0;
 }
 
+int slicks_race_add_start_notice(struct SlicksRaceRuntime *race,
+    const unsigned char *resource,unsigned long size)
+{
+    unsigned short width,height;
+    if(!race || !resource || size<3 || (resource[0]&1) || resource[1]!=13 || resource[2]!=8) return -1;
+    if(slicks_decode_indexed_menu_icon(resource,size,race->start_notice_pixels,
+        sizeof race->start_notice_pixels,&width,&height) || width!=13 || height!=8) return -1;
+    race->start_notice_ready=1;
+    return 0;
+}
+
 int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
                                 unsigned short light,
                                 const unsigned char *resource,
@@ -4268,7 +4279,6 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     race->boundary_palette_pending=0;
     race->track_flag_activations=0;
     race->track_actor_scratch=0;
-    if(shared_actor_pool(race)) initialize_weapon_actors(race);
     race->pit_repair_ticks = 0;
     for (car = 0; car < SLICKS_RACE_CAR_COUNT; ++car) {
         race->shadows[car].state = -3;
@@ -4350,6 +4360,18 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
         state->ai_recovery_ticks = 400;
         if(!race->track_actors_ready) draw_car(race, logical, car);
     }
+    /* Original 2519c..251f3: signed pixel coordinates beside the first car. */
+    race->start_light_x=(short)((signed int)race->cars[0].x/100+30);
+    race->start_light_y=(short)((signed int)race->cars[0].y/100-30);
+    if(race->start_light_x>240) race->start_light_x=(short)((signed int)race->cars[0].x/100-90);
+    if(race->start_light_y<20) race->start_light_y=20;
+    if(shared_actor_pool(race)) {
+        initialize_weapon_actors(race);
+        /* Original 252cf calls the full actor update before drawing light 0.
+         * This setup pass consumes the first motion/lifetime/animation step;
+         * the subsequent gameplay pass starts on page zero. */
+        advance_weapon_actors(race);
+    }
     race->game_clock_ticks = 0;
     race->finish_deadline = 0;
     race->arcade_hud_valid = 0;
@@ -4357,11 +4379,6 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     draw_timers(race, logical);
     draw_arcade_timer(race, logical);
     if(race->track_actors_ready) draw_race_actors(race,logical);
-    /* Original 2519c..251f3: signed pixel coordinates beside the first car. */
-    race->start_light_x=(short)((signed int)race->cars[0].x/100+30);
-    race->start_light_y=(short)((signed int)race->cars[0].y/100-30);
-    if(race->start_light_x>240) race->start_light_x=(short)((signed int)race->cars[0].x/100-90);
-    if(race->start_light_y<20) race->start_light_y=20;
     draw_start_light(race, logical, 0);
     race->countdown_ticks = 0;
     race->countdown_stage = 0;

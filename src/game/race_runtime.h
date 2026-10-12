@@ -395,6 +395,9 @@ struct SlicksRaceRuntime {
     short start_light_x,start_light_y; /* DOS 2519c..251f3, relative to car 0. */
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
+    /* One large intro actor; ordinary slots retain their compact background. */
+    unsigned char start_intro_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT] __attribute__((aligned(4)));
+    unsigned char start_notice_pixels[13U*8U],start_notice_ready;
     struct SlicksTrackActorAsset track_actor_assets[SLICKS_TRACK_ACTOR_ASSETS];
     /* Foreground maps and track assets are immutable during a race. A
      * checked direct-mapped cache shares visibility masks across repeated
@@ -526,6 +529,8 @@ int slicks_race_add_weapon_icon(struct SlicksRaceRuntime *race,
     unsigned short weapon, const unsigned char *resource, unsigned long size);
 int slicks_race_add_weapon_asset(struct SlicksRaceRuntime *race,
     unsigned asset,const unsigned char *resource,unsigned long size);
+int slicks_race_add_start_notice(struct SlicksRaceRuntime *race,
+    const unsigned char *resource,unsigned long size);
 void slicks_race_show_start_light(struct SlicksRaceRuntime *race,unsigned short light);
 int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
                                 unsigned short light,

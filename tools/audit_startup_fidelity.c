@@ -1,4 +1,4 @@
-/* Audit reproducer, NOT a passing fidelity gate: reports known differences.
+/* Original-code startup regression checks for F20 and F22.
  * Reuse the host runtime fixture and its target-only particle guard. */
 #define main lap_limit_fixture_main
 #include "verify_race_lap_limit.c"
@@ -15,12 +15,12 @@ static unsigned audit_read(uc_engine *u,unsigned at)
 {unsigned char b[2];audit_check(uc_mem_read(u,at,b,2));return b[0]|b[1]<<8;}
 static void audit_run(uc_engine *u,unsigned start,unsigned end)
 {
-    uint16_t cs=0x1987,ds=0x3cbf,ss=0x8000,bp=0xf000,sp=0xe000,ip;
+    uint16_t cs=start>=0x2e0f0?0x2e0f:0x1987,ds=0x3cbf,ss=0x8000,bp=0xf000,sp=0xe000,ip;
     audit_check(uc_reg_write(u,UC_X86_REG_CS,&cs));audit_check(uc_reg_write(u,UC_X86_REG_DS,&ds));
     audit_check(uc_reg_write(u,UC_X86_REG_SS,&ss));audit_check(uc_reg_write(u,UC_X86_REG_BP,&bp));
     audit_check(uc_reg_write(u,UC_X86_REG_SP,&sp));
     audit_check(uc_emu_start(u,start,end,0,10000));
-    audit_check(uc_reg_read(u,UC_X86_REG_IP,&ip));assert(ip==end-0x19870);
+    audit_check(uc_reg_read(u,UC_X86_REG_IP,&ip));assert(ip==end-16U*cs);
 }
 static unsigned polls,next_actor,configurations;
 static jmp_buf first_driver;
@@ -34,8 +34,15 @@ static void actor_boundary(uc_engine *u,uint64_t address,uint32_t size,void *con
     uint16_t sp,ss,cs,ip,ax;
     audit_check(uc_reg_read(u,UC_X86_REG_SP,&sp));audit_check(uc_reg_read(u,UC_X86_REG_SS,&ss));
     unsigned stack=ss*16U+sp;
-    if(address==0x330ab){ax=next_actor++;audit_check(uc_reg_write(u,UC_X86_REG_AX,&ax));}
-    else {assert(configurations<2);for(unsigned i=0;i<13;++i)configured[configurations][i]=audit_read(u,stack+4+2*i);++configurations;}
+    if(address==0x330ab){
+        ax=next_actor++;audit_check(uc_reg_write(u,UC_X86_REG_AX,&ax));
+        unsigned char actor[64]={0};actor[0x3a]=1;actor[0x18]=1;
+        audit_check(uc_mem_write(u,0xb0000+ax*64,actor,sizeof actor));
+    } else {
+        assert(configurations<2);
+        for(unsigned i=0;i<13;++i)configured[configurations][i]=audit_read(u,stack+4+2*i);
+        ++configurations;return; /* Execute the original configuration body. */
+    }
     ip=audit_read(u,stack);cs=audit_read(u,stack+2);sp+=4;
     audit_check(uc_reg_write(u,UC_X86_REG_CS,&cs));audit_check(uc_reg_write(u,UC_X86_REG_IP,&ip));
     audit_check(uc_reg_write(u,UC_X86_REG_SP,&sp));
@@ -81,16 +88,38 @@ int main(void)
     if(!setjmp(first_driver)) { slicks_race_step(&race,logical);abort(); }
     assert(polls==1 && race.game_clock_ticks==1 && race.boundary_timer==119);
     puts("F20 MATCH: first native tick reaches driver polling, clock=1 and boundary timer=119, as in DOS");
-    /* Original startup configures two drawable sprite actors, not just slots. */
+    /* Compare original constructor state, then every motion/lifetime update
+     * through retirement, with weapons disabled and enabled. */
     audit_word(u,ds+0x16ce,0);audit_word(u,ds+0x16d0,0xb000);
-    audit_word(u,ds+0x3020,1);audit_word(u,0x8efd4,100);audit_word(u,0x8efd2,80);
-    next_actor=5;uc_hook hook;audit_check(uc_hook_add(u,&hook,UC_HOOK_CODE,actor_boundary,0,1,0));
-    audit_run(u,0x251f3,0x252cf);
-    assert(configurations==2 && configured[0][0]==5 && configured[1][0]==6);
-    assert(configured[0][11]==1 && configured[1][11]==1);
-    memset(&race,0,sizeof race);race.weapons_enabled=1;initialize_weapon_actors(&race);
-    assert(!race.weapons.actors[5].kind && !race.weapons.actors[6].kind);
-    printf("DIFFERENCE: DOS configures visible intro/notice actors (lifetimes %u/%u); native actor kinds %u/%u are rejected by its painter\n",audit_read(u,0xb0000+5*64+0x3e),audit_read(u,0xb0000+6*64+0x3e),race.weapons.actors[5].kind,race.weapons.actors[6].kind);
+    uc_hook hook;audit_check(uc_hook_add(u,&hook,UC_HOOK_CODE,actor_boundary,0,1,0));
+    const short positions[]={80,129,130,200};unsigned actor_cases=0;
+    for(unsigned weapons=0;weapons<2;++weapons)for(unsigned pos=0;pos<4;++pos) {
+        audit_word(u,ds+0x3020,weapons);audit_word(u,0x8efd4,positions[pos]);audit_word(u,0x8efd2,80);
+        next_actor=5;configurations=0;audit_run(u,0x251f3,0x252cf);
+        assert(configurations==1+weapons && configured[0][0]==5);
+        memset(&race,0,sizeof race);race.weapons_enabled=weapons;race.track_actors_ready=1;
+        race.start_light_x=positions[pos];race.start_light_y=80;initialize_weapon_actors(&race);
+        assert(race.weapons.actors[5].kind==4 && race.weapons.actors[5].asset==3);
+        if(weapons)assert(race.weapons.actors[6].kind==5);
+        audit_word(u,ds+0x16c0,next_actor);
+        for(unsigned frame=0;frame<=205;++frame) {
+            for(unsigned h=5;h<next_actor;++h) {
+                const struct SlicksWeaponActor *a=&race.weapons.actors[h];unsigned at=0xb0000+h*64;
+                const short *fields[]={&a->motion.x,&a->motion.y,&a->motion.vx,&a->motion.vy,&a->motion.ax,&a->motion.ay,&a->motion.lifetime,&a->motion.age};
+                const unsigned offsets[]={0,2,0x1b,0x1d,0x1f,0x21,0x3e,0x3c};
+                for(unsigned k=0;k<8;++k)assert(*fields[k]==(short)audit_read(u,at+offsets[k]));
+                assert(a->priority==(audit_read(u,at+0x25)&255));
+                assert(a->occlusion==(audit_read(u,at+0x3b)&255));
+                assert((race.weapons.slots.state[h]>0)==((signed char)audit_read(u,at+0x1a)>0));
+                ++actor_cases;
+            }
+            /* Setup PRE uses page one; first racing PRE uses page zero. */
+            race.actor_page=(unsigned char)((frame+1)&1);
+            audit_word(u,ds+0x16c6,race.actor_page);audit_word(u,0x8e004,0);
+            audit_run(u,0x338e7,0x33aa9);advance_weapon_actors(&race);
+        }
+    }
+    printf("F22 MATCH: %u original intro/notice constructor and motion/lifetime states, both directions and weapons off/on\n",actor_cases);
     audit_check(uc_hook_add(u,&hook,UC_HOOK_CODE,cue_boundary,0,1,0));
     audit_run(u,0x25358,0x253f4);
     assert(cue_calls==4 && draws_at_cue[0]==1 && draws_at_cue[1]==2 && draws_at_cue[2]==2 && draws_at_cue[3]==2);

@@ -2899,6 +2899,10 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
                 g_slicks_diag_race_error=6;goto cleanup;
             }
         }
+        long notice_size=slicks_resource_archive_load(&archive,"aseviive.@I",font_resource,2048UL);
+        if(notice_size<=0 || slicks_race_add_start_notice(race,font_resource,(unsigned long)notice_size)) {
+            g_slicks_diag_race_error=6;goto cleanup;
+        }
         race->weapons.ready=1;
     }
     race_checkpoint(12);

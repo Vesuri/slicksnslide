@@ -25,6 +25,7 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 #if defined(__m68k__)
     __asm__("" : "+a"(a));
 #endif
+    unsigned char *saved_under=a->kind==4?race->start_intro_saved_under:a->saved_under;
     a->retain=0; /* only the native restoration chain keeps sprites */
     if(!a->saved) return;
 #if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
@@ -44,12 +45,12 @@ static void restore_weapon_actor(struct SlicksRaceRuntime *race,unsigned handle)
 #if defined(__m68k__) || defined(SLICKS_NATIVE_SPRITE_TEST)
     if(left>=0 && top>=0 && left+width<=320 && top+a->old_height<=200) {
         extern void slicks_restore_car_chunky(unsigned char *,const unsigned char *,unsigned,unsigned);
-        slicks_restore_car_chunky(race->chunky+mult320[top]+left,a->saved_under,width,a->old_height);
+        slicks_restore_car_chunky(race->chunky+mult320[top]+left,saved_under,width,a->old_height);
     } else
 #endif
     if(x0<x1) for(int y=y0;y<y1;++y) {
         unsigned char *dst=race->chunky+mult320[top+y]+left+x0;
-        const unsigned char *src=a->saved_under+y*width+x0;
+        const unsigned char *src=saved_under+y*width+x0;
         for(int n=x1-x0;n;--n) *dst++=*src++;
     }
     if(race->sprite_dirty_deferred) {
@@ -80,6 +81,7 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
      * indexed addressing through the large race structure for each field. */
     __asm__("" : "+a"(a));
 #endif
+    unsigned char *saved_under=a->kind==4?race->start_intro_saved_under:a->saved_under;
     a->retain=0; /* only native unchanged chain draws may retain */
     if(!a->kind || race->weapons.slots.state[handle]<=0) return;
     /* Per-sprite probes are intentionally opt-in: four callbacks for every
@@ -113,6 +115,13 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
         if(asset->opacity_ready)opacity=asset->opacity;
 #endif
     }
+    if(a->kind==4) {
+        pixels=race->start_lights[3].pixels;
+        width=SLICKS_START_LIGHT_WIDTH;height=SLICKS_START_LIGHT_HEIGHT;
+    } else if(a->kind==5) {
+        if(!race->start_notice_ready) { race->collision_error=1;return; }
+        pixels=race->start_notice_pixels;width=13;height=8;
+    }
     short left=a->motion.x>>6,top=a->motion.y>>6;
     /* The unmasked primitive suppresses a negative origin, including the
      * setup flag's x=-1 sentinel. The masked primitive clips separately. */
@@ -129,7 +138,7 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
        left+(int)width<=320 && top+(int)height<=200) {
         extern void slicks_draw_sprite_opaque(unsigned char *,const unsigned char *,
             unsigned char *,const unsigned char *,unsigned,unsigned);
-        slicks_draw_sprite_opaque(race->chunky+mult320[top]+left,pixels,a->saved_under,opacity,width,height);
+        slicks_draw_sprite_opaque(race->chunky+mult320[top]+left,pixels,saved_under,opacity,width,height);
     } else if(opacity && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
         __typeof__(race->track_sprite_visibility[0]) *cache=&race->track_sprite_visibility[handle&63];
 #if defined(__m68k__)
@@ -149,7 +158,7 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
         }
         extern void slicks_draw_sprite_visible(unsigned char *,const unsigned char *,
             unsigned char *,const unsigned char *,unsigned,unsigned);
-        slicks_draw_sprite_visible(race->chunky+mult320[top]+left,pixels,a->saved_under,
+        slicks_draw_sprite_visible(race->chunky+mult320[top]+left,pixels,saved_under,
             cache->write_mask,width,height);
     } else if(pixels && left>=0 && top>=0 && left+(int)width<=320 && top+(int)height<=200) {
         extern void slicks_draw_car_chunky(unsigned char *,const unsigned char *,unsigned char *,
@@ -157,17 +166,17 @@ static void draw_weapon_actor_general(struct SlicksRaceRuntime *race,unsigned ha
         unsigned masked=a->occlusion && top<190 ? (unsigned)(190-top) : 0;
         if(masked>height)masked=height;
         unsigned row=mult320[top]+left;
-        if(masked) slicks_draw_car_chunky(race->chunky+row,pixels,a->saved_under,
+        if(masked) slicks_draw_car_chunky(race->chunky+row,pixels,saved_under,
             race->material_map+row,race->surface_map+row,width,masked,1,width,0,a->occlusion);
         if(masked<height) slicks_draw_car_chunky(race->chunky+row+mult320[masked],
-            pixels+masked*width,a->saved_under+masked*width,
+            pixels+masked*width,saved_under+masked*width,
             race->material_map,race->surface_map,width,height-masked,1,width,0,0);
     } else
 #endif
     for(int y=y0;y<y1;++y) {
         unsigned long at=mult320[top+y]+left+x0;
         unsigned i=y*width+x0;
-        unsigned char *dst=race->chunky+at,*saved=a->saved_under+i;
+        unsigned char *dst=race->chunky+at,*saved=saved_under+i;
         const unsigned char *src=pixels?pixels+i:0;
         /* The original raw mask's 190..199 tail is explicitly cleared. */
         if(!a->occlusion || top+y>=190) {
@@ -350,16 +359,25 @@ static void initialize_weapon_actors(struct SlicksRaceRuntime *race)
         /* 2501c consumes one draw for every kind, even a hidden flag. */
         a->motion.period=(signed char)(((unsigned long)next_random(race)*8)>>15)+10;
     }
+    /* Original 251f3..252cf: kind 4 is lahto4, kind 5 is aseviive. */
     short intro=slicks_actor_allocate(&w->slots,1);
-    if(intro) { w->actors[intro].motion.lifetime=30;w->actors[intro].motion.frames=1; }
+    if(intro) {
+        struct SlicksWeaponActor *a=&w->actors[intro];
+        a->kind=4;a->asset=3;a->motion.frames=1;
+        configure_weapon_actor(race,intro,race->start_light_x,race->start_light_y,0,0,30,10,0);
+        a->motion.ax=race->start_light_x<130?-20:20;
+    }
     short notice=race->weapons_enabled?slicks_actor_allocate(&w->slots,1):0;
-    if(notice) { w->actors[notice].motion.lifetime=200;w->actors[notice].motion.frames=1; }
+    if(notice) {
+        w->actors[notice].kind=5;w->actors[notice].motion.frames=1;
+        configure_weapon_actor(race,notice,15,15,-4,0,200,3,0);
+    }
     for(unsigned d=0;d<4;++d) if(driver_role(race,d)) {
         short h=slicks_actor_allocate(&w->slots,1);
         if(h) w->slots.state[h]=-3;
     }
     w->shots=w->hits=w->explosions=0;
-    /* Includes inert/reserved slots and intro/notice lifetime-only actors.
+    /* Includes reserved slots and the drawable intro/notice actors.
      * Track configuration always reuses these handles. Later sprite creation
      * goes through allocate_weapon_actor; point allocation never raises it. */
     w->sprite_high_water=(unsigned char)w->slots.high_water;

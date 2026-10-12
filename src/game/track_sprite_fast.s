@@ -174,6 +174,10 @@ slicks_restore_actor_sprite:
 ; Private ABI: a2 actor, a3 previous descriptor, a0 chunky base.
 ; Clobbers d0-d4/a0-a2; preserves d5-d7/a3-a6 for batched traversal.
 slicks_restore_actor_sprite_regs:
+	; The startup light is larger than the inline 128-byte saved background.
+	; Its C owner restores from the separate race buffer.
+	cmpi.b #4,21(a2)
+	beq.w .fallback
 	tst.b 32(a2)
 	beq.w .fallback
 	move.w 26(a2),d0

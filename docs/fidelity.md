@@ -81,30 +81,68 @@ Moving the first light after its cue is rejected by the expanded oracle.
 F1/WHACKO display audits pass 600 frames, CITY passes through completion at
 554, and all 13 pause dialogs pass without repeating the presentation.
 
-### F22 — startup sprite actors are invisible
+### F22 — startup sprite actors are invisible (fixed)
 
-Original `251f3..252cf` allocates and configures the temporary intro sprite
-and, when weapons are enabled, a notice sprite. Their original lifetimes
-are 30 and 200 actor updates. The native `initialize_weapon_actors` reserves
-the corresponding slots and lifetimes but leaves both `kind=0`, without
-resource, position or motion configuration. `draw_weapon_actor_general`
-returns immediately for `kind=0`, so neither original sprite is drawn.
-The constructor oracle confirms two configured, enabled original actors
-versus the native placeholders. The exact artwork should be checked in the
-PC/Amiga visual comparison when restoring these actors.
+Original `251f3..252cf` allocates an intro sprite (`lahto4.@I`, 23×38)
+with priority 10 and lifetime 30. It starts at the light's position with
+zero velocity and horizontal acceleration −20 when x < 130, otherwise
++20 (actor coordinates use 1/64 pixel units). With weapons enabled, it
+also allocates `aseviive.@I` (13×8) at (15,15), horizontal velocity −4,
+priority 3 and lifetime 200. The port previously reserved their slots and
+lifetimes but left both actors invisible (`kind=0`).
+
+Both actors now use the original artwork and configuration, preserving
+allocation order before the reserved shadow slots. Original `252cf` runs
+one actor update before showing the first static light: the intro's life
+is already 29 and the notice's 199 during the cue sequence. The port now
+performs that setup update, including track-actor animation age. First
+racing update still uses actor page zero. The intro has a separate
+874-byte saved background; the native restoration shortcut declines this
+actor rather than reading beyond the ordinary 128-byte inline buffer.
+
+`make audit-startup-fidelity` executes the original constructors and motion
+loop and compares 2,472 states through retirement, with both acceleration
+directions and weapons off/on. `make verify-weapon-actors` now compares
+both startup assets against the original sprite painter, including native
+68020 drawing/restoration and deferred dirty bookkeeping: 2,688 complete
+frame comparisons per renderer, plus the existing mixed-pool checks.
+`verify-actor-slots` and `verify-actor-advance` also pass.
+
+`diag_start_actors.gdb` checks the production 2 MiB Amiga build through
+200 updates, using `SLICKS_OPTIONS_MENU=16` for weapons off and
+`SLICKS_WEAPON_CASE=1` for weapons on. Constructor state, acceleration,
+velocity and retirement match; captures at updates 1, 10, 30 and 200 match
+all 64,000 displayed pixels. Original DOS captures use the normal PC
+reference loop with BASIC.SS; weapons on requires Custom mode, since the
+standard mode overrides the stored weapons option. Captures and decoded
+artwork remain local under `tmp/`. The captured intro rectangles match all
+874 original pixels and the notice matches its 57 nontransparent pixels.
+The DOS weapons-on capture confirms the notice at the upper left and the
+intro light departing as driving starts. Reproduce that capture with CFG
+Custom mode (`options[0]=4`), Weapons on (`options[7]=1`) and the usual
+reference menu sequence followed by Escape to leave the shop. The local
+final videos are `tmp/f22-pc-0/capture/slicks_005.avi` (off) and
+`tmp/f22-pc-1/capture/slicks_009.avi` (on).
+
+All-site startup SHADOW checks pass 50 updates without a mismatch.
+Production display audits pass F1/WHACKO for 600 updates and CITY through
+its finish at 554. RETCHECK passes 700 updates on BASIC, F1, CITY and
+WHACKO, with zero surface, particle, geometry, immutable-map or HUD-cache
+mismatches. Diagnostic snapshots use 2 MiB additional Fast RAM; the
+production captures and display audits use the normal 2 MiB machine.
 
 ### Reproduction and test blind spots
 
 - `make audit-startup-fidelity`: executes original bytes for F20/F22 and
-  light/cue ordering, and compares the relevant native behavior. This is an
-  informational known-difference audit, **not a passing fidelity gate**.
+  light/cue ordering, and compares the relevant native behavior. It now fails on
+  a regression in the repaired startup behavior.
 - `SLICKS_AUTO_RACE=1 SLICKS_DEBUG_WARP=1 amiga/debug.sh '' diag_audit_startup.gdb`:
   reads target startup state through the cues and first enabled driving frame.
 - The old track-actor and lap-clock fixtures assumed a stationary grid.
   F20 replaces those assumptions with isolated helper checks and the
   original first-driver boundary comparison.
-- This audit changed no game behavior. Source archives and emulator outputs
-  remain local-only.
+- The initial audit changed no game behavior; F20–F22 above describe the
+  subsequent fixes. Source archives and emulator outputs remain local-only.
 
 ## Intentional adaptations
 

@@ -17,11 +17,8 @@ below. Intentional differences and limitations are documented in
 [fidelity.md](fidelity.md), [performance.md](performance.md) and
 [phases.md](phases.md).
 
-## Confirmed startup fidelity defects
+## Current work
 
-Evidence and reproduction commands are in [fidelity.md](fidelity.md#confirmed-startup-defects--2026-10-12).
-
-- [ ] **F22:** Restore the startup intro and weapons-notice actors with their
-  original artwork, coordinates, motion, priorities and lifetimes. Preserve
-  slot allocation; compare constructor state with original code and capture
-  the presentation in DOS and on the Amiga with weapons off and on.
+No open items. F20, F21 and F22 are fixed and verified; the original-code
+comparisons and target capture results are recorded in
+[fidelity.md](fidelity.md#confirmed-startup-defects--2026-10-12).

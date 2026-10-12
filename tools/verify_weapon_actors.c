@@ -27,18 +27,27 @@ int main(void)
     check(uc_hook_add(u,&h,UC_HOOK_INSN,port,0,1,0,UC_X86_INS_OUT));
     check(uc_hook_add(u,&h,UC_HOOK_MEM_WRITE,actor_pixel,0,0xa0000,0xaffff));
     const char *names[]={"miina.ase","aikabomb.ase","flam_raj.@I","ohjus.1","ohjus.2","ohjus.3","ohjus.4","ohjus.5","ohjus.6","ohjus.7","ohjus.8",
-        "savu.1","savu.2","savu.3","rajahdys.1","rajahdys.2","rajahdys.3","rajahdys.4","flash.@I"};
+        "savu.1","savu.2","savu.3","rajahdys.1","rajahdys.2","rajahdys.3","rajahdys.4","flash.@I","lahto4.@I","aseviive.@I"};
     unsigned cases=0;
-    for(unsigned asset=0;asset<19;++asset) {
+    for(unsigned asset=0;asset<sizeof names/sizeof *names;++asset) {
         long loaded=host_archive_load("ref/SLICKS.000",names[asset],source,sizeof source);if(loaded<0)return 2;length=loaded;cursor=allocations=0;
         word(u,0x8f004,0);word(u,0x8f006,0x9000);word(u,0x8f008,0);word(u,0x8f00a,0x6000);word(u,0x8f00c,2);start(u,0x2e51a);
-        struct SlicksWeaponAsset *image=&race.weapons.assets[asset];unsigned short w,hgt;
-        if(slicks_decode_indexed_menu_icon(source,length,image->pixels,sizeof image->pixels,&w,&hgt))abort();
-        image->width=w;image->height=hgt;image->ready=1;
-        unsigned char original_image[256];
+        unsigned short w,hgt;
+        if(asset<19) {
+            struct SlicksWeaponAsset *image=&race.weapons.assets[asset];
+            if(slicks_decode_indexed_menu_icon(source,length,image->pixels,sizeof image->pixels,&w,&hgt))abort();
+            image->width=w;image->height=hgt;image->ready=1;
+        } else if(asset==19) {
+            if(slicks_race_add_start_light(&race,3,source,length))abort();
+            w=SLICKS_START_LIGHT_WIDTH;hgt=SLICKS_START_LIGHT_HEIGHT;
+        } else {
+            if(slicks_race_add_start_notice(&race,source,length))abort();
+            w=13;hgt=8;
+        }
+        unsigned char original_image[1024];
         unsigned original_size=3+((w+3)/4)*4*hgt;
         check(uc_mem_read(u,0x50000,original_image,original_size));
-        check(uc_mem_write(u,0x51000+asset*256,original_image,original_size));
+        check(uc_mem_write(u,0x51000+asset*1024,original_image,original_size));
         for(unsigned trial=0;trial<128;++trial) {
             unsigned page=trial&1,limit=(trial&2)?15:0,pattern=(trial/4)%8;
             short x=(short)(100+trial%4),y=(short)(50+(trial/32)*45);
@@ -61,7 +70,8 @@ int main(void)
             word(u,0x8f000,0);word(u,0x8f002,0x5500);word(u,0x8f004,1);
             check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
             check(uc_emu_start(u,0x33673,0x55000,0,100000));
-            race.chunky=native;race.weapons.slots.state[1]=1;race.weapons.actors[1]=(struct SlicksWeaponActor){.asset=asset,.kind=1,.occlusion=limit};
+            race.sprite_dirty_deferred=(trial>>6)&1;race.sprite_dirty_count=0;
+            race.chunky=native;race.weapons.slots.state[1]=1;race.weapons.actors[1]=(struct SlicksWeaponActor){.asset=asset<19?asset:asset==19?3:0,.kind=asset<19?1:asset==19?4:5,.occlusion=limit};
             race.weapons.actors[1].motion.x=x*64;race.weapons.actors[1].motion.y=y*64;draw_weapon_actor(&race,1);
             if(memcmp(native,dos,64000)) {
                 for(unsigned i=0;i<64000;++i)if(native[i]!=dos[i]){fprintf(stderr,"Weapon actor %s trial=%u mask=%u pixel=%u,%u native=%u DOS=%u\n",names[asset],trial,limit,i%320,i/320,native[i],dos[i]);break;}return 1;
@@ -71,9 +81,14 @@ int main(void)
     }
     printf("Original weapon actors: %u full-screen sprite/mask/page comparisons and exact restoration checks pass\n",cases);
     for(unsigned trial=0;trial<128;++trial) {
-        race.weapons.ready=1;race.participation_ready=1;race.trail_particle_count=0;
+        race.sprite_dirty_deferred=0;race.weapons.ready=1;race.participation_ready=1;race.trail_particle_count=0;
         memset(race.trail_priority_counts,0,sizeof race.trail_priority_counts);
         initialize_weapon_actors(&race);
+        /* This stress fixture compares weapon/trail ordering only. Startup
+         * actors are compared separately above against the original blitter. */
+        for(unsigned h=1;h<200;++h)if(race.weapons.actors[h].kind>=4) {
+            race.weapons.slots.state[h]=0;race.weapons.actors[h].kind=0;
+        }
         /* Exercise holes in a saturated common pool, not append-only order. */
         for(unsigned i=0;i<210;++i) {
             if(i&1) add_trail_component(&race,100,100,(unsigned char)(30+i),3,0,0,20);
@@ -117,7 +132,7 @@ int main(void)
             }
             unsigned char actor[64]={0};actor[0x18]=trail<0;actor[0x26]=colour;actor[0x3b]=limit;
             check(uc_mem_write(u,0x90000+h*64,actor,sizeof actor));word(u,0x90000+h*64+4,x);word(u,0x90000+h*64+8,y);
-            word(u,0x90000+h*64+0xc,asset*256);word(u,0x90000+h*64+0xe,0x5100);word(u,0x616c6,0);word(u,0x616c7,1);
+            word(u,0x90000+h*64+0xc,asset*1024);word(u,0x90000+h*64+0xe,0x5100);word(u,0x616c6,0);word(u,0x616c7,1);
             uint16_t cs=0x2e0f,ds=0x6000,ss=0x8000,sp=0xf000;
             word(u,0x8f000,0);word(u,0x8f002,0x5500);word(u,0x8f004,h);
             check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
