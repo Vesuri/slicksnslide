@@ -6,6 +6,7 @@
 #include "amiga_audio.h"
 #include "../../game/audio_volume.h"
 #include "../../game/audio_pitch.h"
+#include "../../game/audio_start.h"
 
 #ifndef SLICKS_AUDIO_HOST_TEST
 #define CUSTOM_WORD(offset) (*(volatile unsigned short *)(0xdff000UL + (offset)))
@@ -316,6 +317,30 @@ void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
     slicks_amiga_audio_start_engines(audio,vehicles,1);
 }
 
+static void join_engines(struct SlicksAmigaAudio *audio,
+                         const unsigned short vehicles[4],unsigned mask)
+{
+    if(!audio || !audio->ready || !vehicles) return;
+    for(unsigned i=0;i<4;++i) if((mask&(1U<<i)) && vehicles[i]>=SLICKS_AUDIO_ENGINE_COUNT) return;
+    AUDIO_LOCK();
+    /* Starting cues may still own channels: their expiry returns the home
+     * engine, using the same borrowing policy as racing effects. */
+    audio->channels.engine_mask=(unsigned char)(mask&15);
+    for(unsigned i=0;i<4;++i) {
+        audio->engine_vehicles[i]=(unsigned char)vehicles[i];
+        if(!(mask&(1U<<i))) continue;
+        unsigned short period=engine_period(audio,i,0);
+        if(audio->channels.owner[i]==SLICKS_AUDIO_IDLE) {
+            audio->channels.owner[i]=SLICKS_AUDIO_ENGINE;
+            start_looping_channel(audio,i,engine_sample(audio,i),period,audio->sound_volume);
+        }
+    }
+    audio->engine_vehicle=(unsigned char)vehicles[0];
+    audio->engine_sample_block=vehicles[0]<SLICKS_AUDIO_ENGINE_COUNT?engine_sample_block[vehicles[0]]:0;
+    audio->engine_started=(unsigned char)((mask&15)!=0);
+    AUDIO_UNLOCK();
+}
+
 void slicks_amiga_audio_start_engines(struct SlicksAmigaAudio *audio,
                                      const unsigned short vehicles[4],unsigned mask)
 {
@@ -323,17 +348,40 @@ void slicks_amiga_audio_start_engines(struct SlicksAmigaAudio *audio,
     for(unsigned i=0;i<4;++i) if((mask&(1U<<i)) && vehicles[i]>=SLICKS_AUDIO_ENGINE_COUNT) return;
     AUDIO_LOCK();
     slicks_amiga_audio_stop(audio);
-    slicks_audio_channels_engines(&audio->channels,mask);
-    for(unsigned i=0;i<4;++i) {
-        audio->engine_vehicles[i]=(unsigned char)vehicles[i];
-        if(!(mask&(1U<<i))) continue;
-        unsigned short period=engine_period(audio,i,0);
-        start_looping_channel(audio,i,engine_sample(audio,i),period,audio->sound_volume);
-    }
-    audio->engine_vehicle=(unsigned char)vehicles[0];
-    audio->engine_sample_block=vehicles[0]<SLICKS_AUDIO_ENGINE_COUNT?engine_sample_block[vehicles[0]]:0;
-    audio->engine_started=(unsigned char)((mask&15)!=0);
+    join_engines(audio,vehicles,mask);
     AUDIO_UNLOCK();
+}
+
+static void play_effect_period(struct SlicksAmigaAudio *audio,
+    unsigned short sample_block,unsigned short flags,unsigned short priority,
+    unsigned short period);
+struct StartCueContext {
+    struct SlicksAmigaAudio *audio;
+    void (*wait_ms)(void *,unsigned short);
+    void *context;
+};
+static void start_cue_play(void *context,unsigned short priority,unsigned short frequency)
+{
+    struct StartCueContext *s=context;
+    unsigned short period=frequency?(unsigned short)(PAL_AUDIO_CLOCK/frequency):0;
+    play_effect_period(s->audio,1,0,priority,period);
+}
+static void start_cue_wait(void *context,unsigned short milliseconds)
+{
+    struct StartCueContext *s=context;
+    s->wait_ms(s->context,milliseconds);
+}
+void slicks_amiga_audio_start_race(struct SlicksAmigaAudio *audio,
+    const unsigned short vehicles[4],unsigned mask,
+    void (*wait_ms)(void *,unsigned short),void *context)
+{
+    if(!audio || !audio->ready || !vehicles || !wait_ms) return;
+    for(unsigned i=0;i<4;++i) if((mask&(1U<<i)) && vehicles[i]>=SLICKS_AUDIO_ENGINE_COUNT) return;
+    slicks_amiga_audio_stop(audio);
+    struct StartCueContext cues={audio,wait_ms,context};
+    /* Interrupts stay enabled while waiting: VBI owns all DMA starts. */
+    slicks_audio_start_cues(&cues,start_cue_play,start_cue_wait);
+    join_engines(audio,vehicles,mask);
 }
 
 void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
@@ -455,10 +503,11 @@ void slicks_amiga_audio_tick(struct SlicksAmigaAudio *audio)
     }
 }
 
-void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
+static void play_effect_period(struct SlicksAmigaAudio *audio,
                                     unsigned short sample_block,
                                     unsigned short flags,
-                                    unsigned short priority)
+                                    unsigned short priority,
+                                    unsigned short period)
 {
     const struct SlicksAmigaSample *sample;
     int selected;
@@ -470,10 +519,11 @@ void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
     selected=slicks_audio_channels_request(&audio->channels,flags,priority);
     if(selected<0) { AUDIO_UNLOCK(); return; }
     sample = &audio->samples[sample_block];
+    if(!period) period=sample->period;
     audio->silent_reload_ticks[selected]=0;
-    if(flags&1) start_looping_channel(audio,(unsigned short)selected,sample,sample->period,audio->sound_volume);
-    else start_one_shot_channel(audio,(unsigned short)selected,sample,sample->period,audio->sound_volume);
-    duration = (unsigned long)sample->bytes * sample->period * 50UL;
+    if(flags&1) start_looping_channel(audio,(unsigned short)selected,sample,period,audio->sound_volume);
+    else start_one_shot_channel(audio,(unsigned short)selected,sample,period,audio->sound_volume);
+    duration = (unsigned long)sample->bytes * period * 50UL;
     audio->effect_ticks[selected] = (unsigned short)(
         (duration + 3546894UL) / 3546895UL + 1);
     if (!audio->effect_ticks[selected])
@@ -483,6 +533,12 @@ void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
     audio->last_effect_sample_block = (unsigned char)sample_block;
     audio->last_effect_priority = (unsigned char)priority;
     AUDIO_UNLOCK();
+}
+
+void slicks_amiga_audio_play_effect(struct SlicksAmigaAudio *audio,
+    unsigned short sample_block,unsigned short flags,unsigned short priority)
+{
+    play_effect_period(audio,sample_block,flags,priority,0);
 }
 
 void slicks_amiga_audio_stop(struct SlicksAmigaAudio *audio)

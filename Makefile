@@ -575,7 +575,7 @@ verify-track-menu: build/verify_track_menu
 	build/verify_track_menu
 .PHONY: verify-audio-volume
 .PHONY: verify-amiga-audio-volume
-build/verify_amiga_audio_volume: tools/verify_amiga_audio_volume.c src/platform/amiga/amiga_audio.c src/platform/amiga/amiga_audio.h src/game/audio_volume.h src/game/audio_channels.h src/game/audio_pitch.h src/game/audio_sample.h | build
+build/verify_amiga_audio_volume: tools/verify_amiga_audio_volume.c src/platform/amiga/amiga_audio.c src/platform/amiga/amiga_audio.h src/game/audio_volume.h src/game/audio_channels.h src/game/audio_pitch.h src/game/audio_sample.h src/game/audio_start.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror $< -o $@
 verify-amiga-audio-volume: build/verify_amiga_audio_volume
 	build/verify_amiga_audio_volume
@@ -1822,3 +1822,9 @@ build/verify_framework_palette: tools/verify_framework_palette.cpp src/platform/
 
 clean:
 	rm -rf build
+
+.PHONY: verify-audio-start
+build/verify_audio_start: tools/verify_audio_start.c src/game/audio_start.h | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-audio-start: build/verify_audio_start
+	build/verify_audio_start

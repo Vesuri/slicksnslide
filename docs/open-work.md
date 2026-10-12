@@ -16,10 +16,3 @@ in [release.md](release.md). No implementation or release-validation items
 remain open. Intentional differences and limitations are documented in
 [fidelity.md](fidelity.md), [performance.md](performance.md) and
 [phases.md](phases.md).
-
-## Audio follow-up
-
-- [ ] Restore the DOS pre-race sample-1 cue sequence, including its final
-  pitch change; the Amiga adapter currently never receives these requests.
-  Verify against original code and on target, then commit separately from
-  the full-amplitude sample adaptation.

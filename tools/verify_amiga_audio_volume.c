@@ -204,6 +204,46 @@ static void verify_pc_engine_pcm(struct SlicksAmigaAudio *a,unsigned vehicle,con
     printf("PC PCM identity: vehicle %u %s matches all %zu native engine bytes and acceleration/slowdown/idle DMA selections\n",vehicle,path,bytes);
 }
 
+static unsigned cue_waits;
+static void cue_wait(void *context,unsigned short milliseconds)
+{
+    struct SlicksAmigaAudio *audio=context;
+    assert(milliseconds==(cue_waits?500:400));++cue_waits;
+    assert(!audio->engine_started && !audio->channels.engine_mask);
+    for(unsigned i=0;i<milliseconds/20;++i) slicks_amiga_audio_tick(audio);
+}
+static void verify_start_cues(struct SlicksAmigaAudio *audio)
+{
+    const unsigned short vehicles[4]={0,2,6,9};
+    for(unsigned mask=0;mask<16;++mask) {
+        cue_waits=0;
+        slicks_amiga_audio_start_race(audio,vehicles,mask,cue_wait,audio);
+        assert(cue_waits==2 && audio->channels.engine_mask==mask);
+        unsigned normal=0,high=0;
+        for(unsigned c=0;c<4;++c) if(audio->pending_start[c] &&
+                audio->pending_sample[c]==&audio->samples[1]) {
+            if(audio->pending_period[c]==322 && audio->channels.priority[c]==80) ++normal;
+            if(audio->pending_period[c]==272 && audio->channels.priority[c]==70) ++high;
+        }
+        assert(normal==1 && high==1);
+        slicks_amiga_audio_tick(audio);slicks_amiga_audio_tick(audio);
+        unsigned normal_dma=0,high_dma=0;
+        for(unsigned c=0;c<4;++c) if(longs[AUDIO_BASE(c)/4]==(unsigned long)audio->samples[1].data) {
+            normal_dma+=words[(AUDIO_BASE(c)+6)/2]==322;
+            high_dma+=words[(AUDIO_BASE(c)+6)/2]==272;
+        }
+        assert(normal_dma && high_dma);
+        for(unsigned i=0;i<40;++i) slicks_amiga_audio_tick(audio);
+        for(unsigned c=0;c<4;++c)
+            assert(audio->channels.owner[c]==((mask&(1U<<c))?SLICKS_AUDIO_ENGINE:SLICKS_AUDIO_IDLE));
+        slicks_amiga_audio_stop(audio);
+        slicks_amiga_audio_start_engines(audio,vehicles,mask);
+        assert(cue_waits==2); /* Pause/resume never replays cues. */
+        slicks_amiga_audio_stop(audio);
+    }
+    puts("Pre-race Paula: all 16 car masks, overlapping 11025/13000 Hz cues, engine handover and cue-free resume pass");
+}
+
 int main(int argc,char **argv)
 {
     verify_bank_gain();
@@ -211,6 +251,7 @@ int main(int argc,char **argv)
     unsigned char bank[131691]; struct SlicksAmigaAudio bank_audio;
     assert(host_archive_load("ref/SLICKS.000","samples.dat",bank,sizeof bank)==sizeof bank);
     assert(!slicks_amiga_audio_create(&bank_audio,bank,sizeof bank));
+    verify_start_cues(&bank_audio);
     for(unsigned i=0;i<SLICKS_AUDIO_SAMPLE_COUNT;++i) {
         assert(bank_audio.samples[i].period==322); /* All archive rates are 11025 Hz. */
         assert((unsigned long)bank_audio.samples[i].bytes*322UL>3546895UL/25UL);

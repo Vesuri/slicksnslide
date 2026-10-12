@@ -4130,8 +4130,16 @@ static void update_race_engines(struct SlicksAmigaAudio *audio,const struct Slic
     for(unsigned i=0;i<4;++i) speeds[i]=(unsigned long)race->cars[i].measured_speed;
     slicks_amiga_audio_update_speeds(audio,speeds);
 }
+static void wait_start_cue(void *context,unsigned short milliseconds)
+{
+    struct SlicksAmigaPlatform *platform=context;
+    /* PAL VBI is 50 Hz; the original 400/500 ms delays are exact multiples. */
+    unsigned long start=platform->vblank_count;
+    while(platform->vblank_count-start<milliseconds/20U)
+        slicks_amiga_platform_wait_vblank(platform);
+}
 static void start_race_engines(struct SlicksAmigaAudio *audio,const struct SlicksRaceRuntime *race,
-    struct SlicksAmigaPlatform *platform)
+    struct SlicksAmigaPlatform *platform,unsigned char fresh_race)
 {
     unsigned short vehicles[4]; unsigned mask=0;
     for(unsigned i=0;i<4;++i) {
@@ -4139,7 +4147,9 @@ static void start_race_engines(struct SlicksAmigaAudio *audio,const struct Slick
         if(!race->participation_ready || race->participation[i]) mask|=1U<<i;
     }
     slicks_amiga_platform_wait_display_blank(platform);
-    slicks_amiga_audio_start_engines(audio,vehicles,mask);
+    if(fresh_race)
+        slicks_amiga_audio_start_race(audio,vehicles,mask,wait_start_cue,platform);
+    else slicks_amiga_audio_start_engines(audio,vehicles,mask);
     update_race_engines(audio,race);
 }
 
@@ -4268,7 +4278,7 @@ done:
         /* Resume the engines stopped on entry; one-shots are not replayed. */
         if(result==1 && engine) {
             slicks_amiga_platform_wait_display_blank(platform);
-            start_race_engines(audio,race,platform);
+            start_race_engines(audio,race,platform,0);
         }
         if(g_slicks_diag_pause_unavailable) slicks_diag_pause_live_recovered();
     }
@@ -5398,7 +5408,7 @@ int main(void)
         }
         if (g_slicks_diag_audio_in_blank)
             slicks_amiga_platform_wait_display_blank(&platform);
-        start_race_engines(&audio,race,&platform);
+        start_race_engines(&audio,race,&platform,1);
         g_slicks_diag_engine_sample_block = audio.engine_sample_block;
     }
 
@@ -5857,7 +5867,7 @@ int main(void)
                     if(show_view(&platform,1)) goto cleanup;
                     g_slicks_diag_ready=1;
                     enter_prepared_race(&platform,logical,race);
-                    start_race_engines(&audio,race,&platform);
+                    start_race_engines(&audio,race,&platform,1);
                     g_slicks_diag_engine_sample_block=audio.engine_sample_block;
                     continue;
                 }
@@ -6030,7 +6040,7 @@ int main(void)
                         if(show_view(&platform,1)) goto cleanup;
                         g_slicks_diag_ready=1;
                         enter_prepared_race(&platform,logical,race);
-                        start_race_engines(&audio,race,&platform);
+                        start_race_engines(&audio,race,&platform,1);
                         continue;
                     }
                     if(original_setup && run_championship_results(&platform,chunky,race_palette,
@@ -6629,7 +6639,7 @@ int main(void)
                     if(show_view(&platform,1)) goto cleanup;
                     g_slicks_diag_ready=1;
                     enter_prepared_race(&platform,logical,race);
-                    start_race_engines(&audio,race,&platform);
+                    start_race_engines(&audio,race,&platform,1);
                     continue;
                 }
                 if (action == 1 || (action == 2 && menu_selection == 6)) {
@@ -6698,7 +6708,7 @@ int main(void)
                         goto cleanup;
                     g_slicks_diag_ready = 1;
                     enter_prepared_race(&platform, logical, race);
-                    start_race_engines(&audio,race,&platform);
+                    start_race_engines(&audio,race,&platform,1);
                     g_slicks_diag_engine_sample_block =
                         audio.engine_sample_block;
                 }

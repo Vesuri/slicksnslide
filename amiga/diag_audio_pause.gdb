@@ -1,8 +1,15 @@
 # SLICKS_PAUSE_LIVE=1: original native pause menu, child dialogs, resume.
 set $starts=0
+set $cue_sequences=0
 set $paused=0
 set $resumed=0
 set $audio=(struct SlicksAmigaAudio *)0
+break *slicks_amiga_audio_start_race
+commands
+  silent
+  set $cue_sequences=$cue_sequences+1
+  continue
+end
 break *start_race_engines
 commands
   silent
@@ -43,11 +50,11 @@ end
 break slicks_diag_system_restored
 commands
   silent
-  if !$resumed || $paused!=13 || g_slicks_diag_restore_status!=31 || g_slicks_diag_race_error || g_slicks_audio_vbi_spills
+  if $cue_sequences!=1 || !$resumed || $paused!=13 || g_slicks_diag_restore_status!=31 || g_slicks_diag_race_error || g_slicks_audio_vbi_spills
     printf "AUDIO_PAUSE_FAILED resumed=%u paused=%u restore=%u error=%u spills=%lu\n",$resumed,$paused,g_slicks_diag_restore_status,g_slicks_diag_race_error,g_slicks_audio_vbi_spills
     quit 1
   end
-  printf "AUDIO_NATIVE_PAUSE_RESUME_OK starts=%u paused=%u restore=31 spills=0\n",$starts,$paused
+  printf "AUDIO_NATIVE_PAUSE_RESUME_OK starts=%u paused=%u cue_sequences=1 restore=31 spills=0\n",$starts,$paused
   quit
 end
 continue

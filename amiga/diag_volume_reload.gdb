@@ -10,7 +10,7 @@ commands
   set $loaded = 1
   continue
 end
-break *slicks_amiga_audio_start_engines
+break *slicks_amiga_audio_start_race
 commands
   silent
   set $audio = *(struct SlicksAmigaAudio **)($sp+4)

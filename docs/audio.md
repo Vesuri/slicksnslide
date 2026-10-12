@@ -63,6 +63,21 @@ background-volume gain. Volume changes are written once when they differ.
    exit does, so late race sounds cannot resurface under the results.
    Pause stops all channels; resume restarts the engines only.
 
+## Pre-race cues
+
+Fresh race entry plays sample 1 four times, following original code
+`25376..253f4`: priorities 70, 70, 80, 70 at 0, 400, 900, 900 ms. The final
+voice is retuned to 13,000 Hz (PAL Paula period 272); the other voices keep
+the sample rate of 11,025 Hz (period 322). The last two requests deliberately
+overlap. Priority is channel allocation priority, not volume.
+
+The 900 ms prelude runs before race updates and engine startup. Interrupts
+remain enabled; the PAL VBI services audio while the caller waits 20 then
+25 frames. All fresh-race routes use it; pause/resume starts engines without
+replaying cues. Engines join the channel allocation without cutting off
+unfinished cues: any occupied home channel returns to its engine when its
+one-shot finishes. This uses the existing four-channel adaptation.
+
 ## VBI service and latency
 
 Paula has no one-shot DMA mode, and DMA control must not run in the visible
@@ -114,3 +129,20 @@ both tS header formats. The original DOS gain helper remains oracle-tested
 for reference, but production sample-bank loading no longer calls it.
 The Amiga build and `OPTIONSV` menu-to-race volume smoke test also pass
 (`AUDIO_NATIVE_MENU_TO_RACE_VOLUME_OK`, Paula 16/3 at options 25/20).
+
+## Starting-cue restoration (2026-10-12)
+
+- `make verify-audio-start` executes the original pre-race branch under the
+  x86 oracle and compares all four requests, priorities, both waits and the
+  final voice-specific pitch change. Sabotages changing 400 to 420 ms and
+  13,000 to 11,025 Hz are both rejected.
+- `make verify-amiga-audio-volume` verifies both final DMA periods, overlapping
+  cues, eventual engine ownership for all 16 car masks, and cue-free resume,
+  in addition to the existing volume, sample and lifecycle checks.
+- The Amiga build and `diag_audio_start.gdb` with `SLICKS_AUTO_RACE=1` and
+  `SLICKS_DEBUG_WARP=1` pass: `AUDIO_START_RACE_OK`, four cues at VBI
+  0/20/45/45, final period 272, and successful engine/race startup.
+- `OPTIONSV` menu-to-race volume check passes after the cue restoration.
+- `SLICKS_PAUSE_LIVE=1` / `diag_audio_pause.gdb` passes: two engine starts,
+  thirteen pause/dialog stops, exactly one cue sequence, full OS restoration
+  and no audio VBI spills.
