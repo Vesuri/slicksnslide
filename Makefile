@@ -1828,3 +1828,10 @@ build/verify_audio_start: tools/verify_audio_start.c src/game/audio_start.h | bu
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 verify-audio-start: build/verify_audio_start
 	build/verify_audio_start
+
+# Informational known-difference audit; deliberately not a fidelity gate.
+.PHONY: audit-startup-fidelity
+build/audit_startup_fidelity: tools/audit_startup_fidelity.c tools/verify_race_lap_limit.c src/game/race_runtime.c src/game/weapon_actors.inc src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+audit-startup-fidelity: build/audit_startup_fidelity
+	build/audit_startup_fidelity

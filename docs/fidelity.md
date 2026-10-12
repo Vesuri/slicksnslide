@@ -11,6 +11,72 @@ source/original-code audit of the whole port. Detailed evidence stays in
 the deleted `docs/fidelity-audit.md` in git history. Release blockers belong in
 [open-work.md](open-work.md).
 
+## Confirmed startup defects — 2026-10-12
+
+These are **unintended differences**, not accepted adaptations. This focused
+caller-level audit does not establish completeness elsewhere in the game.
+The previous routine and startup smoke checks did not prove the combined
+light/audio/driver-update sequence. All three findings remain open in
+[open-work.md](open-work.md).
+
+### F20 — invented stationary countdown (high priority)
+
+`race_runtime.c` sets `countdown_ticks=120`, `countdown_stage=0`, `racing=0`
+at race startup. Its `!racing` branch advances clocks but returns before
+input polling and car updates until six timer transitions have elapsed.
+The 120/10 timing belongs to DOS's animated boundary palette, not a start
+countdown: original `1fc41` initializes BP-60, and `1fec8..1ff97` updates
+DS:4c6c and colours 199..203. The port already implements that mechanism
+separately in `animated_boundary.h`.
+
+The original-byte reproducer runs `1fe9b..2034f` with a one-tick update and
+boundary timer 120: it reaches the per-driver update with the timer at 119.
+The native public step with its startup state returns with no driver poll.
+The target audit reaches `racing=1` only at frame 97, game clock 176 and
+car-0 elapsed time 352 (about 1.9 seconds at normal speed). That stationary
+time is charged to the first lap, after the new 900 ms audio prelude.
+
+### F21 — cues and start-light changes are disconnected
+
+Original `25358..253f4` draws the next light before cue 1 and another light
+before cue 2. The new cue helper reproduces sound requests and waits only.
+The native caller blocks in that helper while the game remains on its
+initial light; the separate, incorrect countdown changes lights afterward.
+FS-UAE records all four cues at `frame=0`, `light_stage=0`, `light_mask=1`.
+
+Thus commit `44c0fb8` restored the missing sounds but did not restore the
+complete start sequence. Its oracle and target test passed because they
+checked audio ordering, pitch and engine handover without checking the
+surrounding drawing and first driver-update boundary. Correct F20/F21 as
+one coordinated startup change, not by adding another independent timer.
+
+### F22 — startup sprite actors are invisible
+
+Original `251f3..252cf` allocates and configures the temporary intro sprite
+and, when weapons are enabled, a notice sprite. Their original lifetimes
+are 30 and 200 actor updates. The native `initialize_weapon_actors` reserves
+the corresponding slots and lifetimes but leaves both `kind=0`, without
+resource, position or motion configuration. `draw_weapon_actor_general`
+returns immediately for `kind=0`, so neither original sprite is drawn.
+The constructor oracle confirms two configured, enabled original actors
+versus the native placeholders. The exact artwork should be checked in the
+PC/Amiga visual comparison when restoring these actors.
+
+### Reproduction and test blind spots
+
+- `make audit-startup-fidelity`: executes original bytes for F20/F22 and
+  light/cue ordering, and compares the relevant native behavior. This is an
+  informational known-difference audit, **not a passing fidelity gate**.
+- `SLICKS_AUTO_RACE=1 SLICKS_DEBUG_WARP=1 amiga/debug.sh '' diag_audit_startup.gdb`:
+  reads target startup state through the cues and first enabled driving frame.
+- `verify_track_actor_setup.c` independently compares track actors but then
+  asserts that native cars stay stationary for twenty updates without an
+  original comparison. `verify_race_lap_limit.c` also assumes that grid wait.
+  These checks currently protect F20 rather than detect it; replace those
+  assumptions with a whole-startup original comparison during the fix.
+- This audit changed no game behavior. Source archives and emulator outputs
+  remain local-only.
+
 ## Intentional adaptations
 
 | Area | Difference from DOS | Reason | Code |

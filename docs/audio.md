@@ -65,6 +65,11 @@ background-volume gain. Volume changes are written once when they differ.
 
 ## Pre-race cues
 
+**Known integration defect:** these sound requests currently run while the
+initial light remains static, followed by an extra native stationary wait.
+The complete DOS start sequence is not yet matched; see F20/F21 in
+[fidelity.md](fidelity.md#confirmed-startup-defects--2026-10-12).
+
 Fresh race entry plays sample 1 four times, following original code
 `25376..253f4`: priorities 70, 70, 80, 70 at 0, 400, 900, 900 ms. The final
 voice is retuned to 13,000 Hz (PAL Paula period 272); the other voices keep
