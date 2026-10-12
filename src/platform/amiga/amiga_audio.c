@@ -359,6 +359,7 @@ struct StartCueContext {
     struct SlicksAmigaAudio *audio;
     void (*wait_ms)(void *,unsigned short);
     void *context;
+    void (*show_light)(void *,unsigned short);
 };
 static void start_cue_play(void *context,unsigned short priority,unsigned short frequency)
 {
@@ -371,16 +372,22 @@ static void start_cue_wait(void *context,unsigned short milliseconds)
     struct StartCueContext *s=context;
     s->wait_ms(s->context,milliseconds);
 }
+static void start_cue_light(void *context,unsigned short light)
+{
+    struct StartCueContext *s=context;
+    if(s->show_light) s->show_light(s->context,light);
+}
 void slicks_amiga_audio_start_race(struct SlicksAmigaAudio *audio,
     const unsigned short vehicles[4],unsigned mask,
-    void (*wait_ms)(void *,unsigned short),void *context)
+    void (*wait_ms)(void *,unsigned short),void *context,
+    void (*show_light)(void *,unsigned short))
 {
-    if(!audio || !audio->ready || !vehicles || !wait_ms) return;
+    if(!audio || !vehicles || !wait_ms) return;
     for(unsigned i=0;i<4;++i) if((mask&(1U<<i)) && vehicles[i]>=SLICKS_AUDIO_ENGINE_COUNT) return;
     slicks_amiga_audio_stop(audio);
-    struct StartCueContext cues={audio,wait_ms,context};
+    struct StartCueContext cues={audio,wait_ms,context,show_light};
     /* Interrupts stay enabled while waiting: VBI owns all DMA starts. */
-    slicks_audio_start_cues(&cues,start_cue_play,start_cue_wait);
+    slicks_audio_start_cues(&cues,start_cue_play,start_cue_wait,start_cue_light);
     join_engines(audio,vehicles,mask);
 }
 

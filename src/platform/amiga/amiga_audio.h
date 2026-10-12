@@ -57,7 +57,8 @@ void slicks_amiga_audio_set_volume(struct SlicksAmigaAudio *audio,
 /* Fresh races only; waits service VBI, and final cues survive engine startup. */
 void slicks_amiga_audio_start_race(struct SlicksAmigaAudio *audio,
     const unsigned short vehicles[4],unsigned mask,
-    void (*wait_ms)(void *,unsigned short),void *context);
+    void (*wait_ms)(void *,unsigned short),void *context,
+    void (*show_light)(void *,unsigned short));
 void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio);
 void slicks_amiga_audio_start_engine(struct SlicksAmigaAudio *audio,
                                      unsigned short vehicle,

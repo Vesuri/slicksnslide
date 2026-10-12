@@ -4130,15 +4130,35 @@ static void update_race_engines(struct SlicksAmigaAudio *audio,const struct Slic
     for(unsigned i=0;i<4;++i) speeds[i]=(unsigned long)race->cars[i].measured_speed;
     slicks_amiga_audio_update_speeds(audio,speeds);
 }
+struct StartPresentation {
+    struct SlicksAmigaPlatform *platform;
+    struct SlicksRaceRuntime *race;
+};
+static void show_start_cue(void *context,unsigned short light)
+{
+    struct StartPresentation *s=context;
+    slicks_race_show_start_light(s->race,light);
+    int left=s->race->start_light_x,top=s->race->start_light_y;
+    int right=left+23,bottom=top+38;
+    if(left<0)left=0;
+    if(top<0)top=0;
+    if(right>320)right=320;
+    if(bottom>200)bottom=200;
+    if(left>=right || top>=bottom)return;
+    left&=~15;right=(right+15)&~15;
+    slicks_amiga_platform_wait_display_blank(s->platform);
+    slicks_chunky_rect_to_amiga(s->race->chunky,s->platform->views[1].bitmap,
+        left,top,right,bottom,0);
+}
 static void wait_start_cue(void *context,unsigned short milliseconds)
 {
-    struct SlicksAmigaPlatform *platform=context;
+    struct SlicksAmigaPlatform *platform=((struct StartPresentation *)context)->platform;
     /* PAL VBI is 50 Hz; the original 400/500 ms delays are exact multiples. */
     unsigned long start=platform->vblank_count;
     while(platform->vblank_count-start<milliseconds/20U)
         slicks_amiga_platform_wait_vblank(platform);
 }
-static void start_race_engines(struct SlicksAmigaAudio *audio,const struct SlicksRaceRuntime *race,
+static void start_race_engines(struct SlicksAmigaAudio *audio,struct SlicksRaceRuntime *race,
     struct SlicksAmigaPlatform *platform,unsigned char fresh_race)
 {
     unsigned short vehicles[4]; unsigned mask=0;
@@ -4147,8 +4167,10 @@ static void start_race_engines(struct SlicksAmigaAudio *audio,const struct Slick
         if(!race->participation_ready || race->participation[i]) mask|=1U<<i;
     }
     slicks_amiga_platform_wait_display_blank(platform);
-    if(fresh_race)
-        slicks_amiga_audio_start_race(audio,vehicles,mask,wait_start_cue,platform);
+    if(fresh_race) {
+        struct StartPresentation presentation={platform,race};
+        slicks_amiga_audio_start_race(audio,vehicles,mask,wait_start_cue,&presentation,show_start_cue);
+    }
     else slicks_amiga_audio_start_engines(audio,vehicles,mask);
     update_race_engines(audio,race);
 }

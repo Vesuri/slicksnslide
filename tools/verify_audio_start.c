@@ -11,13 +11,18 @@
 static void check(uc_err e) { if(e) {fprintf(stderr,"%s\n",uc_strerror(e));exit(1);} }
 static unsigned word(uc_engine *u,unsigned at)
 { unsigned char b[2];check(uc_mem_read(u,at,b,2));return b[0]|b[1]<<8; }
-struct Event {unsigned time,priority,frequency;};
-struct Trace {struct Event events[4];unsigned count,time,waits;};
+struct Event {unsigned time,priority,frequency,light;};
+struct Trace {struct Event events[4];unsigned count,time,waits,light,draws,draw_time[2];};
 static struct Trace original,native;
 static void play(void *context,unsigned short priority,unsigned short frequency)
 {
     struct Trace *t=context;assert(t->count<4);
-    t->events[t->count++]=(struct Event){t->time,priority,frequency?frequency:11025};
+    t->events[t->count++]=(struct Event){t->time,priority,frequency?frequency:11025,t->light};
+}
+static void show(void *context,unsigned short light)
+{
+    struct Trace *t=context;assert(t->draws<2 && light==t->draws+1);
+    t->light=light;t->draw_time[t->draws++]=t->time;
 }
 static void delay(void *context,unsigned short milliseconds)
 { struct Trace *t=context;t->time+=milliseconds;++t->waits; }
@@ -36,6 +41,7 @@ static void boundary(uc_engine *u,uint64_t address,uint32_t size,void *context)
         unsigned handle=word(u,stack+4);assert(handle && handle<=original.count);
         original.events[handle-1].frequency=word(u,stack+6);
     } else if(address==0x19878) delay(&original,word(u,stack+4));
+    else if(address==0x3aa7c) show(&original,word(u,stack+8));
     ip=word(u,stack);cs=word(u,stack+2);sp+=4;
     check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_IP,&ip));
     check(uc_reg_write(u,UC_X86_REG_SP,&sp));
@@ -51,13 +57,16 @@ int main(void)
     check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&ds));
     check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_BP,&bp));
     check(uc_reg_write(u,UC_X86_REG_SP,&sp));
+    unsigned char light=1;check(uc_mem_write(u,0x8efc2,&light,1));
+    light=2;check(uc_mem_write(u,0x8efc6,&light,1));
     uc_hook hook;check(uc_hook_add(u,&hook,UC_HOOK_CODE,boundary,0,1,0));
-    check(uc_emu_start(u,0x25376,0x253f4,0,1000));
+    check(uc_emu_start(u,0x25358,0x253f4,0,1000));
     uint16_t ip;check(uc_reg_read(u,UC_X86_REG_IP,&ip));assert(ip==0x253f4-0x19870);
-    slicks_audio_start_cues(&native,play,delay);
+    slicks_audio_start_cues(&native,play,delay,show);
+    assert(original.draws==2 && original.draw_time[0]==0 && original.draw_time[1]==400);
     assert(original.count==4 && original.waits==2 && original.time==900);
     assert(!memcmp(&native,&original,sizeof native));
     check(uc_close(u));
-    puts("Original pre-race audio: four ordered sample-1 requests, 400/500 ms waits, priorities and final 13000 Hz voice match");
+    puts("Original light/audio sequence: four ordered sample-1 requests, 400/500 ms waits, lights 1/2 before cues, priorities and final 13000 Hz voice match");
     return 0;
 }

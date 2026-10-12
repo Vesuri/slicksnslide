@@ -6,7 +6,7 @@ break *slicks_amiga_audio_start_race
 commands
   silent
   set $audio = *(struct SlicksAmigaAudio **)($sp+4)
-  set $platform = *(struct SlicksAmigaPlatform **)($sp+20)
+  set $platform = (*(struct StartPresentation **)($sp+20))->platform
   continue
 end
 break *'play_effect_period.part.0'

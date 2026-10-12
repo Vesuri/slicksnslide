@@ -1835,3 +1835,9 @@ build/audit_startup_fidelity: tools/audit_startup_fidelity.c tools/verify_race_l
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 audit-startup-fidelity: build/audit_startup_fidelity
 	build/audit_startup_fidelity
+
+.PHONY: verify-start-lights
+build/verify_start_lights: tools/verify_start_lights.c tools/verify_menu_icon.c src/game/race_runtime.c src/game/race_runtime.h src/game/track_scene.c | build
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -ffunction-sections -Wl,-dead_strip -I$(UNICORN_PREFIX)/include $< src/game/track_scene.c -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
+verify-start-lights: build/verify_start_lights
+	build/verify_start_lights

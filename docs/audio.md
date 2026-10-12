@@ -65,10 +65,11 @@ background-volume gain. Volume changes are written once when they differ.
 
 ## Pre-race cues
 
-**Known integration defect:** these sound requests currently run while the
-initial light remains static. F20 has removed the extra stationary wait.
-The complete DOS start sequence is not yet matched; see F21 in
-[fidelity.md](fidelity.md#confirmed-startup-defects--2026-10-12).
+The cue branch follows original `25358..253f4`: light 1 is published before
+the first cue and light 2 before the second. Initial light 0 and both
+transitions use the DOS position beside car 0 (`2519c..251f3`), including
+the right-side fallback and minimum y=20. The first racing update restores
+the background. The moving fourth-light actor is tracked separately as F22.
 
 Fresh race entry plays sample 1 four times, following original code
 `25376..253f4`: priorities 70, 70, 80, 70 at 0, 400, 900, 900 ms. The final
@@ -147,6 +148,12 @@ The Amiga build and `OPTIONSV` menu-to-race volume smoke test also pass
 - The Amiga build and `diag_audio_start.gdb` with `SLICKS_AUTO_RACE=1` and
   `SLICKS_DEBUG_WARP=1` pass: `AUDIO_START_RACE_OK`, four cues at VBI
   0/20/45/45, final period 272, and successful engine/race startup.
+- `make verify-start-lights` compares 252 positioned frames with the original
+  VGA drawing code and checks background restoration. `diag_start_lights.gdb`
+  asserts stages 1/2/2/2 at the four cues while the race clock is zero, and
+  captures the actual displayed bitplanes for `tools/verify_amiga_frame.py`.
+  Both captured frames match all 64,000 chunky pixels; each light's 874
+  pixels also matches the original archive image.
 - `OPTIONSV` menu-to-race volume check passes after the cue restoration.
 - `SLICKS_PAUSE_LIVE=1` / `diag_audio_pause.gdb` passes: two engine starts,
   thirteen pause/dialog stops, exactly one cue sequence, full OS restoration

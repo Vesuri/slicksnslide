@@ -56,20 +56,30 @@ audits pass F1 and WHACKO for 600 frames and CITY through natural completion
 at frame 554. The display audit now accepts a clean completed race before
 600, rather than requiring the removed wait to keep the fixture running.
 
-### F21 — cues and start-light changes are disconnected
+### F21 — cues and start-light changes are disconnected (fixed)
 
 Original `25358..253f4` draws the next light before cue 1 and another light
-before cue 2. The new cue helper reproduces sound requests and waits only.
-The native caller blocks in that helper while the game remains on its
-initial light; the separate, incorrect countdown changes lights afterward.
-FS-UAE records all four cues at `frame=0`, `light_stage=0`, `light_mask=1`.
+before cue 2. Commit `44c0fb8` restored only the sound requests and waits:
+all four target cues ran at stage 0, then the invented countdown advanced
+the lights. Its audio-only checks did not cover the surrounding drawing.
 
-Thus commit `44c0fb8` restored the missing sounds but did not restore the
-complete start sequence. Its oracle and target test passed because they
-checked audio ordering, pitch and engine handover without checking the
-surrounding drawing and first driver-update boundary. F20 removes the
-invented wait; F21 must connect the light transitions to
-the same cue sequence, without adding another independent timer.
+The F21 fix puts both light transitions in the shared cue sequence and
+publishes their rectangles before issuing the corresponding sound request.
+The constructor positions initial light 0 beside car 0, using the original
+signed-coordinate calculation, right-side fallback and y=20 minimum.
+Presentation and its waits also run with audio disabled. Pause/resume does
+not enter the sequence.
+
+The expanded original-byte audio oracle compares drawing times/stages as
+well as all four sound requests. `verify-start-lights` compares 252 complete
+VGA frames and saved-background restoration across original position cases.
+The target records stages 1/2/2/2, clock=0 at every cue, then first driving
+clock=1. Cue timing remains VBI 0/20/45/45 and the final period remains 272.
+Both captured bitplane frames match every authoritative chunky pixel, and
+the light rectangles match the original archive artwork (874 pixels each).
+Moving the first light after its cue is rejected by the expanded oracle.
+F1/WHACKO display audits pass 600 frames, CITY passes through completion at
+554, and all 13 pause dialogs pass without repeating the presentation.
 
 ### F22 — startup sprite actors are invisible
 

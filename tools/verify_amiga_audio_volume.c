@@ -204,7 +204,13 @@ static void verify_pc_engine_pcm(struct SlicksAmigaAudio *a,unsigned vehicle,con
     printf("PC PCM identity: vehicle %u %s matches all %zu native engine bytes and acceleration/slowdown/idle DMA selections\n",vehicle,path,bytes);
 }
 
-static unsigned cue_waits;
+static unsigned cue_waits,cue_lights;
+static void cue_light(void *context,unsigned short light)
+{
+    struct SlicksAmigaAudio *audio=context;
+    assert(light==cue_lights+1 && cue_waits==cue_lights);
+    assert(!audio->engine_started);++cue_lights;
+}
 static void cue_wait(void *context,unsigned short milliseconds)
 {
     struct SlicksAmigaAudio *audio=context;
@@ -216,9 +222,9 @@ static void verify_start_cues(struct SlicksAmigaAudio *audio)
 {
     const unsigned short vehicles[4]={0,2,6,9};
     for(unsigned mask=0;mask<16;++mask) {
-        cue_waits=0;
-        slicks_amiga_audio_start_race(audio,vehicles,mask,cue_wait,audio);
-        assert(cue_waits==2 && audio->channels.engine_mask==mask);
+        cue_waits=cue_lights=0;
+        slicks_amiga_audio_start_race(audio,vehicles,mask,cue_wait,audio,cue_light);
+        assert(cue_waits==2 && cue_lights==2 && audio->channels.engine_mask==mask);
         unsigned normal=0,high=0;
         for(unsigned c=0;c<4;++c) if(audio->pending_start[c] &&
                 audio->pending_sample[c]==&audio->samples[1]) {
@@ -241,6 +247,10 @@ static void verify_start_cues(struct SlicksAmigaAudio *audio)
         assert(cue_waits==2); /* Pause/resume never replays cues. */
         slicks_amiga_audio_stop(audio);
     }
+    audio->ready=0;cue_waits=cue_lights=0;
+    slicks_amiga_audio_start_race(audio,vehicles,15,cue_wait,audio,cue_light);
+    assert(cue_waits==2 && cue_lights==2 && !audio->engine_started);
+    audio->ready=1;
     puts("Pre-race Paula: all 16 car masks, overlapping 11025/13000 Hz cues, engine handover and cue-free resume pass");
 }
 

@@ -97,8 +97,6 @@ unsigned char slicks_race_disable_particles;
 #define SLICKS_HEADING_STEP 0x4b0
 #define SLICKS_HEADING_FULL 0x4b00
 #define SLICKS_TIMER_COLOUR 254
-#define SLICKS_START_LIGHT_X 164
-#define SLICKS_START_LIGHT_Y 31
 #define SLICKS_START_LIGHT_WIDTH 23
 #define SLICKS_START_LIGHT_HEIGHT 38
 
@@ -490,25 +488,27 @@ static void draw_start_light(struct SlicksRaceRuntime *race,
     unsigned short x;
     unsigned short y;
     unsigned short at = 0;
-    mark_dirty_rect(race, SLICKS_START_LIGHT_X, SLICKS_START_LIGHT_Y,
-                    SLICKS_START_LIGHT_X + SLICKS_START_LIGHT_WIDTH,
-                    SLICKS_START_LIGHT_Y + SLICKS_START_LIGHT_HEIGHT);
+    mark_dirty_rect(race, race->start_light_x, race->start_light_y,
+                    race->start_light_x + SLICKS_START_LIGHT_WIDTH,
+                    race->start_light_y + SLICKS_START_LIGHT_HEIGHT);
     if (!race->start_light_visible) {
         for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
             for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
                 race->start_light_saved_under[at++] =
-                    read_pixel(logical, race->chunky_authoritative
+                    (unsigned)(race->start_light_x+x)<320 && (unsigned)(race->start_light_y+y)<200 ? read_pixel(logical, race->chunky_authoritative
                                     ? race->chunky : 0,
-                               SLICKS_START_LIGHT_X + x,
-                               SLICKS_START_LIGHT_Y + y);
+                               race->start_light_x + x,
+                               race->start_light_y + y) : 0;
         race->start_light_visible = 1;
     }
     at = 0;
     for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
-        for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
-            write_pixel(logical, race->chunky, SLICKS_START_LIGHT_X + x,
-                        SLICKS_START_LIGHT_Y + y,
-                        race->start_lights[light].pixels[at++]);
+        for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x) {
+            unsigned char pixel=race->start_lights[light].pixels[at++];
+            if(pixel) write_pixel(logical,race->chunky,race->start_light_x+x,
+                                 race->start_light_y+y,pixel);
+        }
+    race->countdown_stage=(unsigned char)light;
     race->start_light_stage_mask |= (unsigned char)(1U << light);
 }
 
@@ -520,15 +520,23 @@ static void restore_start_light(struct SlicksRaceRuntime *race,
     unsigned short at = 0;
     if (!race->start_light_visible)
         return;
-    mark_dirty_rect(race, SLICKS_START_LIGHT_X, SLICKS_START_LIGHT_Y,
-                    SLICKS_START_LIGHT_X + SLICKS_START_LIGHT_WIDTH,
-                    SLICKS_START_LIGHT_Y + SLICKS_START_LIGHT_HEIGHT);
+    mark_dirty_rect(race, race->start_light_x, race->start_light_y,
+                    race->start_light_x + SLICKS_START_LIGHT_WIDTH,
+                    race->start_light_y + SLICKS_START_LIGHT_HEIGHT);
     for (y = 0; y < SLICKS_START_LIGHT_HEIGHT; ++y)
         for (x = 0; x < SLICKS_START_LIGHT_WIDTH; ++x)
-            write_pixel(logical, race->chunky, SLICKS_START_LIGHT_X + x,
-                        SLICKS_START_LIGHT_Y + y,
+            write_pixel(logical, race->chunky, race->start_light_x + x,
+                        race->start_light_y + y,
                         race->start_light_saved_under[at++]);
     race->start_light_visible = 0;
+}
+
+/* Fresh-race presentation only: the platform publishes each transition
+ * before its cue, while the simulation clock is still stopped. */
+void slicks_race_show_start_light(struct SlicksRaceRuntime *race,unsigned short light)
+{
+    if(!race || !race->started || !race->chunky_authoritative || light>=3) return;
+    draw_start_light(race,0,light);
 }
 
 static void rotated_size(const struct SlicksCarSprite *sprite,
@@ -4349,6 +4357,11 @@ int slicks_race_start(struct SlicksRaceRuntime *race, unsigned char *logical,
     draw_timers(race, logical);
     draw_arcade_timer(race, logical);
     if(race->track_actors_ready) draw_race_actors(race,logical);
+    /* Original 2519c..251f3: signed pixel coordinates beside the first car. */
+    race->start_light_x=(short)((signed int)race->cars[0].x/100+30);
+    race->start_light_y=(short)((signed int)race->cars[0].y/100-30);
+    if(race->start_light_x>240) race->start_light_x=(short)((signed int)race->cars[0].x/100-90);
+    if(race->start_light_y<20) race->start_light_y=20;
     draw_start_light(race, logical, 0);
     race->countdown_ticks = 0;
     race->countdown_stage = 0;

@@ -392,6 +392,7 @@ struct SlicksRaceRuntime {
     struct SlicksRaceFont font;
     unsigned char hud_background[320*16];
     struct SlicksHudIcon hud_weapon_icons[8];
+    short start_light_x,start_light_y; /* DOS 2519c..251f3, relative to car 0. */
     struct SlicksStartLight start_lights[SLICKS_START_LIGHT_COUNT];
     unsigned char start_light_saved_under[SLICKS_START_LIGHT_PIXEL_COUNT];
     struct SlicksTrackActorAsset track_actor_assets[SLICKS_TRACK_ACTOR_ASSETS];
@@ -525,6 +526,7 @@ int slicks_race_add_weapon_icon(struct SlicksRaceRuntime *race,
     unsigned short weapon, const unsigned char *resource, unsigned long size);
 int slicks_race_add_weapon_asset(struct SlicksRaceRuntime *race,
     unsigned asset,const unsigned char *resource,unsigned long size);
+void slicks_race_show_start_light(struct SlicksRaceRuntime *race,unsigned short light);
 int slicks_race_add_start_light(struct SlicksRaceRuntime *race,
                                 unsigned short light,
                                 const unsigned char *resource,
