@@ -134,6 +134,13 @@
 
  History:
  --------
+ version 0.91 (13.10.2026):
+ - louder sound effects and engines
+ - restored race-start sounds and synchronized traffic lights
+ - removed the extra wait before driving and its effect on first-lap times
+ - restored the moving start light and weapons notice
+ - small gameplay performance improvements
+
  version 0.90 (01.10.2026):
  - initial Amiga release
 

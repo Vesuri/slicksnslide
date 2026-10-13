@@ -49,6 +49,20 @@ Before tagging, on the release candidate:
    race and quit from the WHDLoad icon at 2 MiB Fast, with and without
    PRELOAD.
 
+## 0.91 (13.10.2026)
+
+- Louder sound effects and engines.
+- Restored race-start sounds and synchronized traffic lights.
+- Removed the extra wait before driving and its effect on first-lap times.
+- Restored the moving start light and weapons notice.
+- Small gameplay performance improvements.
+
+The end-user changelog is included in `release/ReadMe`. Version strings and
+archive timestamps use 13.10.2026. The 0.90 release evidence below remains
+historical; it does not claim a new full release-gate run for 0.91.
+A clean 0.91 package build and archive audit pass, including all executable
+version/date markers, exact contents and independent decompression/CRC checks.
+
 ## 0.90 (01.10.2026)
 
 Package `SlicksNSlide-0.90.lha`, 281,944 bytes. Rebuilt on 2026-10-01 with

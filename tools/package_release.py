@@ -10,7 +10,7 @@ ORIGINAL_HASHES = {
     "d12114fccdd86b10e9d77d652acec35ea0a45230fcbe3fb32970431c18b55c2c",
 }
 PREFIX = "SlicksNSlide Install"
-STAMP = release.dos_stamp(2026, 10, 1)
+STAMP = release.dos_stamp(2026, 10, 13)
 ICONS = Path(__file__).resolve().parent.parent / "release/icons"
 
 def installer_icon(game=False):

@@ -1,6 +1,6 @@
 # Installer and release packaging
 
-The current distribution is `dist/SlicksNSlide-0.90.lha`, containing a `SlicksNSlide Install`
+The current distribution is `dist/SlicksNSlide-0.91.lha`, containing a `SlicksNSlide Install`
 drawer and its icon. It replaces the earlier four-file developer ZIP. The
 end-user instructions are [release/ReadMe](../release/ReadMe).
 
@@ -97,12 +97,12 @@ Tests:
 ```sh
 make -C tools/install-data test
 python3 tools/install-data/test_amiga.py
-python3 tools/install-data/test_installer_script.py --package dist/SlicksNSlide-0.90.lha
+python3 tools/install-data/test_installer_script.py --package dist/SlicksNSlide-0.91.lha
 python3 tools/install-data/test_installer_script.py --keep
 python3 tools/install-data/test_installer_script.py --reinstall
 python3 tools/install-data/test_installer_script.py --no-whd
 python3 tools/test_standalone_release.py path/to/installed/SlicksNSlide
-python3 tools/check_release.py dist/SlicksNSlide-0.90.lha
+python3 tools/check_release.py dist/SlicksNSlide-0.91.lha
 ```
 
 Native tests use locally owned Kickstart, Workbench, Installer, WHDLoad and
