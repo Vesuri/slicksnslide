@@ -79,7 +79,7 @@ def main():
         f'CD DH1:\nWHDLoad SlicksNSlide.slave {preload}{write_options}SPLASHDELAY=0 NOREQ COREDUMP FILELOG TIMEOUT={args.ticks} >DH0:result\n'
         'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\n')
     with (base/'emulator.log').open('w') as log:
-        emu = subprocess.Popen(['fs-uae', '--amiga_model=A1200', '--cpu='+args.cpu,
+        emu = subprocess.Popen([amiga_inputs.FSUAE, '--amiga_model=A1200', '--cpu='+args.cpu,
             '--uae_cpu_model='+args.cpu, '--uae_cpu_24bit_addressing=false',
             '--jit_compiler=0', '--chip_memory=2048', '--fast_memory='+str(args.fast),
             '--kickstart_file='+str(amiga_inputs.KICKSTART),

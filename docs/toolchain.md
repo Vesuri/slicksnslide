@@ -8,7 +8,9 @@ Installed by AmigaXDev (`make setup`; its `docs/environment.md` lists them):
 
 - Ghidra under `~/.local/share/ghidra`, with OpenJDK 21 (exported by the Makefile
   for headless Ghidra)
-- the Amiga GCC/vasm/elf2hunk toolchain, FS-UAE and m68k GDB under `~/.local`
+- the Amiga GCC/vasm/elf2hunk toolchain and m68k GDB under `~/.local`, and AmigaXDev's
+  native FS-UAE (`$FSUAE_ARM`): `amiga/env.sh` sets `FSUAE` to it, and every launcher and
+  Python test runs `$FSUAE`
 - the `amigaxdev` Python package: `amigaxdev.release` builds the LH5 archive and installer
   icons for `tools/package_release.py`, `amigaxdev.dos.mz_info` (`make inspect`) and
   `amigaxdev.dos.verify_amiga_runtime` (`make -C amiga verify-runtime`)
@@ -27,7 +29,8 @@ Installed by AmigaXDev (`make setup`; its `docs/environment.md` lists them):
 - DOSBox Staging 0.83: interactive reference and independent subsystem behavior
 - DOSBox-X: selectable 286 CPU identity and primary 286 reference tracing
 - Unicorn 2.1.4: bounded Compack capture and isolated x86-16 versus M68k
-  differential execution
+  differential execution; AmigaXDev's build (`$AMIGA_UNICORN`, the Makefile's
+  `UNICORN_PREFIX`), since Homebrew's dies with SIGILL on arm64
 
 Do not add LLVM or a generated-C backend before a measured need exists. The
 production backend emits Motorola-syntax assembly into the established Amiga
@@ -91,7 +94,7 @@ make -C whdload    # production and test WHDLoad slaves (see whdload.md)
 Common, locally owned Amiga files come from the shared `~/.local/share/amiga`
 that AmigaXDev installs; each has an environment override. `amiga/env.sh` sources
 its `env.sh` (which `run.sh` and `debug.sh` source too), and the Python tests
-(`tools/amiga_inputs.py`) use the same names and defaults:
+(`tools/amiga_inputs.py`, through `amigaxdev.env`) use the same names and defaults:
 
 | Variable | Default under `~/.local/share/amiga` | Used by |
 | --- | --- | --- |
@@ -99,7 +102,8 @@ its `env.sh` (which `run.sh` and `debug.sh` source too), and the Python tests
 | `SETPATCH` | `SetPatch` | AGA launchers, standalone test |
 | `WORKBENCH_ADF` | `Workbenchv2.04rev37.67Workbench.adf` | installer, standalone, WHDLoad tests |
 | `INSTALLER43` | `Installer43/Installer` | installer script test |
-| `WHDLOAD_BINARY` | `WHDLoad/C/WHDLoad` (19.2; `amiga/env.sh` sets `WHDLOAD`, the SDK the slave builds with, to the same version) | installer and WHDLoad tests |
+| `WHDLOAD_BINARY` | `WHDLoad/C/WHDLoad` (20.1, from the same package as the `WHDLOAD` SDK the slave builds with) | installer and WHDLoad tests |
+| `FSUAE` | `$FSUAE_ARM`, `fs-uae-arm/fs-uae` | every FS-UAE launch |
 
 `tools/test_whdload.py` also takes `--rom`/`--rtb` for the Kickstart pair that
 WHDLoad itself loads (default `Kickstarts/kick40063.A600` and `.RTB`).

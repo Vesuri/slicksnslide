@@ -19,7 +19,9 @@ REFERENCE_PRIMITIVES ?= $(REFERENCE_FIXED_ROOT)/slicks-primitive-calls.csv
 LIVE_ENTRYPOINTS ?= disasm/live-entrypoints.csv
 LIVE_VGA_SITES ?= disasm/live-vga-sites.csv
 CC ?= cc
-UNICORN_PREFIX ?= /opt/homebrew/opt/unicorn
+# AmigaXDev's Unicorn: Homebrew's 2.1.4 dies with SIGILL on arm64 constant subtract-with-borrow.
+AMIGA_UNICORN ?= $(HOME)/.local/share/amiga/unicorn
+UNICORN_PREFIX ?= $(AMIGA_UNICORN)
 VASM ?= $(HOME)/.local/vasmm68k_mot
 AMIGA_TOOLCHAIN ?= $(HOME)/.local/opt
 NDK ?= $(AMIGA_TOOLCHAIN)/m68k-amiga-elf/sys-include

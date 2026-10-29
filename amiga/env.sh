@@ -5,6 +5,7 @@
 #   . amiga/env.sh
 # or from the amiga/ directory:
 #   . env.sh
-# WHDLoad 19.2: the version the slave builds against (whdload/) and the tests run.
-export WHDLOAD="${WHDLOAD:-$HOME/.local/share/amiga/WHDLoad}"
 . "${AMIGA_ENV:-$HOME/.local/share/amiga/env.sh}"
+# Run every emulator on AmigaXDev's native build, which make setup keeps current with its
+# FS-UAE patches (gdb stub, determinism, 040/060 MMU write attributes).
+export FSUAE="${FSUAE:-$FSUAE_ARM}"

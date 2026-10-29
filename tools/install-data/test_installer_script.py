@@ -83,7 +83,7 @@ def main():
     (boot/'s/startup-sequence').write_text('CD DH0:\nStack 16384\nDF0:C/Assign C: DF0:C\nDF0:C/Assign LIBS: DF0:Libs\nMakeDir RAM:T\nAssign T: RAM:T\nPath DH0: ADD\nC:LoadWB\nInstaller SCRIPT DH0:Install APPNAME SlicksNSlide MINUSER AVERAGE DEFUSER AVERAGE LOGFILE DH2:installer.log NOPRETEND >DH2:console.log\nList T: ALL >DH2:temp-after.log\nEcho done >DH2:finished\n')
     print('Fixture:',base,flush=True)
     with (base/'emulator.log').open('w') as log:
-        emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory='+('4096' if ram_temp else '0'),
+        emu=subprocess.Popen([amiga_inputs.FSUAE,'--audio_driver=dummy','--amiga_model=A1200','--chip_memory=2048','--fast_memory='+('4096' if ram_temp else '0'),
           '--kickstart_file='+str(amiga_inputs.KICKSTART),'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10',
           '--hard_drive_1='+str(ROOT),'--hard_drive_2='+str(base),'--floppy_drive_0='+str(amiga_inputs.WORKBENCH_ADF),
           '--warp_mode=1','--fullscreen=0','--state_dir='+str(base/'state')],stdout=log,stderr=log,env=dict(os.environ,SDL_AUDIODRIVER='dummy'))

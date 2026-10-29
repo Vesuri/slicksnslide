@@ -119,7 +119,7 @@ printf "DEFAULT_STACK_CONFIRMED bytes=4096\\n"
     (base/'test.gdb').write_text(script)
     env=dict(os.environ,SDL_AUDIODRIVER='dummy',HOME=str(base/'home'),XDG_CACHE_HOME=str(base/'home'))
     with (base/'emulator.log').open('w') as log:
-        emu=subprocess.Popen(['fs-uae','--audio_driver=dummy','--amiga_model=A1200','--chip_memory='+args.chip_memory,'--fast_memory=0',
+        emu=subprocess.Popen([amiga_inputs.FSUAE,'--audio_driver=dummy','--amiga_model=A1200','--chip_memory='+args.chip_memory,'--fast_memory=0',
           '--cpu='+args.cpu,'--uae_cpu_speed='+args.cpu_speed,
           '--kickstart_file='+str(amiga_inputs.KICKSTART),'--hard_drive_0='+str(boot),'--hard_drive_0_priority=10','--hard_drive_1='+str(installed),
           '--hard_drive_1_read_only='+str(int(args.read_only)),

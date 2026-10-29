@@ -11,7 +11,7 @@ no-Fast-RAM machine.
 WHDLoad 17+, 68020 and AGA are required. Supply Kickstart 3.1 and its matching
 RTB in Devs:Kickstarts or WHDCOMMON:. The SDK supports kick40063.A600,
 kick40068.A1200 and kick40068.A4000; native tests used A600 40.063 and WHDLoad
-19.2.6941. ROM/RTB/WHDLoad/OS binaries are never distributed.
+20.1.7190. ROM/RTB/WHDLoad/OS binaries are never distributed.
 
 `whdload/SlicksSlave.s` adapts Vette's cross-assembled public-domain SDK
 kick31/kickfs launcher. INITAGA is essential for the direct AGA platform.
