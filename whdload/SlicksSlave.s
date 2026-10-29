@@ -4,16 +4,16 @@
         INCLUDE whdload.i
         INCLUDE whdmacros.i
 
-CHIPMEMSIZE = $200000
-        IFND FASTMEMSIZE
-FASTMEMSIZE = 0                 ; game targets 2 MiB Chip only, as standalone
-        ENDC
+; The game asks for Chip only for display and audio DMA (about 310 KiB with
+; the OS); everything else is MEMF_ANY and lands in expansion memory.
+CHIPMEMSIZE = $80000
+FASTMEMSIZE = $200000
 NUMDRIVES = 0
 WPDRIVES = 0
 BLACKSCREEN
 INITAGA
 BOOTDOS
-CACHECHIP
+CACHE                           ; _bootdos falls back to CACHECHIP without MMU
 HDINIT
 SEGTRACKER
 NO68020                         ; portable kickemu patches; game still needs 020
@@ -70,6 +70,18 @@ _argsend
 
 _bootdos
         move.l (_resload,pc),a2
+        ; CACHE marks BaseMem noncacheable, which needs WHDLoad's MMU (68040/060,
+        ; 68030 with the MMU option); without it WHDLoad switches every cache off
+        ; (CACR 0). Then keep CACHECHIP's instruction cache (docs/whdload.md).
+        move.l 4.w,a6
+        lea (_getcacr,pc),a5
+        jsr (_LVOSupervisor,a6)
+        and.w #$8001,d0           ; IC (68040/060) or EI (68020/030)
+        bne .cached
+        move.l #WCPUF_Base_WT|WCPUF_Exp_CB|WCPUF_Slave_CB|WCPUF_IC|WCPUF_BC|WCPUF_SS|WCPUF_SB,d0
+        move.l #WCPUF_All,d1
+        jsr (resload_SetCPU,a2)
+.cached
         IFD BOOTONLY
         pea TDREASON_OK
         jmp (resload_Abort,a2)
@@ -189,6 +201,9 @@ _bootdos
 .abort
         move.l (_resload,pc),a2
         jmp (resload_Abort,a2)
+_getcacr
+        movec cacr,d0
+        rte
 _failed dc.b "Slicks could not start. Check the installed original data files.",0
 _current dc.b 0
         EVEN

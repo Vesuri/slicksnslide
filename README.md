@@ -21,7 +21,7 @@ instructions.
 | | |
 |---|---|
 | Machine | PAL A1200: 68020, AGA, 2 MiB Chip RAM, no Fast RAM needed |
-| OS | AmigaOS 3.x with SetPatch (standalone), or WHDLoad 17+ with 2 MiB Fast RAM |
+| OS | AmigaOS 3.x with SetPatch (standalone), or WHDLoad 17+ with 8 MiB Fast RAM (4 MiB without PreLoad) |
 | Display | original 320x200 picture on a PAL 50 Hz eight-plane AGA screen |
 | Sound | four-channel Paula with the original samples |
 | Timing | original real-time race clock at any frame rate |

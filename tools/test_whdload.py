@@ -7,6 +7,7 @@ timed uses the production slave. No test slave is packaged.
 """
 import argparse
 import os
+import re
 from pathlib import Path
 import shutil
 import struct
@@ -33,6 +34,9 @@ def main():
     p.add_argument('--seconds', type=int, default=90, help='host safety ceiling')
     p.add_argument('--ticks', type=int, default=1500, help='WHDLoad timeout in PAL fields')
     p.add_argument('--cpu', default='68020')
+    p.add_argument('--setup', help='AmigaXDev AMIGA_SETUP machine, e.g. a1200-030 or a1200-040; replaces --cpu and --fast')
+    p.add_argument('--no-mmu', action='store_true', help='with --setup, remove the preset CPU MMU')
+    p.add_argument('--whdload-mmu', action='store_true', help='pass WHDLoad MMU, which a 68030 needs for MMU protection and BaseMem/ExpMem caching')
     p.add_argument('--fast',type=int,default=4096,help='Fast RAM in KiB')
     p.add_argument('--real-time', action='store_true', help='Disable fast-forward for a watchable real-speed run')
     p.add_argument('--no-preload', action='store_true')
@@ -45,6 +49,9 @@ def main():
         p.error('--write-delay must be nonnegative')
     if args.mode == 'championship-edit' and not args.seed_save:
         p.error('--seed-save is required for championship-edit')
+    if args.no_mmu and not args.setup:
+        p.error('--no-mmu requires --setup')
+    machine = setup_args(args.setup, args.no_mmu) if args.setup else None
     slave = {'smoke':'Smoke.slave', 'boot':'BootTest.slave', 'load':'LoadTest.slave','race':'RaceTest.slave','quit':'ExitTest.slave','championship':'ChampionshipTest.slave','championship-edit':'ChampionshipEditTest.slave','records':'RecordsTest.slave'}.get(args.mode, 'SlicksNSlide.slave')
     base = Path(tempfile.mkdtemp(prefix='whdload-test-', dir=ROOT/'tmp'))
     print('Fixture:', base, flush=True)
@@ -70,6 +77,8 @@ def main():
             shutil.copyfile(args.seed_setup/name,game/'data'/name)
     (boot/'s/WHDLoad.prefs').write_text('Expert\nReadDelay=0\n')
     preload = '' if args.no_preload else 'PRELOAD '
+    if args.whdload_mmu:
+        preload += 'MMU '
     write_options = 'NOWRITECACHE ' if args.no_write_cache else ''
     if args.write_delay is not None:
         write_options += 'WRITEDELAY=%d ' % args.write_delay
@@ -78,11 +87,13 @@ def main():
         'DF0:C/Assign DEVS: DH0:devs\nStack 16384\nFailAt 999\n'
         f'CD DH1:\nWHDLoad SlicksNSlide.slave {preload}{write_options}SPLASHDELAY=0 NOREQ COREDUMP FILELOG TIMEOUT={args.ticks} >DH0:result\n'
         'If WARN\nEcho failed >DH0:failed\nElse\nEcho passed >DH0:passed\nEndIf\n')
-    with (base/'emulator.log').open('w') as log:
-        emu = subprocess.Popen([amiga_inputs.FSUAE, '--amiga_model=A1200', '--cpu='+args.cpu,
+    if machine is None:
+        machine = ['--amiga_model=A1200', '--cpu='+args.cpu,
             '--uae_cpu_model='+args.cpu, '--uae_cpu_24bit_addressing=false',
             '--jit_compiler=0', '--chip_memory=2048', '--fast_memory='+str(args.fast),
-            '--kickstart_file='+str(amiga_inputs.KICKSTART),
+            '--kickstart_file='+str(amiga_inputs.KICKSTART)]
+    with (base/'emulator.log').open('w') as log:
+        emu = subprocess.Popen([amiga_inputs.FSUAE, *machine, '--base_dir='+str(base/'fsuae'),
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
             '--floppy_drive_0='+str(amiga_inputs.WORKBENCH_ADF),
             '--joystick_port_0=mouse', '--joystick_port_1=nothing', '--warp_mode='+('0' if args.real_time else '1'), '--fullscreen=0',
@@ -97,6 +108,11 @@ def main():
             output = (boot/'result').read_text(errors='replace') if (boot/'result').exists() else ''
             report = (game/'.whdl_register').read_text(encoding='latin1') if (game/'.whdl_register').exists() else ''
             assert report, f'No WHDLoad core dump: {base}\n{output}'
+            if args.setup:
+                check_machine(base, report, args.mode, machine)
+            if args.mode != 'smoke':
+                option = dict(a[2:].split('=', 1) for a in machine if '=' in a)
+                check_caches(report, option['cpu'], option.get('uae_mmu_model', '0'), args.whdload_mmu)
             dump=(game/'.whdl_dump').read_bytes()
             marker=b'SLKSTAT1'; at=dump.find(marker)
             if at>=0:
@@ -112,6 +128,7 @@ def main():
                 files = (game/'.whdl_log').read_text(encoding='latin1')
                 for name in (('SLICKS.000','SLICKS.DAT') if args.mode=='race' else ('SLICKS.000',)):
                     assert any('[ReadOff]' in line and 'name='+name in line for line in files.splitlines()), files
+                memory_report(game, report)
                 print('PASS: timed run read original Slicks data under WHDLoad')
             else:
                 assert (boot/'passed').exists() and 'Return OK.' in report, report + output
@@ -147,6 +164,70 @@ def main():
             emu.terminate()
             try: emu.wait(timeout=5)
             except subprocess.TimeoutExpired: emu.kill(); emu.wait()
+
+def setup_args(name, no_mmu):
+    """Return the shared launcher's preset arguments, so machines match AmigaXDev exactly."""
+    common = os.environ.get('FSUAE_COMMON', str(amiga_inputs.SHARE/'fsuae_common.sh'))
+    out = subprocess.run(['/bin/bash', '-c', '. "$1" && AMIGA_SETUP="$2" && fsuae_setup && '
+                          'printf "%s\\0" "${FSUAE_SETUP_ARGS[@]}"', 'setup', common, name],
+                         check=True, capture_output=True, text=True).stdout
+    machine = out.split('\0')[:-1]
+    if no_mmu:
+        machine = ['--uae_mmu_model=0' if a.startswith('--uae_mmu_model=') else a for a in machine]
+    return machine
+
+def check_machine(base, report, mode, machine):
+    """Require the emulated CPU and MMU to be what the run claims."""
+    option = dict(a[2:].split('=', 1) for a in machine)
+    log = (base/'fsuae/Cache/Logs/fs-uae.log.txt').read_text(errors='replace')
+    # As AmigaXDev scripts/test_fsuae_config.py: a UAE fixup logs "[UAE] [000] TEXT", then TEXT.
+    lines = log.splitlines()
+    fixups = [l for prev, l in zip([''] + lines, lines) if l.strip() and (prev == '[UAE] [000] ' + l
+              or re.fullmatch(r'Unknown CPU specified|.* must be paired with .*', l))]
+    assert not fixups, f'FS-UAE changed the configuration: {fixups}'
+    cpu, mmu = option['cpu'], option['uae_mmu_model']
+    runtime = re.findall(r'CPU=(\d+), FPU=[^,]*, MMU=(\d+), JIT=0', log)
+    assert runtime and runtime[-1] == (re.sub(r'\D', '', cpu), mmu), f'Runtime CPU/MMU {runtime} != {cpu}/{mmu}'
+    print(f'Machine: {cpu} MMU={mmu}')
+
+def check_caches(report, cpu, mmu, whdload_mmu):
+    """Require the slave's cache policy: CACHE where WHDLoad uses the MMU, else CACHECHIP."""
+    # The last appended report is this run's. WHDLoad uses the MMU on a 68040/060, and on a
+    # 68030 only with its MMU option. Without it, CACHE would switch every cache off, so the
+    # slave falls back to CACHECHIP's instruction cache. setcpu= holds the slave's last request.
+    cacr = int(re.findall(r'CACR=([0-9A-F]+)', report)[-1], 16)
+    setcpu = re.findall(r'setcpu=\S+', report)[-1]
+    tc = int(re.findall(r'\bTC=([0-9A-F]+)', report)[-1], 16) if mmu != '0' else 0
+    big = cpu.endswith(('68040', '68060'))
+    dcache = mmu != '0' and (big or whdload_mmu)
+    ic, dc = (0x8000, 0x80000000) if big else (0x1, 0x100)
+    print(f'Caches: CACR={cacr:X} TC={tc:X} {setcpu}')
+    assert cacr & ic, f'instruction cache off: CACR={cacr:X}'
+    assert bool(cacr & dc) == dcache and (',DC,' in setcpu) == dcache, \
+        f'expected the data cache {"on" if dcache else "off"}: CACR={cacr:X} {setcpu}'
+    if dcache:
+        assert tc & (0x8000 if big else 0x80000000), f'MMU translation not enabled: TC={tc:X}'
+
+def memory_report(game, report):
+    """Print Exec's Chip and Fast MemHeaders from the running game's BaseMem/ExpMem dumps."""
+    chip, exp = (game/'.whdl_memory').read_bytes(), (game/'.whdl_expmem').read_bytes()
+    start = int(re.findall(r'ExpMem\s+([0-9A-F]+) -', report)[-1], 16)
+    def read(address, size):
+        if address+size <= len(chip):
+            return chip[address:address+size]
+        assert start <= address and address+size <= start+len(exp), hex(address)
+        return exp[address-start:address-start+size]
+    long = lambda address: struct.unpack('>I', read(address, 4))[0]
+    header = long(long(4)+0x142)                  # ExecBase MemList.lh_Head
+    while long(header):
+        attributes = struct.unpack('>H', read(header+14, 2))[0]
+        lower, upper, free = long(header+20), long(header+24), long(header+28)
+        chunk, largest = long(header+16), 0
+        while chunk:
+            largest = max(largest, long(chunk+4)); chunk = long(chunk)
+        print('MEMORY %s size=%d used=%d free=%d largest=%d' % ('chip' if attributes & 2 else 'fast',
+              upper-lower, upper-lower-free, free, largest))
+        header = long(header)
 
 if __name__ == '__main__':
     main()

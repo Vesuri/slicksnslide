@@ -1,6 +1,6 @@
 # Open work
 
-Updated 2026-10-13. This is the complete list of actionable work. Close each
+Updated 2026-10-29. This is the complete list of actionable work. Close each
 item exactly as written, commit it, and tick it off.
 
 **Adding an item requires a demonstrated defect:** a reproduced difference from
@@ -18,6 +18,15 @@ Intentional differences and limitations are documented in
 
 ## Current work
 
-No open items. F20, F21 and F22 are fixed and verified; the original-code
+- **WHDLoad hangs at 4 MiB Fast with PRELOAD.** On a 68020 with 4 MiB Fast,
+  `tools/test_whdload.py --mode championship` and `--mode records` stop at
+  their first save or race load: no further file log entries and no TIMEOUT
+  dump. The 0.91 slave hangs the same way; both pass at 4 MiB without PRELOAD
+  and at 8 MiB with it. The ReadMe asks 4 MiB users to remove PRELOAD
+  ([whdload.md](whdload.md#memory-and-caches)). Find what WHDLoad is waiting
+  for and make the installed icon work at 4 MiB, or confirm it as a WHDLoad
+  limitation.
+
+F20, F21 and F22 are fixed and verified; the original-code
 comparisons and target capture results are recorded in
 [fidelity.md](fidelity.md#confirmed-startup-defects--2026-10-12).

@@ -24,11 +24,13 @@
  destination space. RAM: or RAM-backed T: may be used for temporary files
  when enough additional memory is available. Use disk on a 2 MB machine.
 
- The WHDLoad icon requires WHDLoad version 17.0 or better and 2 MiB Fast RAM.
- The game runs in the 2 MiB ChipMem the slave reserves, exactly as standalone;
- the slave adds no expansion memory, only 512 KiB Kickstart space. No special
- WHDLoad options are needed: the installed icon uses only the standard
- PRELOAD, and a Shell launch is simply:
+ The WHDLoad icon requires WHDLoad version 17.0 or better and 8 MiB Fast RAM.
+ With 4 MiB Fast RAM, remove the icon's PRELOAD tooltype; with less, use the
+ standalone game. The slave reserves 512 KiB ChipMem for the display and sound
+ and runs the game in 2 MiB of Fast RAM. On a 68030 with a full MMU (not a
+ 68EC030), add the MMU tooltype to enable the data cache as well as the
+ instruction cache. No other WHDLoad options are needed: the installed icon
+ uses only the standard PRELOAD, and a Shell launch is simply:
    WHDLoad SlicksNSlide.slave
  The game reads each file in one operation and writes each saved file in one
  operation, so saving causes at most one short disk access per file.

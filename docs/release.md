@@ -40,14 +40,16 @@ Before tagging, on the release candidate:
    retention check with `diag_retention_check.gdb` and
    `SLICKS_DEBUG_FAST_KB=2048` on BASIC, F1, CITY and WHACKO; every mismatch counter must be zero.
 3. WHDLoad regressions (`tools/test_whdload.py --mode records`,
-   `championship`, `championship-edit`, `race`, `quit`) at 2 MiB Fast, with and
-   without PRELOAD; see [whdload.md](whdload.md).
+   `championship`, `championship-edit`, `race`, `quit`) at 8 MiB Fast with
+   PRELOAD and 4 MiB without, and `timed`, `race` and `quit` on `--setup a1200-040` and
+   `--setup a1200-030`, the 030 with and without `--whdload-mmu`; see
+   [whdload.md](whdload.md).
 4. One manual FS-UAE session on a stock PAL A1200 (68020, 2 MiB Chip, no Fast
    RAM): install from `Slix151.zip` with the Installer; start standalone from
    the data drawer with the default 4 KB stack; idle demo; Players; one race;
    save a championship at intermission; quit to Workbench. Repeat the launch,
-   race and quit from the WHDLoad icon at 2 MiB Fast, with and without
-   PRELOAD.
+   race and quit from the WHDLoad icon at 8 MiB Fast with PRELOAD and 4 MiB
+   without.
 
 ## 0.91 (13.10.2026)
 

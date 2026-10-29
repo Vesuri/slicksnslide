@@ -1,9 +1,10 @@
 # Memory
 
 The port targets a PAL A1200 with 2 MiB Chip RAM, no Fast RAM and the
-default 4 KiB Shell stack, loaded from Workbench. WHDLoad adds no expansion
-memory (`FASTMEMSIZE = 0`), so the game runs in the same 2 MiB Chip-only
-space there as it does standalone (see [whdload.md](whdload.md)).
+default 4 KiB Shell stack, loaded from Workbench. Only display and audio
+storage asks for Chip; everything else is `MEMF_ANY`, so with Fast RAM (and
+under WHDLoad, its 2 MiB of expansion memory) code and data move there and
+Chip keeps about 310 KiB (see [whdload.md](whdload.md)).
 
 ## Goal
 
