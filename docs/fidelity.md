@@ -6,7 +6,7 @@ executable: routine-level oracles execute the original x86 instructions
 against the native code, full-frame comparisons render the original routines
 from the original assets, and caller-level audits trace how the original
 reaches each routine. A difference is either corrected or listed here as a
-deliberate adaptation with its reason. The findings F01–F20 come from a
+deliberate adaptation with its reason. The findings F01–F19 come from a
 source/original-code audit of the whole port. Detailed evidence stays in
 the deleted `docs/fidelity-audit.md` in git history. Release blockers belong in
 [open-work.md](open-work.md).
@@ -274,7 +274,7 @@ cursor; nothing reads position or buttons for input.
 - **PC joystick adapters.** PC parallel-port joystick adapters are not
   available; Amiga joystick ports are read natively.
 
-## Findings F01–F20
+## Findings F01–F19 and F23
 
 | ID | Finding | Resolution |
 | --- | --- | --- |
@@ -297,4 +297,4 @@ cursor; nothing reads position or buttons for input.
 | F17 | Shop Help dropped printable input | Shop Help uses the shared keymapped Help adapter. |
 | F18 | Track catalogue truncated at 256 | Dynamic storage up to 10,000 files; 300 tracks pass; memory exhaustion fails safely. |
 | F19 | Exit Help retained released modifiers | Caller passes the full raw byte; Shift release clears modifiers. |
-| F20 | Title status drew the wrong icons: checkbox and letter icons (`val1`, `val2`, `pel_*`) instead of the player helmets and badges | The original loads them in archive order: `helmet`, `helmetc`, `tune_ind`, `wpn_ind`, `Icon_Cus` (`.@16`). The pixel oracle now feeds the original renderer these resources; DOSBox-X title captures match in six role/mode scenarios, including Arcade. |
+| F23 | Title status drew the wrong icons: checkbox and letter icons (`val1`, `val2`, `pel_*`) instead of the player helmets and badges | The original loads them in archive order: `helmet`, `helmetc`, `tune_ind`, `wpn_ind`, `Icon_Cus` (`.@16`). The pixel oracle now feeds the original renderer these resources; DOSBox-X title captures match in six role/mode scenarios, including Arcade. |
