@@ -56,17 +56,20 @@ int main(int argc,char **argv)
         check(uc_mem_write(u,0x60000+0x2000*i,font,size));
         word(u,0x3cbf0+0x680+4*i,0x2000*i);word(u,0x3cbf0+0x682+4*i,0x6000);
     }
-    const char *icons[]={"val1.@I","val2.@I","pel_on.@I","pel_ei.@I","pel_t.@I"};
+    /* The original 2dff:0008 loader leaves {0,B3,w,h} plus the raw 16-bit
+     * pixels, and its first draw caches a conversion in malloc'd memory. B1
+     * runs the same per-pixel conversion on every draw without allocating;
+     * with one title palette the drawn pixels are identical. */
+    const char *icons[]={"helmet.@16","helmetc.@16","tune_ind.@16","wpn_ind.@16","Icon_Cus.@16"};
     const unsigned slots[]={0x4c24,0x4c28,0x2fc4,0x2fc8,0x2fcc};
     for(unsigned i=0;i<5;++i){
-        unsigned char pixels[64],packed[100]={0,0xb2};unsigned short w,h;
+        unsigned char packed[0x100]={0,0xb1};
         long n=host_archive_load("ref/SLICKS.000",icons[i],asset,sizeof asset);
-        if(n<0 || slicks_decode_indexed_menu_icon(asset,n,pixels,sizeof pixels,&w,&h))abort();
-        unsigned stride=(w+3)/4;
-        if(4+4*stride*h>sizeof packed)abort();
-        packed[2]=stride;packed[3]=h;
-        for(unsigned y=0;y<h;++y)for(unsigned x=0;x<w;++x)
-            packed[4+(x&3)*stride*h+y*stride+(x>>2)]=pixels[y*w+x];
+        if(n<8 || memcmp(asset,"\x74\xb1\x1a\0",4))abort();
+        unsigned w=asset[4]<<8|asset[5],h=asset[6]<<8|asset[7];
+        if((unsigned long)n!=8+2UL*w*h || 6+2*w*h>sizeof packed)abort();
+        packed[2]=w&255;packed[3]=w>>8;packed[4]=h&255;packed[5]=h>>8;
+        memcpy(packed+6,asset+8,2*w*h);
         check(uc_mem_write(u,0x68000+0x100*i,packed,sizeof packed));
         word(u,0x3cbf0+slots[i],0x100*i);word(u,0x3cbf0+slots[i]+2,0x6800);
     }
@@ -117,7 +120,7 @@ int main(int argc,char **argv)
         word(u,0x8f000,0);word(u,0x8f002,0x9000);word(u,0x8f004,row);
         /* Include the original owner-name pulse/text; stop only before the
          * VGA start-address publication, which cannot affect logical pixels. */
-        check(uc_emu_start(u,0x29f2c,0x29fef,0,3000000));
+        check(uc_emu_start(u,0x29f2c,0x29fef,0,30000000));
         uint16_t ip;check(uc_reg_read(u,UC_X86_REG_IP,&ip));if(ip!=0x29fef-0x266c0)abort();
         for(unsigned y=0;y<200;++y)for(unsigned x=0;x<320;++x)
             if(v.pixels[y*320+x]!=logical[(x&3)*65536+y*100+(x>>2)]){

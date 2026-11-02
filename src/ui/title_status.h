@@ -1,7 +1,8 @@
 #ifndef SLICKS_TITLE_STATUS_H
 #define SLICKS_TITLE_STATUS_H
 
-/* Original 2995f..29af6. Icons are val1, val2, pel_on, pel_ei, pel_t.
+/* Original 2995f..29af6. Icons are helmet, helmetc, tune_ind, wpn_ind and
+ * Icon_Cus (.@16), loaded in archive order at startup.
  * Zero participation consumes no icon position. Negative/positive are the
  * original signed role tests, not profile indices or controller devices. */
 struct SlicksTitleStatusCommand { short kind,value,x,y,flags; };

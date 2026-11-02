@@ -170,7 +170,7 @@ extern void slicks_title_font_text(unsigned char *,const unsigned char *,const u
 #include "../../ui/title_status.h"
 #include "../../ui/menu_icon.h"
 static const struct SlicksConfiguration *title_configuration;
-static unsigned char title_icons[5][64];
+static unsigned char title_icons[5][100];
 static unsigned short title_icon_width[5],title_icon_height[5];
 extern void slicks_draw_title_status_text(unsigned char *,const char *,short,short,unsigned short);
 #define TITLE_FONT_CAPACITY 8192UL
@@ -4802,10 +4802,13 @@ int main(void)
         goto cleanup;
     slicks_title_background=title_frame;
     {
-        static const char *const names[]={"val1.@I","val2.@I","pel_on.@I","pel_ei.@I","pel_t.@I"};
+        /* Original 1977:05bb..05e2 and 085d..0899: the player icons are the
+         * archive entries after iso.@f, the badges tune_ind.@16 and the two
+         * entries after it. Converted once for the title palette. */
+        static const char *const names[]={"helmet.@16","helmetc.@16","tune_ind.@16","wpn_ind.@16","Icon_Cus.@16"};
         for(unsigned i=0;i<5;++i) {
             long bytes=slicks_resource_archive_load(&archive,names[i],title_asset,64003UL);
-            if(bytes<0 || slicks_decode_indexed_menu_icon(title_asset,(unsigned long)bytes,
+            if(bytes<0 || slicks_decode_menu_icon(title_asset,(unsigned long)bytes,source_palette,
                 title_icons[i],sizeof title_icons[i],&title_icon_width[i],&title_icon_height[i])) goto cleanup;
         }
         title_configuration=&configuration;

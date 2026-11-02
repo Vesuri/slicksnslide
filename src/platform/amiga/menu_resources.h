@@ -8,7 +8,6 @@ static const char *const slicks_menu_resources[]={
     "tuning.@I", "trckmenu.@I", "players.bmp", "HELP.TXT",
     "kirj.@f", "iso.@f", "pieni.@f",
     "trckmenu.@p", "peli.@p", "tuning.@p",
-    "val1.@I", "val2.@I", "pel_on.@I", "pel_ei.@I", "pel_t.@I",
     "computer.@16", "carimage16", "auto01.@16", "auto02.@16",
     "auto03.@16", "auto04.@16", "auto05.@16", "auto06.@16",
     "auto07.@16", "auto08.@16", "auto09.@16", "top10cc.@16",
