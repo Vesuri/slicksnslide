@@ -1,6 +1,6 @@
 # Open work
 
-Updated 2026-10-29. This is the complete list of actionable work. Close each
+Updated 2026-11-02. This is the complete list of actionable work. Close each
 item exactly as written, commit it, and tick it off.
 
 **Adding an item requires a demonstrated defect:** a reproduced difference from
@@ -9,7 +9,7 @@ items are not work items. Intentional differences from the original are listed
 in [fidelity.md](fidelity.md); working rules are in
 [development-verification.md](development-verification.md).
 
-## Version 0.91 (13.10.2026)
+## Version 1.0 (02.11.2026)
 
 Release notes and historical release checks are in [release.md](release.md).
 Intentional differences and limitations are documented in

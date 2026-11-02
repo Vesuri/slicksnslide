@@ -13,7 +13,7 @@ It is the full version: removing the shareware limitations is authorized by
 him, and you can still support his work by registering at
 [slicksnslide.com](https://www.slicksnslide.com).
 
-Release **0.91 (13.10.2026)**. The end-user package `SlicksNSlide-0.91.lha`
+Release **1.0 (02.11.2026)**. The end-user package `SlicksNSlide-1.0.lha`
 contains the native executable, a WHDLoad slave and an Installer script that
 extracts the original data from the publisher's freely available
 [Slix151.zip](https://www.slicksnslide.com/webapi/download.php?p=dos-slix&v=Slix151.zip).

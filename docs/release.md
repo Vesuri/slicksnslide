@@ -51,6 +51,17 @@ Before tagging, on the release candidate:
    race and quit from the WHDLoad icon at 8 MiB Fast with PRELOAD and 4 MiB
    without.
 
+## 1.0 (02.11.2026)
+
+- Full version: all shop items, no registration reminders or order form,
+  authorized by the original author Timo Kauppinen.
+- Correct player helmets and option badges on the title screen.
+- WHDLoad runs the game in Fast RAM with CPU caches enabled; it needs 8 MiB
+  Fast RAM, or 4 MiB without PRELOAD.
+
+The end-user changelog is included in `release/ReadMe`. Version strings and
+archive timestamps use 02.11.2026.
+
 ## 0.91 (13.10.2026)
 
 - Louder sound effects and engines.

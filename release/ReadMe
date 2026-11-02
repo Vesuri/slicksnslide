@@ -138,6 +138,13 @@
 
  History:
  --------
+ version 1.0 (02.11.2026):
+ - full version: all shop items, no registration reminders or order form,
+   authorized by the original author Timo Kauppinen
+ - correct player helmets and option badges on the title screen
+ - WHDLoad: runs the game in Fast RAM with CPU caches enabled; needs 8 MiB
+   Fast RAM, or 4 MiB without the PRELOAD tooltype
+
  version 0.91 (13.10.2026):
  - louder sound effects and engines
  - restored race-start sounds and synchronized traffic lights
