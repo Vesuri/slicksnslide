@@ -5,7 +5,8 @@ import sys
 from PIL import Image
 p=Path(sys.argv[1]);raw=(p/'.whdl_memory').read_bytes();seen=set()
 for off in range(0,len(raw)-2232,2):
-    if raw[off+24:off+36]!=bytes.fromhex('008e3881009000c101e42100'):continue
+    # The PAL ($38..$ff) or NTSC ($2c..$f3) 200-line window.
+    if raw[off+24:off+36] not in (bytes.fromhex('008e3881009000c101e42100'),bytes.fromhex('008e2c810090f4c101e42000')):continue
     pairs=struct.unpack_from('>1116H',raw,off)
     if tuple(pairs[26:58:2])!=tuple(range(0xe0,0x100,2)):continue
     pointers=[(pairs[27+i*4]<<16)|pairs[29+i*4] for i in range(8)]

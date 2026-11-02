@@ -42,8 +42,8 @@ Before tagging, on the release candidate:
 3. WHDLoad regressions (`tools/test_whdload.py --mode records`,
    `championship`, `championship-edit`, `race`, `quit`) at 8 MiB Fast with
    PRELOAD and 4 MiB without, and `timed`, `race` and `quit` on `--setup a1200-040` and
-   `--setup a1200-030`, the 030 with and without `--whdload-mmu`; see
-   [whdload.md](whdload.md).
+   `--setup a1200-030`, the 030 with and without `--whdload-mmu`, and `race`
+   and `quit` with `--ntsc`; see [whdload.md](whdload.md).
 4. One manual FS-UAE session on a stock PAL A1200 (68020, 2 MiB Chip, no Fast
    RAM): install from `Slix151.zip` with the Installer; start standalone from
    the data drawer with the default 4 KB stack; idle demo; Players; one race;
@@ -58,6 +58,9 @@ Before tagging, on the release candidate:
 - Correct player helmets and option badges on the title screen.
 - WHDLoad runs the game in Fast RAM with CPU caches enabled; it needs 8 MiB
   Fast RAM, or 4 MiB without PRELOAD.
+- PAL and NTSC: the beam and crystal are measured at startup; game speed and
+  sound pitch match PAL on 60 Hz NTSC, with the picture on lines `$2c..$f3`
+  ([rendering.md](rendering.md#video-standards)).
 
 The end-user changelog is included in `release/ReadMe`. Version strings and
 archive timestamps use 02.11.2026.

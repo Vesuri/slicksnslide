@@ -19,7 +19,7 @@
 
  Requirements:
  -------------
- Standalone: PAL A1200, 68020, AGA, 2 MiB Chip RAM, AmigaOS 3.x and SetPatch.
+ Standalone: PAL or NTSC A1200, 68020, AGA, 2 MiB Chip RAM, AmigaOS 3.x and SetPatch.
  The WHDLoad installer requires Installer V43 or later and WHDLoad 17+.
  These system tools are not included in this archive. For standalone use,
  see the manual installation instructions below; no WHDLoad is needed.
@@ -77,10 +77,13 @@
 
  Display:
  --------
- The original 320x200 picture is shown on a PAL 50 Hz AGA screen. Race
- physics and lap clocks run on the original real-time clock at any frame
- rate. Frames that take longer than one refresh are shown immediately rather
- than waiting for the next one, which can briefly tear moving objects.
+ The original 320x200 picture is shown on a 50 Hz PAL or 60 Hz NTSC AGA
+ screen, whichever the machine or WHDLoad's NTSC/PAL tooltype selects (the
+ tooltype needs that monitor driver in DEVS:Monitors). The game runs at the
+ same speed on both. Race physics and lap clocks run on the original
+ real-time clock at any frame rate. Frames that take longer than one refresh
+ are shown immediately rather than waiting for the next one, which can
+ briefly tear moving objects; this happens more often at 60 Hz.
 
 
  Playing and quitting:
@@ -144,6 +147,9 @@
  - correct player helmets and option badges on the title screen
  - WHDLoad: runs the game in Fast RAM with CPU caches enabled; needs 8 MiB
    Fast RAM, or 4 MiB without the PRELOAD tooltype
+ - NTSC: runs on 60 Hz NTSC machines and with WHDLoad's NTSC tooltype, at
+   the same game speed and sound pitch as PAL, with the picture at the
+   standard NTSC screen position
 
  version 0.91 (13.10.2026):
  - louder sound effects and engines

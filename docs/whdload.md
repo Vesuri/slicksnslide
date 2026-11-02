@@ -1,6 +1,12 @@
 # WHDLoad launcher
 
-Standalone remains supported on PAL A1200 / 2 MiB Chip / no Fast RAM.
+Standalone remains supported on PAL or NTSC A1200 / 2 MiB Chip / no Fast RAM.
+The game measures the beam it is given, so WHDLoad's `NTSC` and `PAL`
+tooltypes need no slave support ([rendering.md](rendering.md#video-standards)).
+`tools/test_whdload.py --ntsc` runs WHDLoad on an emulated NTSC A1200 and
+requires the NTSC window in every copper list. The tooltype itself is not in
+the fixture: WHDLoad needs `DEVS:Monitors/NTSC` for it, which the fixture's
+boot volume lacks.
 WHDLoad is optional and needs **8 MiB Fast RAM** with the installed icon's
 PreLoad, or 4 MiB without PreLoad; with less, use standalone.
 

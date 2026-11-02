@@ -24,18 +24,21 @@ static inline unsigned short slicks_physics_clock_advance(unsigned long *phase,
     while(*phase>=period) { *phase-=period; ++ticks; }
     return ticks;
 }
-/* Real-time variant. A PAL line is 227 colour clocks (15625 Hz) and a
- * non-interlaced frame has 313 lines. Phase units are 1/15625 PIT input
- * cycles: a line adds 1193182, a tick consumes divisor*15625 = period*625/2.
- * Lines are consumed in chunks so the 32-bit phase cannot overflow at the
- * slowest divisor (65536). */
-#define SLICKS_PAL_FRAME_LINES 313UL
+/* Real-time variant, counting raster lines of line_rate Hz (15625 on PAL:
+ * 227 colour clocks; NTSC 227.5 colour clocks, about 15734). Phase units
+ * are 1/line_rate PIT input cycles: a line adds 1193182 and a tick consumes
+ * divisor*line_rate, where period=divisor*50. Lines are consumed in chunks
+ * so the 32-bit phase cannot overflow at the slowest divisor (65536).
+ * line_rate=0 is PAL, for zero-initialized runtime fixtures. */
+#define SLICKS_PAL_LINE_RATE 15625UL
 static inline unsigned short slicks_physics_clock_lines(unsigned long *phase,
-    unsigned long period,unsigned char disabled,unsigned long lines)
+    unsigned long period,unsigned char disabled,unsigned long lines,
+    unsigned long line_rate)
 {
     if(disabled) return 0;
     if(!period) period=655350UL;
-    unsigned long tick=period*625UL/2UL; unsigned short ticks=0;
+    if(!line_rate) line_rate=SLICKS_PAL_LINE_RATE;
+    unsigned long tick=period/50UL*line_rate; unsigned short ticks=0;
     while(lines) {
         unsigned long chunk=lines>2048UL?2048UL:lines; lines-=chunk;
         *phase+=chunk*1193182UL;

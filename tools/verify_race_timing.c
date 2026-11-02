@@ -2,6 +2,7 @@
 #include "verify_track_info.c"
 #undef main
 #include "../src/game/race_timing.h"
+#include "../src/platform/amiga/video_timing.h"
 static unsigned ports[3],port_count;
 static void timer_out(uc_engine *u,uint32_t port,int size,uint32_t value,void *context)
 {
@@ -65,24 +66,52 @@ int main(void)
         unsigned long before=phase;
         REQUIRE(!slicks_physics_clock_advance(&phase,period,1) && phase==before);
     }
-    /* Real-time line clock: 15625 Hz raster lines, exact against 64-bit
-     * arithmetic at every UI speed, including multi-chunk (paused) reads. */
+    /* Real-time line clock: PAL 15625 Hz (and the 0 fixture default), NTSC
+     * and both cross-crystal line rates, exact against 64-bit arithmetic at
+     * every UI speed, including multi-chunk (paused) reads. */
+    static const unsigned long rates[]={0,15625,15734,15591,15769};
+    for(unsigned r=0;r<sizeof rates/sizeof *rates;++r)
     for(unsigned speed=50;speed<=200;++speed) {
         unsigned argument=slicks_speed_timer_argument((short)speed);
         unsigned long divisor=slicks_timer_divisor((unsigned short)argument);
         unsigned long phase=0; uint64_t lines=0,total=0;
         for(unsigned read=1;read<=3000;++read) {
             unsigned long step=read%500==0?40000UL:1UL+(read*7919UL)%900UL;
-            total+=slicks_physics_clock_lines(&phase,divisor*50UL,0,step); lines+=step;
-            uint64_t cycles=lines*1193182ULL,tick=(uint64_t)divisor*15625ULL;
+            total+=slicks_physics_clock_lines(&phase,divisor*50UL,0,step,rates[r]); lines+=step;
+            uint64_t cycles=lines*1193182ULL,tick=(uint64_t)divisor*(rates[r]?rates[r]:15625ULL);
             REQUIRE(total==cycles/tick && phase==cycles%tick);
         }
         unsigned long before=phase;
-        REQUIRE(!slicks_physics_clock_lines(&phase,divisor*50UL,1,1000) && phase==before);
+        REQUIRE(!slicks_physics_clock_lines(&phase,divisor*50UL,1,1000,rates[r]) && phase==before);
+    }
+    /* Display timing for each beam standard, frame parity and crystal. */
+    static const unsigned short frames[]={313,312,263,262};
+    for(unsigned b=0;b<4;++b) for(unsigned crystal=0;crystal<2;++crystal) {
+        struct SlicksVideoTiming t; slicks_video_timing_init(&t,frames[b],(unsigned char)crystal);
+        unsigned ntsc=b>=2; REQUIRE(t.ntsc_beam==ntsc);
+        REQUIRE(t.display_start==(ntsc?0x2c:0x38) && t.display_end==t.display_start+200);
+        /* The playfield and the line after it fit in the frame. */
+        REQUIRE(t.display_end<frames[b]);
+        double clock=crystal?3579545.0:3546895.0,half=ntsc?455.0:454.0;
+        double line_rate=2.0*clock/half;
+        REQUIRE(t.line_rate>=line_rate-0.5 && t.line_rate<=line_rate+0.5);
+        if(b==0 && !crystal) REQUIRE(t.line_rate==15625 && t.tick_step==SLICKS_VIDEO_TICK_UNIT);
+        /* Game fields over ten real minutes equal PAL's to one field. */
+        unsigned long phase=0,fields=0; unsigned long n=(unsigned long)(600.0*line_rate/frames[b]);
+        for(unsigned long i=0;i<n;++i) fields+=slicks_video_tick(&t,&phase);
+        double seconds=n*frames[b]/line_rate,expected=seconds*2.0*3546895.0/142102.0;
+        REQUIRE(fields+1.0>=expected && fields<=expected+1.0);
+        /* At most one field per display frame. */
+        REQUIRE(t.tick_step<=SLICKS_VIDEO_TICK_UNIT);
+        /* The publication edge is the first display end strictly after now. */
+        for(unsigned long at=0;at<4UL*frames[b];++at) {
+            unsigned long edge=slicks_video_next_display_end(&t,at);
+            REQUIRE(edge>at && edge%frames[b]==t.display_end && edge-at<=frames[b]);
+        }
     }
     unsigned long legacy=0,current=0;
     for(unsigned i=0;i<3000;++i) REQUIRE(slicks_physics_clock_advance(&legacy,0,0)==
         slicks_physics_clock_advance(&current,655350,0) && legacy==current);
-    check(uc_close(u)); puts("Original PIT setup: all 65536 arguments match divisor/ports/clock reset; 151 speeds pass 453000 exact-rational updates and unchanged 100% timing; real-time line clock exact at 151 speeds");
+    check(uc_close(u)); puts("Original PIT setup: all 65536 arguments match divisor/ports/clock reset; 151 speeds pass 453000 exact-rational updates and unchanged 100% timing; real-time line clock exact at 151 speeds and 5 line rates; PAL/NTSC beam and crystal timing pass");
     return 0;
 }

@@ -10,9 +10,11 @@ it is not repeated here.
 
 ## Display
 
-- **Mode:** 320x200, eight bitplanes, 256 colours, PAL A1200 AGA. The
-  window is centred on hardware lines `$38..$ff` (DIWHIGH carries the ninth
-  vertical stop bit), built by the supplied framework's `setPlayfield`.
+- **Mode:** 320x200, eight bitplanes, 256 colours, A1200 AGA. On a PAL
+  beam the window is centred on hardware lines `$38..$ff` (DIWHIGH carries
+  the ninth vertical stop bit); on an NTSC beam it is the standard
+  `$2c..$f3` screen. Both are built by the supplied framework's
+  `setPlayfield`; see [Video standards](#video-standards).
 - **Bitmap:** interleaved, in Chip RAM. Each 320-byte row holds the eight
   40-byte plane rows, so `BytesPerRow` is 320 and the chunky source and the
   bitmap share the same row offset (`mult320`).
@@ -237,3 +239,39 @@ upper panel borders as in the original.
 - Full-frame stale-pixel audits (`amiga/diag_dirty_sprites.gdb`) compare the
   displayed bitmap with the authoritative chunky surface after publication,
   on F1, CITY and WHACKO.
+
+## Video standards
+
+`src/platform/amiga/video_timing.h` holds the PAL/NTSC model;
+`amiga_platform.cpp` measures it in `slicks_amiga_platform_create` and again
+in `begin`, with interrupts off after `LoadView(NULL)`, and rebuilds the copper
+lists if the standard changed since they were built.
+
+- **Beam.** The frame length is counted from wrap to wrap (313 PAL, 263 NTSC
+  in practice; 312/262 short frames also work). Under 288 lines is an NTSC
+  beam: lines of 227.5 colour clocks, window `$2c..$f3`, display end `$f4`.
+  Nothing writes BEAMCON0, so the machine's default, a boot-menu choice or
+  WHDLoad's `NTSC`/`PAL` tooltype decides.
+- **Crystal.** VPOSR bit 12 (Alice/Agnus NTSC identity) selects the colour
+  clock, 3546895 or 3579545 Hz. Paula periods and effect lengths use it, so
+  pitch is right on either crystal, also on a PAL machine forced to NTSC.
+- **Game time.** `vblank_count` counts PAL fields of real time
+  (`slicks_video_tick`): every VBI on PAL, five in six on NTSC. Menu delays,
+  timers, key repeat, the emulated BIOS tick and audio staging therefore keep
+  PAL speed. `frame_count` counts display frames and feeds raster time.
+  Menus that redraw once per field show one repeated refresh in six at 60 Hz.
+- **Races.** Raster time is `frame_count*frame_lines+line` at the measured
+  line rate (15625 Hz PAL, 15734 Hz NTSC), so physics runs in real time;
+  publication waits for the display-end edge of every refresh. The NTSC
+  blanking window is 63 lines against 113 on PAL, so more updates publish
+  late at 60 Hz.
+
+Checks: `make verify-race-timing` covers all beam/crystal combinations
+(game fields over ten minutes equal PAL's to one field, publication edges).
+On target, FS-UAE with `NTSC=1` measured 263 lines, the NTSC crystal and
+4162 fields in 4988 frames; HOLDT key repeat gives the same 19 steps over 57
+BIOS ticks as PAL. A real-time BASIC benchmark integrated 91.0 physics ticks/s
+on both (1285 in 14.12 s PAL, 1129 in 12.40 s NTSC; the original's 100% rate
+is 91.03), at 50 against 56 updates/s and 16% against 40% late publications.
+`diag_display_end_limit.gdb` (NATURALQB) starts on-time publications at line
+257 on PAL and 245 on NTSC, one per display frame.

@@ -907,7 +907,7 @@ verify-race-lap-limit: build/verify_race_lap_limit
 
 .PHONY: verify-language-table
 .PHONY: verify-race-timing
-build/verify_race_timing: tools/verify_race_timing.c src/game/race_timing.h | build
+build/verify_race_timing: tools/verify_race_timing.c src/game/race_timing.h src/platform/amiga/video_timing.h | build
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -I$(UNICORN_PREFIX)/include $< -L$(UNICORN_PREFIX)/lib -lunicorn -o $@
 
 verify-race-timing: build/verify_race_timing

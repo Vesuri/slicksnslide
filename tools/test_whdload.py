@@ -41,6 +41,8 @@ def main():
     p.add_argument('--real-time', action='store_true', help='Disable fast-forward for a watchable real-speed run')
     p.add_argument('--no-preload', action='store_true')
     p.add_argument('--no-write-cache', action='store_true', help='Diagnostic control for cached file creation')
+    p.add_argument('--ntsc', action='store_true', help="emulate an NTSC A1200 and require the game's NTSC display window. "
+                   "WHDLoad's NTSC tooltype needs DEVS:Monitors/NTSC, which this fixture does not have")
     p.add_argument('--write-delay', type=int, help='WHDLoad physical-write delay in PAL fields')
     args = p.parse_args()
     if args.mode != 'smoke' and (not args.rom.is_file() or not args.rtb.is_file()):
@@ -92,6 +94,8 @@ def main():
             '--uae_cpu_model='+args.cpu, '--uae_cpu_24bit_addressing=false',
             '--jit_compiler=0', '--chip_memory=2048', '--fast_memory='+str(args.fast),
             '--kickstart_file='+str(amiga_inputs.KICKSTART)]
+    if args.ntsc:
+        machine += ['--ntsc_mode=1', '--uae_ntsc=true']
     with (base/'emulator.log').open('w') as log:
         emu = subprocess.Popen([amiga_inputs.FSUAE, *machine, '--base_dir='+str(base/'fsuae'),
             '--hard_drive_0='+str(boot), '--hard_drive_0_priority=10', '--hard_drive_1='+str(game),
@@ -129,6 +133,8 @@ def main():
                 for name in (('SLICKS.000','SLICKS.DAT') if args.mode=='race' else ('SLICKS.000',)):
                     assert any('[ReadOff]' in line and 'name='+name in line for line in files.splitlines()), files
                 memory_report(game, report)
+                if args.ntsc:
+                    check_ntsc_display(game)
                 print('PASS: timed run read original Slicks data under WHDLoad')
             else:
                 assert (boot/'passed').exists() and 'Return OK.' in report, report + output
@@ -159,11 +165,22 @@ def main():
                     files = (game/'.whdl_log').read_text(encoding='latin1')
                     staged=[line for line in files.splitlines() if '.new' in line or '.bak' in line]
                     assert not staged, 'Temporary/backup file operations: '+'\n'.join(staged[:5])
+                if args.ntsc and args.mode != 'smoke':
+                    check_ntsc_display(game)
                 print(f'PASS: {args.mode} slave returned normally; WHDLoad core saved')
         finally:
             emu.terminate()
             try: emu.wait(timeout=5)
             except subprocess.TimeoutExpired: emu.kill(); emu.wait()
+
+def check_ntsc_display(game):
+    """Require the game's copper lists to use the NTSC $2c..$f3 window, not PAL $38..$ff."""
+    memory = (game/'.whdl_memory').read_bytes()
+    # COLOR..DIWSTRT, DIWSTOP, DIWHIGH as setPlayfield emits them (whdload_picture.py).
+    ntsc = memory.count(bytes.fromhex('008e2c810090f4c101e42000'))
+    pal = memory.count(bytes.fromhex('008e3881009000c101e42100'))
+    assert ntsc and not pal, f'NTSC display windows={ntsc}, PAL={pal}'
+    print(f'NTSC: {ntsc} copper lists use the $2c..$f3 window')
 
 def setup_args(name, no_mmu):
     """Return the shared launcher's preset arguments, so machines match AmigaXDev exactly."""

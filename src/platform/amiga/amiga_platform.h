@@ -6,6 +6,7 @@
 #include <graphics/view.h>
 
 #define SLICKS_AMIGA_VIEW_COUNT 2
+#include "video_timing.h"
 
 struct GfxBase;
 
@@ -24,7 +25,13 @@ struct SlicksAmigaPlatform {
     struct Library *ciaa_base;
     struct Interrupt keyboard_interrupt;
     struct Interrupt *saved_keyboard_interrupt;
+    /* Game time in PAL fields (49.92 Hz): one per vertical blank on PAL,
+     * five in six on 60 Hz NTSC. Every delay, timer and wait_vblank uses it. */
     volatile unsigned long vblank_count;
+    /* Hardware display frames, for raster time; phase is in
+     * SLICKS_VIDEO_TICK_UNIT parts of a PAL field. */
+    volatile unsigned long frame_count;
+    unsigned long tick_phase;
     volatile unsigned char key_head;
     volatile unsigned char key_tail;
     volatile unsigned short keys[16]; /* Raw byte plus event-time Shift bits. */
@@ -64,7 +71,8 @@ int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
 void slicks_amiga_platform_show(struct SlicksAmigaPlatform *platform,
                                unsigned short view);
 void slicks_amiga_platform_wait_vblank(struct SlicksAmigaPlatform *platform);
-/* Monotonic 15625 Hz raster time, vblank_count*313+line, while active.
+/* Monotonic raster time, frame_count*frame_lines+line, while active; its
+ * rate is slicks_video_timing.line_rate (15625 Hz on PAL).
  * A read in the few cycles between line 0 and the VBI can lag one frame. */
 unsigned long slicks_amiga_platform_raster_time(void *platform);
 /* Adaptive race publication: wait for the first display-end edge after the
@@ -103,6 +111,8 @@ void slicks_amiga_platform_end(struct SlicksAmigaPlatform *platform);
  * No menu/input or bitmap/copper mutation until end_io returns. */
 int slicks_amiga_platform_begin_io(struct SlicksAmigaPlatform *platform);
 int slicks_amiga_platform_end_io(struct SlicksAmigaPlatform *platform);
+/* The beam standard and crystal measured by create (and again by begin). */
+extern struct SlicksVideoTiming slicks_video_timing;
 unsigned short slicks_amiga_platform_restore_status(
     const struct SlicksAmigaPlatform *platform);
 

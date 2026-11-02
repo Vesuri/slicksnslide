@@ -307,7 +307,6 @@ static void request_setup_vehicle(void *context,unsigned driver,signed char vehi
     (*(volatile unsigned short *)(0xdff000UL + (offset)))
 #define REG_VPOSR 0x004
 #define REG_VHPOSR 0x006
-#define PAL_RASTER_LINES 312UL
 /* Kalms' modulo path reads one final 32-pixel block ahead.  Its output is
  * discarded, but the read must still stay within an allocated buffer. */
 #define C2P_LOOKAHEAD_BYTES 32UL
@@ -687,13 +686,13 @@ unsigned long slicks_diag_profile_raster_time(void)
     unsigned short line;
     unsigned short high,high_after;
     do {
-        frame_before = platform->vblank_count;
+        frame_before = platform->frame_count;
         high=CUSTOM_WORD(REG_VPOSR)&7;
         line=(unsigned short)((high<<8)|(CUSTOM_WORD(REG_VHPOSR)>>8));
         high_after=CUSTOM_WORD(REG_VPOSR)&7;
-        frame_after = platform->vblank_count;
+        frame_after = platform->frame_count;
     } while (frame_before != frame_after || high!=high_after);
-    return frame_before * PAL_RASTER_LINES + line;
+    return frame_before * slicks_video_timing.frame_lines + line;
 }
 
 static void slicks_diag_profile_race(unsigned char phase)
@@ -2725,6 +2724,7 @@ static int prepare_race(struct SlicksAmigaPlatform *platform,
     if(realtime_race_clock) {
         race->raster_clock=slicks_amiga_platform_raster_time;
         race->raster_clock_context=platform;
+        race->raster_clock_rate=slicks_video_timing.line_rate;
     }
     if(session) {
         race->finish_reward=award_race_finish;
@@ -7275,8 +7275,9 @@ int main(void)
             if (g_slicks_diag_audio_in_blank && !late_publication && (continuous_diagnostics || profile)) {
                 unsigned long duration =
                     slicks_diag_profile_raster_time() - audio_blank_at;
-                unsigned long remaining = PAL_RASTER_LINES -
-                    (audio_blank_at % PAL_RASTER_LINES) + 56;
+                unsigned long remaining = slicks_video_timing.frame_lines -
+                    (audio_blank_at % slicks_video_timing.frame_lines) +
+                    slicks_video_timing.display_start;
                 if (duration > g_slicks_diag_audio_blank_max_lines)
                     g_slicks_diag_audio_blank_max_lines = duration;
                 if (duration >= remaining)
@@ -7458,7 +7459,7 @@ int main(void)
                             g_slicks_diag_bench_max_sprite[i]=g_slicks_diag_profile_sprite[i];
                         g_slicks_diag_bench_max_rect_pixels=g_slicks_diag_profile_rect_pixels;
                     }
-                    if (work > PAL_RASTER_LINES)
+                    if (work > slicks_video_timing.frame_lines)
                         ++g_slicks_diag_bench_work_over;
                     if (wall > g_slicks_diag_bench_wall_max)
                         g_slicks_diag_bench_wall_max = wall;

@@ -4,6 +4,10 @@
 #endif
 
 #include "amiga_audio.h"
+#include "video_timing.h"
+#ifndef SLICKS_AUDIO_HOST_TEST
+extern struct SlicksVideoTiming slicks_video_timing;
+#endif
 #include "../../game/audio_volume.h"
 #include "../../game/audio_pitch.h"
 #include "../../game/audio_start.h"
@@ -17,10 +21,14 @@
 #define DMA_AUD0 0x0001
 #define AUDIO_BASE(channel) (0x0a0 + (channel) * 0x10)
 #define PAL_AUDIO_CLOCK 3546895UL
+#define NTSC_AUDIO_CLOCK 3579545UL
+/* Paula counts colour clocks of the machine's crystal, whatever the beam
+ * standard. Set by create from Alice's PAL/NTSC identity (VPOSR bit 12). */
+static unsigned long audio_clock = PAL_AUDIO_CLOCK;
 /* Conservative for both standard PAL (123 minimum) and NTSC (124).
  * Do not request faster sample DMA and rely on emulator behaviour. */
 #define MIN_AUDIO_PERIOD 124UL
-#define MAX_AUDIO_RATE (PAL_AUDIO_CLOCK/MIN_AUDIO_PERIOD)
+#define MAX_AUDIO_RATE (audio_clock/MIN_AUDIO_PERIOD)
 static struct SlicksAmigaAudio *vblank_audio;
 volatile unsigned long g_slicks_audio_vbi_spills;
 volatile unsigned short g_slicks_audio_vbi_last_line;
@@ -78,7 +86,7 @@ static unsigned short engine_period(struct SlicksAmigaAudio *audio,
     audio->engine_levels[car]=(unsigned char)level;
     /* A zero driver frequency has no finite Paula equivalent. Keep the
      * hardware boundary safe; normal race speeds never approach this case. */
-    period = playback_frequency ? PAL_AUDIO_CLOCK / playback_frequency : 65535UL;
+    period = playback_frequency ? audio_clock / playback_frequency : 65535UL;
     if(period>65535UL) period=65535UL;
     if(period<MIN_AUDIO_PERIOD) period=MIN_AUDIO_PERIOD;
     audio->engine_frequencies[car] = (unsigned short)frequency;
@@ -172,7 +180,7 @@ static int copy_blocks(struct SlicksAmigaAudio *audio,
                 sample->data[i] =
                     (signed char)(pcm[i] ^ 0x80);
             sample->bytes = allocated;
-            unsigned long period=(3546895UL+frequency/2U)/frequency;
+            unsigned long period=(audio_clock+frequency/2U)/frequency;
             sample->period = (unsigned short)(period>65535UL?65535UL:period);
         }
         at = next;
@@ -238,7 +246,7 @@ int slicks_amiga_audio_add_music(struct SlicksAmigaAudio *audio,
                 sample->data[i] = (signed char)(wave[at + 8 + i] ^ 0x80);
             sample->bytes = bytes;
             sample->period = (unsigned short)(
-                sample_rate ? 3546895UL / sample_rate : 322);
+                sample_rate ? audio_clock / sample_rate : 322);
             return 0;
         }
         at += 8 + ((size + 1) & ~1UL);
@@ -282,6 +290,9 @@ int slicks_amiga_audio_create(struct SlicksAmigaAudio *audio,
         return -1;
     for (i = 0; i < sizeof(*audio); ++i)
         ((unsigned char *)audio)[i] = 0;
+#ifndef SLICKS_AUDIO_HOST_TEST
+    audio_clock = CUSTOM_WORD(4) & 0x1000 ? NTSC_AUDIO_CLOCK : PAL_AUDIO_CLOCK;
+#endif
     if (copy_blocks(audio, resource, resource_size) != 0)
         goto fail;
     if(prepare_reduced_engines(audio)) goto fail;
@@ -364,7 +375,7 @@ struct StartCueContext {
 static void start_cue_play(void *context,unsigned short priority,unsigned short frequency)
 {
     struct StartCueContext *s=context;
-    unsigned short period=frequency?(unsigned short)(PAL_AUDIO_CLOCK/frequency):0;
+    unsigned short period=frequency?(unsigned short)(audio_clock/frequency):0;
     play_effect_period(s->audio,1,0,priority,period);
 }
 static void start_cue_wait(void *context,unsigned short milliseconds)
@@ -403,7 +414,7 @@ void slicks_amiga_audio_start_music(struct SlicksAmigaAudio *audio)
     audio->channels.owner[3]=SLICKS_AUDIO_MUSIC;
     audio->music_started = 1;
     audio->effect_ticks[3]=(unsigned short)(((unsigned long)audio->music.bytes*
-        audio->music.period*50UL+3546894UL)/3546895UL+1);
+        audio->music.period*50UL+audio_clock-1UL)/audio_clock+1);
     AUDIO_UNLOCK();
 }
 
@@ -454,7 +465,8 @@ void slicks_amiga_audio_vblank(void)
 #ifndef SLICKS_AUDIO_HOST_TEST
     unsigned short line=(unsigned short)(((CUSTOM_WORD(4)&7)<<8)|(CUSTOM_WORD(6)>>8));
     g_slicks_audio_vbi_last_line=line;
-    if(line>=56 && line<256) ++g_slicks_audio_vbi_spills;
+    if(line>=slicks_video_timing.display_start && line<slicks_video_timing.display_end)
+        ++g_slicks_audio_vbi_spills;
 #endif
 }
 
@@ -532,7 +544,7 @@ static void play_effect_period(struct SlicksAmigaAudio *audio,
     else start_one_shot_channel(audio,(unsigned short)selected,sample,period,audio->sound_volume);
     duration = (unsigned long)sample->bytes * period * 50UL;
     audio->effect_ticks[selected] = (unsigned short)(
-        (duration + 3546894UL) / 3546895UL + 1);
+        (duration + audio_clock - 1UL) / audio_clock + 1);
     if (!audio->effect_ticks[selected])
         audio->effect_ticks[selected] = 1;
     if(flags&1) audio->effect_ticks[selected]=0;

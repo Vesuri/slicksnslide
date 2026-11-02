@@ -436,9 +436,11 @@ struct SlicksRaceRuntime {
     unsigned char car_display_ready;
     /* Real-time physics clock (original 1000:fe5e..fe98). Null: advance one
      * nominal 50 Hz update per step (deterministic fixtures). The clock
-     * returns monotonic 15625 Hz raster lines (frame*313+line). */
+     * returns monotonic raster lines (frame*frame_lines+line) at
+     * raster_clock_rate: 15625 Hz on PAL, about 15734 Hz on NTSC. */
     unsigned long (*raster_clock)(void *context);
     void *raster_clock_context;
+    unsigned long raster_clock_rate; /* Lines per second; 0 is PAL 15625. */
     unsigned long physics_clock_at;
     unsigned long physics_clock_origin; /* First read: diagnostics only. */
     unsigned char physics_clock_started;

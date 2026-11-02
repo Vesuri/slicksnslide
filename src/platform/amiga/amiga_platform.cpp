@@ -38,6 +38,7 @@
 #define BITMAP_BYTES (320UL * 200UL)
 
 static struct SlicksAmigaPlatform *active_platform;
+struct SlicksVideoTiming slicks_video_timing;
 static Bitmap *framework_bitmaps[SLICKS_AMIGA_VIEW_COUNT];
 static CopperList *framework_copper[SLICKS_AMIGA_VIEW_COUNT];
 static unsigned short palette_words[SLICKS_AMIGA_VIEW_COUNT][2][256];
@@ -56,6 +57,40 @@ static bool fail_create_allocation()
     if (++create_allocation != create_fault) return false;
     create_fault_consumed = 1;
     return true;
+}
+
+static unsigned short read_beam_line(void)
+{
+    unsigned short high, line;
+    do {
+        high = (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7);
+        line = (unsigned short)((high << 8) | (CUSTOM_WORD(REG_VHPOSR) >> 8));
+    } while (high != (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7));
+    return line;
+}
+
+/* Lines in one complete frame of the running beam, from wrap to wrap. */
+static unsigned short measure_frame_lines(void)
+{
+    unsigned short line, last = read_beam_line(), highest = 0;
+    for (;;) {
+        line = read_beam_line();
+        if (line < last) break;
+        last = line;
+    }
+    for (last = line;; last = line) {
+        line = read_beam_line();
+        if (line < last) break;
+        if (line > highest) highest = line;
+    }
+    return (unsigned short)(highest + 1);
+}
+
+static void measure_video_timing(void)
+{
+    /* Alice and Agnus identify an NTSC part with VPOSR bit 12. */
+    slicks_video_timing_init(&slicks_video_timing, measure_frame_lines(),
+        (unsigned char)((CUSTOM_WORD(REG_VPOSR) & 0x1000) != 0));
 }
 
 static unsigned char expand_vga_component(unsigned char value)
@@ -85,11 +120,15 @@ static unsigned long build_copper(unsigned short view_index,
         colours[colour] = (r << 16) | (g << 8) | b;
     }
     Palette24Bit aga_palette(colours, current_colours, 256);
-    /* DIWHIGH carries the ninth vertical stop bit. Centre the 200-line
-     * playfield at $9c so the window is exactly $38..$ff (VSTOP=$100),
-     * matching the framework's extended-window setup. */
+    /* DIWHIGH carries the ninth vertical stop bit. On PAL centre the
+     * 200-line playfield at $9c so the window is exactly $38..$ff
+     * (VSTOP=$100), matching the framework's extended-window setup. On
+     * NTSC it is the standard $2c..$f3 screen; VSTOP $f4 clears that bit. */
+    const unsigned short start = slicks_video_timing.display_start;
     at = list->setPlayfield(1, 320, 200, 8, true, false, false,
-                            false, false, true, 0x9c);
+                            false, false, true, (unsigned short)(start + 100));
+    if (slicks_video_timing.display_end < 0x100)
+        list->data()[8] = copperMove(diwhigh, 0x2000);
     list->showBitmap(at, *bitmap);
     at += 16;
     unsigned long palette_at=at;
@@ -114,9 +153,11 @@ static int validate_framework_view(unsigned short view_index)
     if (list[11] != copperMove(bpl1mod, 280) ||
         list[12] != copperMove(bpl2mod, 280))
         return -1;
-    if (list[6] != copperMove(diwstrt, 0x3881) ||
-        list[7] != copperMove(diwstop, 0x00c1) ||
-        list[8] != copperMove(diwhigh, 0x2100))
+    const unsigned short start = slicks_video_timing.display_start;
+    const unsigned short end = slicks_video_timing.display_end;
+    if (list[6] != copperMove(diwstrt, (unsigned short)((start << 8) | 0x81)) ||
+        list[7] != copperMove(diwstop, (unsigned short)(((end & 255) << 8) | 0xc1)) ||
+        list[8] != copperMove(diwhigh, (unsigned short)(end & 0x100 ? 0x2100 : 0x2000)))
         return -1;
     bitplane = (unsigned long)bitmap->data;
     for (plane = 0; plane < 8; ++plane, bitplane += 40) {
@@ -145,14 +186,19 @@ static unsigned long vertical_blank_handler(void)
     CUSTOM_WORD(REG_INTREQ) = INTF_VERTB;
     if (active_platform) {
         struct SlicksAmigaPlatform *p = active_platform;
+        ++p->frame_count;
+        /* Game time is PAL fields of real time, whatever the refresh. */
+        if (!slicks_video_tick(&slicks_video_timing, &p->tick_phase))
+            return 0;
         ++p->vblank_count;
-        /* BIOS tick: PIT input / 65536 (18.2065 Hz), 1/50 s per vblank. */
+        /* BIOS tick: PIT input / 65536 (18.2065 Hz), 1/50 s per field. */
         p->bios_remainder += 1193182UL;
         if (p->bios_remainder >= 65536UL * 50UL) {
             p->bios_remainder -= 65536UL * 50UL;
             ++p->bios_ticks;
         }
     }
+    /* Effect lengths and DMA restarts count the same fields. */
     slicks_amiga_audio_vblank();
     return 0;
 }
@@ -234,6 +280,8 @@ int slicks_amiga_platform_create(struct SlicksAmigaPlatform *platform,
         ((unsigned char *)platform)[view] = 0;
     platform->gfx_base = gfx_base;
     AmigaHardware::hasAGAChipSet = true;
+    /* Copper lists are built before begin; begin re-measures. */
+    measure_video_timing();
     for (view = 0; view < SLICKS_AMIGA_VIEW_COUNT; ++view) {
         unsigned char *data = fail_create_allocation() ? 0 : (unsigned char *)AllocMem(
             BITMAP_BYTES, MEMF_CHIP | MEMF_CLEAR);
@@ -390,6 +438,19 @@ int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
     CUSTOM_WORD(REG_INTENA) = 0x7fff;
     CUSTOM_WORD(REG_INTREQ) = 0x7fff;
     CUSTOM_WORD(REG_DMACON) = DMAF_ALL | DMAF_MASTER | DMAF_BLITHOG;
+    /* Measure the frame without interrupts: the OS screen may have been
+     * interlaced or another standard. Rebuild lists made for the other. */
+    int rebuilt = 0;
+    {
+        unsigned short was = slicks_video_timing.display_start;
+        measure_video_timing();
+        if (slicks_video_timing.display_start != was)
+            for (unsigned short v = 0; v < SLICKS_AMIGA_VIEW_COUNT; ++v)
+                if (palette_valid[v] && (build_copper(v, view_palettes[v]) !=
+                        COPPER_LONGS - 1 || validate_framework_view(v)))
+                    rebuilt = -1;
+    }
+    platform->tick_phase = 0;
 
     platform->vertb_interrupt.is_Node.ln_Type = NT_INTERRUPT;
     platform->vertb_interrupt.is_Node.ln_Pri = 127;
@@ -414,6 +475,10 @@ int slicks_amiga_platform_begin(struct SlicksAmigaPlatform *platform,
         INTF_SETCLR | INTF_INTEN | INTF_VERTB | INTF_PORTS;
     platform->active = 1;
     Forbid();
+    if (rebuilt) {
+        slicks_amiga_platform_end(platform);
+        return -1;
+    }
     return 0;
 }
 
@@ -442,13 +507,13 @@ unsigned long slicks_amiga_platform_raster_time(void *context)
     unsigned long frame, again;
     unsigned short high, line;
     do {
-        frame = platform->vblank_count;
+        frame = platform->frame_count;
         high = (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7);
         line = (unsigned short)((high << 8) | (CUSTOM_WORD(REG_VHPOSR) >> 8));
-        again = platform->vblank_count;
+        again = platform->frame_count;
     } while (frame != again ||
              high != (unsigned short)(CUSTOM_WORD(REG_VPOSR) & 7));
-    return frame * 313UL + line;
+    return frame * slicks_video_timing.frame_lines + line;
 }
 
 unsigned short slicks_amiga_platform_shown_view(void) { return shown_view; }
@@ -471,8 +536,9 @@ int slicks_amiga_platform_wait_publication(struct SlicksAmigaPlatform *platform)
         slicks_amiga_platform_wait_display_end(platform);
         at = slicks_amiga_platform_raster_time(platform);
     }
-    /* First edge (line $100 of a 313-line frame) strictly after now. */
-    platform->publish_deadline = (at + 57UL) / 313UL * 313UL + 256UL;
+    /* First display-end edge (PAL line $100, NTSC $f4) strictly after now. */
+    platform->publish_deadline =
+        slicks_video_next_display_end(&slicks_video_timing, at);
     platform->publish_valid = 1;
     return late;
 }
@@ -483,13 +549,14 @@ void slicks_amiga_platform_wait_display_blank(
     unsigned short line;
     if (!platform || !platform->active)
         return;
-    /* The playfield is exactly hardware lines $38..$ff. Starting visible
-     * bitmap writes at line $100 gives them the lower border plus the next
-     * frame's upper border, rather than racing the display beam. */
+    /* The playfield is exactly hardware lines $38..$ff ($2c..$f3 on NTSC).
+     * Starting visible bitmap writes at its end gives them the lower border
+     * plus the next frame's upper border, rather than racing the beam. */
+    const unsigned short end = slicks_video_timing.display_end;
     do {
         line = (unsigned short)(((CUSTOM_WORD(REG_VPOSR) & 7) << 8) |
                                 (CUSTOM_WORD(REG_VHPOSR) >> 8));
-    } while (line < 0x100);
+    } while (line < end);
 }
 
 void slicks_amiga_platform_wait_display_end(
@@ -498,13 +565,14 @@ void slicks_amiga_platform_wait_display_end(
     if (!platform || !platform->active)
         return;
     /* Edge, not level: if preparation finished during the lower border,
-     * that publication opportunity has passed. Wait for a fresh $100 edge
+     * that publication opportunity has passed. Wait for a fresh end edge
      * so audio/C2P get the complete blanking window, once per refresh. */
     unsigned short line;
+    const unsigned short end = slicks_video_timing.display_end;
     do {
         line = (unsigned short)(((CUSTOM_WORD(REG_VPOSR) & 7) << 8) |
                                 (CUSTOM_WORD(REG_VHPOSR) >> 8));
-    } while (line >= 0x100);
+    } while (line >= end);
     slicks_amiga_platform_wait_display_blank(platform);
 }
 

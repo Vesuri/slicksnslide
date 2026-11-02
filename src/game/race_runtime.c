@@ -2814,14 +2814,16 @@ static unsigned short next_physics_ticks(struct SlicksRaceRuntime *race)
         race->physics_clock_origin=race->physics_clock_at;
         race->physics_tick_phase=0;
         while(!slicks_physics_clock_lines(&race->physics_tick_phase,
-            race->physics_tick_period,0,physics_clock_lines(race))) ;
+            race->physics_tick_period,0,physics_clock_lines(race),
+            race->raster_clock_rate)) ;
         race->physics_clock_started=1;
         return 1;
     }
     /* fe5e..fe6b waits while the counter is unchanged; fe73..fe8b takes the
      * elapsed count, capped at 45. The counter keeps running while paused. */
     do ticks=slicks_physics_clock_lines(&race->physics_tick_phase,
-        race->physics_tick_period,0,physics_clock_lines(race));
+        race->physics_tick_period,0,physics_clock_lines(race),
+        race->raster_clock_rate);
     while(!ticks);
     return ticks>SLICKS_PHYSICS_BATCH_MAX?SLICKS_PHYSICS_BATCH_MAX:ticks;
 }

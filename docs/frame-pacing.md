@@ -24,11 +24,13 @@ the previous one, capped at 45 (`1000:fe5e..fe98`; see
 whenever the race has a raster clock:
 
 - **Source.** `slicks_amiga_platform_raster_time`
-  (`src/platform/amiga/amiga_platform.cpp`) returns PAL raster lines as
-  `vblank_count*313 + line`, reread until the frame count and beam position
-  agree. `slicks_physics_clock_lines` (`src/game/race_timing.h`) adds 1193182
-  phase units per line, and one tick consumes `divisor*15625`. The rate is
-  therefore exact for the real 15625 Hz line rate, not the nominal 50 Hz.
+  (`src/platform/amiga/amiga_platform.cpp`) returns raster lines as
+  `frame_count*frame_lines + line`, reread until the frame count and beam
+  position agree. `slicks_physics_clock_lines` (`src/game/race_timing.h`)
+  adds 1193182 phase units per line, and one tick consumes
+  `divisor*line_rate`. The rate is therefore exact for the real line rate
+  (15625 Hz on PAL, 15734 Hz on NTSC), not a nominal frame rate. See
+  [rendering.md](rendering.md#video-standards).
 - **First update.** It records the clock origin, waits for one tick and
   integrates a batch of one.
 - **Later updates.** Each takes every tick elapsed since the previous read,
@@ -74,7 +76,7 @@ The display is single-buffered. C2P writes the dirty regions of the shown
 bitmap. The race loop in `slicks_diag.c` prepares an update and then calls
 `slicks_amiga_platform_wait_publication`:
 
-- If the update finished before the first display-end edge (line $100)
+- If the update finished before the first display-end edge (line $100, $f4 on NTSC)
   after the previous publication, it waits for that edge. C2P then writes
   during the lower and upper borders, as it did before B2.
 - Otherwise it publishes at once and returns 1. The update is late and may
