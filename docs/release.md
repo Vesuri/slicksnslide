@@ -65,6 +65,37 @@ Before tagging, on the release candidate:
 The end-user changelog is included in `release/ReadMe`. Version strings and
 archive timestamps use 02.11.2026.
 
+Package `SlicksNSlide-1.0.lha`, 281,804 bytes, ten archive members.
+
+| File | SHA-256 |
+|---|---|
+| `SlicksNSlide-1.0.lha` | `71e3f658170ff4c824900511b8a3d367627efd3178b9df80c2608b14921e29e7` |
+| `SlicksNSlide` (stripped game) | `9a37268a752bc565e905b8532595bf387f51fadcee825d0fbf2981adbfd6b39d` |
+| `SlicksNSlide.slave` | `2ac40754fb8e8667faae1231948eb1c49aa18a96849769c7d9905670ec89fab1` |
+| `SlicksNSlideInstallData` | `b34ff6ee203f6cd295eb00716a3314cede5fa3c727e5493e0e7f7976cad5cb5d` |
+
+Gate results on the 1.0 code (2026-11-02):
+
+- `make release-check` passes: deterministic stripped executable, installer
+  helper extraction of the 197 originals, and the package audit. A second
+  `make dist` reproduces the archive byte for byte.
+- F1/CITY/WHACKO display audits pass (600 updates with 32 actors, a
+  completed 554-update race, 600 updates with 5 actors). RETCHECK passes on
+  BASIC, F1, CITY and WHACKO: 700 race and 700 HUD comparisons each, 650 and
+  699 geometry comparisons on F1 and CITY, all counters zero.
+- WHDLoad on the packaged executable and slave: records, championship,
+  championship-edit, race and quit pass on a 68020 at 8 MiB Fast with PRELOAD
+  and at 4 MiB without (at most two OS switches per save without PRELOAD,
+  none with it); timed, race and quit pass on `a1200-040` (CACR `80008000`),
+  `a1200-030` (CACR `2011`) and `a1200-030` with `MMU` (CACR `2111`, TC
+  translating); race and quit pass on an emulated NTSC A1200 with the
+  `$2c..$f3` window in every copper list.
+- The real-Installer package test passes on 2 MiB Chip: expected data,
+  executable, one WHDLoad icon, preservation and cleanup.
+- Gate step 4, the manual session, was not run for 1.0. WHDLoad's `NTSC`
+  tooltype itself is untested (no NTSC monitor driver in the fixture), and the
+  4 MiB PRELOAD hang remains open ([open-work.md](open-work.md)).
+
 ## 0.91 (13.10.2026)
 
 - Louder sound effects and engines.
