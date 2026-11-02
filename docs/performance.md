@@ -5,7 +5,9 @@ Optimization has stopped. Mean update work is below one 20 ms frame on every
 benchmark track, while the slowest updates take 21–26 ms. With the real-time
 race clock and adaptive publication ([frame-pacing.md](frame-pacing.md)),
 races run at correct game speed and about 46–50 updates/s. A worst case of
-20 ms is out of ship scope.
+20 ms is out of ship scope. Benchmarks are measured on PAL; a 60 Hz NTSC
+display gives the same game speed with more, more often late, publications
+([rendering.md](rendering.md#video-standards)).
 
 ## Measuring
 

@@ -95,6 +95,6 @@ def main():
     for heading in (b"Requirements",b"Installation",b"Display",b"Controls",b"History",b"Contact"):
         assert b" "+heading+b":\n -"+b"-"*len(heading) in payloads["ReadMe"], heading
     assert b"version "+version+b" (" in payloads["ReadMe"], "ReadMe history lacks this version"
-    assert b"https://github.com/Vesuri/slicks" in payloads["ReadMe"]
+    assert b"https://github.com/Vesuri/slicksnslide" in payloads["ReadMe"]
     print(f"PASS: {len(payloads)} allowlisted LH5 members; independent decompression, CRCs, executables, scripts and icons match")
 if __name__=="__main__": main()
