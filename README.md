@@ -8,6 +8,8 @@ direct AGA/Paula platform layer. There is no x86 emulator and no generated-C
 CPU emulation; the original executable running under a PC reference emulator
 is the ground truth that every routine is tested against.
 
+The port is authorized and supported by the original author, Timo Kauppinen.
+
 Release **0.91 (13.10.2026)**. The end-user package `SlicksNSlide-0.91.lha`
 contains the native executable, a WHDLoad slave and an Installer script that
 extracts the original data from the publisher's freely available
