@@ -156,6 +156,7 @@ production captures and display audits use the normal 2 MiB machine.
 | Speed change (D4) | Changing speed in the pause menu restarts only the tick phase, so game time stays monotonic. The original zeroes its tick counter but not the race loop's saved count; the next batch is then negative and refunds Arcade countdown time. | User decision: do not reproduce the glitch. | `slicks_race_set_timer` (`race_runtime.c`) |
 | Installation | A native installer extracts data from the publisher's `Slix151.zip`; WHDLoad is an optional launcher running the same executable. The CFG platform byte is a fixed Amiga tag (`0xa1`) instead of the DOS BIOS-derived byte; a CFG with another tag is refused at startup, with no files changed. | User request. No DOS BIOS identity exists on the Amiga. | `tools/install-data/`, `whdload/SlicksSlave.s`, `amiga_setup_storage.c` (`SLICKS_AMIGA_CONFIG_SIGNATURE`) |
 | Sparse shop (D2) | With non-contiguous active players (for example only driver 3), the original's shop caller passes an actual driver index where the painter expects a packed column and returns an uninitialised result. The port keeps actual driver IDs for transactions and converts them to packed columns for drawing. | User decision: safe mapping, never reproduce undefined indices. | `src/platform/amiga/amiga_shop.c` |
+| Full version | Always the registered game: all shop items, no REGISTER! labels, trial reminder, shareware exit wait or order form; the exit shows the registered `end2.bmp` and keeps its Y/F1 Help. `SLICKS.REK` is optional and only adds the owner name to the title; a missing, unreadable or invalid key is ignored. | Authorized by the original author, Timo Kauppinen. | `src/game/weapon_shop.h`, `src/game/registration.h`, `slicks_diag.c` (`exit_screen`, `load_registration`) |
 | Language (D3) | A negative saved selector (the shipped default, `field_05e1 = 255`) means English. The original runs DOS KEYB and picks language 2 only for code 358, which has no Amiga equivalent. Positive selectors load their own language. Only a saved selector of 0 opens the console chooser, so a fresh installation never reaches it. | No KEYB on the Amiga; the publisher's archive has no `SLICKS.CFG`. | `slicks_diag.c` (startup language resolution), `src/gen/setup_defaults.h` |
 
 ### Load Game (D1)
@@ -171,11 +172,11 @@ the original (`src/ui/title_navigation.h`, `src/ui/intermission_menu.h`).
 The port does not reproduce memory corruption or crashes on malformed input.
 Normal-game UI and semantics are still compared with DOS.
 
-- **Registration names.** The reader keeps the original 60-byte name, byte
-  order, checksum, sentinel and uppercasing, and accepts trailing bytes as DOS
-  does. An unterminated name is rejected instead of the original's
-  out-of-bounds string read. A malformed key is an error, never an unlock. A
-  real I/O failure is reported, not treated as a missing key
+- **Owner names.** The reader keeps the original 60-byte name, byte order,
+  checksum, sentinel and uppercasing, and accepts trailing bytes as DOS does.
+  An unterminated name is rejected instead of the original's out-of-bounds
+  string read. A rejected or unreadable key only omits the title name; it
+  unlocks nothing because the game is already complete
   (`src/game/registration.h`).
 - **Bounds checks** on loaded files: setup, profiles, tracks (8192-byte
   limit), saved championships and archive resources are size-checked. Reads
@@ -269,10 +270,6 @@ cursor; nothing reads position or buttons for input.
 
 ## Absent or unverified
 
-- **Order form.** The optional `webf_ord.bmp` shown from the shareware exit
-  is absent from the supplied data. The game skips it when missing, as DOS
-  does, and a registered installation never requests it. Its presentation
-  has not been visually checked.
 - **Joystick.** The manual joystick test is deferred by the user.
 - **PC joystick adapters.** PC parallel-port joystick adapters are not
   available; Amiga joystick ports are read natively.
@@ -299,4 +296,4 @@ cursor; nothing reads position or buttons for input.
 | F16 | Added right-mouse program exit | Removed. |
 | F17 | Shop Help dropped printable input | Shop Help uses the shared keymapped Help adapter. |
 | F18 | Track catalogue truncated at 256 | Dynamic storage up to 10,000 files; 300 tracks pass; memory exhaustion fails safely. |
-| F19 | Registration Help retained released modifiers | Caller passes the full raw byte; Shift release clears modifiers. |
+| F19 | Exit Help retained released modifiers | Caller passes the full raw byte; Shift release clears modifiers. |

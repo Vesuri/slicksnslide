@@ -6,6 +6,9 @@
 #include <unicorn/x86.h>
 #include "../src/game/weapon_shop.h"
 #include "../src/ui/shop_menu.h"
+/* The port is the full game: drive the original as registered (a nonzero
+ * first byte of its registration name at DS:062f). */
+#define REGISTERED 'A'
 static uc_engine *trace_engine;
 static unsigned trace_trial,trace_phase;
 static void ck(uc_err e) { if(e) {
@@ -42,7 +45,7 @@ int main(void)
     for(unsigned trial=0;trial<32768;++trial) {
         trace_trial=trial; trace_phase=0;
         unsigned driver=trial&3,item=(trial/4)%13,vehicle=(trial/52)%10;
-        unsigned enabled=trial/520,extra=(trial>>7)&1;
+        unsigned enabled=trial/520;
         signed char role=(trial%11)?((trial&1)?1:-1):0;
         short inventory[13],original[13];
         for(unsigned i=0;i<13;++i) inventory[i]=original[i]=levels[(trial/3+i)%14];
@@ -50,12 +53,12 @@ int main(void)
         struct SlicksRaceOptions options={.weapons_enabled=enabled&1,.inventory_mode=enabled&2,
             .fuel=enabled&4,.damage=enabled&8};
         word(u,0x3cbf0+0x3020,options.weapons_enabled); word(u,0x3cbf0+0x3022,options.inventory_mode);
-        word(u,0x3cbf0+0x3024,options.fuel); word(u,0x3cbf0+0x3026,options.damage); byte(u,0x3cbf0+0x62f,extra);
+        word(u,0x3cbf0+0x3024,options.fuel); word(u,0x3cbf0+0x3026,options.damage); byte(u,0x3cbf0+0x62f,REGISTERED);
         byte(u,0x3cbf0+0x4bc6+driver,role); byte(u,0x3cbf0+0x4bc2+driver,vehicle);
         regs(u); word(u,0x8e004,driver); word(u,0x8e006,item);
         word(u,0x8e000,0); word(u,0x8e002,0x7000);
         for(unsigned i=0;i<13;++i) word(u,0x3cbf0+0x6a7a+26*driver+2*i,inventory[i]);
-        short expected=slicks_shop_price(&r,&options,inventory,role,vehicle,item,extra);
+        short expected=slicks_shop_price(&r,&options,inventory,role,vehicle,item);
         ck(uc_emu_start(u,0x2aad6,0x70000,0,100000)); uint16_t ax; ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
         if((short)ax!=expected) { fprintf(stderr,"price trial=%u item=%u original=%d native=%d\n",trial,item,(short)ax,expected); return 1; }
         for(unsigned sell=0;sell<2;++sell) {
@@ -65,8 +68,8 @@ int main(void)
             short cash=balances[(trial/13)%9]; word(u,0x3cbf0+0x4bf6+2*driver,cash);
             byte(u,0x8f000-0x1a,driver); byte(u,0x8f000-0x19,item);
             byte(u,0x8f000-2,0); byte(u,0x8f000-3,13); byte(u,0x8f000-0xb,driver);
-            if(sell) slicks_shop_sell(&r,&options,inventory,&cash,role,vehicle,item,extra);
-            else slicks_shop_buy(&r,&options,inventory,&cash,role,vehicle,item,extra);
+            if(sell) slicks_shop_sell(&r,&options,inventory,&cash,role,vehicle,item);
+            else slicks_shop_buy(&r,&options,inventory,&cash,role,vehicle,item);
             ck(uc_emu_start(u,sell?0x2d184:0x2d0b1,0x2d229,0,100000));
             if(cash!=(short)rd(u,0x3cbf0+0x4bf6+2*driver) || inventory[item]!=(short)rd(u,0x3cbf0+0x6a7a+26*driver+2*item)) {
                 fprintf(stderr,"transaction trial=%u sell=%u item=%u native count/cash=%d/%d original=%d/%d\n",trial,sell,item,inventory[item],cash,(short)rd(u,0x3cbf0+0x6a7a+26*driver+2*item),(short)rd(u,0x3cbf0+0x4bf6+2*driver)); return 1;
@@ -84,13 +87,13 @@ int main(void)
         unsigned flags=trial/256;
         struct SlicksRaceOptions options={.weapons_enabled=flags&1,.inventory_mode=flags&2,.fuel=flags&4,.damage=flags&8};
         word(u,0x3cbf0+0x3020,options.weapons_enabled); word(u,0x3cbf0+0x3022,options.inventory_mode);
-        word(u,0x3cbf0+0x3024,options.fuel); word(u,0x3cbf0+0x3026,options.damage); byte(u,0x3cbf0+0x62f,1);
+        word(u,0x3cbf0+0x3024,options.fuel); word(u,0x3cbf0+0x3026,options.damage); byte(u,0x3cbf0+0x62f,REGISTERED);
         for(unsigned d=0;d<4;++d) {
             roles[d]=(signed char)((trial>>(2*d))%3)-1; vehicles[d]=(trial+d)%10; cash[d]=(short)((trial*17+d*23)%2000);
             byte(u,0x3cbf0+0x4bc6+d,roles[d]); byte(u,0x3cbf0+0x4bc2+d,vehicles[d]); word(u,0x3cbf0+0x4bf6+2*d,cash[d]);
             for(unsigned i=0;i<13;++i) { inventory[d][i]=(trial+d+i)%5; word(u,0x3cbf0+0x6a7a+26*d+2*i,inventory[d][i]); }
         }
-        slicks_shop_computers(&r,&options,inventory,cash,roles,vehicles,1,&seed);
+        slicks_shop_computers(&r,&options,inventory,cash,roles,vehicles,&seed);
         ck(uc_emu_start(u,0x2c45c,0x70000,0,1000000));
         for(unsigned d=0;d<4;++d) {
             if(cash[d]!=(short)rd(u,0x3cbf0+0x4bf6+2*d)) return 1;
@@ -117,10 +120,10 @@ int main(void)
         struct SlicksRaceOptions options={.weapons_enabled=flags&1,.inventory_mode=flags&2,.fuel=flags&4,.damage=flags&8};
         word(u,0x3cbf0+0x3020,options.weapons_enabled); word(u,0x3cbf0+0x3022,options.inventory_mode);
         word(u,0x3cbf0+0x3024,options.fuel); word(u,0x3cbf0+0x3026,options.damage);
-        byte(u,0x3cbf0+0x4bc6,-1); byte(u,0x3cbf0+0x4bc2,vehicle); byte(u,0x3cbf0+0x62f,0);
+        byte(u,0x3cbf0+0x4bc6,-1); byte(u,0x3cbf0+0x4bc2,vehicle); byte(u,0x3cbf0+0x62f,REGISTERED);
         regs(u); word(u,0x8e000,0); word(u,0x8e002,0x7000); word(u,0x8e004,row);
         ck(uc_emu_start(u,0x2c41c,0x70000,0,100000)); uint16_t ax; ck(uc_reg_read(u,UC_X86_REG_AX,&ax));
-        if((signed char)ax!=slicks_shop_item(&r,&options,inventory,-1,vehicle,0,row)) return 1;
+        if((signed char)ax!=slicks_shop_item(&r,&options,inventory,-1,vehicle,row)) return 1;
         ++cases;
     }
     printf("Original shop row mapping: %u combinations match\n",cases);

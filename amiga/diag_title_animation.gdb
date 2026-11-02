@@ -7,7 +7,7 @@ commands
   set $counter = *(unsigned char *)&slicks_title_counter
   set $colour = *(unsigned short *)&slicks_title_selected_color
   if !$ticks
-    # Startup may legitimately replace a trial-expiry registration screen.
+    # Count only publications after the first measured title update.
     # No full-screen publication is allowed during the measured title cycle.
     set $initial_full = g_slicks_title_full_publications
   end

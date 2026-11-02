@@ -13,7 +13,8 @@
  freely available from the publisher (see Installation below).
 
  The port is authorized and supported by the original author, Timo
- Kauppinen.
+ Kauppinen. This is the full version of the game: the removal of the
+ shareware limitations is authorized by the original author.
 
 
  Requirements:
@@ -100,8 +101,8 @@
 
  Features:
  ---------
- - the complete original game: single races, championships, shop, weapons,
-   demos, help, options and all eight languages
+ - the complete, registered original game: single races, championships,
+   shop with every weapon, demos, help, options and all eight languages
  - original graphics, fonts, tracks and sounds from the publisher's data
  - native 68020 code, AGA display and four-channel Paula sound
  - original real-time race clock at any frame rate
@@ -118,23 +119,21 @@
  parallel-port joystick adapters are not available on the Amiga.
 
 
- Registration:
- -------------
- Slicks 'N' Slide is shareware, and this port keeps the original shareware
- features to encourage registering: restricted shop weapons, the trial
- reminder at startup and the ordering screen on exit. Please support the
- original author by registering at:
+ Full version and registering:
+ -----------------------------
+ This is the full version: every shop weapon is available, and there is no
+ trial reminder or ordering screen. The removal of the shareware limitations
+ is authorized by the original author, Timo Kauppinen. You can still support
+ his work by registering at:
 
  https://www.slicksnslide.com
 
  The game's own ordering help (Y or F1 on the exit screen) also explains it.
- Registering gives you a personal key file, SLICKS.REK. To use it, copy
- SLICKS.REK into the installed SlicksNSlide/data/ drawer, next to the
- SlicksNSlide executable, and start the game again. The same file works for
- both WHDLoad and standalone play, and reinstalling or updating keeps it.
- The registered owner's name then appears on the title screen and the
- shareware restrictions and reminders are gone. An invalid key is rejected.
- This package contains no key or bypass.
+ Registering gives you a personal key file, SLICKS.REK. It is optional: copy
+ it into the installed SlicksNSlide/data/ drawer, next to the SlicksNSlide
+ executable, and your name appears on the title screen. The same file works
+ for both WHDLoad and standalone play, and reinstalling or updating keeps it.
+ A key that cannot be read is ignored. This package contains no key.
 
 
  History:

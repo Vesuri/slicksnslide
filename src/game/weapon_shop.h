@@ -22,10 +22,11 @@ static inline short slicks_shop_capacity(const struct SlicksShopRules *r,
 }
 
 /* 2aad6..2ac52: zero means unavailable/full, -1 hidden by setup options.
+ * The port is always the full game: flag 16 items need no registration.
  * Prices remain in the original tenths until the transaction rounds them. */
 static inline short slicks_shop_price(const struct SlicksShopRules *r,
     const struct SlicksRaceOptions *options,const short inventory[13],
-    signed char role,unsigned vehicle,unsigned item,unsigned char extra_enabled)
+    signed char role,unsigned vehicle,unsigned item)
 {
     if(!role) return -1;
     if(inventory[item]>=r->capacity[item]) return 0;
@@ -33,7 +34,6 @@ static inline short slicks_shop_price(const struct SlicksShopRules *r,
     if(((flags&1) && !options->inventory_mode) ||
        ((flags&2) && !options->weapons_enabled) ||
        ((flags&4) && !options->damage) || ((flags&8) && !options->fuel)) return -1;
-    if((flags&16) && !extra_enabled) return 0;
     if(flags&1) {
         int price=r->base_price[item];
         for(int i=0;i<inventory[item];++i) {
@@ -55,11 +55,11 @@ static inline short slicks_shop_price(const struct SlicksShopRules *r,
  * insufficient cash/capacity can therefore buy only part of a batch. */
 static inline unsigned slicks_shop_buy(const struct SlicksShopRules *r,
     const struct SlicksRaceOptions *options,short inventory[13],short *cash,
-    signed char role,unsigned vehicle,unsigned item,unsigned char extra_enabled)
+    signed char role,unsigned vehicle,unsigned item)
 {
     unsigned bought=0;
     for(int i=0;i<r->batch[item];++i) {
-        short cost=slicks_shop_price(r,options,inventory,role,vehicle,item,extra_enabled)/10;
+        short cost=slicks_shop_price(r,options,inventory,role,vehicle,item)/10;
         if(cost>0 && *cash>=cost) {
             *cash=(short)(*cash-cost);
             inventory[item]=(short)((unsigned short)inventory[item]+1U);
@@ -74,11 +74,11 @@ static inline unsigned slicks_shop_buy(const struct SlicksShopRules *r,
  * half its buying price. Selling is one unit even for ammunition batches. */
 static inline unsigned slicks_shop_sell(const struct SlicksShopRules *r,
     const struct SlicksRaceOptions *options,short inventory[13],short *cash,
-    signed char role,unsigned vehicle,unsigned item,unsigned char extra_enabled)
+    signed char role,unsigned vehicle,unsigned item)
 {
     if(inventory[item]<=0) return 0;
     --inventory[item];
-    short refund=slicks_shop_price(r,options,inventory,role,vehicle,item,extra_enabled)/20;
+    short refund=slicks_shop_price(r,options,inventory,role,vehicle,item)/20;
     *cash=(short)((unsigned short)*cash+(unsigned short)refund);
     return 1;
 }
@@ -90,7 +90,7 @@ static inline unsigned slicks_shop_sell(const struct SlicksShopRules *r,
  * spend-all-cash loop. Failed attempts still consume the shared RNG draw. */
 static inline void slicks_shop_computers(const struct SlicksShopRules *r,
     const struct SlicksRaceOptions *options,short inventory[4][13],short cash[4],
-    const signed char roles[4],const signed char vehicles[4],unsigned char extra_enabled,
+    const signed char roles[4],const signed char vehicles[4],
     unsigned long *random_state)
 {
     for(unsigned driver=0;driver<4;++driver) if(roles[driver]>0) {
@@ -98,7 +98,7 @@ static inline void slicks_shop_computers(const struct SlicksShopRules *r,
         unsigned item=(unsigned)(((*random_state>>16)&0x7fffUL)*15UL/32768UL);
         if(item>=13) item=1;
         short price=slicks_shop_price(r,options,inventory[driver],roles[driver],
-            (unsigned)vehicles[driver],item,extra_enabled)/10;
+            (unsigned)vehicles[driver],item)/10;
         if(price && cash[driver]>=price) {
             inventory[driver][item]=(short)((unsigned short)inventory[driver][item]+1U);
             cash[driver]=(short)(cash[driver]-price);

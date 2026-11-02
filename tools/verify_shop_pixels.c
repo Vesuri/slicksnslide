@@ -56,6 +56,7 @@ static void compare(struct ShopPixels *s,struct Vga *v,unsigned test,const char 
     }
     exit(1);
 }
+static const unsigned char registered='A'; /* full game: original DS:062f nonzero */
 int main(void)
 {
     static unsigned char runtime[300000],source[70000],base[64000],palette[768],fonts[2][8192],native[64000],saved[64000],snapshot[64002];
@@ -109,8 +110,8 @@ int main(void)
         s.options=(struct SlicksRaceOptions){.weapons_enabled=flags&1,.inventory_mode=flags&2,.fuel=flags&4,.damage=flags&8};
         word(u,ds+0x3020,s.options.weapons_enabled);word(u,ds+0x3022,s.options.inventory_mode);word(u,ds+0x3024,s.options.fuel);word(u,ds+0x3026,s.options.damage);
         struct SlicksShopContent c={.session=&s,.rules=&rules,.items=(const unsigned char (*)[15])(data+0xfac),.footer=data+0x1531,.exit_label=data+0x1523,
-            .register_label=data+0x1575,.separator=data+0x1307,.extra=(trial/16)&1,.track=(short)(trial+1),.total=195};
-        check(uc_mem_write(u,ds+0x62f,&c.extra,1));word(u,ds+0x628,trial);word(u,ds+0x90,c.total);
+            .separator=data+0x1307,.track=(short)(trial+1),.total=195};
+        check(uc_mem_write(u,ds+0x62f,&registered,1));word(u,ds+0x628,trial);word(u,ds+0x90,c.total);
         for(unsigned d=0;d<4;++d) {
             s.players.selected[d]=mask&(1<<d)?d+1:0;s.players.participation[d]=s.players.selected[d]?((d&1)?1:-1):0;s.players.vehicle[d]=(trial+d)%10;
             s.players.count+=s.players.selected[d]!=0;c.names[d]=names[d];s.cash[d]=1000-199*d;
@@ -119,7 +120,7 @@ int main(void)
             for(unsigned i=0;i<13;++i){s.inventory[d][i]=(trial+i+d)%(rules.capacity[i]+1);word(u,ds+0x6a7a+26*d+2*i,s.inventory[d][i]);}
         }
         check(uc_mem_write(u,ds+0x4c16,&s.players.count,1));
-        signed char rows=0;while(rows<13&&slicks_shop_item(&rules,&s.options,s.inventory[0],s.players.participation[0],s.players.vehicle[0],c.extra,rows)>=0)++rows;
+        signed char rows=0;while(rows<13&&slicks_shop_item(&rules,&s.options,s.inventory[0],s.players.participation[0],s.players.vehicle[0],rows)>=0)++rows;
         memcpy(native,base,64000);memcpy(v.pixels,base,64000);
         for(unsigned i=0;i<2;++i)check(uc_mem_write(u,0x60000+0x2000*i,fonts[i],n.sizes[i]));
         for(unsigned i=0;i<23;++i)check(uc_mem_write(u,0x65000+0x800*i,raw_icons[i],raw_sizes[i]));
@@ -134,7 +135,7 @@ int main(void)
             if(refresh==2) args[3]=(short)(row+1);
             registers(u,0xe000);word(u,0x8e000,0);word(u,0x8e002,0x5000);for(unsigned i=0;i<7;++i)word(u,0x8e004+2*i,args[i]);
             check(uc_emu_start(u,0x2c574,0x50000,0,30000000));
-            if(slicks_draw_shop_values(&s,&rules,c.extra,args[0],row,args[2],args[3],rows,args[5],args[6],c.exit_label,&ops.draw)<0)abort();
+            if(slicks_draw_shop_values(&s,&rules,args[0],row,args[2],args[3],rows,args[5],args[6],c.exit_label,&ops.draw)<0)abort();
             compare(&painter,&v,trial,"values");++cases;
         }
     }

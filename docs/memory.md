@@ -14,7 +14,7 @@ fonts, language tables, the encoded menu resource cache, the track-name and
 track-list catalogues, the saved-championship catalogue and the keymap
 snapshot. Disk access happens only at explicit boundaries: race track loading,
 the Tracks information preview, intermission next-track preview, save/load/
-delete, track-list save, registration, trophy and exit presentations.
+delete, track-list save, trophy and exit presentations.
 
 All game-owned memory is reserved once at startup. After the startup-complete
 checkpoint (`slicks_diag_startup_complete`) the normal game makes no direct
@@ -109,7 +109,7 @@ children close and released before any warning opens):
 | Championship load | 2,266 |
 | Screenshot capture | 65,078 |
 | Trophy image staging | 64,003 |
-| Registration image input | 70,000 |
+| Exit image input | 70,000 |
 
 **Race preparation.** `prepare_race` borrows the primary slot after the shop
 is destroyed: DAT 65,536, track 8,192, navigation, car 128 and font 2,048

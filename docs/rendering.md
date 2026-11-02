@@ -205,7 +205,7 @@ rectangles to `struct SlicksTitleDirty` (`src/ui/title_dirty.h`): at most
 four, 16-pixel aligned, merged on overlap; a fifth disjoint rectangle, or a
 full background rebuild, invalidates the whole screen. A selection or count
 edit dirties the aligned label/status area (96,77)..(256,174), 15,520 pixels
-instead of 64,000; the registered-owner line has its own (0,190)..(320,200)
+instead of 64,000; the owner-name line has its own (0,190)..(320,200)
 rectangle. `publish_title_dirty` unpacks only those rectangles into chunky
 memory, waits for a fresh display-end edge, and converts them with
 `c2p16_interleaved`.

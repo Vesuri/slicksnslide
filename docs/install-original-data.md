@@ -23,7 +23,7 @@ SlicksNSlide/
     SlicksNSlide               native game executable
     SLICKS.000, SLICKS.DAT      untouched publisher originals
     TRACKS/*.SS                195 original tracks
-    SLICKS.REK                 optional user's key, never distributed
+    SLICKS.REK                 optional owner-name key, never distributed
     ...                        settings/profiles/championships created in play
 ```
 

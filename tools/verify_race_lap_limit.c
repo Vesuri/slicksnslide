@@ -148,8 +148,8 @@ int main(void)
         struct SlicksRaceOptions options={.weapons_enabled=1};
         short cash=30000;
         short *inventory=race.weapon_inventory[driver];
-        if(!slicks_shop_buy(&slicks_original_shop_rules,&options,inventory,&cash,-1,6,weapon+5,1) ||
-           !slicks_shop_buy(&slicks_original_shop_rules,&options,inventory,&cash,-1,6,weapon+5,1)) return 1;
+        if(!slicks_shop_buy(&slicks_original_shop_rules,&options,inventory,&cash,-1,6,weapon+5) ||
+           !slicks_shop_buy(&slicks_original_shop_rules,&options,inventory,&cash,-1,6,weapon+5)) return 1;
         short before=inventory[weapon+5];
         race.selected_weapon[driver]=(signed char)weapon;
         race.driver_controls[driver]=SLICKS_CONTROL_BRAKE;

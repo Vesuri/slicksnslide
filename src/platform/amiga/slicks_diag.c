@@ -55,7 +55,7 @@
 #include "menu_resources.h"
 #include "../../ui/font_resource.h"
 #include "../../game/registration.h"
-#include "../../ui/registration_ui.h"
+#include "../../ui/exit_help.h"
 #include "../../ui/screen_capture.h"
 #include "../../ui/help_text_dirty.h"
 #include "../../ui/menu_bitmap.h"
@@ -80,15 +80,14 @@ static struct SlicksAmigaSavedFilesCache saved_files_cache;
 volatile unsigned long g_slicks_menu_cache_bytes;
 volatile short g_slicks_registration_status;
 __attribute__((noinline)) void slicks_diag_registration_loaded(void) { __asm__ volatile("" ::: "memory"); }
-/* OS-owned startup only. Never serialize registration in CFG/PLR/SSS files. */
+/* The port is always the full game. An optional SLICKS.REK only supplies the
+ * owner name drawn on the title; a missing, unreadable or invalid file shows
+ * none. Never serialize it in CFG/PLR/SSS files. */
 static int load_registration(void)
 {
     unsigned char bytes[64]; unsigned long count=0; int failed=0;
     BPTR file=Open((CONST_STRPTR)"SLICKS.REK",MODE_OLDFILE);
-    if(!file) {
-        if(IoErr()!=ERROR_OBJECT_NOT_FOUND) return -1;
-        return slicks_registration_decode(&registration,0,0);
-    }
+    if(!file) return SLICKS_REGISTRATION_NONE;
     while(count<sizeof bytes) {
         LONG n=Read(file,bytes+count,(LONG)(sizeof bytes-count));
         if(n<0) { failed=1; break; }
@@ -96,7 +95,9 @@ static int load_registration(void)
         count+=(unsigned long)n;
     }
     if(!Close(file)) failed=1;
-    return failed?-1:slicks_registration_decode(&registration,bytes,count);
+    int result=failed?SLICKS_REGISTRATION_INVALID:slicks_registration_decode(&registration,bytes,count);
+    if(result!=SLICKS_REGISTRATION_VALID) registration.name[0]=0;
+    return result;
 }
 
 unsigned char *slicks_title_font;
@@ -191,8 +192,7 @@ static unsigned char shop_transition_test,shop_transition_phase;
 /* Real-time physics clock: every plain launch; deterministic fixtures keep
  * one nominal PAL update per step unless they request it (NATURAL..RT). */
 static unsigned char realtime_race_clock;
-/* NATURALW-only parameter: 1..8 exercise each weapon; 9 buys two and cycles.
- * Cases 7/8 test the registered branch, never normal setup. */
+/* NATURALW-only parameter: 1..8 exercise each weapon; 9 buys two and cycles. */
 volatile unsigned short g_slicks_diag_weapon_case;
 volatile unsigned short g_slicks_diag_weapon_hud_checks,g_slicks_diag_weapon_hud_failures;
 static short weapon_hud_last_count=-1;
@@ -2129,9 +2129,6 @@ static unsigned long checksum_surface_map(const unsigned char *surface_map)
 
 unsigned char g_slicks_diag_plain_close_fault,g_slicks_diag_plain_close_reached;
 unsigned char g_slicks_diag_plain_read_fault,g_slicks_diag_plain_read_reached;
-static unsigned char registration_external_test;
-volatile long g_slicks_registration_external_bytes;
-void __attribute__((noinline)) slicks_diag_registration_external_loaded(void) { __asm__ volatile("" ::: "memory"); }
 static LONG close_plain_file(BPTR file,int valid)
 {
     LONG closed=Close(file);
@@ -2302,15 +2299,14 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     struct SlicksSetupSession *session)
 {
     const struct SlicksShopRules *rules=&slicks_original_shop_rules;
-    unsigned char extra=(shop_test && g_slicks_diag_weapon_case>=7 && g_slicks_diag_weapon_case<=8)?1:(registration.name[0]!=0);
     if(shop_rejection_test) {
         signed char item=slicks_shop_item(rules,&session->options,session->inventory[0],
-            session->players.participation[0],session->players.vehicle[0],extra,0);
+            session->players.participation[0],session->players.vehicle[0],0);
         if(item<0) return -1;
         g_slicks_shop_rejection_item=item;
         if(shop_rejection_test==1) {
             short cost=slicks_shop_price(rules,&session->options,session->inventory[0],
-                session->players.participation[0],session->players.vehicle[0],item,extra)/10;
+                session->players.participation[0],session->players.vehicle[0],item)/10;
             if(cost<=0) return -1;
             session->cash[0]=(short)(cost-1);
         } else if(shop_rejection_test==2) session->inventory[0][(unsigned)item]=rules->capacity[(unsigned)item];
@@ -2333,7 +2329,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     unsigned buyable=0;
     for(unsigned d=0;d<4;++d) for(unsigned i=0;i<13;++i)
         if(slicks_shop_price(rules,&session->options,session->inventory[d],
-            session->players.participation[d],session->players.vehicle[d],i,extra)>0)
+            session->players.participation[d],session->players.vehicle[d],i)>0)
             buyable=1;
     shop_end_game=0;
     if(!buyable) return 0;
@@ -2343,8 +2339,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     int result=-1;
     struct SlicksShopContent c={.session=session,.rules=rules,.items=slicks_original_shop_items,
         .footer=slicks_original_shop_footer,.exit_label=slicks_original_shop_exit,
-        .register_label=slicks_original_shop_register,.separator=slicks_original_track_separator,
-        .extra=extra,
+        .separator=slicks_original_track_separator,
         .track=(short)(shop_track_position+1),.total=shop_track_total?shop_track_total:(short)g_slicks_track_playlist.count};
     for(unsigned d=0;d<4;++d) if(session->players.participation[d]) {
         short p=session->players.selected[d];
@@ -2356,7 +2351,7 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
     m=slicks_amiga_shop_create(&archive,chunky,&c,&state);
     if(!m) goto done;
     slicks_shop_computers(rules,&session->options,session->inventory,session->cash,
-        session->players.participation,session->players.vehicle,c.extra,&session->random_state);
+        session->players.participation,session->players.vehicle,&session->random_state);
     if(slicks_amiga_shop_draw(m,&c,&state)) goto done;
     if(state.driver<0) { result=0; goto done; }
     if(slicks_amiga_platform_set_view(platform,0,m->palette)) goto done;
@@ -2490,15 +2485,15 @@ static __attribute__((noinline)) int run_shop(struct SlicksAmigaPlatform *platfo
                 if(show_menu(platform)) goto done;
             } else if(action==SLICKS_SHOP_BUY || action==SLICKS_SHOP_SELL) {
                 int it=slicks_shop_item(rules,&session->options,session->inventory[0],session->players.participation[0],
-                    session->players.vehicle[0],c.extra,state.row);
+                    session->players.vehicle[0],state.row);
                 if(it<0 || state.driver<0 || state.driver>=4) goto done;
                 unsigned d=(unsigned)state.driver;
                 unsigned changed;
                 if(action==SLICKS_SHOP_BUY)
                     changed=slicks_shop_buy(rules,&session->options,session->inventory[d],&session->cash[d],
-                        session->players.participation[d],session->players.vehicle[d],it,c.extra);
+                        session->players.participation[d],session->players.vehicle[d],it);
                 else changed=slicks_shop_sell(rules,&session->options,session->inventory[d],&session->cash[d],
-                    session->players.participation[d],session->players.vehicle[d],it,c.extra);
+                    session->players.participation[d],session->players.vehicle[d],it);
                 if(sparse_shop_test && g_slicks_sparse_shop_transactions<2) {
                     unsigned t=++g_slicks_sparse_shop_transactions,count=0;
                     g_slicks_sparse_shop_driver=state.driver;
@@ -3819,15 +3814,15 @@ static int result_wait(struct SlicksAmigaPlatform *platform,unsigned limit,unsig
     return g_slicks_diag_force_exit?-1:0;
 }
 
-volatile unsigned short g_slicks_registration_screen;
-/* Explicit REGCHECKY/F input fixtures; never set by a normal launch. */
-static unsigned char registration_help_test;
-struct SlicksHelpViewer *g_slicks_registration_help_viewer;
-unsigned char g_slicks_registration_help_ascii,g_slicks_registration_help_modifiers;
-__attribute__((noinline)) void slicks_diag_registration_help_key(void) { __asm__ volatile("" ::: "memory"); }
-__attribute__((noinline)) void slicks_diag_registration_screen_ready(void) { __asm__ volatile("" ::: "memory"); }
-__attribute__((noinline)) void slicks_diag_registration_help_closed(void) { __asm__ volatile("" ::: "memory"); }
-static void registration_delay(struct SlicksAmigaPlatform *p,unsigned milliseconds)
+volatile unsigned short g_slicks_exit_screen;
+/* Explicit REGCHECKY/F/G..N exit Help fixtures; never set by a normal launch. */
+static unsigned char exit_help_test;
+struct SlicksHelpViewer *g_slicks_exit_help_viewer;
+unsigned char g_slicks_exit_help_ascii,g_slicks_exit_help_modifiers;
+__attribute__((noinline)) void slicks_diag_exit_help_key(void) { __asm__ volatile("" ::: "memory"); }
+__attribute__((noinline)) void slicks_diag_exit_screen_ready(void) { __asm__ volatile("" ::: "memory"); }
+__attribute__((noinline)) void slicks_diag_exit_help_closed(void) { __asm__ volatile("" ::: "memory"); }
+static void exit_delay(struct SlicksAmigaPlatform *p,unsigned milliseconds)
 {
     unsigned long start=p->vblank_count;
     while(p->vblank_count-start<(milliseconds+19)/20 && !g_slicks_diag_force_exit)
@@ -3835,7 +3830,7 @@ static void registration_delay(struct SlicksAmigaPlatform *p,unsigned millisecon
 }
 /* Original 36d8b: keyboard release then next make, or a 20000-ms timeout.
  * Unlike results waiting this does not accept a joystick button. */
-static short registration_wait(struct SlicksAmigaPlatform *p)
+static short exit_wait(struct SlicksAmigaPlatform *p)
 {
     unsigned long start=p->vblank_count;
     unsigned short held=0,raw;
@@ -3843,8 +3838,8 @@ static short registration_wait(struct SlicksAmigaPlatform *p)
      * accepting a new one, matching the original keyboard-state poll. */
     while(slicks_amiga_platform_poll_key(p,&raw))
         if(raw<0xe0) held=(raw&128)?0:(unsigned short)(raw+1);
-    if(registration_help_test && (g_slicks_registration_screen==2 || g_slicks_registration_screen==3)) {
-        unsigned char key=registration_help_test==1?0x15:0x50; /* Amiga Y/F1 */
+    if(exit_help_test && g_slicks_exit_screen) {
+        unsigned char key=exit_help_test==1?0x15:0x50; /* Amiga Y/F1 */
         championship_test_keys(p,&key,1);
     }
     while(!g_slicks_diag_force_exit) {
@@ -3861,8 +3856,8 @@ static short registration_wait(struct SlicksAmigaPlatform *p)
     }
     return -1;
 }
-void __attribute__((noinline)) slicks_diag_registration_warning_ready(void) { __asm__ volatile("" ::: "memory"); }
-static int registration_help_unavailable(struct SlicksAmigaPlatform *p,unsigned char *chunky,
+void __attribute__((noinline)) slicks_diag_exit_help_warning_ready(void) { __asm__ volatile("" ::: "memory"); }
+static int exit_help_unavailable(struct SlicksAmigaPlatform *p,unsigned char *chunky,
     const unsigned char *palette)
 {
     struct SlicksMenuRect bounds;
@@ -3872,13 +3867,13 @@ static int registration_help_unavailable(struct SlicksAmigaPlatform *p,unsigned 
     if(slicks_amiga_emergency_warning_bounds(&bounds)) goto done;
     bounds.left=(short)(bounds.left&~15);
     bounds.right=(short)((bounds.right+15)&~15);
-    /* Both views already contain the registration image; publish only the
+    /* Both views already contain the exit image; publish only the
      * warning in view 0, then restore that same rectangle on dismissal. */
     slicks_amiga_platform_wait_display_blank(p);
     slicks_chunky_rect_to_amiga(chunky,p->views[0].bitmap,bounds.left,bounds.top,bounds.right,bounds.bottom,0);
     if(slicks_amiga_platform_set_view(p,0,palette) || show_menu(p)) goto done;
-    slicks_diag_registration_warning_ready();
-    if(registration_help_test) {
+    slicks_diag_exit_help_warning_ready();
+    if(exit_help_test) {
         static const unsigned char keys[]={0x44,0xc4};
         championship_test_keys(p,keys,sizeof keys);
     }
@@ -3895,29 +3890,29 @@ done:
     }
     return result;
 }
-static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *chunky,
+static int exit_help(struct SlicksAmigaPlatform *p,unsigned char *chunky,
     const unsigned char *palette)
 {
     struct SlicksResourceArchive a={0};struct SlicksAmigaPlayerMenu *m=0;int result=-1;
-    if(slicks_resource_archive_cached(&a,registration_help_test==4?0:menu_cache)) goto unavailable;
-    if(registration_help_test!=5) m=slicks_amiga_help_surface_create(&a,chunky,palette);
+    if(slicks_resource_archive_cached(&a,exit_help_test==4?0:menu_cache)) goto unavailable;
+    if(exit_help_test!=5) m=slicks_amiga_help_surface_create(&a,chunky,palette);
     if(!m) goto unavailable;
-    if(registration_help_test==3) g_slicks_diag_help_fail_allocation=1;
-    if(registration_help_test==8) {
+    if(exit_help_test==3) g_slicks_diag_help_fail_allocation=1;
+    if(exit_help_test==8) {
         extern unsigned char g_slicks_diag_help_fail_backing;
         g_slicks_diag_help_fail_backing=1;
     }
-    if(open_help(p,m,slicks_registration_help_topic)) goto done;
-    if(registration_help_test==6) {
+    if(open_help(p,m,slicks_exit_help_topic)) goto done;
+    if(exit_help_test==6) {
         if(!m->help || !m->help->chapter_length) goto done;
         /* Exercise the real parser failure on the next navigation redraw. */
         m->help->chapter[0]=0;
     }
-    if(registration_help_test) {
+    if(exit_help_test) {
         static const unsigned char keys[]={0x4d,0xcd,0x4c,0xcc,0x45,0xc5};
         static const unsigned char modifier_keys[]={0x50,0x42,0x44,0x60,0x27,0xa7,0xe0,0x35,0x45};
-        championship_test_keys(p,registration_help_test==7?modifier_keys:keys,
-            registration_help_test==7?sizeof modifier_keys:sizeof keys);
+        championship_test_keys(p,exit_help_test==7?modifier_keys:keys,
+            exit_help_test==7?sizeof modifier_keys:sizeof keys);
     }
     while(!g_slicks_diag_force_exit) {
         unsigned short raw;slicks_amiga_platform_wait_vblank(p);
@@ -3932,11 +3927,11 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
                 present_menu_surface(p,m);
                 goto unavailable;
             }
-            if(registration_help_test==7) {
-                g_slicks_registration_help_viewer=m->help;
-                g_slicks_registration_help_ascii=key.ascii;
-                g_slicks_registration_help_modifiers=m->key_modifiers;
-                slicks_diag_registration_help_key();
+            if(exit_help_test==7) {
+                g_slicks_exit_help_viewer=m->help;
+                g_slicks_exit_help_ascii=key.ascii;
+                g_slicks_exit_help_modifiers=m->key_modifiers;
+                slicks_diag_exit_help_key();
             }
             if(m->help->navigation.done) { result=0;goto done; }
             present_menu_surface(p,m);
@@ -3944,115 +3939,61 @@ static int registration_exit_help(struct SlicksAmigaPlatform *p,unsigned char *c
     }
     goto done;
 unavailable:
-    result=registration_help_unavailable(p,chunky,palette);
+    result=exit_help_unavailable(p,chunky,palette);
 done:
     if(m && m->help && slicks_amiga_help_close(m)) result=-1;
     if(m && m->help_warning && slicks_amiga_help_warning_close(m)) result=-1;
     /* Help only paints view 0. Publish its restored bounds before destroying
-     * the painter; view 1 still contains the original registration image. */
+     * the painter; view 1 still contains the original exit image. */
     if(m && !result) present_menu_surface(p,m);
     slicks_amiga_player_menu_destroy(m);
     slicks_resource_archive_close(&a);
-    slicks_diag_registration_help_closed();return result;
+    slicks_diag_exit_help_closed();return result;
 }
-/* Original registration-dependent presentation. Real archive BMPs and fonts,
- * never captured frames. kind 0=expired trial, 1=exit, 2=optional order form. */
-extern short slicks_menu_measure(const unsigned char *,const unsigned char *);
-static struct {
-    struct SlicksChunkyUi ui;
-    struct SlicksMenuRect rectangles[16];
-    unsigned short count;
-} registration_painter;
-static void registration_dirty(void *context,short l,short t,short r,short b)
-{
-    (void)context;
-    slicks_menu_dirty_add(registration_painter.rectangles,&registration_painter.count,l,t,r,b);
-}
-static void registration_text(void *context,const unsigned char *text,short x,short y,unsigned char flags)
-{
-    struct SlicksChunkyUi *ui=context;
-    slicks_records_text(ui->pixels,slicks_title_small_font,text,x,y,flags,0);
-    slicks_font_text_dirty(ui,slicks_title_small_font,text,x,y,1,flags,
-        slicks_menu_measure(slicks_title_small_font,text),0);
-}
-__attribute__((noinline)) void slicks_diag_registration_prompt_ready(void) { __asm__ volatile("" ::: "memory"); }
-__attribute__((noinline)) void slicks_diag_registration_screen_closed(void) { __asm__ volatile("" ::: "memory"); }
-static int registration_screen(struct SlicksAmigaPlatform *p,unsigned char *chunky,
-    unsigned kind,unsigned short timer)
+/* Original exit screen 1977:ccb0..cd56, registered branch: end2.bmp from the
+ * archive, no shareware wait or order form. Real archive BMP, never captured
+ * frames. Y/F1 open the original Help topic, as in the registered original. */
+__attribute__((noinline)) void slicks_diag_exit_screen_closed(void) { __asm__ volatile("" ::: "memory"); }
+static int exit_screen(struct SlicksAmigaPlatform *p,unsigned char *chunky,unsigned short timer)
 {
     struct SlicksResourceArchive a={0};unsigned char *resource=0;
     static unsigned char palette[768];static const unsigned char black[768]={0};
     unsigned w,h;unsigned short view=0;int result=-1;
-    unsigned char old_colour=slicks_title_small_font[6];
-    const char *name=kind==0?"loading.bmp":kind==2?"webf_ord.bmp":
-        slicks_registration_exit_image(registration.name[0]);
     if(p->active && slicks_amiga_platform_begin_io(p)) goto done;
     if(slicks_resource_archive_open_reserved(&a,"SLICKS.000",&archive_directory)) goto done;
-    /* Decode-only staging: release before the registration Help dialog,
-     * which borrows this same startup-reserved modal workspace. */
+    /* Decode-only staging: release before the exit Help dialog, which
+     * borrows this same startup-reserved modal workspace. */
     resource=slicks_amiga_storage_workspace_acquire(70000);
     if(!resource) goto done;
-    long length=slicks_resource_archive_load(&a,name,resource,70000);
-    if(length<0) {
-        /* The original '/name' resolver also permits an external BMP. The
-         * supplied archive has no webf_ord.bmp; absence is optional in DOS. */
-        if(kind==2 && registration_external_test) {
-            if(registration_external_test==1)g_slicks_diag_plain_read_fault=1;
-            else g_slicks_diag_plain_close_fault=1;
-        }
-        length=load_plain_file(name,resource,70000);
-        if(kind==2) {
-            g_slicks_registration_external_bytes=length;
-            slicks_diag_registration_external_loaded();
-        }
-    }
-    if(length<0) { result=kind==0?-1:0;goto done; }
+    long length=slicks_resource_archive_load(&a,"end2.bmp",resource,70000);
+    if(length<0) length=load_plain_file("end2.bmp",resource,70000);
+    if(length<0) { result=0;goto done; }
     if(slicks_decode_menu_bitmap(resource,(unsigned long)length,chunky,palette,&w,&h,0) || w!=320 || h!=200) goto done;
     slicks_amiga_storage_workspace_release(resource);resource=0;
     slicks_resource_archive_close(&a);
     if(p->io_active && slicks_amiga_platform_end_io(p)) goto done;
-    struct SlicksChunkyUi ui={chunky,palette,0,0};
-    registration_painter.ui=(struct SlicksChunkyUi){chunky,palette,registration_dirty,0};
-    registration_painter.count=0;
-    if(kind==0) {
-        slicks_registration_trial_background(&ui);
-        slicks_title_small_font[6]=slicks_ui_nearest(&ui,70,70,70);
-        slicks_registration_trial_text(slicks_original_registration_text,0,registration_text,&registration_painter.ui);
-    }
     if(hold_title_menu_display(p)) goto done;
     slicks_chunky_rows_to_amiga(chunky,p->views[0].bitmap,0,200);
     if(slicks_amiga_platform_set_view(p,0,black) || show_menu(p)) goto done;
     slicks_chunky_rows_to_amiga(chunky,p->views[1].bitmap,0,200);
-    if(result_fade(p,palette,0,100,kind?5:3,timer,&view)) goto done;
-    g_slicks_registration_screen=(unsigned short)(kind==0?1:kind==2?4:registration.name[0]?3:2);
-    slicks_diag_registration_screen_ready();
-    if(kind==0) {
-        registration_delay(p,2000);
-        registration_painter.count=0;
-        slicks_registration_trial_text(slicks_original_registration_text,1,registration_text,&registration_painter.ui);
-        slicks_amiga_platform_wait_display_blank(p);
-        for(unsigned i=0;i<2;++i) for(unsigned n=0;n<registration_painter.count;++n) {
-            const struct SlicksMenuRect *r=&registration_painter.rectangles[n];
-            slicks_chunky_rect_to_amiga(chunky,p->views[i].bitmap,r->left,r->top,r->right,r->bottom,0);
-        }
-        slicks_diag_registration_prompt_ready();
-    } else if(kind==1 && !registration.name[0]) registration_delay(p,300);
-    short key=registration_wait(p);
+    if(result_fade(p,palette,0,100,5,timer,&view)) goto done;
+    g_slicks_exit_screen=1;
+    slicks_diag_exit_screen_ready();
+    short key=exit_wait(p);
     if(key<0) goto done;
-    if(kind==1 && slicks_registration_help_requested(key)) {
-        if(registration_exit_help(p,chunky,palette)) goto done;
+    if(slicks_exit_help_requested(key)) {
+        if(exit_help(p,chunky,palette)) goto done;
         if(slicks_amiga_platform_set_view(p,0,palette) || show_menu(p)) goto done;
         view=0;
     }
-    if(kind && result_fade(p,palette,100,0,10,timer,&view)) goto done;
-    if(kind==1) registration_delay(p,300);
+    if(result_fade(p,palette,100,0,10,timer,&view)) goto done;
+    exit_delay(p,300);
     result=0;
 done:
-    slicks_title_small_font[6]=old_colour;
     if(resource) slicks_amiga_storage_workspace_release(resource);
     slicks_resource_archive_close(&a);
     if(p->io_active && slicks_amiga_platform_end_io(p)) result=-1;
-    g_slicks_registration_screen=0;slicks_diag_registration_screen_closed();return result;
+    g_slicks_exit_screen=0;slicks_diag_exit_screen_closed();return result;
 }
 
 /* 25965..259d7 / 2a63e..2aad5. This owns the actual archive bitmap and
@@ -4403,9 +4344,8 @@ int main(void)
     unsigned char title_idle_active=0,title_idle_reset=0;
     struct SlicksConfiguration configuration = slicks_original_configuration;
     unsigned char setup_dirty=0,exit_requested=0,save_prompt=0;
-    unsigned char registration_presentation=0;
-    unsigned char registration_test=0;
-    unsigned short registration_today=0;
+    unsigned char exit_presentation=0;
+    unsigned char regcheck_test=0;
     unsigned char race_load_prompt=0,race_load_retry=0;
     const char *track_path;
     char selected_track_path[19];
@@ -4424,10 +4364,6 @@ int main(void)
         goto cleanup;
     g_slicks_registration_status=(short)load_registration();
     slicks_diag_registration_loaded();
-    if(g_slicks_registration_status<0) {
-        PutStr((CONST_STRPTR)"Invalid or unreadable SLICKS.REK; no files were changed.\n");
-        goto cleanup;
-    }
     {
         struct UtilityBase *UtilityBase=(struct UtilityBase *)OpenLibrary(
             (CONST_STRPTR)"utility.library",37);
@@ -4437,7 +4373,6 @@ int main(void)
         DateStamp(&now);
         Amiga2Date((unsigned long)now.ds_Days*86400UL+
             (unsigned long)now.ds_Minute*60UL+(unsigned long)now.ds_Tick/TICKS_PER_SECOND,&date);
-        registration_today=(unsigned short)((date.year<1997?0:date.mday)+31UL*date.month+372UL*date.year);
         CloseLibrary((struct Library *)UtilityBase);
         slicks_player_profile_defaults(&g_slicks_profiles,slicks_original_profile_colours);
         /* Original 2c03e stores calendar day, one-based month and full year;
@@ -4567,17 +4502,11 @@ int main(void)
        argv[4]=='M' && argv[5]=='E' && argv[6]=='M') {
         display_allocation_test=1;demo_lifecycle_test=11;argc=0;argv="";
     }
-    if(argc==9 && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
-       argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' &&
-       argv[7]=='K' && (argv[8]=='K' || argv[8]=='L')) {
-        registration_external_test=(unsigned char)(argv[8]=='K'?1:2);
-        argc=8; /* Ordinary REGCHECK exit flow; only external I/O is faulted. */
-    }
     if((argc==8 || (argc==9 && (argv[8]=='N' || argv[8]=='M' || argv[8]=='Y' || argv[8]=='F' || argv[8]=='G' || argv[8]=='H' || argv[8]=='I' || argv[8]=='J' || argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U'))) && argv[0]=='R' && argv[1]=='E' && argv[2]=='G' &&
        argv[3]=='C' && argv[4]=='H' && argv[5]=='E' && argv[6]=='C' && argv[7]=='K') {
         if(argc==9 && (argv[8]=='D' || argv[8]=='T' || argv[8]=='A' || argv[8]=='B' || argv[8]=='C' || argv[8]=='U')) title_dirty_test=argv[8]=='D'?1:argv[8]=='T'?2:argv[8]=='A'?3:argv[8]=='B'?4:argv[8]=='C'?5:6;
-        else if(argc==9) registration_help_test=argv[8]=='N'?8:argv[8]=='M'?7:argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
-        registration_test=1;argc=0;argv="";
+        else if(argc==9) exit_help_test=argv[8]=='N'?8:argv[8]=='M'?7:argv[8]=='J'?6:argv[8]=='H'?4:argv[8]=='I'?5:argv[8]=='G'?3:argv[8]=='Y'?1:2;
+        regcheck_test=1;argc=0;argv="";
     }
     /* Explicit diagnostic state, never a normal-game override.
      * Set natively: debugger writes are not reliable on every FS-UAE stub. */
@@ -5185,17 +5114,8 @@ int main(void)
     }
     g_slicks_diag_checksum = title_checksum;
     g_slicks_diag_display_checksum = title_display_checksum;
-    registration_presentation=(unsigned char)(argc==0);
+    exit_presentation=(unsigned char)(argc==0);
     if(!argc) realtime_race_clock=1;
-    if(registration_presentation && slicks_registration_trial_expired(registration_today,
-        configuration.date_code,registration.name[0])) {
-        if(registration_screen(&platform,chunky,0,slicks_speed_timer_argument(configuration.field_05de))) goto cleanup;
-        if(hold_title_menu_display(&platform)) goto cleanup;
-        make_title_surface(logical,title_frame,source_palette);
-        redraw_title_configuration(&platform,logical,chunky,source_palette,menu_selection,
-            selected_vehicle,track_names[selected_track],selected_laps);
-        if(slicks_amiga_platform_set_view(&platform,0,source_palette)) goto cleanup;
-    }
     if (show_menu(&platform) != 0)
         goto cleanup;
     g_slicks_diag_ready = 1;
@@ -5539,7 +5459,7 @@ int main(void)
                 if(g_slicks_demo_test_error) {slicks_diag_demo_test_done();goto cleanup;}
                 platform.key_tail=0;platform.keys[0]=demo_lifecycle_test==10?0x44:0x45;platform.key_head=1;
                 if(demo_lifecycle_test==10) {
-                    /* Supply a complete key press: exit registration waits
+                    /* Supply a complete key press: the exit screen waits
                      * for release before its normal timeout may expire. */
                     platform.keys[1]=0xc4;platform.key_head=2;
                 }
@@ -5621,7 +5541,7 @@ int main(void)
         } else if(demo_players_test==3 && !g_slicks_player_menu) {
             demo_players_test=4;g_slicks_diag_force_exit=1;
         }
-        if(registration_test && title_dirty_test) {
+        if(regcheck_test && title_dirty_test) {
             static const unsigned char keys[]={0x4d,0x4d,0x4f,0x4e,0x4c,0x4c,0x45};
             static const unsigned char transition_keys[]={
                 0x4d,0x44,0x4f,0x45, /* Human -> Computer; return to title. */
@@ -5630,7 +5550,7 @@ int main(void)
                 0x4d,0x4f,0x4e,      /* TRACKS: 195 -> 194 -> 195. */
                 0x4d,0x4e,0x4e,0x4e,0x4e, /* OPTIONS: all normal badges. */
                 0x4f,0x4f,0x4f,0x4f};
-            unsigned at=registration_test-1;
+            unsigned at=regcheck_test-1;
             if(title_dirty_test==4 || title_dirty_test==5) {
                 static const unsigned char arcade_keys[]={0x4d,0x4d,0x4d,
                     0x4e,0x4e,0x4e,0x4e,0x4e, /* mode 0 -> Arcade */
@@ -5640,9 +5560,9 @@ int main(void)
                 if(title_dirty_test==5 && at==sizeof arcade_keys-2) {
                     /* F9 from Settings must start, not activate Options. */
                     static const unsigned char f9=0x58;
-                    championship_test_keys(&platform,&f9,1);registration_test=0;
-                } else if(at==sizeof arcade_keys) registration_test=0;
-                else {championship_test_keys(&platform,&arcade_keys[at],1);++registration_test;}
+                    championship_test_keys(&platform,&f9,1);regcheck_test=0;
+                } else if(at==sizeof arcade_keys) regcheck_test=0;
+                else {championship_test_keys(&platform,&arcade_keys[at],1);++regcheck_test;}
             } else if(title_dirty_test==3 || title_dirty_test==6) {
                 unsigned steps=g_slicks_diag_title_pulse_row;
                 if(steps>4)--steps; /* The original hides Load Game. */
@@ -5650,24 +5570,24 @@ int main(void)
                     static const unsigned char down=0x4d;
                     championship_test_keys(&platform,&down,1);
                 }
-                if(++registration_test==74+steps) {g_slicks_diag_force_exit=1;registration_test=0;}
+                if(++regcheck_test==74+steps) {g_slicks_diag_force_exit=1;regcheck_test=0;}
             } else if(title_dirty_test==2) {
                 if(at==sizeof transition_keys) {
                     /* Rendering/input fixture only: do not save its edits. */
-                    g_slicks_diag_force_exit=1;registration_test=0;
+                    g_slicks_diag_force_exit=1;regcheck_test=0;
                 } else {
                     championship_test_keys(&platform,&transition_keys[at],1);
-                    ++registration_test;
+                    ++regcheck_test;
                 }
             } else {
                 championship_test_keys(&platform,&keys[at],1);
-                if(++registration_test>sizeof keys) registration_test=0;
+                if(++regcheck_test>sizeof keys) regcheck_test=0;
             }
-        } else if(registration_test && ++registration_test==10) {
+        } else if(regcheck_test && ++regcheck_test==10) {
             /* Exercise the title pulse before ordinary Escape make/release.
-             * Key file, trial date, save handling and clocks are untouched. */
+             * Key file, save handling and clocks are untouched. */
             platform.key_tail=0;platform.keys[0]=0x45;platform.keys[1]=0xc5;platform.key_head=2;
-            registration_test=0;
+            regcheck_test=0;
         }
         if(shop_transition_test && g_slicks_diag_ingame && platform.key_head==platform.key_tail) {
             unsigned char key=0;
@@ -7569,11 +7489,9 @@ int main(void)
     }
 
 cleanup:
-    if(!result && registration_presentation && !g_slicks_diag_force_exit) {
+    if(!result && exit_presentation && !g_slicks_diag_force_exit) {
         slicks_amiga_audio_stop(&audio);
-        unsigned short timer=slicks_speed_timer_argument(configuration.field_05de);
-        if(registration_screen(&platform,chunky,1,timer) ||
-           (!registration.name[0] && registration_screen(&platform,chunky,2,timer))) result=20;
+        if(exit_screen(&platform,chunky,slicks_speed_timer_argument(configuration.field_05de))) result=20;
     }
     pc_sampler_release();
     g_slicks_diag_ready = 0;

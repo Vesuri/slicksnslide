@@ -45,6 +45,7 @@ static void shop_static_boundary(uc_engine *u,uint64_t address,uint32_t size,voi
     ip=readword(u,at);cs=readword(u,at+2);sp+=4;
     check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_IP,&ip));check(uc_reg_write(u,UC_X86_REG_SP,&sp));
 }
+static const unsigned char registered='A'; /* full game: original DS:062f nonzero */
 int main(void)
 {
     unsigned char runtime[300000]; FILE *f=fopen("disasm/runtime.bin","rb"); if(!f) return 2;
@@ -142,7 +143,7 @@ int main(void)
         s.options=(struct SlicksRaceOptions){.weapons_enabled=flags&1,.inventory_mode=flags&2,.fuel=flags&4,.damage=flags&8};
         word(u,ds+0x3020,s.options.weapons_enabled);word(u,ds+0x3022,s.options.inventory_mode);
         word(u,ds+0x3024,s.options.fuel);word(u,ds+0x3026,s.options.damage);
-        unsigned char extra=(trial/240)&1;check(uc_mem_write(u,ds+0x62f,&extra,1));
+        check(uc_mem_write(u,ds+0x62f,&registered,1));
         for(unsigned d=0;d<4;++d) {
             s.players.selected[d]=(mask&(1<<d))?(short)(d+1):0;
             s.players.participation[d]=s.players.selected[d]?((trial+d)&1?1:-1):0;
@@ -155,7 +156,7 @@ int main(void)
             for(unsigned i=0;i<13;++i) { s.inventory[d][i]=(trial+d+i)%(rules.capacity[i]+1); word(u,ds+0x6a7a+26*d+2*i,s.inventory[d][i]); }
         }
         check(uc_mem_write(u,ds+0x4c16,&s.players.count,1));
-        signed char rows=0;while(rows<13 && slicks_shop_item(&rules,&s.options,s.inventory[0],s.players.participation[0],s.players.vehicle[0],extra,rows)>=0) ++rows;
+        signed char rows=0;while(rows<13 && slicks_shop_item(&rules,&s.options,s.inventory[0],s.players.participation[0],s.players.vehicle[0],rows)>=0) ++rows;
         signed char column=trial%s.players.count,row=trial%(rows+1),refresh_driver=(signed char)(trial%6)-1,refresh_row=(signed char)(trial%15)-1;
         uint16_t cs=0x266c,dsreg=0x3cbf,ss=0x8000,sp=0xe000,bp=0xf000,ax;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&dsreg));
@@ -165,7 +166,7 @@ int main(void)
         for(unsigned i=0;i<7;++i) word(u,0x8e004+2*i,args[i]);
         memset(&dos,0,sizeof dos);check(uc_emu_start(u,0x2c574,0x70000,0,1000000));check(uc_reg_read(u,UC_X86_REG_AX,&ax));
         struct MenuDrawTrace native={0};struct SlicksShopDrawOps ops={{menu_restore,menu_bevel,menu_sprite,menu_text,&native},shop_number,editor_rectangle};
-        signed char result=slicks_draw_shop_values(&s,&rules,extra,column,row,refresh_driver,refresh_row,rows,137,211,exit_label,&ops);
+        signed char result=slicks_draw_shop_values(&s,&rules,column,row,refresh_driver,refresh_row,rows,137,211,exit_label,&ops);
         if(result!=(signed char)ax || memcmp(&dos,&native,sizeof dos)) {
             fprintf(stderr,"Shop draw mismatch trial=%u driver=%d/%d calls=%u/%u\n",trial,result,(signed char)ax,dos.count,native.count);
             for(unsigned i=0;i<dos.count || i<native.count;++i) if(memcmp(&dos.calls[i],&native.calls[i],sizeof dos.calls[i])) {
@@ -190,9 +191,9 @@ int main(void)
         word(u,ds+0x3020,s.options.weapons_enabled);word(u,ds+0x3022,s.options.inventory_mode);
         word(u,ds+0x3024,s.options.fuel);word(u,ds+0x3026,s.options.damage);
         struct SlicksShopContent content={.session=&s,.rules=&rules,.items=(const unsigned char (*)[15])(data+0xfac),
-            .footer=data+0x1531,.exit_label=data+0x1523,.register_label=data+0x1575,.separator=data+0x1307,
-            .extra=trial&1,.track=(short)(trial+1),.total=512};
-        check(uc_mem_write(u,ds+0x62f,&content.extra,1));word(u,ds+0x628,trial);word(u,ds+0x90,512);
+            .footer=data+0x1531,.exit_label=data+0x1523,.separator=data+0x1307,
+            .track=(short)(trial+1),.total=512};
+        check(uc_mem_write(u,ds+0x62f,&registered,1));word(u,ds+0x628,trial);word(u,ds+0x90,512);
         for(unsigned d=0;d<4;++d) {
             s.players.selected[d]=(mask&(1<<d))?(short)(d+1):0;
             s.players.participation[d]=s.players.selected[d]?1:0;s.players.vehicle[d]=(trial+d)%10;
@@ -203,7 +204,7 @@ int main(void)
         }
         for(unsigned i=0;i<10;++i) {word(u,ds+0x4e44+4*i,0x1000+16*(13+i));word(u,ds+0x4e46+4*i,0x6000);}
         check(uc_mem_write(u,ds+0x4c16,&s.players.count,1));
-        signed char rows=0;while(rows<13 && slicks_shop_item(&rules,&s.options,s.inventory[0],s.players.participation[0],s.players.vehicle[0],content.extra,rows)>=0)++rows;
+        signed char rows=0;while(rows<13 && slicks_shop_item(&rules,&s.options,s.inventory[0],s.players.participation[0],s.players.vehicle[0],rows)>=0)++rows;
         uint16_t cs=0x266c,dsreg=0x3cbf,ss=0x8000,sp=0xeb00,bp=0xf000;
         check(uc_reg_write(u,UC_X86_REG_CS,&cs));check(uc_reg_write(u,UC_X86_REG_DS,&dsreg));
         check(uc_reg_write(u,UC_X86_REG_SS,&ss));check(uc_reg_write(u,UC_X86_REG_SP,&sp));check(uc_reg_write(u,UC_X86_REG_BP,&bp));

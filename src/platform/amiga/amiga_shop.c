@@ -24,7 +24,6 @@ struct ShopPainter {
 static void label(void *p,unsigned font,const unsigned char *s,short x,short y,unsigned char flags)
 {
     struct SlicksAmigaPlayerMenu *m=((struct ShopPainter *)p)->menu;
-    /* REGISTER! uses the original shadow flag. */
     slicks_records_text(m->renderer.ui.pixels,m->fonts[font],s,x,y,flags,0);
     slicks_font_text_dirty(&m->renderer.ui,m->fonts[font],s,x,y,1,flags,
         slicks_menu_measure(m->fonts[font],s),0);
@@ -84,7 +83,7 @@ int slicks_amiga_shop_refresh(struct SlicksAmigaPlayerMenu *m,const struct Slick
     struct SlicksShopDrawOps ops=draw_ops(&painter);
     signed char column=0;
     for(unsigned d=0;d<4 && (int)d<state->driver;++d) column+=c->session->players.selected[d]!=0;
-    if(slicks_draw_shop_values(c->session,c->rules,c->extra,column,state->row,driver,row,state->count,
+    if(slicks_draw_shop_values(c->session,c->rules,column,state->row,driver,row,state->count,
         slicks_ui_nearest(&m->renderer.ui,50,10,10),slicks_ui_nearest(&m->renderer.ui,70,70,10),
         c->exit_label,&ops)<0) return -1;
     return m->error || m->renderer.error?-1:0;
@@ -109,7 +108,7 @@ struct SlicksAmigaPlayerMenu *slicks_amiga_shop_create(struct SlicksResourceArch
         &width,&height) || width!=320 || height!=200) goto failed;
     *state=(struct SlicksShopMenu){.driver=slicks_shop_driver(c->session->players.participation,-1,1)};
     while(state->count<13 && slicks_shop_item(c->rules,&c->session->options,c->session->inventory[0],
-        c->session->players.participation[0],c->session->players.vehicle[0],c->extra,state->count)>=0) ++state->count;
+        c->session->players.participation[0],c->session->players.vehicle[0],state->count)>=0) ++state->count;
     struct ShopPainter painter={.menu=m,.archive=archive,.resource=resource};
     slicks_ui_tint_table(palette,painter.tint,10,10,30,50);
     struct SlicksShopStaticOps ops={draw_ops(&painter),colour,tint};

@@ -1,14 +1,14 @@
 #ifndef SLICKS_REGISTRATION_H
 #define SLICKS_REGISTRATION_H
 
-/* Original startup 1987:c3e0..c4fb. A key is never a build input. The caller
- * supplies binary file bytes; missing files retain the shareware state.
- * Invalid files must report an error, not silently unlock or continue.
- * Bound the original 60-byte name read: do not reproduce its out-of-bounds
- * strlen on malformed unterminated input. No key generation is provided. */
+/* Original startup name reader 1987:c3e0..c4fb. The port is always the full
+ * game; an optional SLICKS.REK only supplies the owner name shown on the title.
+ * The caller supplies binary file bytes. A missing or invalid file shows no
+ * name and unlocks nothing. Bound the original 60-byte name read: do not
+ * reproduce its out-of-bounds strlen on malformed unterminated input. */
 enum SlicksRegistrationResult {
     SLICKS_REGISTRATION_INVALID=-1,
-    SLICKS_REGISTRATION_SHAREWARE=0,
+    SLICKS_REGISTRATION_NONE=0,
     SLICKS_REGISTRATION_VALID=1
 };
 struct SlicksRegistration { unsigned char name[61]; };
@@ -24,8 +24,8 @@ static inline int slicks_registration_decode(struct SlicksRegistration *r,
     const unsigned char *bytes,unsigned long size)
 {
     for(unsigned i=0;i<sizeof r->name;++i) r->name[i]=0;
-    if(!bytes) return SLICKS_REGISTRATION_SHAREWARE;
-    if(size && bytes[0]==0x9c) return SLICKS_REGISTRATION_SHAREWARE;
+    if(!bytes) return SLICKS_REGISTRATION_NONE;
+    if(size && bytes[0]==0x9c) return SLICKS_REGISTRATION_NONE;
     unsigned n=0; unsigned short sum=0,complement=0;
     while(n<size && n<60 && bytes[n]) {
         short value=(short)(signed char)bytes[n++];
@@ -39,6 +39,6 @@ static inline int slicks_registration_decode(struct SlicksRegistration *r,
     for(unsigned i=0;i<n;++i) {
         r->name[i]=slicks_registration_uppercase(bytes[i]);
     }
-    return n?SLICKS_REGISTRATION_VALID:SLICKS_REGISTRATION_SHAREWARE;
+    return n?SLICKS_REGISTRATION_VALID:SLICKS_REGISTRATION_NONE;
 }
 #endif

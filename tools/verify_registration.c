@@ -1,6 +1,7 @@
 /* Reads a private key only at runtime. Never prints names, key bytes or hashes.
  * Execute the original loader, strlen, checksum reader and case conversion;
- * model only file services and the original fatal-error boundary. */
+ * model only file services and the original fatal-error boundary. The port
+ * uses the key only for the title owner name; it never gates game features. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +9,7 @@
 #include <unicorn/unicorn.h>
 #include <unicorn/x86.h>
 #include "../src/game/registration.h"
-#include "../src/ui/registration_ui.h"
+#include "../src/ui/exit_help.h"
 static const unsigned char *input;
 static unsigned length,position;
 static int invalid,ended;
@@ -33,13 +34,10 @@ static void code(uc_engine *u,uint64_t a,uint32_t n,void *p)
             unsigned char args[4],topic[4];
             ck(uc_mem_read(u,16*reg(u,UC_X86_REG_SS)+reg(u,UC_X86_REG_SP)+4,args,4));
             ck(uc_mem_read(u,16*(args[2]|args[3]<<8)+(args[0]|args[1]<<8),topic,4));
-            if(memcmp(topic,slicks_registration_help_topic,4)) exit(1);
+            if(memcmp(topic,slicks_exit_help_topic,4)) exit(1);
             ended=1;ck(uc_emu_stop(u));return;
         }
-        if((mode==1 && (a==0x25fcb || a==0x2611e)) || (mode==2 && a==0x2647d) ||
-           (mode==3 && a==0x25d5d)) {
-            branch=a==0x25fcb;ended=1;ck(uc_emu_stop(u));
-        }
+        if(mode==3 && a==0x25d5d) { ended=1;ck(uc_emu_stop(u)); }
         return;
     }
     if(a==0x11eaf) ret(u,input?1:0,0); /* fopen */
@@ -90,24 +88,6 @@ int main(int argc,char **argv)
     memset(changed,0,sizeof changed);trial(u,runtime,size,changed,5,cases++);
     changed[0]=0x9c;trial(u,runtime,size,changed,1,cases++);
     printf("Original registration loader: %u private-data-free comparisons pass\n",cases);
-    unsigned gates=0;
-    for(unsigned n=0;n<4096;++n) for(unsigned registered=0;registered<2;++registered) {
-        unsigned short today=(unsigned short)(n*37),installed=(unsigned short)(n*101);
-        unsigned char dates[6]={today,today>>8,0,0,0,0},saved[2]={installed,installed>>8},flag=registered;
-        ck(uc_mem_write(u,0x3cbf0+0x4db4,dates,6));ck(uc_mem_write(u,0x3cbf0+0x3032,saved,2));
-        ck(uc_mem_write(u,0x3cbf0+0x62f,&flag,1));
-        set(u,UC_X86_REG_CS,0x1987);set(u,UC_X86_REG_DS,0x3cbf);
-        mode=1;ended=0;ck(uc_emu_start(u,0x25f9f,0x70000,0,100));
-        if(!ended || branch!=(unsigned)slicks_registration_trial_expired(today,(short)installed,flag)) return 1;
-        ++gates;
-        const unsigned char filename[]="/end1.bmp";
-        ck(uc_mem_write(u,0x8f000-0x16,filename,sizeof filename));
-        set(u,UC_X86_REG_SS,0x8000);set(u,UC_X86_REG_BP,0xf000);
-        mode=2;ended=0;ck(uc_emu_start(u,0x26472,0x70000,0,20));
-        unsigned char selected[10];ck(uc_mem_read(u,0x8f000-0x16,selected,10));
-        if(!ended || strcmp((const char *)selected+1,slicks_registration_exit_image(flag))) return 1;
-    }
-    printf("Original trial/exit gates: %u comparisons pass\n",gates);
     for(unsigned c=0;c<256;++c) {
         unsigned char name[2]={(unsigned char)c,0};
         ck(uc_mem_write(u,0x3cbf0+0x62f,name,2));
@@ -120,7 +100,7 @@ int main(int argc,char **argv)
     for(unsigned scan=0;scan<65536;++scan) {
         set(u,UC_X86_REG_CS,0x1987);set(u,UC_X86_REG_DI,scan);
         mode=4;ended=0;ck(uc_emu_start(u,0x2658b,0x70000,0,20));
-        if(!ended || branch!=(unsigned)slicks_registration_help_requested((short)scan)) return 1;
+        if(!ended || branch!=(unsigned)slicks_exit_help_requested((short)scan)) return 1;
     }
     set(u,UC_X86_REG_CS,0x266c);set(u,UC_X86_REG_DS,0x3cbf);
     set(u,UC_X86_REG_SS,0x8000);set(u,UC_X86_REG_SP,0xe000);

@@ -121,21 +121,6 @@ int main(int argc,char **argv)
     for(unsigned j=0;j<13;++j) prices[j]=slicks_config_default_word(data,0x17c+2*j);
     words(out,"ammunition_price",prices,13);
     fputs("};\n",out);
-    /* Public original nag text only. Personal registration data is never
-     * read by this exporter and must never become generated constants. */
-    {
-        static const unsigned offsets[]={0xe11,0xe25,0xe41,0xe62,0xe83,0x85e};
-        fputs("static const unsigned char slicks_original_registration_text[6][64] = {\n",out);
-        for(unsigned i=0;i<6;++i) {
-            fputs("    {",out);
-            unsigned j=0;
-            do { if(j==63 || offsets[i]+j>=sizeof data) return 2;
-                fprintf(out,"%s%u",j?",":"",data[offsets[i]+j]);
-            } while(data[offsets[i]+j++]);
-            fputs("},\n",out);
-        }
-        fputs("};\n",out);
-    }
     {
         const unsigned offsets[]={0x9a0,0xbff,0x99c};
         const char *names[]={"loading","overlay","loading_suffix"};
@@ -156,9 +141,9 @@ int main(int argc,char **argv)
         fputs("},\n",out);
     }
     fputs("};\n",out);
-    const unsigned shop_strings[]={0x1531,0x1575,0x1523,0x157f};
-    const char *shop_string_names[]={"footer","register","exit","help"};
-    for(unsigned i=0;i<4;++i) {
+    const unsigned shop_strings[]={0x1531,0x1523,0x157f};
+    const char *shop_string_names[]={"footer","exit","help"};
+    for(unsigned i=0;i<3;++i) {
         fprintf(out,"static const unsigned char slicks_original_shop_%s[] = {",shop_string_names[i]);
         unsigned at=shop_strings[i];
         do { fprintf(out,"%s%u",at==shop_strings[i]?"":",",data[at]); } while(data[at++]);

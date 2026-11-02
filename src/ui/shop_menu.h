@@ -6,11 +6,11 @@
  * different driver is selected. Full (zero-price) items remain visible. */
 static inline signed char slicks_shop_item(const struct SlicksShopRules *rules,
     const struct SlicksRaceOptions *options,const short inventory[13],signed char role,
-    unsigned vehicle,unsigned char extra,signed char row)
+    unsigned vehicle,signed char row)
 {
     signed char visible=0;
     for(unsigned item=0;item<13;++item)
-        if(slicks_shop_price(rules,options,inventory,role,vehicle,item,extra)>=0) {
+        if(slicks_shop_price(rules,options,inventory,role,vehicle,item)>=0) {
             if(row<=visible) return (signed char)item;
             ++visible;
         }

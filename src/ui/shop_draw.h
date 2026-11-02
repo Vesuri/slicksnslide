@@ -14,8 +14,7 @@ struct SlicksShopContent {
     struct SlicksSetupSession *session;
     const struct SlicksShopRules *rules;
     const unsigned char (*items)[15];
-    const unsigned char *names[4],*footer,*exit_label,*register_label,*separator;
-    unsigned char extra;
+    const unsigned char *names[4],*footer,*exit_label,*separator;
     short track,total;
 };
 struct SlicksShopStaticOps {
@@ -25,7 +24,8 @@ struct SlicksShopStaticOps {
 };
 /* Original static composition 2ca23..2cef4, excluding palette fade/resource
  * ownership. Tint uses the original half-open bounds. Sprite IDs 0..12 are items;
- * 13..22 are vehicles. Save this composition before drawing changing values. */
+ * 13..22 are vehicles. Save this composition before drawing changing values.
+ * The full game omits the original's REGISTER! labels and their tints. */
 static inline int slicks_draw_shop_background(const struct SlicksShopContent *c,
     signed char rows,const struct SlicksShopStaticOps *ops)
 {
@@ -40,14 +40,10 @@ static inline int slicks_draw_shop_background(const struct SlicksShopContent *c,
     ops->colour(p,0,59,59,42);
     for(signed char row=0;row<rows;++row) {
         signed char item=slicks_shop_item(c->rules,&s->options,s->inventory[0],
-            s->players.participation[0],s->players.vehicle[0],c->extra,row);
+            s->players.participation[0],s->players.vehicle[0],row);
         if(item<0) return -1;
         short y=(short)(40+10*row);
         m->text(p,0,c->items[item],97,y,2);
-        if(!c->extra && (c->rules->flags[item]&16)) {
-            ops->tint(p,62,(short)(y-2),76,(short)(y+3));
-            m->text(p,1,c->register_label,75,(short)(y-2),6);
-        }
         m->sprite(p,item,98,y);
         for(unsigned column=0;column<s->players.count;++column)
             ops->tint(p,(short)(115+40*column),(short)(y-1),(short)(150+40*column),(short)(y+7));
@@ -69,7 +65,7 @@ static inline int slicks_draw_shop_background(const struct SlicksShopContent *c,
  * driver/row numbers, or -1 for all. Unmatched selection returns -1 rather
  * than the original uninitialized local byte. */
 static inline signed char slicks_draw_shop_values(const struct SlicksSetupSession *s,
-    const struct SlicksShopRules *rules,unsigned char extra,signed char selected_column,
+    const struct SlicksShopRules *rules,signed char selected_column,
     signed char selected_row,signed char refresh_driver,signed char refresh_row,
     signed char rows,unsigned char selected_colour,unsigned char bar_colour,
     const unsigned char *exit_label,const struct SlicksShopDrawOps *ops)
@@ -85,10 +81,10 @@ static inline signed char slicks_draw_shop_values(const struct SlicksSetupSessio
             ops->number(c,1,s->cash[d],(short)(106+x),cash_y,2);
             for(signed char row=0;row<rows;++row) if(refresh_row<0 || refresh_row==row+1) {
                 signed char item=slicks_shop_item(rules,&s->options,s->inventory[0],
-                    s->players.participation[0],s->players.vehicle[0],extra,row);
+                    s->players.participation[0],s->players.vehicle[0],row);
                 if(item<0) return -1;
                 short price=slicks_shop_price(rules,&s->options,s->inventory[d],
-                    s->players.participation[d],s->players.vehicle[d],item,extra);
+                    s->players.participation[d],s->players.vehicle[d],item);
                 short y=(short)(38+10*row);
                 if(row==selected_row && column==selected_column) {
                     m->restore(c,0,0,(short)(115+x),y,35,5);

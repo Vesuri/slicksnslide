@@ -9,6 +9,9 @@ CPU emulation; the original executable running under a PC reference emulator
 is the ground truth that every routine is tested against.
 
 The port is authorized and supported by the original author, Timo Kauppinen.
+It is the full version: removing the shareware limitations is authorized by
+him, and you can still support his work by registering at
+[slicksnslide.com](https://www.slicksnslide.com).
 
 Release **0.91 (13.10.2026)**. The end-user package `SlicksNSlide-0.91.lha`
 contains the native executable, a WHDLoad slave and an Installer script that
@@ -83,8 +86,8 @@ docs/                  design and reference documentation
   [docs/audio.md](docs/audio.md), [docs/memory.md](docs/memory.md),
   [docs/frame-pacing.md](docs/frame-pacing.md),
   [docs/performance.md](docs/performance.md): runtime design.
-- [docs/registration-support.md](docs/registration-support.md): keyfile
-  support.
+- [docs/full-version.md](docs/full-version.md): the full version and the
+  optional owner-name key.
 - [docs/install-original-data.md](docs/install-original-data.md),
   [docs/whdload.md](docs/whdload.md), [docs/release.md](docs/release.md):
   installer, WHDLoad and the release record.
